@@ -1,0 +1,104 @@
+/* dress-card.css - כרטיס הדגם החדש (A5): רק מה שאין בפלטה (design-system/components.css), בהיקף .gm-ds.gm-dc.
+   מקור: העיצוב המאושר תצוגות-עיצוב/עובדים-ודגמים/model-card.html - הבלוק <style id="mc-glue"> של model-card.app.html (מחלקות mc-* שונו ל-dc-*)
+   + החלקים של page.css שהכרטיס משתמש בהם מחוץ לרשימות (הרשימות: a5-list/a5-list.css). הנטרולים של ה-CSS הגלובלי של האתר, שורת הסריקה,
+   החלונות הכהים והרייל מגיעים מ-order-card/css/oc-base.css + oc-rail.css (הכרטיס נושא גם gm-oc). אין כאן צבע / גופן / רכיב חדש - רק פריסה. */
+
+/* ===== כותרת ===== */
+.gm-ds.gm-dc .ttl h1 .dc-nm{font-weight:500;margin-inline-start:14px;color:var(--navy-500)}
+/* page.css: לחצן ראשי בכותרת כרטיס (הוסף פריט) לא מתכווץ */
+.gm-ds.gm-dc .card-h .btn.navy{flex:none}
+/* נטרולי דליפה של שדה החיפוש ברשימות (a5-page.css, שם בהיקף .gm-a5): design-overrides.css צובע input[type=search] ברקע לבן וגבול */
+.gm-ds.gm-dc :is(.ibtn,.hf-cl){padding:1px 6px}
+.gm-ds.gm-dc .hf-s input[type="search"]{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+/* design-overrides.css: table tbody td{border-bottom-color:var(--divider)!important} - קו שורות בבז' חם; בעיצוב --sky-100 (טבלת פריטים/השכרות/יומן בתצוגת טבלה) */
+.gm-ds.gm-dc .rtbl tbody td{border-bottom-color:var(--gm-sky-100)!important}
+.gm-ds.gm-dc .hf-s input[type="search"]:focus{box-shadow:none;border:0}
+
+/* דליפה: design-overrides.css input:not(...) צובע טקסט בשדות .inp בחום (42,36,32); בעיצוב - כחול כהה (navy-900) בכל השדות, כולל שורת הסריקה */
+.gm-ds.gm-dc :is(input,textarea).inp{color:var(--gm-navy-900)!important}
+
+/* ===== חלונות ===== */
+.gm-ds.gm-dc .dc-dlg-row{display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px}
+.gm-ds.gm-dc .dc-dlg-row.dc2{grid-template-columns:1fr 1fr}
+/* בעיצוב .field+.field{margin-top:16px} חל גם על תאי הגריד ומוריד את התא השני והשלישי - כאן התאים מיושרים (תיקון קטן מול הדגימה) */
+.gm-ds.gm-dc .dc-itm-dlg .dc-dlg-row>.field+.field{margin-top:0}
+/* דליפה: design-overrides.css input:not(...){border-radius:10px} גובר על .inp של הפלטה - בחלון שדה מעוגל 14px (כמו .mfld > input.inp ב-oc-base.css) */
+.gm-ds.gm-dc :is(#dlg,#dlg2) :is(input,textarea).inp{border-radius:14px}
+.gm-ds.gm-dc .dc-itm-dlg .seg.pill{max-width:100%}
+.gm-ds.gm-dc .dc-itm-dlg .field+.field{margin-top:16px}
+.gm-ds.gm-dc .dc-itm-dlg textarea.inp{min-height:84px}
+.gm-ds.gm-dc .dc-dlg-dates{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0 4px}
+.gm-ds.gm-dc .dc-dlg-dates .btn{min-height:40px;padding:6px 12px;font-size:14px}
+.gm-ds.gm-dc .dc-dlg-val{display:flex;align-items:center;justify-content:center;gap:10px;font-size:20px;font-weight:600;margin:6px 0}
+.gm-ds.gm-dc .dc-dlg-val .ic{color:var(--gold-300)}
+.gm-ds.gm-dc .dc-barc{display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600}
+.gm-ds.gm-dc .dc-barc .ic{color:var(--navy-500)}
+.gm-ds.gm-dc .dc-err{display:flex;align-items:center;gap:6px;color:var(--gold-700);font-weight:600}
+/* חלונות כהים (dlg-dark): הטקסטים הכחולים של הכרטיס הבהיר היו כחול-על-כחול (ביקורת חלונות צפות 2026-10-11) - עוברים לטוקני --k-* של שכבת הדיאלוגים */
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .dc-barc{color:var(--k-ink)}
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .dc-barc .ic{color:var(--k-ic)}
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .dc-err{color:var(--k-err)}
+/* חלון סיכום השינויים: תיבת האייקון בשורה - 38px כמו בדגימה (בחלון כהה היא יצאה 40px) */
+.gm-ds.gm-dc :is(#dlg,#dlg2) .chg .c .oc-cico{width:38px;height:38px}
+/* חלון "פרטי פריט" (שכבה 2): שורות .hv-r של הרשימה (small = תווית, b = ערך) ו-.empty היו כחולות על רקע כחול */
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .hv-r{border-bottom:1px solid var(--k-hair)}
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .hv-r small{color:var(--k-faint)}
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .hv-r b{color:var(--k-ink)}
+.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .empty,.gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .empty p{color:var(--k-faint)}
+/* הלוח החודשי בחלון התאריך (סטייה מתועדת): מוגבל ברוחב החלון ובמרכזו */
+.gm-ds.gm-dc .dc-dlg-cal{margin:12px auto 0;max-width:100%}
+
+/* ===== שורות מתג (סטטוס / בדיקה / פרימיום) ===== */
+.gm-ds.gm-dc .dc-swrow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:56px}
+.gm-ds.gm-dc .dc-swrow+.dc-swrow,.gm-ds.gm-dc .dc-why+.dc-swrow{margin-top:12px;padding-top:12px;border-top:1px solid var(--sky-200)}
+.gm-ds.gm-dc .dc-swrow>b{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;color:var(--navy-900)}
+body .gm-ds.gm-dc .app .dc-swrow .seg.pill{width:240px;max-width:100%;flex:none}
+.gm-ds.gm-dc .dc-why{margin:4px 0 12px}
+.gm-ds.gm-dc .dc-why{margin-top:16px}
+.gm-ds.gm-dc .dc-why .status .t{flex:1;min-width:0}
+.gm-ds.gm-dc .dc-why .status b{display:block;font-weight:600}
+.gm-ds.gm-dc .dc-why .status .btn{flex:none}
+
+/* ===== תמונה ===== */
+.gm-ds.gm-dc .dc-frame{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:240px;padding:24px;border-radius:var(--r-sm);text-align:center;color:var(--navy);overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,var(--gold-100) 0%,var(--sky-50) 55%,var(--sky-100) 100%);border:1.5px solid var(--navy);box-shadow:inset 0 0 0 4px rgba(255,255,255,.55),inset 0 0 0 5px var(--gold-300)}
+.gm-ds.gm-dc .dc-frame>.ic{width:72px;height:72px;color:var(--navy);stroke-width:1.4}
+.gm-ds.gm-dc .dc-frame>b{font-size:19px;font-weight:600}
+.gm-ds.gm-dc .dc-frame small{color:var(--ink3);font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-dc .dc-frame img{width:150px;height:187px;object-fit:cover;border-radius:12px;border:2px solid var(--gold-300);box-shadow:0 10px 24px -12px rgba(15,44,82,.55)}
+.gm-ds.gm-dc .dc-frame.has{min-height:0}
+.gm-ds.gm-dc .dc-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
+.gm-ds.gm-dc .dc-hint{display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:14px;margin-top:8px}
+.gm-ds.gm-dc .dc-hint .ic{width:16px;height:16px;color:var(--navy-500);flex:none}
+.gm-ds.gm-dc .dc-dateline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gm-ds.gm-dc .dc-dateline .inpw{flex:1;min-width:200px}
+
+/* ===== יומן הדגם: שורת הפירוט (.prc-m / .prc-w) - בדגימה (model-card.html) כללים אלה קיימים; בפלטה של האתר אין, והטקסט יצא 16px/400 בכחול כהה ===== */
+.gm-ds.gm-dc .prc-m{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gm-ds.gm-dc .prc-w{font-weight:500;font-size:15px;color:var(--gm-ink2)}
+
+/* ===== אריחי סטטיסטיקה (השכרות / מלאי) ===== */
+.gm-ds.gm-dc .dc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px}
+.gm-ds.gm-dc .dc-st{display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 8px;border-radius:var(--r-sm);background:var(--sky-50);border:1px solid var(--sky-200);color:var(--navy);text-align:center}
+.gm-ds.gm-dc .dc-st .ic{width:22px;height:22px;color:var(--navy-500);margin-bottom:4px}
+.gm-ds.gm-dc .dc-st b{font-size:30px;font-weight:700;line-height:1.1;color:var(--navy);font-variant-numeric:tabular-nums}
+.gm-ds.gm-dc .dc-st small{font-size:14px;color:var(--ink3)}
+.gm-ds.gm-dc .dc-st.warn{background:var(--gold-100);border-color:var(--gold-300)}
+.gm-ds.gm-dc .dc-st.warn .ic{color:var(--gold-700)}
+.gm-ds.gm-dc .dc-st.warn.zero{background:var(--sky-50);border-color:var(--sky-200)}
+.gm-ds.gm-dc .dc-st.warn.zero .ic{color:var(--navy-500)}
+.gm-ds.gm-dc .dc-st:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* ===== לשונית היסטוריה: כרטיסי המידע בעמודה ===== */
+.gm-ds.gm-dc .dc-info-top{display:flex;flex-direction:column;gap:24px}
+
+/* ===== רייל: צ'יפים ===== */
+@media (max-width:1023px){
+  .gm-ds.gm-dc .glance{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .gm-ds.gm-dc .glance .gl{padding:6px 8px;gap:6px;font-size:14px;min-height:40px}
+  .gm-ds.gm-dc .glance .gl .ic{width:18px;height:18px}
+}
+@media (max-width:480px){
+  .gm-ds.gm-dc .glance .gl{flex-direction:column;justify-content:center;text-align:center;gap:2px;padding:6px 4px;font-size:13px;min-height:52px}
+  .gm-ds.gm-dc .glance .gl .gv{white-space:normal;line-height:1.2}
+}

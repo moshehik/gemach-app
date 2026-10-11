@@ -4,7 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import FormattedMessage from '../../components/FormattedMessage';
 import { downloadRowsAsXlsx } from '../../lib/xlsxExport';
-import { X, Send, MessageSquare, BarChart3 } from 'lucide-react';
+// 2026-10-11: החלון בעיצוב הכהה של פלטת האתר (אותו #dlg / #scrim כמו חלוניות עוזר ה-AI): .gm-ds.gm-no.dlg-dark ב-portal ל-body, כך שהוא כהה בכל
+// הדפים שמארחים אותו (חדשים וישנים). אין lucide ואין customConfirm / alert של הדפדפן - אישור המחיקה והודעת השגיאה הם חלוניות כהות (שכבה 2).
+import '@/design-system/components.css';
+import './new-order/css/new-order-font.css';
+import './new-order/css/new-order.css';
+import './ai-widget/ai-dialogs.css';
+import './statistics-modal.css';
+import { ConfirmDialog, DialogFrame, MessageDialog } from './new-order/NoDialogs';
+import { Ic } from './new-order/NoUi';
+import { MenuSprite } from './menu/menuParts';
 
 // שורות הנתונים שהסוכן מחזיר (רשימת הזמנות/לקוחות וכו') - מוצגות כטבלה מתחת לתשובה.
 // עד 2026-09-20 הסוכן החזיר טקסט בלבד, והמשתמשת שאלה "איפה הרשימה?" וביקשה הורדה לאקסל.
@@ -36,40 +45,40 @@ function downloadCsv(rows) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function downloadXlsx(rows) {
+function downloadXlsx(rows, onError) {
   const day = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
   return downloadRowsAsXlsx(rows, `נתונים-${day}`, { sheetName: 'נתונים' })
-    .catch(() => alert('לא הצלחתי ליצור את קובץ האקסל. אפשר להוריד CSV במקום.'));
+    .catch(() => { if (onError) onError('לא הצלחתי ליצור את קובץ האקסל. אפשר להוריד CSV במקום.'); });
 }
 
-function ResultTable({ rows }) {
+function ResultTable({ rows, onError }) {
   const cols = Object.keys(rows[0]).filter(k => !k.startsWith('_'));
   const hasAction = rows.some(r => r._actionUrl);
   const shown = rows.slice(0, 100);
   return (
-    <div style={{ marginTop: '8px' }}>
-      <div style={{ overflow: 'auto', maxHeight: '260px', border: '1px solid var(--border)', borderRadius: '8px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+    <div className="stm-res">
+      <div className="stm-tbl">
+        <table className="rtbl">
           <thead>
             <tr>
-              {cols.map(c => <th key={c} style={{ position: 'sticky', top: 0, background: 'var(--surface-2, var(--bg))', textAlign: 'right', padding: '4px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{c}</th>)}
-              {hasAction && <th style={{ position: 'sticky', top: 0, background: 'var(--surface-2, var(--bg))', borderBottom: '1px solid var(--border)' }} />}
+              {cols.map(c => <th key={c}>{c}</th>)}
+              {hasAction && <th />}
             </tr>
           </thead>
           <tbody>
             {shown.map((r, i) => (
               <tr key={i}>
-                {cols.map(c => <td key={c} style={{ padding: '3px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{formatCell(r[c])}</td>)}
-                {hasAction && <td style={{ padding: '3px 8px', borderBottom: '1px solid var(--border)' }}>{r._actionUrl ? <a href={r._actionUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{r._actionLabel || 'פתיחה'}</a> : null}</td>}
+                {cols.map(c => <td key={c}>{formatCell(r[c])}</td>)}
+                {hasAction && <td>{r._actionUrl ? <a href={r._actionUrl} target="_blank" rel="noreferrer">{r._actionLabel || 'פתיחה'}</a> : null}</td>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: 'var(--text-3)' }}>
+      <div className="stm-res-f">
         <span>{rows.length} שורות{rows.length > shown.length ? ` (מוצגות ${shown.length} הראשונות)` : ''}</span>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => downloadXlsx(rows)}>הורדה לאקסל (XLSX)</button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadCsv(rows)}>CSV</button>
+        <button type="button" className="btn sm" onClick={() => downloadXlsx(rows, onError)}><Ic n="download" c="sm" />הורדה לאקסל (XLSX)</button>
+        <button type="button" className="btn ghost sm" onClick={() => downloadCsv(rows)}>CSV</button>
       </div>
     </div>
   );
@@ -82,6 +91,8 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [chatSessions, setChatSessions] = useState([]);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [notice, setNotice] = useState(null);
   const chatEndRef = useRef(null);
 
   const sessionsStorageKey = `ai_statistics_chat_sessions_${pageContext || 'general'}`;
@@ -120,8 +131,11 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
     setShowHistory(false);
   };
 
-  const clearChat = async () => {
-    if (await window.customConfirm('האם אתה בטוח שברצונך למחוק את השיחה הנוכחית?')) {
+  // אישור מחיקה: חלון כהה (שכבה 2) במקום window.customConfirm
+  const clearChat = () => setConfirmClear(true);
+  const closeClearConfirm = (yes) => {
+    setConfirmClear(false);
+    if (yes === true) {
       setMessages([{ role: 'assistant', content: getGreeting() }]);
       setActiveSessionId(null);
       setShowHistory(false);
@@ -199,131 +213,64 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
     }
   };
 
+  // Escape: סוגר קודם את חלון האישור/ההודעה (שכבה 2), ואחר כך את החלון
+  const escRef = useRef(null);
+  useEffect(() => { escRef.current = () => { if (confirmClear) setConfirmClear(false); else if (notice) setNotice(null); else onClose(); }; });
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (escRef.current) escRef.current(); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const overlayStyle = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1100,
-    display: 'flex',
-    alignItems: position ? 'flex-start' : 'center',
-    justifyContent: position ? 'flex-start' : 'center',
-  };
-
-  const modalStyle = {
-    width: '90%',
-    maxWidth: '600px',
-    height: '80vh',
-    maxHeight: '600px',
-    display: 'flex',
-    flexDirection: 'column',
-    ...(position ? {
-      position: 'absolute',
-      margin: 0,
-      top: `${Math.min(position.y, window.innerHeight - 620)}px`,
-      // For RTL layout, clientX is from the left. But we might want it aligned. Let's just use left.
-      // But if it overflows the right edge, we adjust it.
-      left: `${Math.min(Math.max(20, position.x - 300), window.innerWidth - 620)}px`,
-    } : {
-      position: 'relative'
-    })
-  };
-
+  // position נשמר ב-API (קוראים ישנים מעבירים אותו) אבל החלון הכהה תמיד ממורכז, כמו כל חלוניות האתר.
   const content = (
-    <div className="modal-backdrop" onClick={onClose} style={overlayStyle}>
-      <div className="modal animate-fade-in" onClick={e => e.stopPropagation()} style={modalStyle}>
-        {/* Header */}
-        <div className="modal-head">
-          <strong>
-            <BarChart3 className="icon" />
-            סטטיסטיקות מתקדמות AI
-          </strong>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={() => setShowHistory(!showHistory)}
-              style={{ color: showHistory ? 'var(--accent)' : undefined }}
-              title="היסטוריה"
-              aria-label="היסטוריה"
-            >
-              <svg className="icon"><use href="#i-history" /></svg>
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={startNewChat}
-              title="חדש"
-              aria-label="חדש"
-            >
-              <svg className="icon"><use href="#i-plus" /></svg>
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={clearChat}
-              title="מחק"
-              aria-label="מחק"
-            >
-              <svg className="icon"><use href="#i-trash" /></svg>
-            </button>
-            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={onClose} title="סגירה" aria-label="סגירה">
-              <X className="icon" />
-            </button>
-          </div>
+    <div className="gm-ds gm-no dlg-dark ai-dlg-root stm-root" dir="rtl">
+      <MenuSprite />
+      <DialogFrame layer={1} cls="stm-dlg" onBackdrop={onClose}>
+        <div className="stm-tools">
+          <button type="button" className={`btn ghost sm icon${showHistory ? ' on' : ''}`} onClick={() => setShowHistory(!showHistory)} title="היסטוריה" aria-label="היסטוריה" aria-pressed={showHistory}><Ic n="sn-history" /></button>
+          <button type="button" className="btn ghost sm icon" onClick={startNewChat} title="שיחה חדשה" aria-label="שיחה חדשה"><Ic n="plus" /></button>
+          <button type="button" className="btn ghost sm icon" onClick={clearChat} title="מחיקת השיחה" aria-label="מחיקת השיחה"><Ic n="trash" /></button>
+          <button type="button" className="btn ghost sm icon" onClick={onClose} title="סגירה" aria-label="סגירה"><Ic n="x" /></button>
         </div>
+        <div className="dbadge" aria-hidden="true"><Ic n="sn-chart" /></div>
+        <h2>סטטיסטיקות מתקדמות AI</h2>
 
-        {/* Chat Area */}
-        <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="stm-body">
           {showHistory ? (
-            <div style={{ padding: '10px' }}>
-              <h3 style={{ marginTop: 0, color: 'var(--text)', fontSize: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+            <div className="stm-hist">
+              <h3>היסטוריית שיחות</h3>
               {messages.length > 1 && (
-                <div
-                  onClick={() => setShowHistory(false)}
-                  className="list-card"
-                  style={{
-                    background: 'var(--success-tint)', borderColor: 'var(--success)',
-                    cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', gap: '4px',
-                  }}
-                >
-                  <span style={{ fontWeight: 'bold', color: 'var(--success)', fontSize: '0.9rem' }}>שיחה נוכחית (פעילה)</span>
-                  <span style={{ color: 'var(--success)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {messages[1].content}
-                  </span>
-                </div>
+                <button type="button" onClick={() => setShowHistory(false)} className="stm-card cur">
+                  <b>שיחה נוכחית (פעילה)</b>
+                  <span>{messages[1].content}</span>
+                </button>
               )}
               {chatSessions.length === 0 && messages.length <= 1 ? (
-                <div style={{ color: 'var(--text-3)', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
+                <div className="stm-empty">אין היסטוריית שיחות שמורה.</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                  {chatSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      onClick={() => loadSession(session)}
-                      className="list-card"
-                      style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}
-                    >
-                      <span style={{ fontWeight: 'bold', color: 'var(--text)', fontSize: '0.9rem' }}>{session.date}</span>
-                      <span style={{ color: 'var(--text-3)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                chatSessions.map((session) => (
+                  <button type="button" key={session.id} onClick={() => loadSession(session)} className="stm-card">
+                    <b>{session.date}</b>
+                    <span>{session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}</span>
+                  </button>
+                ))
               )}
             </div>
           ) : (
-            <div className="chat-thread">
+            <div className="stm-thread">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`bubble ${msg.role}`} style={{ whiteSpace: 'pre-wrap' }}>
+                <div key={idx} className={`stm-b ${msg.role}`}>
                   <FormattedMessage content={msg.content} />
-                  {msg.rows && <ResultTable rows={msg.rows} />}
+                  {msg.rows && <ResultTable rows={msg.rows} onError={(t) => setNotice(t)} />}
                 </div>
               ))}
               {loading && (
-                <div className="bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="typing-indicator"><span></span><span></span><span></span></div>
+                <div className="stm-b assistant stm-typing">
+                  <span className="stm-dots"><i /><i /><i /></span>
                   מנתח נתונים...
                 </div>
               )}
@@ -332,26 +279,30 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="modal-foot" style={{ justifyContent: 'stretch' }}>
-          <form onSubmit={sendMessage} style={{ display: 'flex', gap: '8px', flex: 1 }}>
-            <div className="input-icon-wrap" style={{ flex: 1 }}>
-              <MessageSquare className="icon" />
-              <input
-                type="text"
-                className="input"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="שאל שאלה על הנתונים..."
-                disabled={loading}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary btn-icon-only" disabled={loading || !input.trim()} title="שליחה">
-              <Send className="icon" />
-            </button>
-          </form>
-        </div>
-      </div>
+        <form className="stm-form" onSubmit={sendMessage}>
+          <input
+            type="text"
+            className="inp"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="שאל שאלה על הנתונים..."
+            aria-label="שאלה על הנתונים"
+            disabled={loading}
+            data-autofocus
+          />
+          <button type="submit" className="btn primary icon" disabled={loading || !input.trim()} title="שליחה" aria-label="שליחה"><Ic n="send" /></button>
+        </form>
+      </DialogFrame>
+      {confirmClear ? (
+        <DialogFrame layer={2} onBackdrop={() => setConfirmClear(false)}>
+          <ConfirmDialog title="מחיקת השיחה" message="האם אתה בטוח שברצונך למחוק את השיחה הנוכחית?" ok="מחק שיחה" cancel="ביטול" close={closeClearConfirm} />
+        </DialogFrame>
+      ) : null}
+      {notice ? (
+        <DialogFrame layer={2} onBackdrop={() => setNotice(null)}>
+          <MessageDialog title="הודעה" message={notice} close={() => setNotice(null)} />
+        </DialogFrame>
+      ) : null}
     </div>
   );
 

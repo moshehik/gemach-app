@@ -1,0 +1,194 @@
+/* a5-list.css - ערכת הרשימות החדשה (app/components/a5-list): רשימת שורות / טבלה, חיפוש, סינון קבוצתי אחד, מיון, עימוד 50 בקפסולה, סרגל
+   תוצאות דביק. זה ה-CSS ה"דבק" של העיצוב המאושר (scratch/emp-models-build/page.css - עובדים / דגמים / כרטיס דגם) - מועתק 1:1, מלבד:
+     * כל סלקטור מקבל את הקידומת  .gm-ds :where(.a5l)  : ההיקף הוא רכיב .a5l (שורש הרשימה ושורש משבצת החיפוש) בלבד, ללא תוספת
+       ספציפיות מעבר ל-.gm-ds של הפלטה - כך שיחס הכוחות בין כללי הדבק לכללי הפלטה (design-system/components.css) נשאר בדיוק כמו בעיצוב.
+     * שם האנימציה rowin -> gm-rowin (כך היא נקראת בפלטה).
+     * הכללים שייכים לעובדים בלבד (.conn / .pwd / .mk) נמצאים ב-employees-list.css.
+   רק רכיבי פלטה קיימים: hf-bar / hf-s / hf-sel / hres-bar / vsw / hrow / hdet / hv-r / rtbl / xlbtn. שום צבע, גופן או רכיב חדש. */
+.gm-ds :where(.a5l) .hres .li .t b .sub{font-weight:400;color:var(--ink3);font-size:15px;margin-inline-start:8px}
+.gm-ds :where(.a5l) .hres .li .t .ln.mi{display:flex;flex-wrap:wrap;align-items:center;gap:4px 20px}
+.gm-ds :where(.a5l) .ln .lni{display:inline-block}
+.gm-ds :where(.a5l) .ln .lni bdi{white-space:nowrap}
+.gm-ds :where(.a5l) .ln .lni .ic{width:16px;height:16px;color:var(--navy-500);flex:none;transition:color .25s;vertical-align:-3px;margin-inline-end:6px}
+.gm-ds :where(.a5l) .hres .li:hover .ln .lni .ic,.gm-ds :where(.a5l) .hres .li:focus-visible .ln .lni .ic{color:#9a7a1f}
+.gm-ds :where(.a5l) .ln .lni.zero{opacity:.42}
+.gm-ds :where(.a5l) .ln .lni b{font-weight:600;color:var(--navy);display:inline}
+.gm-ds :where(.a5l) .ln .lni.warn .ic{color:var(--gold-d)}
+.gm-ds :where(.a5l) .ln .lni.warn b{color:var(--gold-d)}
+.gm-ds :where(.a5l) .ln .lni.mail{white-space:normal;overflow-wrap:anywhere}
+.gm-ds :where(.a5l) .hres .hrow.off .t b,.gm-ds :where(.a5l) .hres .hrow.off .t .ln{opacity:.62}
+.gm-ds :where(.a5l) .hres .hrow.off .li .ic-b{background:var(--navy-500)}
+.gm-ds :where(.a5l) .hres .hrow.gone .t b{text-decoration:line-through;text-decoration-thickness:1px}
+.gm-ds :where(.a5l) .hres .li .go{margin-inline-start:4px}
+.gm-ds :where(.a5l) .hf-s .hf-ib{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:var(--navy-500);display:grid;place-items:center;cursor:pointer;margin-inline-end:2px;transition:background-color .15s,color .15s}
+.gm-ds :where(.a5l) .hf-s .hf-ib:hover,.gm-ds :where(.a5l) .hf-s .hf-ib:focus-visible{background:var(--sky-100);color:var(--navy);outline:0}
+.gm-ds :where(.a5l) .hf-s .hf-ib.on{background:var(--navy);color:var(--gold-300)}
+.gm-ds :where(.a5l) .hf-s .hf-ib .ic{width:19px;height:19px}
+.gm-ds :where(.a5l) .hf-s>.hf-ib:first-of-type{margin-inline-start:4px}
+.gm-ds :where(.a5l) .hf-s .hf-t{padding:0 14px}
+@media (max-width:900px){
+  .gm-ds :where(.a5l) .hf-s .hf-lbl{display:none}
+  .gm-ds :where(.a5l) .hf-s .hf-t{padding:0 12px}
+}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t{width:auto;height:34px;padding:0 12px;font-size:14px;border-radius:999px;gap:6px;border-color:var(--navy)}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t>svg.ic{width:16px;height:16px}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t .hf-lbl b{font-weight:600}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t{background:transparent;transition:background-color .18s,border-color .15s}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t:hover,.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-sel.on .hf-t,.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t:focus-visible{background:#d3d7dc}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t>svg.ic{color:var(--gold-d)}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t>svg.ic.flip{transform:scaleY(-1)}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t .hf-chv{width:14px;height:14px;color:var(--navy);margin-inline-start:2px}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .sdir .ic{transition:transform .25s var(--ease);color:var(--gold-d)}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-p{inset-inline:0 auto;min-width:300px}
+.gm-ds :where(.a5l) .hf-sort .hf-allb.sdirb{display:flex;align-items:center;gap:8px}
+.gm-ds :where(.a5l) .hres-bar .hres-x{margin-inline-start:auto;display:inline-flex;gap:8px;align-items:center}
+.gm-ds :where(.a5l) .hf-sort.dir-d .sdir .ic{transform:rotate(180deg)}
+.gm-ds :where(.a5l) .pgr{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border:1px solid var(--sky-300);border-radius:16px;background:rgba(255,255,255,.72)}
+.gm-ds :where(.a5l) .pgr.one .pg-ctl{display:none}
+.gm-ds :where(.a5l) .pgr .pg-info{font-size:15px;color:var(--ink3)}
+.gm-ds :where(.a5l) .pgr .pg-info b{color:var(--navy);font-weight:600;font-variant-numeric:tabular-nums}
+.gm-ds :where(.a5l) .pgr .pg-ctl{display:flex;align-items:center;gap:10px}
+.gm-ds :where(.a5l) .pg-n{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--navy);background:transparent;color:var(--navy);font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background-color .18s,color .18s,transform .18s}
+.gm-ds :where(.a5l) .pg-n .ic{width:16px;height:16px;color:var(--gold-d);transition:color .18s,transform .22s var(--spring)}
+.gm-ds :where(.a5l) .pg-n:hover:not(:disabled),.gm-ds :where(.a5l) .pg-n:focus-visible{background:var(--navy);color:#fff;outline:0}
+.gm-ds :where(.a5l) .pg-n:hover:not(:disabled) .ic,.gm-ds :where(.a5l) .pg-n:focus-visible .ic{color:var(--gold-300)}
+.gm-ds :where(.a5l) .pg-n:first-child:hover:not(:disabled) .ic{transform:translateX(3px)}
+.gm-ds :where(.a5l) .pg-n:last-child:hover:not(:disabled) .ic{transform:translateX(-3px)}
+.gm-ds :where(.a5l) .pg-n:disabled{opacity:.38;cursor:default}
+.gm-ds :where(.a5l) .pg-nums{position:relative;display:inline-flex;align-items:center;gap:2px;height:40px;padding:3px;border:1px solid var(--navy);border-radius:999px}
+.gm-ds :where(.a5l) .pg-knob{position:absolute;top:3px;bottom:3px;left:3px;width:34px;border-radius:999px;background:var(--navy);transition:left .3s cubic-bezier(.22,1,.36,1),width .3s cubic-bezier(.22,1,.36,1);pointer-events:none}
+.gm-ds :where(.a5l) .pg-b{position:relative;z-index:1;min-width:34px;height:32px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--navy);font:inherit;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;cursor:pointer;transition:color .2s}
+.gm-ds :where(.a5l) .pg-b.on{color:var(--gold-300)}
+.gm-ds :where(.a5l) .pg-b:not(.on):hover{color:var(--gold-d)}
+.gm-ds :where(.a5l) .pg-b:focus-visible,.gm-ds :where(.a5l) .pg-n:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.gm-ds :where(.a5l) .pg-gap{min-width:20px;text-align:center;color:var(--ink3);position:relative;z-index:1}
+@media (max-width:640px){
+  .gm-ds :where(.a5l) .pg-n span{display:none}
+  .gm-ds :where(.a5l) .pg-n{padding:0 12px}
+  .gm-ds :where(.a5l) .pgr .pg-ps{display:none}
+}
+.gm-ds :where(.a5l) .hres.animate .hrow,.gm-ds :where(.a5l) .hres.animate .etbl tbody tr{animation:gm-rowin .32s var(--ease) both;animation-delay:calc(var(--i,0)*22ms)}
+.gm-ds :where(.a5l) .hres .hrow .li{min-height:76px}
+.gm-ds :where(.a5l) .hres .li .ic-b.sq{width:56px}
+@media (max-width:479px){
+  .gm-ds :where(.a5l) .hres .li .ic-b.sq{width:48px}
+}
+.gm-ds :where(.a5l) .etbl tbody tr{cursor:pointer}
+.gm-ds :where(.a5l) .etbl td{vertical-align:middle}
+.gm-ds :where(.a5l) .etbl td b{font-weight:600;color:var(--navy-900)}
+.gm-ds :where(.a5l) .etbl td .ic{width:16px;height:16px;color:var(--navy-500);vertical-align:-3px;margin-inline-end:5px}
+.gm-ds :where(.a5l) .etbl td.num{font-variant-numeric:tabular-nums;text-align:center}
+.gm-ds :where(.a5l) .etbl td.zero{opacity:.4}
+.gm-ds :where(.a5l) .etbl tr.off td{opacity:.7}
+.gm-ds :where(.a5l) .etbl tr.gone td b{text-decoration:line-through;text-decoration-thickness:1px}
+.gm-ds :where(.a5l) .etbl .tcn{display:inline-flex;align-items:center;gap:8px}
+.gm-ds :where(.a5l) .tblw{overflow-x:auto}
+@media (max-width:640px){
+  .gm-ds :where(.a5l) .hf-s{height:auto;flex-wrap:wrap;padding-bottom:6px}
+  .gm-ds :where(.a5l) .hf-s input{flex:1 1 calc(100% - 56px);height:56px}
+  .gm-ds :where(.a5l) .hf-s .hf-ib:first-of-type{margin-inline-start:8px}
+  .gm-ds :where(.a5l) .hf-s .hf-ib{margin-top:6px}
+  .gm-ds :where(.a5l) .hf-s .hf-sel{align-self:auto;margin-top:6px;border-inline-start:0}
+  .gm-ds :where(.a5l) .hf-s .hf-t{height:40px;border-radius:999px;border:1px solid var(--sky-300);padding:0 12px}
+  .gm-ds :where(.a5l) .hres .li{gap:10px;padding-inline:8px}
+  .gm-ds :where(.a5l) .hres .li .ic-b.sq{width:44px;height:44px}
+  .gm-ds :where(.a5l) .hres .li .t .ln.mi{gap:4px 14px}
+  .gm-ds :where(.a5l) .hres-bar .hres-x{margin-inline-start:0}
+}
+@media (max-width:640px){
+  .gm-ds :where(.a5l) .erow .hv-act{flex-wrap:wrap}
+  .gm-ds :where(.a5l) .erow .hv-btns{flex-wrap:wrap}
+  .gm-ds :where(.a5l) .hv-r small{width:72px}
+}
+.gm-ds :where(.a5l) .hf-bar{container-type:inline-size}
+@container (max-width:1020px){
+  .gm-ds :where(.a5l) .hf-s .hf-lbl{display:none}
+  .gm-ds :where(.a5l) .hf-s .hf-t{padding:0 12px}
+  .gm-ds :where(.a5l) .hf-s .hf-t .hf-chv{margin-inline-start:0}
+}
+.gm-ds :where(.a5l) .hf-s input{min-width:180px}
+.gm-ds :where(.a5l) .etbl td{white-space:nowrap}
+.gm-ds :where(.a5l) .pg-slot{display:contents}
+.gm-ds :where(.a5l) .hres-bar .pgr{margin:0;padding:0;border:0;background:transparent;flex:1 1 auto;justify-content:center;min-width:0}
+.gm-ds :where(.a5l) .hres-bar .pgr .pg-info{display:none}
+.gm-ds :where(.a5l) .hres-bar .pg-n,.gm-ds :where(.a5l) .hres-bar .pg-nums{height:36px}
+.gm-ds :where(.a5l) .hres-bar .pg-b{height:28px}
+.gm-ds :where(.a5l) .hres-bar .pg-n{padding:0 12px}
+@media (max-width:900px){
+  .gm-ds :where(.a5l) .hres-bar .pgr{flex:1 1 100%;order:5}
+}
+.gm-ds :where(.a5l) .hres-bar{padding:8px 14px;border:1px solid var(--sky-300);border-radius:16px;background:linear-gradient(180deg,rgba(211,215,220,.78),rgba(188,194,200,.5));box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
+.gm-ds :where(.a5l) .hres-bar .vsw:hover,.gm-ds :where(.a5l) .hres-bar .vsw:has(:focus-visible){background:rgba(255,255,255,.55)}
+.gm-ds :where(.a5l) .hres-bar{position:sticky;top:calc(var(--snav-h,64px) + 10px);z-index:25;background:linear-gradient(180deg,rgba(226,229,233,.94),rgba(205,210,216,.92));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 24px -14px rgba(15,44,82,.55)}
+.gm-ds :where(.a5l) .hf-gh{display:flex;align-items:center;gap:8px;margin:10px 4px 2px;padding:6px 8px 4px;font-size:13px;font-weight:600;color:var(--ink3);border-bottom:1px solid var(--sky-300)}
+.gm-ds :where(.a5l) .hf-gh:first-child{margin-top:2px}
+.gm-ds :where(.a5l) .hf-gh .ic{width:15px;height:15px;color:var(--gold-d)}
+.gm-ds :where(.a5l) .hf-o[hidden]{display:none}
+.gm-ds :where(.a5l) .hf-p{width:min(380px,calc(100vw - 32px))}
+.gm-ds :where(.a5l) .hres-bar{transition:background .25s,box-shadow .25s,border-color .25s}
+.gm-ds :where(.a5l) .hres-bar.stuck{background:linear-gradient(135deg,rgba(232,186,156,.78) 0%,rgba(222,166,132,.78) 55%,rgba(228,176,144,.78) 100%);border-color:rgba(168,68,42,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 14px 30px -14px rgba(10,34,66,.6)}
+.gm-ds :where(.a5l) .hres-bar.stuck .vsw:hover,.gm-ds :where(.a5l) .hres-bar.stuck .vsw:has(:focus-visible){background:rgba(255,255,255,.5)}
+.gm-ds :where(.a5l) .hres-bar.stuck .hf-sort .hf-t:hover,.gm-ds :where(.a5l) .hres-bar.stuck .hf-sort .hf-sel.on .hf-t{background:rgba(255,255,255,.55)}
+.gm-ds :where(.a5l) .hres .li .t b{font-size:21px;font-weight:600;line-height:1.3}
+.gm-ds :where(.a5l) .hres .li .t b .sub{font-size:16px}
+.gm-ds :where(.a5l) .hres .li .t .ln,.gm-ds :where(.a5l) .hres .li .t .ln .lni,.gm-ds :where(.a5l) .hres .li .t .ln .lni b{font-size:14px}
+.gm-ds :where(.a5l) .ln .lni .ic{width:15px;height:15px}
+.gm-ds :where(.a5l) .hres-bar:not(.stuck){background:rgba(255,255,255,.72);border-color:var(--sky-300);box-shadow:0 1px 2px rgba(15,44,82,.04);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.gm-ds :where(.a5l) .hres-bar:not(.stuck) .vsw:hover,.gm-ds :where(.a5l) .hres-bar:not(.stuck) .vsw:has(:focus-visible){background:#d3d7dc}
+.gm-ds :where(.a5l) .hres-bar:not(.stuck) .hf-sort .hf-t:hover,.gm-ds :where(.a5l) .hres-bar:not(.stuck) .hf-sort .hf-sel.on .hf-t{background:#d3d7dc}
+.gm-ds :where(.a5l) .pg-nums .pg-n{width:32px;height:32px;min-width:32px;padding:0;border:0;border-radius:50%;justify-content:center;background:transparent;position:relative;z-index:1}
+.gm-ds :where(.a5l) .pg-nums .pg-n span{display:none}
+.gm-ds :where(.a5l) .pg-nums .pg-n .ic{width:16px;height:16px}
+.gm-ds :where(.a5l) .pg-nums .pg-n:first-child{margin-inline-end:4px}
+.gm-ds :where(.a5l) .pg-nums .pg-n:last-child{margin-inline-start:4px}
+.gm-ds :where(.a5l) .hres-bar .pg-nums{height:38px}
+.gm-ds :where(.a5l) .hres-bar .pg-nums .pg-n{width:30px;height:30px;min-width:30px}
+.gm-ds :where(.a5l) .hres-bar .pg-nums .pg-b{height:30px}
+.gm-ds :where(.a5l) .hres-bar{max-width:none}
+.gm-ds :where(.a5l) .hres-bar .pgr{flex:1 1 auto}
+.gm-ds :where(.a5l) .hres .hgrp{width:100%;max-width:none;margin-inline:0;gap:0}
+.gm-ds :where(.a5l) .hres .li{align-items:center;gap:16px;padding:28px 12px}
+.gm-ds :where(.a5l) .hres .li .t{gap:6px}
+.gm-ds :where(.a5l) .hres .hrow .li{min-height:0}
+.gm-ds :where(.a5l) .hres .li .ic-b.sq{width:75px;height:48px;padding:0 6px;border-radius:14px}
+.gm-ds :where(.a5l) .hres .li:hover,.gm-ds :where(.a5l) .hres .li:focus-visible{background:linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38))}
+.gm-ds :where(.a5l) .hres .li:hover .t b,.gm-ds :where(.a5l) .hres .li:focus-visible .t b{color:#8a6a12}
+.gm-ds :where(.a5l) .hres .li:hover .ic-b{background:var(--navy-700)}
+.gm-ds :where(.a5l) .hres .hdet{padding:4px 20px 12px}
+@media (max-width:479px){
+  .gm-ds :where(.a5l) .hres .li{padding:20px 8px}
+  .gm-ds :where(.a5l) .hres .li .ic-b.sq{width:56px}
+}
+.gm-ds :where(.a5l) .hres-bar .vsw{height:38px;width:84px;padding:3px}
+.gm-ds :where(.a5l) .hres-bar .vsw .vopt .ic{width:16px;height:16px}
+.gm-ds :where(.a5l) .hres-bar .hf-sort .hf-t{height:38px}
+.gm-ds :where(.a5l) .hres-bar .pg-nums{height:38px;box-sizing:border-box}
+.gm-ds :where(.a5l) .hres-bar .pg-nums .pg-n,.gm-ds :where(.a5l) .hres-bar .pg-nums .pg-b{height:30px}
+.gm-ds :where(.a5l) .hres-bar .hres-x .xlbtn{width:38px;height:38px}
+.gm-ds :where(.a5l) .hres .li .go{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:transparent;padding:0;cursor:pointer;flex:none}
+.gm-ds :where(.a5l) .hres .li .go:hover,.gm-ds :where(.a5l) .hres .li .go:focus-visible{background:var(--sky-100);outline:0}
+.gm-ds :where(.a5l) .hres .li .go:focus-visible{box-shadow:0 0 0 2px var(--gold)}
+
+/* ===== מעטפת הדף (מחוץ לרשימה): פריסה בעמודה אחת ופעולת הכותרת - היקף שורש הדף .gm-a5 ===== */
+.gm-ds.gm-a5 .layout.one{display:block}
+.gm-ds.gm-a5 .layout.one .main{max-width:none}
+.gm-ds.gm-a5 .card-h .btn.navy{flex:none}
+/* סרגל התוצאות הדביק חייב להיות מחוץ לגלילה פנימית: כרטיס ה-hist שמכיל רשימה לא חותך */
+.gm-ds .card.hist:has(.a5l .hres-bar){overflow:visible}
+/* משבצת החיפוש (A5SearchSlot) היא עטיפה שקופה: ה-hf-bar שבה הוא שורש הפריסה, כמו .adm-bar ישיר בתוך .app בעיצוב */
+.gm-ds .a5l.a5l-slotwrap{display:contents}
+
+/* ===== מה שחסר בעיצוב הסטטי ונדרש באתר החי ===== */
+/* חיפוש חכם בטעינה: ספינר במקום אייקון החיפוש (באותו מקום ובאותו גודל של .hf-s>svg.ic) */
+.gm-ds :where(.a5l) .hf-s>.a5l-sp{position:absolute;inset-inline-start:20px;width:18px;height:18px;margin:0;border-width:2px}
+
+/* ===== משבצת החיפוש מתחת לכותרת הדף (adm-bar / fslot בעיצוב): חצי רוחב, גובה 60 ===== */
+.gm-ds :where(.a5l) .adm-bar{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;margin:14px 0 4px}
+.gm-ds :where(.a5l) .fslot{display:flex;flex:0 1 50%;max-width:50%;min-width:540px}
+.gm-ds :where(.a5l) .fslot .hf-s{height:60px;width:100%;flex:1}
+.gm-ds :where(.a5l) .fslot .hf-s .hf-p{inset-inline:auto 0}
+@media (max-width:900px){
+  .gm-ds :where(.a5l) .fslot{flex:1 1 100%;max-width:none;min-width:0}
+}
+/* מסנן פתוח: מסגרת כחולה כהה (בעיצוב .hf-sel.on .hf-t גובר על מסגרת הזהב של הגלולה; בפלטה :not(.gm-home) מעלה את ספציפיות כלל הזהב) */
+.gm-ds :where(.a5l) .hf-s .hf-sel.on .hf-t{border-color:var(--navy)}

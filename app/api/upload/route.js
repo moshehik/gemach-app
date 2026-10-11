@@ -10,6 +10,8 @@ import { createImageVariants, storeBuffers } from '../../../lib/dressImageStorag
 // - הקבצים נשמרים ב-DB (Attachment, ר' lib/dressImageStorage.js) - לא תלוי
 //   בסביבה (Vercel/מקומי), אין אפמריות ואין טוקן להגדיר.
 
+const MAX_UPLOAD_BYTES = 60 * 1024 * 1024;
+
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
@@ -20,6 +22,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'לא נמצא קובץ' }, { status: 400 });
     }
 
+    // Size cap (Vercel already stops bodies over ~4.5MB; this protects local / self-hosted runs and the DB-stored Attachment table).
+    if (typeof file.size === 'number' && file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: 'הקובץ גדול מדי' }, { status: 413 });
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // שם ייחודי — אותה מוסכמה היסטורית (חותמת זמן + אקראי + שם מנוקה)
@@ -42,7 +48,10 @@ export async function POST(request) {
     } else {
       // פורמט ש-sharp לא פענח — שומרים את הקובץ המקורי כמו שהוא (התנהגות היסטורית)
       webName = uniqueSuffix + '-' + cleanName;
-      files = [{ name: webName, buffer, contentType: file.type || 'application/octet-stream' }];
+      // The stored type is what /api/attachment/<id> serves back (public, same origin as the app), so a client-chosen
+      // text/html or image/svg+xml must never be kept: only recordings / audio / pdf keep their type, anything else is opaque.
+      const safeType = /^(video|audio)\/[a-z0-9.+-]+$/i.test(file.type || '') || file.type === 'application/pdf' ? file.type : 'application/octet-stream';
+      files = [{ name: webName, buffer, contentType: safeType }];
     }
 
     const urls = await storeBuffers(files);

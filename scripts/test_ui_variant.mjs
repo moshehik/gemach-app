@@ -27,7 +27,8 @@ const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value })
 console.log('resolution order');
 t('בלי כלום: כל המסכים legacy', () => {
   // 4.10.2026: נוספו profile / admin_hub / attendance / error_report (lib/uiVariantScreens.js) + board (5.10.2026) + employee_card (newExists:false) + new_order (newExists:false עד 5.10.2026; מ-6.10.2026 newExists:true - למתכנת a5, ר' בדיקת ברירת המחדל לפי תפקיד) + settings (5.10.2026) - בלי roleId כולם legacy.
-  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy' });
+  // + 9.10.2026 (עובדים ודגמים): employees_list / models_list / model_card / model_new - בלי roleId כולם legacy.
+  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy' });
   assert.deepEqual(resolveUiVariants(), resolveUiVariants({}));
 });
 t('הגדרת ארגון (מערך שורות) מדליקה רק את המסך שלה', () => {
@@ -44,7 +45,7 @@ t('עקיפה אישית גוברת על הארגון (בשני הכיוונים
 });
 t('עקיפה אישית של מסך אחד לא משפיעה על מסך אחר', () => {
   const r = resolveUiVariants({ settings: rows({ ui_variant_home: 'a5' }), userVariants: { customer_card: 'a5' } });
-  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy' });
+  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy' });
 });
 t('מפתחות ההגדרה בדיוק כפי שסוכם', () => {
   assert.deepEqual(UI_VARIANT_SETTING_KEYS, {
@@ -53,6 +54,7 @@ t('מפתחות ההגדרה בדיוק כפי שסוכם', () => {
     profile: 'ui_variant_profile', admin_hub: 'ui_variant_admin_hub', attendance: 'ui_variant_attendance', error_report: 'ui_variant_error_report',
     board: 'ui_variant_board', // 5.10.2026 (הלוח החודשי החדש, F13)
     settings: 'ui_variant_settings', // 5.10.2026 (הגדרות מערכת / אתר / שינוי שמות)
+    employees_list: 'ui_variant_employees_list', models_list: 'ui_variant_models_list', model_card: 'ui_variant_model_card', model_new: 'ui_variant_model_new', // 9.10.2026 (עובדים ודגמים)
   });
 });
 
@@ -418,6 +420,6 @@ t('splitServerPrefs (R4): התאמה ל-GET האמיתי - parseStoredDesignPref
   assert.equal(splitServerPrefs(parseStoredDesignPrefs(stored)).hasPrefs, false);
   assert.equal(splitServerPrefs(parseStoredDesignPrefs('standard')).hasPrefs, false);
 });
-t('כל המסכים נבדקים בפועל', () => assert.equal(UI_SCREENS.length, 12)); // 4 המקוריים + כרטיס עובד + הזמנה חדשה + 4 המסכים של 4.10.2026 + board + settings (scripts/test_page_variant_switch.mjs)
+t('כל המסכים נבדקים בפועל', () => assert.equal(UI_SCREENS.length, 16)); // + 4 מסכי עובדים ודגמים (9.10.2026); 4 המקוריים + כרטיס עובד + הזמנה חדשה + 4 המסכים של 4.10.2026 + board + settings (scripts/test_page_variant_switch.mjs)
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

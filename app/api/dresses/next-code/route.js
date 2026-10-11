@@ -1,8 +1,11 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 
 export async function GET() {
+  // was public (found 2026-10-09): the next free model code is back-office data. checkAuth() keeps open mode (require_login off) working.
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     // 1. Get length setting
     const setting = await getCachedSetting('barcodePrefixLength');

@@ -52,7 +52,10 @@ export async function GET(request) {
     const advNotInUse = searchParams.get('advNotInUse') === 'true';
     const advInRepair = searchParams.get('advInRepair') === 'true';
     const advItemDeleted = searchParams.get('advItemDeleted') === 'true';
-    const needItemRentals = !fieldsMode || advRentalsCountMin > 0;
+    // counts=1 (רשימת הדגמים החדשה, 9.10.2026): תוספת תואמת-לאחור לתצורת summary - ספירות לכל דגם (לא בשימוש / בתיקון / רזרבה / פריטים מחוקים /
+    // השכרות / מידות עם כמויות) + updatedAt. בלי הפרמטר התשובה זהה לחלוטין לקודם. ספירת ההשכרות היא _count.orderItems של כל פריט, כמו בצורה המלאה.
+    const wantCounts = fieldsMode === 'summary' && searchParams.get('counts') === '1';
+    const needItemRentals = !fieldsMode || advRentalsCountMin > 0 || wantCounts;
 
     // Build Prisma Where
     const where = {};
@@ -138,6 +141,7 @@ export async function GET(request) {
           exitDateFromRepo: true,
           inactiveReason: true,
           isDeleted: true,
+          ...(wantCounts ? { updatedAt: true } : {}),
           items: {
             select: {
               id: true,
@@ -256,11 +260,27 @@ export async function GET(request) {
       if (fieldsMode === 'summary') {
         // רשימת הקטלוג: רק ספירות. itemsCount = פריטים לא מחוקים (העמודה "כמות פריטים"), inUseItemsCount = פריטים עם notInUse=false (כולל מחוקים -
         // בדיוק התנאי הישן !items.some(i => !i.notInUse) של "לא פעיל"), activeItemsCount = notInUse=false וגם לא מחוק (התראת "החזר לפעילות").
-        return {
+        const summary = {
           ...modelFields,
           itemsCount: adjustedItems.filter(i => !i.isDeleted).length,
           inUseItemsCount: adjustedItems.filter(i => !i.notInUse).length,
           activeItemsCount: adjustedItems.filter(i => !i.notInUse && !i.isDeleted).length
+        };
+        if (!wantCounts) return summary;
+        // ספירות נוספות (counts=1): הכול על פריטים לא מחוקים, חוץ מ-deletedItemsCount ו-rentalsCount (השכרות היסטוריות של כל הפריטים)
+        const live = adjustedItems.filter(i => !i.isDeleted);
+        const sizeMap = new Map();
+        live.forEach(i => { const k = i.sizeText || 'כללי'; sizeMap.set(k, (sizeMap.get(k) || 0) + 1); });
+        const isReserveLocation = (loc) => !!loc && (loc.includes('רזרבה') || loc.includes('reserve'));
+        return {
+          ...summary,
+          notInUseCount: live.filter(i => i.notInUse).length,
+          repairCount: live.filter(i => i.inRepair).length,
+          reserveCount: live.filter(i => isReserveLocation(i.location)).length,
+          deletedItemsCount: adjustedItems.length - live.length,
+          rentalsCount: adjustedItems.reduce((n, i) => n + (i.rentalsCount || 0), 0),
+          sizeCounts: [...sizeMap.entries()],
+          updatedAt: model.updatedAt || null
         };
       }
 

@@ -44,7 +44,9 @@ const ACTIVITY_TOGGLE_FIELDS = ['exitDateFromRepo', 'entryDateToRepo', 'inactive
 
 export async function PUT(request, { params }) {
   const bodyText = await request.text();
-  const body = bodyText ? JSON.parse(bodyText) : {};
+  let body;
+  try { body = bodyText ? JSON.parse(bodyText) : {}; } catch { return NextResponse.json({ error: 'גוף הבקשה אינו JSON תקין' }, { status: 400 }); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'גוף הבקשה אינו תקין' }, { status: 400 });
   const isActivityToggleOnly = Object.keys(body).length > 0 && Object.keys(body).every(k => ACTIVITY_TOGGLE_FIELDS.includes(k));
   if (!(await checkAuth(isActivityToggleOnly ? undefined : 'הנהלה ראשית'))) {
     return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });

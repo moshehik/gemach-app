@@ -37,6 +37,8 @@ const YES = {
   '/admin/nedarim-payments-recent': 'head', '/admin/nedarim-hok-test': 'head',
   // 4.10.2026 (תפריט "ניהול" מקוצר): מה שיצא מהשורות הקבועות של התפריט חייב להיות במסך — "כל השאר בתוך דף הניהול"
   '/refunds': 'head', '/dashboard/dresses': 'head', '/employees': 'head', '/deliveries': 'head',
+  // 11.10.2026: רשימות הזמנות / לקוחות לניהול (דפים חדשים בלי גרסה ישנה, תחת /admin = שער app/admin/layout.js)
+  '/admin/orders-list': 'head', '/admin/customers-list': 'head',
 };
 // אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
 const ADDED_LATER = {
@@ -119,7 +121,7 @@ t('כל אריח מוביל לדף קיים באפליקציה', () => {
 t('9 קטגוריות בשמות של העיצוב + "עבודה שוטפת" בסוף (4.10); "זיכויים" מוזגה ל"תמחור וחישובים"; "הרשאות" ראשון ב"הגדרות ומיתוג"', () => {
   assert.equal(CATEGORIES.length, 10);
   assert.equal(byHref('/refunds').cat, 'pricing', 'זיכויים וחובות — בקטגוריה שהבעלים מיזג אליה את "זיכויים"');
-  assert.deepEqual(TOOLS.filter((x) => x.cat === 'daily').map((x) => x.href), ['/dashboard/dresses', '/employees', '/deliveries']);
+  assert.deepEqual(TOOLS.filter((x) => x.cat === 'daily').map((x) => x.href), ['/dashboard/dresses', '/employees', '/admin/orders-list', '/admin/customers-list', '/deliveries']);
   assert.deepEqual(CATEGORIES.map((c) => c.title), CAT_NAMES);
   for (const c of CATEGORIES) assert.ok(TOOLS.some((x) => x.cat === c.id), `קטגוריה ריקה ${c.title}`);
   for (const x of TOOLS) assert.ok(CATEGORIES.some((c) => c.id === x.cat), `${x.id}: קטגוריה לא קיימת`);

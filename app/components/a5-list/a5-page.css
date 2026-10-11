@@ -1,0 +1,50 @@
+/* a5-page.css - שורש דף הרשימות (A5Page: .gm-ds.gm-a5.<name>.home-bg.dlg-dark): נטרול דליפות של ה-CSS הגלובלי של האתר (app/globals.css /
+   design-overrides.css / design-system.css) לתוך עיצוב הפלטה, באותם תיקונים שכבר נעשו בכרטיס העובד / סיכום הנוכחות / מסך הניהול (ר'
+   employee-card.css, attendance.css, admin-hub.css) - בלי להוסיף שום רכיב או צבע. פריסת הרשימה עצמה: a5-list.css (היקף .a5l). */
+
+/* ===== גוף הדף ===== */
+/* הגופן של הפלטה (Rubik); design-overrides.css כופה !important על לחצנים/שדות ועל כותרות */
+.gm-ds.gm-a5 *{font-family:var(--gm-font)}
+.gm-ds.gm-a5 :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-a5 :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+.gm-ds.gm-a5 .ttl h1{letter-spacing:-.3px}
+/* מלא-רוחב: המעטפת עוטפת כל דף ב-.app-shell > .main > .content עם padding ו-max-width; בעיצוב הרווחים מגיעים מ-.app של הפלטה */
+.app-shell .main .content:has(> .gm-ds.gm-a5){max-width:none;margin-inline:0;padding:0}
+/* ריפוד .app: ללא דריסה - הפלטה נותנת 24px מעל / 64px מתחת (16px / 112px במובייל), כמו בעיצוב; הסרגל העליון של המעטפת בזרימה (sticky), ולכן אין צורך ב-72px של מסכים שהעיצוב שלהם קבע כך */
+.gm-ds.gm-a5 .app .ttl h1{color:var(--gm-navy-900)}
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css צובעים אותו */
+.gm-ds.gm-a5 .app .topbar{position:static;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* פינת הכותרת: אייקון המעבר "ישן / חדש" (PageVariantToggle) בקצה, כמו .lz-dtools בסיכום הנוכחות */
+.gm-ds.gm-a5 .app .topbar .a5-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+
+/* ===== נטרול דליפות ===== */
+/* globals.css מאפס padding לכל אלמנט: לחצני האייקון בעיצוב נושאים את ריפוד ברירת המחדל של הדפדפן (1px 6px) */
+.gm-ds.gm-a5 :is(.back,.ibtn,.hf-cl,.hf-ib){padding:1px 6px}
+/* globals.css / design-system.css: .tab{margin-inline-end:22px} - בעיצוב הלשוניות צמודות וחולקות את הרוחב שווה */
+.gm-ds.gm-a5 .tab{margin-inline-end:0}
+.gm-ds.gm-a5 .tabs{border-bottom:0;margin-bottom:0}
+/* design-overrides.css: input:not(x4) (ספציפיות 0,4,1) צובע שדה חיפוש ברקע לבן, גבול קרם, רדיוס וטקסט חום; בעיצוב השדה שקוף בתוך הגלולה (.hf-s נושאת את הגבול והטבעת) */
+.gm-ds.gm-a5 .hf-s input[type="search"]{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-a5 .hf-s input[type="search"]:focus{box-shadow:none;border:0}
+/* הכרטיס: בעיצוב גרדיאנט "פנינה" (כלל body .app :is(.card,...) של קובץ העיצוב) ולא זכוכית לבנה 30% של הפלטה */
+.gm-ds.gm-a5 .card{background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+/* טבלה: כותרת כחולה כהה וזהב (הפלטה) - globals.css כופה רקע קרם וצל על th, ו-design-overrides.css צבע וגופן ב-!important */
+.gm-ds.gm-a5 .rtbl>thead>tr>th{position:static!important;background-color:var(--navy)!important;color:var(--gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;border-bottom:0!important;outline:0;top:auto!important;z-index:auto!important;transition:none}
+/* design-overrides.css: table tbody td{border-bottom-color:var(--divider)!important} צובע את קו השורות בבז' חם; בעיצוב הוא --sky-100 (אפור-כחול של הפלטה) */
+.gm-ds.gm-a5 .rtbl tbody td{border-bottom-color:var(--gm-sky-100)!important}
+/* globals.css: div:has(> table){max-height:75vh;overflow-y:auto} ("כותרת דביקה") - עטיפות הטבלאות בדף נמתחות לגובה התוכן */
+.gm-ds.gm-a5 div:has(> table){max-height:none}
+.gm-ds.gm-a5 [hidden]{display:none!important}
+
+/* ===== חלונות כהים: לחצן "חזרה" (ghost) כמו בשאר המסכים - טקסט זהב עם קו תחתון, בלי רקע ===== */
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2){position:relative;background:transparent;border:0;box-shadow:none;color:var(--k-ghost);font-weight:600;min-height:44px!important;width:auto;align-self:center;padding:8px 18px;text-decoration:none;transform:none}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:active,:focus-visible){background:transparent;color:var(--k-ghost);box-shadow:none;transform:none;text-decoration:none}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::before{content:none;display:none}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::after{inset-inline:18px;bottom:6px;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat,linear-gradient(90deg,#e0bf5a,#c9a227,#f1dc8f);background-size:45% 100%,100% 100%;background-position:-130% 0,0 0}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2) svg{color:var(--k-ghost)!important;stroke:var(--k-ghost)!important}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:focus-visible) .ic{transform:translateX(3px)}
+.gm-ds.gm-a5 :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gold);outline-offset:2px;box-shadow:none}
+
+/* ===== פריסה ===== */
+/* בעיצוב ה-.panel מקבל רווח עליון רק אחרי שורת לשוניות (.tabs + .panel); בלי לשוניות (רשימת הדגמים) הוא הילד הראשון ולא מקבל רווח כפול מהפלטה */
+.gm-ds.gm-a5 .layout.one .main>.panel:first-child{margin-top:0}

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
 import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES, getSessionEmployee, canManageRoles } from '../../../lib/auth';
 import { getEffectiveValueForEmployees } from '../../../lib/permissions';
 import { getApproverKeys } from '../../../lib/permissionsMetadata';
 import { SERVICE_EMPLOYEE_LEGACY_ID_MIN } from '../../../lib/apiKeys';
+import { getVerifiedAuthCookie } from '../../../lib/authTokens';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -21,11 +23,21 @@ export async function GET(request) {
     // it used to be served to the whole internet, which also handed out every employee id).
     // (checkAuth() = a verified login session, or anybody at all while require_login is OFF - open mode.)
     const requesterIsAuthenticated = !!(await checkAuth());
-    const all = requesterIsAuthenticated && searchParams.get('all') === 'true';
+    // The full HR row (wage, phones, address, notes, role) is for head management / programmer only - the same audience as the
+    // /employees pages. Any other signed-in employee (or a signed-in-but-deactivated one) gets the slim picker shape even when
+    // they ask for ?all=true or no flag (found 2026-10-09: a secretary could read every employee's hourlyWage). Open mode
+    // (no identity at all, require_login off) keeps the old behaviour.
+    let forceSlim = false;
+    if (requesterIsAuthenticated && searchParams.get('slim') !== '1') {
+      const me = await getSessionEmployee();
+      if (me) forceSlim = !HEAD_MANAGEMENT_ROLES.includes(me.roleId);
+      else forceSlim = !!getVerifiedAuthCookie(await cookies())?.value;
+    }
+    const all = requesterIsAuthenticated && !forceSlim && searchParams.get('all') === 'true';
     // ?slim=1 (CPU phase 1B, 2026-10-06) - למסכי בחירה (חלונות אישור, בוררי עובד, הודעות, קיוסק): רק מה שהם קוראים (id, שם, isActive, roleId,
     // department.name, approvals, canApproveWithoutPayment) במקום כל עמודות העובד (טלפון, כתובת, שכר, themeColor, תמונה...) - 107-148KB לקריאה.
     // בלי הפרמטר, וגם עם all=true (דפי העובדים, כולל העותק הישן הקפוא) - הצורה המלאה כמו קודם.
-    const slim = !all && searchParams.get('slim') === '1';
+    const slim = !all && (forceSlim || searchParams.get('slim') === '1');
 
     // הקורא האנונימי (מסך כניסה / שעון נוכחות / קיוסק) מקבל רק id + שמות + isActive (ר' למטה) - אין סיבה למשוך את שאר העמודות מה-DB.
     const query = !requesterIsAuthenticated

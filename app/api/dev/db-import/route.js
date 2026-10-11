@@ -27,7 +27,7 @@ export async function POST(req) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Available only in development mode' }, { status: 403 });
   }
-  if (!(await checkAuth())) {
+  if (!(await checkAuth('מתכנת'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

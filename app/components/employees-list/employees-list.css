@@ -1,0 +1,24 @@
+/* employees-list.css - מה שייחודי לרשימת העובדים בעיצוב המאושר (employees.html): סימון "מחובר" (.conn) ומפתח "יש לעדכן סיסמה" (.pwd)
+   בקצה השורה (.mk), ונקודת "מחובר" בפירוט (.cdot-inl). מועתק 1:1 מ-page.css של העיצוב (הכללים האחרונים של .conn גוברים על הראשונים, כמו שם),
+   בהיקף .gm-ds :where(.a5l) כמו ערכת הרשימות. */
+.gm-ds :where(.a5l) .conn{display:inline-flex;align-items:center;gap:8px;flex:none;color:var(--navy);font-weight:600;font-size:14px;margin-inline-start:auto}
+.gm-ds :where(.a5l) .conn .cico{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:var(--gold-300)}
+.gm-ds :where(.a5l) .conn .cico .ic{width:18px;height:18px}
+.gm-ds :where(.a5l) .conn .cico::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--gold);opacity:0;animation:connRing 2.4s ease-out infinite}
+.gm-ds :where(.a5l) .conn .cdot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 0 rgba(201,162,39,.55);animation:connDot 2.4s ease-out infinite}
+@keyframes connRing{0%{transform:scale(.8);opacity:.7}70%,100%{transform:scale(1.35);opacity:0}}
+@keyframes connDot{0%{box-shadow:0 0 0 0 rgba(201,162,39,.55)}70%,100%{box-shadow:0 0 0 8px rgba(201,162,39,0)}}
+.gm-ds :where(.a5l) .pwd{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--gold-100);color:var(--gold-700);flex:none}
+.gm-ds :where(.a5l) .pwd .ic{width:18px;height:18px}
+.gm-ds :where(.a5l) .hres .li .conn+.pwd,.gm-ds :where(.a5l) .hres .li .pwd+.conn{margin-inline-start:6px}
+.gm-ds :where(.a5l) .hres .li>.mk{display:flex;align-items:center;gap:8px;flex:none;margin-inline-start:auto}
+.gm-ds :where(.a5l) .hres .li>.mk .conn{margin-inline-start:0}
+.gm-ds :where(.a5l) .cdot-inl{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin-inline-end:8px;box-shadow:0 0 0 3px rgba(201,162,39,.25);vertical-align:1px}
+.gm-ds :where(.a5l) .etbl .conn{margin-inline-start:0;gap:8px}
+.gm-ds :where(.a5l) .conn{gap:5px;white-space:nowrap}
+.gm-ds :where(.a5l) .conn .cico{width:auto;height:auto;border-radius:0;background:transparent;color:var(--navy)}
+.gm-ds :where(.a5l) .conn .cico .ic{width:20px;height:20px;color:var(--gold-d)}
+.gm-ds :where(.a5l) .conn .cico::after{display:none}
+.gm-ds :where(.a5l) .conn .ctx{color:var(--navy);font-weight:600}
+.gm-ds :where(.a5l) .conn .cico .ic{animation:connBeat 2.4s ease-in-out infinite}
+@keyframes connBeat{0%,100%{opacity:1}50%{opacity:.45}}

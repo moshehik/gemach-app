@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
   if (process.env.NODE_ENV !== 'development') {
@@ -11,6 +12,9 @@ export async function POST(request) {
     const { mode } = await request.json(); // 'prod' or 'test'
     if (mode !== 'prod' && mode !== 'test') {
       return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
+    }
+    if (!(await checkAuth('מתכנת'))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Save choice to file for persistence across restarts
@@ -33,6 +37,8 @@ export async function GET() {
   }
 
   const mode = globalThis.activeDbMode || 'prod';
+  // The connection strings (with credentials) only go to a signed-in programmer; everyone else just gets the mode.
+  if (!(await checkAuth('מתכנת'))) return NextResponse.json({ mode, urls: { prod: '', test: '' } });
   return NextResponse.json({ 
     mode,
     urls: {
