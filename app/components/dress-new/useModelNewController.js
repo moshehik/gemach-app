@@ -300,7 +300,7 @@ export default function useModelNewController({ router }) {
           if (first) first.scrollIntoView({ behavior: 'auto', block: 'start' });
           setTimeout(() => { const i = document.getElementById(e.nameDuplicate && useModelNames ? 'mnName' : 'mnCode'); if (i) i.focus({ preventScroll: true }); }, 60);
         }
-        say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : e.nameDuplicate ? 'שם הדגם כבר קיים' : 'יצירת הדגם נכשלה', e.msg);
+        say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : e.nameDuplicate && /קיים/.test(e.msg) ? 'שם הדגם כבר קיים' : 'יצירת הדגם נכשלה', e.msg);
         return;
       }
       // הפריטים נוצרים אחד-אחד; כישלון בפריט בודד לא מבטל את הדגם שכבר נוצר
