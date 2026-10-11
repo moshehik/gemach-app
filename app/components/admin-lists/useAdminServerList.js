@@ -28,8 +28,8 @@ async function post(url, body) {
 /**
  * @param {{endpoint:string, buildQuery:(s:object)=>object, countsKey:(q:object)=>string, defaultSort:{k:string,dir:number}}} cfg
  */
-export default function useAdminServerList({ endpoint, buildQuery, countsKey, defaultSort }) {
-  const [ui, setUi] = useState({ sel: {}, sort: defaultSort });
+export default function useAdminServerList({ endpoint, buildQuery, countsKey, defaultSort, initialSel = null }) { // initialSel: ברירת מחדל של קבוצת סינון (def) חייבת להיות גם בבקשה הראשונה (רשימות היומנים)
+  const [ui, setUi] = useState({ sel: initialSel || {}, sort: defaultSort });
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [custom, setCustom] = useState(null); // { from, to } של "טווח מותאם"
@@ -55,7 +55,7 @@ export default function useAdminServerList({ endpoint, buildQuery, countsKey, de
     post(endpoint, query)
       .then((d) => {
         if (my !== seq.current) return;
-        setData({ rows: Array.isArray(d.data) ? d.data : [], total: Number(d.total) || 0, notices: Array.isArray(d.notices) ? d.notices : [] });
+        setData({ rows: Array.isArray(d.data) ? d.data : [], total: Number(d.total) || 0, totalCapped: !!d.totalCapped, notices: Array.isArray(d.notices) ? d.notices : [] });
         setVariant(Number(d.variant) || 0);
       })
       .catch((e) => {

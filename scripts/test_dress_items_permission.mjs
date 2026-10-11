@@ -135,6 +135,9 @@ T.prisma = new Proxy({}, {
   get: (_t, p) => {
     if (p === 'then') return undefined;
     if (['departmentPermission', 'employeePermissionOverride', 'dressItem', 'dressModel'].includes(p)) return crud(p);
+    if (p === 'priceList') return { findMany: async () => (T.db.priceList || []).map((r) => ({ category: r.category })) }; // POST /api/dresses validates the category against the price list (empty list = no check)
+    if (p === '$transaction') return async (fn) => fn(T.prisma); // the merged POST routes create inside a transaction
+    if (p === '$executeRaw') return async () => 0; // pg_advisory_xact_lock
     throw new Error('mock: unexpected prisma model ' + String(p));
   },
 });
@@ -233,13 +236,15 @@ await t('decideDressItemAccess (טהור): אורח 401, בלי עובד 401, ב
 console.log('3. מטריצת הנתיבים: POST/PUT/DELETE של פריט');
 const params = (o) => ({ params: Promise.resolve(o) });
 const jreq = (url, method, body) => new Request('http://x' + url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+const DM1 = '00000000-0000-4000-8000-000000000001'; // the merged item route requires a uuid model id
 function seedItems() {
-  tbl('dressModel').push({ id: 'dm1', name: 'ורד', barcodePrefix: 100, isDeleted: false });
-  tbl('dressItem').push({ id: 'it1', dressModelId: 'dm1', dressBarcode: '100', location: 'חנות', isDeleted: false });
+  tbl('dressModel').push({ id: DM1, name: 'ורד', barcodePrefix: 100, isDeleted: false });
+  tbl('dressItem').push({ id: 'it1', dressModelId: DM1, dressBarcode: '100', location: 'חנות', isDeleted: false });
 }
 let bcSeq = 0;
+const nextItemBody = () => { const n = ++bcSeq; return { sizeText: '38', serialNumber: n, dressBarcode: `10038${String(n).padStart(2, '0')}`, location: 'חנות' }; };
 const CALLS = {
-  create: () => itemsRoute.POST(jreq('/api/dresses/dm1/items', 'POST', { sizeText: '38', serialNumber: 1, dressBarcode: `10038${++bcSeq}`, location: 'חנות' }), params({ id: 'dm1' })),
+  create: () => itemsRoute.POST(jreq(`/api/dresses/${DM1}/items`, 'POST', nextItemBody()), params({ id: DM1 })),
   edit: () => itemRoute.PUT(jreq('/api/dresses/items/it1', 'PUT', { location: 'רזרבה', cartonNumber: '7', inRepair: true }), params({ itemId: 'it1' })),
   quickLocation: () => itemRoute.PUT(jreq('/api/dresses/items/it1', 'PUT', { location: 'מחסן' }), params({ itemId: 'it1' })),
   restore: () => itemRoute.PUT(jreq('/api/dresses/items/it1', 'PUT', { isDeleted: false }), params({ itemId: 'it1' })),
@@ -307,11 +312,11 @@ await t('הנהלה ראשית ומתכנת: 200 בכל פעולה (גם מול 
 await t('הרשאת הפריטים לא פותחת עריכת דגם: עובדת 4 עם ההרשאה - PUT/DELETE/POST של הדגם נשארים 403; סימון "לא פעיל" פתוח כמו קודם', async () => {
   reset(); seedItems(); grantEmp('ok1', true);
   T.session = { id: 'ok1', roleId: 4, isActive: true };
-  const put = (body) => dressRoute.PUT(jreq('/api/dresses/dm1', 'PUT', body), params({ id: 'dm1' }));
+  const put = (body) => dressRoute.PUT(jreq(`/api/dresses/${DM1}`, 'PUT', body), params({ id: DM1 }));
   assert.equal((await put({ notes: 'x' })).status, 403);
   assert.equal((await put({ isDeleted: true })).status, 403);
   assert.equal((await put({ name: 'חדש' })).status, 403);
-  assert.equal((await dressRoute.DELETE(jreq('/api/dresses/dm1', 'DELETE'), params({ id: 'dm1' }))).status, 403);
+  assert.equal((await dressRoute.DELETE(jreq(`/api/dresses/${DM1}`, 'DELETE'), params({ id: DM1 }))).status, 403);
   assert.equal((await dressesRoute.POST(jreq('/api/dresses', 'POST', { name: 'שם חדש', barcodePrefix: 555 }))).status, 403);
   assert.equal((await put({ inactiveReason: 'פג' })).status, 200, 'החריג של סימון לא-פעיל לא השתנה');
 });
@@ -468,10 +473,10 @@ await t('POST: שם קיים ברשימת המחוקים -> הודעת "קיים
   assert.equal(r.body.field, 'name');
 });
 await t('POST: רווחי קצוות ורישיות נחשבים אותו שם; שם ייחודי נוצר (200)', async () => {
-  reset(); asHead(); tbl('dressModel').push({ id: 'dm1', name: 'Rose', barcodePrefix: 10, isDeleted: false });
-  assert.equal((await post({ name: ' rose ', barcodePrefix: 11 })).status, 400);
-  assert.equal((await post({ name: 'Rose', barcodePrefix: 11 })).status, 400);
-  const ok = await J(await post({ name: 'ורד', barcodePrefix: 11 }));
+  reset(); asHead(); tbl('dressModel').push({ id: 'dm1', name: 'Rose', barcodePrefix: 110, isDeleted: false });
+  assert.equal((await post({ name: ' rose ', barcodePrefix: 111 })).status, 400);
+  assert.equal((await post({ name: 'Rose', barcodePrefix: 111 })).status, 400);
+  const ok = await J(await post({ name: 'ורד', barcodePrefix: 111 }));
   assert.equal(ok.status, 200); assert.equal(ok.body.name, 'ורד');
   assert.equal(T.writes.filter((w) => w.op === 'create').length, 1);
 });
@@ -482,10 +487,10 @@ await t('POST: השם האוטומטי "דגם <קוד>" (אשף בלי שמות
 });
 await t('POST: P2002 על name מהמסד (מרוץ) -> 400 עם אותה הודעה; שגיאה אחרת נשארת 500 כללי בלי פרטים', async () => {
   reset(); asHead(); quiet(); T.failCreateWith = Object.assign(new Error('Unique constraint failed on the fields: (`name`)'), { code: 'P2002', meta: { target: ['name'] } });
-  const r = await J(await post({ name: 'חדש', barcodePrefix: 1 }));
+  const r = await J(await post({ name: 'חדש', barcodePrefix: 101 }));
   assert.equal(r.status, 400); assert.equal(r.body.field, 'name'); assert.match(r.body.error, /«חדש» כבר קיים/);
   T.failCreateWith = new Error('connection reset');
-  const e = await J(await post({ name: 'חדש', barcodePrefix: 1 }));
+  const e = await J(await post({ name: 'חדש', barcodePrefix: 101 }));
   assert.equal(e.status, 500); assert.deepEqual(e.body, { error: 'שגיאה ביצירת הדגם' });
 });
 await t('POST: התנגשות קוד (barcodePrefix) נשארת 400 "הקוד כבר בשימוש!" והאשף עדיין מזהה אותה', async () => {
@@ -503,6 +508,22 @@ await t('POST: קורא לא מורשה (עובדת 4 / אורח) מקבל 403 /
   T.session = null;
   const g = await dressesRoute.POST(jreq('/api/dresses', 'POST', { name: 'סודי' }));
   assert.equal(g.status, 403); assert.ok(!/סודי|623/.test(await g.text()));
+});
+await t('ולידציית הקלט של ההתאמה הצדדית נשארת בתוקף לצד שם כפול: קוד לא בן 3 ספרות / שם ריק / קטגוריה לא קיימת = 400 עם field; הברקוד של פריט חייב להתאים; השער של הרשאת הפריטים קודם לכל ולידציה', async () => {
+  reset(); asHead(); quiet(); tbl('priceList').push({ category: 'A' }); seedItems();
+  const bad = async (body, field) => { const r = await J(await post(body)); assert.equal(r.status, 400, JSON.stringify(body)); assert.equal(r.body.field, field, JSON.stringify(r.body)); };
+  await bad({ name: 'x', barcodePrefix: 12 }, 'barcodePrefix');
+  await bad({ name: '   ', barcodePrefix: 120 }, 'name');
+  await bad({ name: 'x', barcodePrefix: 120, priceCategory: 'ZZ' }, 'priceCategory');
+  assert.equal(T.writes.filter((w) => w.model === 'dressModel').length, 0, 'נדחה לפני כתיבה');
+  assert.equal((await post({ name: 'תקין', barcodePrefix: 120, priceCategory: 'A' })).status, 200);
+  const itemBad = await J(await itemsRoute.POST(jreq(`/api/dresses/${DM1}/items`, 'POST', { sizeText: '38', serialNumber: 1, dressBarcode: '9999999' }), params({ id: DM1 })));
+  assert.equal(itemBad.status, 400); assert.equal(itemBad.body.field, 'dressBarcode');
+  assert.equal((await itemsRoute.POST(jreq('/api/dresses/dm1/items', 'POST', nextItemBody()), params({ id: 'dm1' }))).status, 404, 'מזהה דגם שאינו uuid');
+  // השער קודם: עובדת בלי הרשאה מקבלת 403 גם עם גוף לא תקין, ולא מגלה את הוולידציה
+  T.session = { id: 'low', roleId: 4, isActive: true };
+  const gated = await J(await itemsRoute.POST(jreq(`/api/dresses/${DM1}/items`, 'POST', { dressBarcode: 'x' }), params({ id: DM1 })));
+  assert.equal(gated.status, 403);
 });
 await t('PUT /api/dresses/[id]: שינוי שם לשם קיים -> 400 (פעיל / מחוק); אותו שם / שינוי רישיות של השם של עצמו / שם חדש -> 200', async () => {
   reset(); asHead();
@@ -536,7 +557,7 @@ await t('לקוחות: האשף החדש מציג את ההודעה ליד שד�
   assert.equal(wizLogic.describeCreateError(500, { error: 'שגיאה ביצירת הדגם' }).nameDuplicate, false);
   assert.equal(wizLogic.describeCreateError(403, { error: 'x', field: 'name' }).nameDuplicate, false);
   const ctl = code(read('app/components/dress-new/useModelNewController.js'));
-  assert.match(ctl, /nameErr: ''/); assert.match(ctl, /nameErr: e\.msg/); assert.match(ctl, /getElementById\('mnName'\)/);
+  assert.match(ctl, /nameErr: ''/); assert.match(ctl, /nameErr: e\.msg/); assert.match(ctl, /getElementById\(e\.nameDuplicate && useModelNames \? 'mnName' : 'mnCode'\)/); // focus on the name field (merged with the other session's code-conflict focus)
   assert.match(ctl, /p\.name !== undefined && prev\.nameErr \? \{ nameErr: '' \}/, 'ההודעה נמחקת כשהשם משתנה');
   const steps = code(read('app/components/dress-new/MnSteps.js'));
   assert.match(steps, /<Bad>\{S\.nameErr \|\| 'חובה להזין שם דגם'\}<\/Bad>/);

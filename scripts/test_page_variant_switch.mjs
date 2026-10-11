@@ -35,12 +35,16 @@ const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'boar
 const STAFF_SCREENS = ['employees_list', 'models_list', 'model_card', 'model_new'];
 const STAFF_BUILT = STAFF_SCREENS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const STAFF_NOT_YET = STAFF_SCREENS.filter((id) => !STAFF_BUILT.includes(id));
-const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS, ...STAFF_BUILT]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
+// יומן מיילים / מחלקות / היסטוריית הנהלה / היסטוריית נתונים (feature/a5-admin-logs-history-departments-2026-10-11): נרשמו יחד; newExists הופך ל-true כשהמסך החדש מחובר.
+const LOGS_SCREENS = ['email_logs', 'departments', 'management_history', 'data_history'];
+const LOGS_BUILT = LOGS_SCREENS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
+const LOGS_NOT_YET = LOGS_SCREENS.filter((id) => !LOGS_BUILT.includes(id));
+const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS, ...STAFF_BUILT, ...LOGS_BUILT]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
 
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
   assert.equal(new Set(UI_SCREEN_IDS).size, UI_SCREEN_IDS.length);
-  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS, ...STAFF_SCREENS]);
+  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS, ...STAFF_SCREENS, ...LOGS_SCREENS]);
   for (const e of UI_SCREEN_REGISTRY) {
     assert.match(e.id, /^[a-z][a-z_]{1,30}$/, e.id);
     assert.ok(typeof e.label === 'string' && /[֐-׿]/.test(e.label), `${e.id}: label בעברית`);
@@ -55,7 +59,7 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
 });
 await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / order_card / customer_card / new_order (6.10.2026); employee_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['employee_card', ...STAFF_NOT_YET]) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['employee_card', ...STAFF_NOT_YET, ...LOGS_NOT_YET]) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   for (const id of ['employees_list', 'models_list']) assert.equal(hasBothVersions(id), true, `${id}: הרשימות החדשות נבנו`);
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
@@ -348,6 +352,8 @@ await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב 
     ['app/employees/LegacyEmployeesListPage.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyEmployeesPage \/>/], // page.js של /employees הועבר לשם (employees_list); ההכרעה של attendance נשארה בו
     ['app/components/employees-list/EmployeesSwitch.js', /<VariantFrame screen="employees_list" variant="legacy"><LegacyEmployeesListPage \/><\/VariantFrame>/],
     ['app/components/models-list/ModelsListSwitch.js', /<VariantFrame screen="models_list" variant="legacy"><LegacyDressesListPage \/><\/VariantFrame>/],
+    ['app/components/history-lists/DataHistorySwitch.js', /<VariantFrame screen="data_history" variant="legacy"><LegacyDataHistoryPage \/><\/VariantFrame>/],
+    ['app/components/history-lists/ManagementHistorySwitch.js', /<VariantFrame screen="management_history" variant="legacy"><LegacyManagementHistoryPage \/><\/VariantFrame>/],
     ['app/components/home/HomeSwitch.js', /<VariantFrame screen="home" variant="legacy"><LegacyHome \/><\/VariantFrame>/],
     ['app/board/page.js', /<VariantFrame screen="board" variant=\{variant\}>[\s\S]*<LegacyBoardPage \/>/],
   ];
@@ -450,6 +456,10 @@ const RESTORED = [
   ['51eae39f', 'app/employees/page.js', 'app/employees/LegacyEmployeesListPage.js'], // רשימת העובדים הישנה (employees_list): page.js של main 51eae39f כפי שהוא (כולל הכרעת attendance של לשונית הנוכחות הישנה)
   ['51eae39f', 'app/dashboard/dresses/page.js', 'app/dashboard/dresses/LegacyDressesListPage.js'], // רשימת הדגמים הישנה (models_list): page.js של main 51eae39f כפי שהוא
   ['ea579b00', 'app/orders/new/page.js', 'app/orders/new/LegacyNewOrderPage.js'], // אשף "הזמנה חדשה" הישן כפי ש-main מכיל אותו (כולל תיקוני ה-hotfix של lib/newOrderPayments)
+  ['15dc7a0d', 'app/admin/site-settings/email-logs/page.js', 'app/admin/site-settings/email-logs/LegacyEmailLogsPage.js'], // יומן המיילים הישן (email_logs): page.js של main 15dc7a0d כפי שהוא
+  ['15dc7a0d', 'app/admin/departments/page.js', 'app/admin/departments/LegacyDepartmentsPage.js'], // ניהול המחלקות הישן (departments): page.js של main 15dc7a0d כפי שהוא
+  ['15dc7a0d', 'app/admin/data-history/page.js', 'app/admin/data-history/LegacyDataHistoryPage.js'], // היסטוריית הנתונים הישנה (data_history): page.js של main 15dc7a0d כפי שהוא
+  ['15dc7a0d', 'app/management/history/page.js', 'app/management/history/LegacyManagementHistoryPage.js'], // היסטוריית השאילתות / ה-API הישנה (management_history): page.js של main 15dc7a0d כפי שהוא
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 let gitOk = true;

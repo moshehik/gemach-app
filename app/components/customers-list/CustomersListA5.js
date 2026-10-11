@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import StatisticsModal from '../StatisticsModal';
 import { runPrint } from '../a5-print/runPrint';
-import { A5List, A5Page, A5SearchSlot, Ic, dayTitle, hDateFull, hDateShort, runListExport, useA5 } from '../a5-list';
+import { A5List, A5ListPage, A5Page, Ic, dayTitle, hDateFull, hDateShort, runListExport, useA5 } from '../a5-list';
 import useAdminServerList, { smartSearchIds } from '../admin-lists/useAdminServerList';
 import RangeDialog from '../admin-lists/RangeDialog';
 import {
@@ -137,52 +137,41 @@ function CustomersList() {
 
   return (
     <>
-      <div className="app" id="app">
-        <div className="topbar">
-          <button type="button" className="back" id="cusBack" aria-label="חזרה למרכז הניהול" data-tip="חזרה למרכז הניהול" onClick={() => router.push('/admin')}><Ic id="back" /></button>
-          <div className="ttl"><h1><small>ניהול</small>לקוחות</h1></div>
-        </div>
-        <A5SearchSlot id={SLOT_ID} />
-        <div className="layout one">
-          <main className="main">
-            <section className="panel on" id="p-list">
-              <div className="card hist">
-                <div className="card-h"><div className="ico gold"><Ic id="users" size="lg" /></div><h2>רשימת לקוחות</h2>
-                  <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/customers/new')}><Ic id="plus" />לקוח חדש</button></div>
-                <A5List
-                  ref={listRef}
-                  items={rows}
-                  getId={(r) => r.id}
-                  texts={{ placeholder: 'חיפוש לקוח (שם, טלפון, מייל, עיר)…', aiPlaceholder: 'בקשו מה-AI למצוא לקוחות (למשל: לקוחות מירושלים עם חוב)…', countLabel: 'לקוחות', emptyText: 'לא נמצאו לקוחות התואמים את החיפוש' }}
-                  localSearch={false}
-                  total={data ? data.total : 0}
-                  page={L.page}
-                  onPage={L.setPage}
-                  onQueryChange={L.onQueryChange}
-                  onStateChange={L.onStateChange}
-                  onFilterOpen={L.onFilterOpen}
-                  filters={filters}
-                  sorts={SORTS}
-                  defaultSort={DEFAULT_SORT}
-                  rowClass={(r) => (r.blocked ? 'off' : '')}
-                  rowMain={rowMain}
-                  detail={detail}
-                  columns={columns}
-                  onOpen={open}
-                  searchSlot={SLOT_ID}
-                  ai={aiHidden ? null : ai}
-                  onStats={aiHidden ? null : () => setStats(true)}
-                  notices={data ? data.notices : []}
-                  exportSpec={{ what: 'רשימת הלקוחות', onExport }}
-                  loading={data === null || (busy && !rows.length)}
-                  error={error}
-                  onRetry={L.reload}
-                />
-              </div>
-            </section>
-          </main>
-        </div>
-      </div>
+      <A5ListPage
+        title="לקוחות" backId="cusBack" onBack={() => router.push('/admin')}
+        slotId={SLOT_ID} cardIcon="users" cardTitle="רשימת לקוחות"
+        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/customers/new')}><Ic id="plus" />לקוח חדש</button>}
+      >
+        <A5List
+          ref={listRef}
+          items={rows}
+          getId={(r) => r.id}
+          texts={{ placeholder: 'חיפוש לקוח (שם, טלפון, מייל, עיר)…', aiPlaceholder: 'בקשו מה-AI למצוא לקוחות (למשל: לקוחות מירושלים עם חוב)…', countLabel: 'לקוחות', emptyText: 'לא נמצאו לקוחות התואמים את החיפוש' }}
+          localSearch={false}
+          total={data ? data.total : 0}
+          page={L.page}
+          onPage={L.setPage}
+          onQueryChange={L.onQueryChange}
+          onStateChange={L.onStateChange}
+          onFilterOpen={L.onFilterOpen}
+          filters={filters}
+          sorts={SORTS}
+          defaultSort={DEFAULT_SORT}
+          rowClass={(r) => (r.blocked ? 'off' : '')}
+          rowMain={rowMain}
+          detail={detail}
+          columns={columns}
+          onOpen={open}
+          searchSlot={SLOT_ID}
+          ai={aiHidden ? null : ai}
+          onStats={aiHidden ? null : () => setStats(true)}
+          notices={data ? data.notices : []}
+          exportSpec={{ what: 'רשימת הלקוחות', onExport }}
+          loading={data === null || (busy && !rows.length)}
+          error={error}
+          onRetry={L.reload}
+        />
+      </A5ListPage>
       {dlg ? (
         <RangeDialog
           title="טווח הזמנה ראשונה"

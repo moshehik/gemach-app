@@ -331,6 +331,139 @@ await ta('the print sheets escape every dynamic text with escH (head fields and 
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------
+// Admin logs / history / departments (branch feature/a5-admin-logs-history-departments-2026-10-11, final security audit 2026-10-11, section 10 of security-audit.md).
+// Static manifest + pure-logic checks here; the live matrix over every new route is scripts/test_a5_admin_logs_security_live.mjs (ADMIN_LOGS_LIVE=1, TEST database only).
+console.log('admin logs / history / departments: gates, SQL hygiene, secrets, print surfaces');
+const emailLogs = await import('../lib/adminEmailLogs.js');
+const auditList = await import('../lib/adminAuditList.js');
+const visitList = await import('../lib/adminVisitList.js');
+const NEW_ROUTES = [
+  ['app/api/admin/email-logs', /checkAuth\('מתכנת'\)/, 'programmer only (same as /api/email-logs and app/admin/site-settings/layout.js)'],
+  ['app/api/admin/email-logs/counts', /checkAuth\('מתכנת'\)/, 'programmer only'],
+  ['app/api/admin/data-history', /checkAuth\('הנהלה ראשית'\)/, 'head management / programmer (app/admin/layout.js)'],
+  ['app/api/admin/data-history/counts', /checkAuth\('הנהלה ראשית'\)/, 'head management / programmer'],
+  ['app/api/admin/management-history', /checkAuth\('הנהלה ראשית'\)/, 'head management / programmer (app/management/layout.js)'],
+  ['app/api/admin/management-history/counts', /checkAuth\('הנהלה ראשית'\)/, 'head management / programmer'],
+];
+for (const [dir, gate, what] of NEW_ROUTES) {
+  await ta(`${dir.replace('app/api', '')}: gate is the first statement of the shared handler (${what}); only GET + POST exist; no write call`, () => {
+    const src = read(`${dir}/route.js`);
+    const h = /async function handle\(input\) \{\n\s*if \(!\(await (checkAuth\('[^']+'\))\)\) return NextResponse\.json\(\{ error: '[^']*' \}, \{ status: 401 \}\);/.exec(src);
+    assert.ok(h, 'handle() must start with the gate (401)');
+    assert.match(h[1], gate);
+    assert.deepEqual([...src.matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)\b/g)].map((m) => m[1]).sort(), ['GET', 'POST']);
+    assert.doesNotMatch(src, /\.(create|update|upsert|delete|deleteMany|updateMany|createMany|\$executeRaw)/);
+    assert.match(src, /force-dynamic/);
+    assert.match(src, /JSON\.parse|request\.json\(\)/); // body parsed inside try/catch -> {} on junk
+    assert.doesNotMatch(src, /error\.message|error\.stack|String\(error\)/, 'no raw error text in a response');
+  });
+}
+await ta('GET /api/history is head management / programmer only; DELETE /api/history has the SAME session gate before the manager code is read (F12); limit/page bounded', () => {
+  const src = read('app/api/history/route.js');
+  const get = handlerBody(src, 'GET'); const del = handlerBody(src, 'DELETE');
+  assert.match(get, /^export async function GET\(request\) \{\n[^\n]*\n\s*if \(!\(await checkAuth\('הנהלה ראשית'\)\)\)/m);
+  assert.ok(del.indexOf("checkAuth('הנהלה ראשית')") > -1 && del.indexOf("checkAuth('הנהלה ראשית')") < del.indexOf('request.json()'));
+  assert.match(del, /typeof body\.username === 'string'/); assert.match(del, /typeof password !== 'string'/);
+  assert.match(del, /roleId !== 1 && !HEAD_MANAGEMENT_ROLES\.includes/, 'manager code must belong to a manager');
+  assert.match(get, /Math\.min\([^\n]*200\)/);
+});
+await ta('page gates unchanged: /admin = head management, /admin/site-settings = programmer only, /management = head management; the four old pages are byte-identical Legacy* copies', () => {
+  assert.match(read('app/admin/layout.js'), /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/);
+  assert.match(read('app/admin/site-settings/layout.js'), /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/);
+  assert.match(read('app/management/layout.js'), /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/);
+  for (const f of ['app/admin/data-history/page.js', 'app/admin/departments/page.js', 'app/admin/site-settings/email-logs/page.js', 'app/management/history/page.js']) {
+    assert.doesNotMatch(read(f), /fetch\(|prisma|checkAuth|checkPageAccess/, `${f} is a thin Switch wrapper only`);
+    assert.ok(!fs.existsSync(path.join(root, path.dirname(f), 'layout.js')) || /checkPageAccess/.test(read(path.join(path.dirname(f), 'layout.js'))), `${f}: a nested layout must not weaken the gate`);
+  }
+});
+await ta('print surfaces: the four new surfaces map to page:admin (head management / programmer, not configurable); the documents are registered to them', async () => {
+  for (const s of ['a5-email-log', 'a5-departments', 'a5-data-history', 'a5-management-history']) assert.deepEqual(keys.PDF_HTML_SURFACE_KEYS[s], ['page:admin'], s);
+  const { PRINT_DOCS } = await import('../app/components/a5-print/pkRegistry.js');
+  for (const [doc, s] of [['email-log', 'a5-email-log'], ['departments-employees', 'a5-departments'], ['data-history', 'a5-data-history'], ['visit-log', 'a5-management-history']]) assert.equal(PRINT_DOCS[doc].surface, s, doc);
+  const catalog = read('lib/permissionsMetadata.js');
+  const block = catalog.split("key: 'page:admin',")[1].split('\n  },')[0];
+  assert.match(block, /notConfigurable/); assert.match(block, /HEAD_MANAGEMENT\.includes\(roleId\)/);
+});
+await ta('SQL hygiene: hostile input never reaches SQL text of the three list builders (only bound args); sort / dir / limit / offset come from allow-lists and clamped integers', () => {
+  const H = ["'; DROP TABLE \"EmailLog\"; --", "x' OR 1=1 --", '"; SELECT pg_sleep(9); --', '${7*7}', 'UNION SELECT password FROM "Employee"', '1; DELETE FROM "AuditLog"'];
+  const text = (o) => JSON.stringify(o);
+  const hostile = { search: H[0], sort: H[1], dir: H[2], types: H.join(','), statuses: H[0], period: H[1], from: H[2], to: H[3], senders: H.join(','), employees: H.join(','), actions: H[0], status: H[1], page: H[1], limit: H[2] };
+  const ep = emailLogs.parseEmailLogsParams(hostile); const l = emailLogs.listSql(ep, []); const c = emailLogs.countSql(ep, []);
+  const ap = auditList.parseAuditListParams(hostile); const aw = auditList.buildAuditWhere(ap, { isHead: true, todayKey: '2026-10-11', dayRange: (k) => ({ start: new Date(`${k}T00:00:00Z`), end: new Date(`${k}T23:59:59Z`) }) }); const ao = auditList.auditOrderBy(ap.sort, ap.dir);
+  const vp = visitList.parseVisitListParams(hostile); const vw = visitList.buildVisitWhere(vp, { todayKey: '2026-10-11', dayRange: (k) => ({ start: new Date(`${k}T00:00:00Z`), end: new Date(`${k}T23:59:59Z`) }) }); const vo = visitList.visitOrderBy(vp.sort, vp.dir);
+  for (const sqlText of [l.sql, c.sql, aw.where, ao.sql, vw.where, vo]) for (const h of H) assert.ok(!sqlText.includes(h), `hostile text reached SQL: ${h} in ${sqlText.slice(0, 80)}`);
+  assert.ok(l.args.some((a) => typeof a === 'string' && a.includes('DROP TABLE')), 'the search text is a bound argument');
+  assert.equal(ep.sort, 'sentAt'); assert.equal(ap.sort, 'time'); assert.equal(vp.sort, 'time');
+  for (const p of [ep, ap, vp]) { assert.ok(Number.isInteger(p.page) && p.page >= 1 && p.page <= 100000); assert.ok(Number.isInteger(p.limit) && p.limit >= 1 && p.limit <= guards.MAX_LIST_LIMIT); }
+  for (const p of [{ limit: 1e9 }, { limit: 1e9, export: true }, { page: 1e12 }, { limit: -4, page: -4 }]) {
+    for (const parse of [emailLogs.parseEmailLogsParams, auditList.parseAuditListParams, visitList.parseVisitListParams]) {
+      const r = parse(p); assert.ok(r.limit <= (r.export ? guards.EXPORT_PAGE_LIMIT : guards.MAX_LIST_LIMIT) && r.limit >= 1 && r.page >= 1 && r.page <= 100000);
+    }
+  }
+  assert.ok(text(ep.senders).length < 3000 && ap.employees.length <= 60 && vp.employees.length <= 60, 'id lists bounded');
+  for (const parse of [emailLogs.parseEmailLogsParams, auditList.parseAuditListParams, visitList.parseVisitListParams]) assert.ok(parse({ search: 'a'.repeat(100000) }).search.length <= 200);
+  for (const parse of [emailLogs.parseEmailLogsParams, auditList.parseAuditListParams, visitList.parseVisitListParams]) assert.equal(parse({ search: ' a\u0000b ' }).search, 'ab', 'a NUL byte in the search text is stripped (Postgres rejects it in a bound text parameter: F15)');
+  for (const parse of [emailLogs.parseEmailLogsParams, auditList.parseAuditListParams, visitList.parseVisitListParams]) assert.doesNotThrow(() => { parse(null); parse([1]); parse('x'); parse({ __proto__: { a: 1 }, search: { a: 1 }, types: { a: 1 }, employees: [{}] }); });
+});
+await ta('raw SQL in the three server layers: every interpolation is a fixed constant / helper result (never a parameter or input); all queries run through guarded() + runLimited()', () => {
+  const ALLOWED = /^(SELECT_ROWS|ob\.sql|ob\.join \? 'LEFT JOIN "Employee" e ON e\.id = a\."employeeId"' : ''|w\.where|lim|w\.sql|LIMIT|sample\([^)]*\)|actionGroupCase\([^)]*\)|periodCounts|COUNT_CAP \+ 1|NAMED_EMPLOYEES( \+ 1)?|BIG_CHANGES|visitOrderBy\(params\.sort, params\.dir\)|params\.limit|offset|w(T|A|E|P|Ty|St|Em|Pe)\.where|pe\.join\(', '\)|IS_ERROR_SQL|x\.sql|expr|dir|[a-zA-Z.]*)$/;
+  for (const f of ['lib/adminAuditListServer.js', 'lib/adminVisitListServer.js', 'lib/adminEmailLogsServer.js']) {
+    const src = read(f);
+    assert.doesNotMatch(src, /\$queryRaw`|\$executeRaw`/, `${f}: tagged templates with user input are not used`);
+    const raw = [...src.matchAll(/\$queryRawUnsafe\(/g)].length;
+    const guardedCalls = [...src.matchAll(/guarded\(prisma\.\$queryRawUnsafe\(/g)].length;
+    assert.equal(raw, guardedCalls, `${f}: every $queryRawUnsafe is wrapped by guarded() (statement_timeout)`);
+    assert.match(src, /runLimited\(/, `${f}: concurrency cap`);
+    for (const m of src.matchAll(/\$\{([^}]*)\}/g)) if (!/^(visitOrderBy|auditOrderBy)\(/.test(m[1])) assert.doesNotMatch(m[1], /\b(input|params\.(search|sort|dir|types|status|statuses|employees|senders|period|from|to|actions))\b|req(uest)?\./, `${f}: user input interpolated: \${${m[1]}}`);
+  }
+  assert.match(read('lib/adminListDb.js'), /statementTimeoutSql/);
+  assert.equal(guards.statementTimeoutSql(10 ** 9), 'SET LOCAL statement_timeout = 60000');
+  assert.equal(guards.statementTimeoutSql('1; DROP TABLE x'), 'SET LOCAL statement_timeout = 8000'); // non-numeric -> default, never text in the statement
+});
+await ta('e-mail log privacy: the list SQL never selects body for password-reset mails, export rows carry no body at all, the search skips those bodies; no endpoint returns confirmToken', () => {
+  const ep = emailLogs.parseEmailLogsParams({ search: 'x' });
+  const l = emailLogs.listSql(ep, []);
+  assert.match(l.sql, /CASE WHEN \([^)]*\) THEN NULL ELSE left\(e\."body", 300\) END AS "bodyPreview"/);
+  assert.match(l.sql, /\(e\."confirmToken" IS NOT NULL\) AS "hasToken"/); assert.doesNotMatch(l.sql, /e\."confirmToken"(?! IS NOT NULL)/);
+  assert.match(l.sql, /e\."body" ILIKE \$\d+ AND NOT \(/, 'body search excludes password mails');
+  const ex = emailLogs.listSql(emailLogs.parseEmailLogsParams({ export: true, limit: 500 }), []);
+  assert.doesNotMatch(ex.sql, /body/i); assert.match(ex.sql, /CASE WHEN e\."status" = 'success' THEN NULL ELSE e\."errorMessage" END/);
+  for (const t of emailLogs.EMAIL_TYPES.filter((x) => x.secret)) assert.ok(emailLogs.classifyEmail({ subject: 'איפוס סיסמה - מערכת הגמ"ח', status: 'success' }) === t.id);
+  const catalog = read('lib/emailCatalog.js');
+  assert.ok(catalog.includes("subject: () => 'איפוס סיסמה - מערכת הגמ\"ח'"), 'the secret-mail regex follows the catalog subject');
+  assert.match(read('lib/adminEmailLogsServer.js'), /employee\.findMany\(\{ where: \{ id: \{ in: employeeIds \} \}, select: \{ id: true, firstName: true, lastName: true, fullName: true \} \}\)/);
+});
+await ta('audit trail: EmailLog body / confirmToken are masked at write time AND on read (F10); legacy secret-bearing rows are excluded from text searches (SQL list + /api/audit)', () => {
+  assert.match(read('app/lib/prisma.js'), /EmailLog: \['body', 'confirmToken'\]/);
+  assert.match(read('app/lib/auditLog.js'), /EmailLog: \['body', 'confirmToken'\]/);
+  const re = new RegExp(auditList.SECRET_ROW_RE_SQL.slice(1, -1).replace(/\[\{\]/g, '\\{'));
+  for (const hit of ['{"body":"סיסמה זמנית: Abc123"}', '{"password":"$2b$10$abc"}', '{"pinHash":"1234"}', '{"keyHash":"deadbeef"}', '{"password":{"from":"$2b$x","to":"***"}}']) assert.ok(re.test(hit), hit);
+  for (const miss of ['{"password":"***"}', '{"pinHash":{"from":"***","to":"***"}}', '{"name":"דוד","phone1":"050"}']) assert.ok(!re.test(miss), miss);
+  const w = auditList.buildAuditWhere(auditList.parseAuditListParams({ search: 'q' }), { isHead: true, todayKey: '2026-10-11', dayRange: () => ({ start: new Date(0), end: new Date(0) }) });
+  assert.ok(w.where.includes(`!~ ${auditList.SECRET_ROW_RE_SQL}`));
+  assert.match(read('app/api/audit/route.js'), /'סיסמה זמנית', '"password":', '"pinHash":', '"keyHash":'/);
+  assert.match(visitList.URL_SECRET_RE_SQL, /token\|secret\|pass/);
+});
+await ta('audit rows: a row\'s changes never expose uuid references, password / pin / key values, or wages to a non-head caller (pure function)', () => {
+  const j = JSON.stringify({ password: '$2b$10$zzzz', pinHash: { from: 'aaa', to: 'bbb' }, apiKey: 'gmk_abcdefghijklmnop123', hourlyWage: { from: 30, to: 40 }, owner: { from: '11111111-1111-1111-1111-111111111111', to: '22222222-2222-2222-2222-222222222222' }, body: 'סיסמה זמנית: Abc123', note: 'hello' });
+  const head = auditList.buildChangeList(j, { canSeeWages: true }); const low = auditList.buildChangeList(j, { canSeeWages: false });
+  const dump = JSON.stringify(head.list);
+  for (const secret of ['$2b$10', 'aaa', 'bbb', 'gmk_', 'Abc123', '11111111-1111', '22222222-2222']) assert.ok(!dump.includes(secret), `${secret} leaked`);
+  assert.ok(head.list.some((x) => x.key === 'hourlyWage') && !low.list.some((x) => x.key === 'hourlyWage'), 'wages only with canSeeWages');
+  assert.ok(head.list.filter((x) => ['password', 'pinHash', 'apiKey', 'body'].includes(x.key)).every((x) => x.masked));
+});
+await ta('the variant registry: the four new screens are self-switchable display flags only (no gate file reads them); the server-side switch route keeps its allow-list', async () => {
+  for (const id of ['email_logs', 'departments', 'management_history', 'data_history']) {
+    const e = getScreenEntry(id); assert.ok(e, id); assert.equal(e.selfSwitch, true); assert.ok(e.legacyExists && e.newExists); assert.ok(Object.isFrozen(e));
+  }
+  assert.ok(!getScreenEntry('__proto__') && !getScreenEntry('constructor'));
+  for (const f of ['app/components/email-logs/EmailLogsSwitch.js', 'app/components/departments/DepartmentsSwitch.js', 'app/components/history-lists/DataHistorySwitch.js', 'app/components/history-lists/ManagementHistorySwitch.js']) {
+    assert.doesNotMatch(read(f), /checkAuth|checkPageAccess|roleId|isProgrammer|HEAD_MANAGEMENT/, `${f} must not decide access`);
+  }
+});
+console.log('(live matrix for the new routes: ADMIN_LOGS_LIVE=1 node scripts/test_a5_admin_logs_security_live.mjs)');
+
+// ---------------------------------------------------------------------------------------------------------------------------
 // LIVE matrix (opt-in): UI_VARIANT_LIVE=1 node scripts/test_a5_staff_models_security.mjs   [UI_VARIANT_BASE=http://localhost:3072]
 // Needs a running `next dev` on the TEST database (GET /api/dev/switch-env must say "test" - the block refuses otherwise), AUTH_SECRET in
 // .env.local and TEST_DATABASE_URL in .env. Creates throwaway "UVSWITCH ..." employees DIRECTLY in the TEST database, mints their

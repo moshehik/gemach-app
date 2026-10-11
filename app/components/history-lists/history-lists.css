@@ -1,0 +1,17 @@
+/* history-lists.css - מה שייחודי לשני מסכי היומנים בניהול (היסטוריית נתונים / היסטוריית שאילתות ו-API): ה"לפני ← אחרי" בפירוט השורה, גוף הבקשה,
+   תיבת הבחירה למחיקה וסיכום השינוי בעמודת הטבלה. רק צבעים וגדלים של הפלטה (אותם טוקנים כמו employees-list.css); בהיקף .gm-ds :where(.a5l) כמו ערכת הרשימות. */
+.gm-ds :where(.a5l) .hh-old{text-decoration:line-through;color:var(--navy-500);opacity:.85}
+.gm-ds :where(.a5l) .hh-new{font-weight:600;color:var(--navy)}
+.gm-ds :where(.a5l) .hh-arr{display:inline-block;vertical-align:-3px;margin-inline:6px;color:var(--gold-d)}
+.gm-ds :where(.a5l) .hh-arr .ic{width:15px;height:15px}
+.gm-ds :where(.a5l) .hh-mask{opacity:.6}
+.gm-ds :where(.a5l) .hh-more{opacity:.7}
+.gm-ds :where(.a5l) .hh-q{direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.5;
+  max-height:160px;overflow:auto;background:rgba(21,42,90,.06);border-radius:10px;padding:8px 12px;margin:0;font-weight:400;color:var(--navy)}
+.gm-ds :where(.a5l) .hh-chk{flex:none;width:20px;height:20px;margin:0 0 0 12px;accent-color:var(--navy);cursor:pointer}
+.gm-ds :where(.a5l) .etbl .hh-chk{margin:0}
+.gm-ds :where(.a5l) .etbl .hh-sum{display:block;max-width:440px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-ds :where(.a5l) .etbl td.hh-pth bdi{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.gm-ds :where(.a5l) .hres .li .t b bdi{unicode-bidi:isolate}
+/* נתיב / כתובת בלי נקודת שבירה (/api/dev/switch-env) גלש מעבר לשורה בטלפון (390px): שבירה בכל מקום בכותרת השורה */
+.gm-ds :where(.a5l) .hres .li .t b{overflow-wrap:anywhere}

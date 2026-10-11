@@ -1,23 +1,7 @@
-import Link from 'next/link';
-import HistoryViewer from '@/components/HistoryViewer';
+// היסטוריית נתונים (/admin/data-history): עטיפה דקה שבוחרת בין הדף הישן (LegacyDataHistoryPage.js - הועבר 1:1 מהקובץ הזה) ליומן החדש
+// (app/components/history-lists/DataHistoryA5.js) לפי הדגל ui_variant_data_history (useUiVariant('data_history')). ברירת מחדל: מתכנת חדש, כל השאר ישן.
+import DataHistorySwitch from '@/app/components/history-lists/DataHistorySwitch';
 
 export default function DataHistoryPage() {
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>היסטוריית נתונים (Audit Log)</h1>
-          <p className="page-desc">כאן תוכל לראות את כל שינויי הנתונים שבוצעו במערכת, ברמת הלקוח, ההזמנה, ועוד.</p>
-        </div>
-        <div className="page-actions">
-          <Link href="/admin/site" className="btn btn-secondary">
-            <svg className="icon"><use href="#i-arrow-end" /></svg>
-            חזרה לניהול
-          </Link>
-        </div>
-      </div>
-
-      <HistoryViewer data-element-name="רכיב_page_1" />
-    </>
-  );
+  return <DataHistorySwitch />;
 }

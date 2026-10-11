@@ -125,3 +125,10 @@ node scripts/set-ui-variant.js --screen attendance --value legacy --scope user -
 * האייקון: `<PageVariantToggle screen="employees_list|models_list" placement="header" systemTip />` בכותרת הרשימה החדשה, ובפינה בדף הישן (`VariantFrame`).
 * בדיקות: `scripts/test_page_variant_switch.mjs` (הקבצים הישנים ב-`RESTORED`, בלוק "employees_list / models_list"), `scripts/test_a5_list_logic.mjs`, `scripts/test_a5_employees_list.mjs`, `scripts/test_a5_models_list.mjs`.
 * פירוט ההחלטות, מקורות הנתונים וטבלאות הנאמנות: `docs/a5-staff-models/`.
+
+## יומן מיילים / מחלקות / היסטוריית הנהלה / היסטוריית נתונים (11.10.2026, ענף feature/a5-admin-logs-history-departments-2026-10-11)
+
+ארבעה מסכים נרשמו יחד ברשומה (`newExists:false` עד שהמסך החדש מחובר; כל אחד הופך ל-`true` ע"י הסוכן שבנה אותו): `email_logs` (`/admin/site-settings/email-logs`, מתכנת בלבד),
+`departments` (`/admin/departments`), `management_history` (`/management/history`), `data_history` (`/admin/data-history`). כולם `selfSwitch:true` (כל עובד פעיל מחליף לעצמו),
+ברירת מחדל לפי תפקיד: מתכנת חדש, כל השאר ישן. שער הגישה לא משתנה (layout + API); המסכים החדשים מתבססים על ערכת הרשימות `app/components/a5-list` (כמו רשימות ההזמנות / הלקוחות).
+בדיקות: `scripts/test_page_variant_switch.mjs`, `test_ui_variant.mjs`, `test_ui_variant_self_switch.mjs` (רשימות `LOGS_*`), `scripts/set-ui-variant.js` (`--screen`), `lib/pageVariantToggle.js` (כיתובי האייקון).

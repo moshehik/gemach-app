@@ -1,0 +1,8 @@
+/* ניהול המחלקות (gm-dpt): רק שדות הטופס בחלון הכהה (מחלקה חדשה / שינוי שם) והעטיפה של לחצן המחיקה המושבת. כל השאר מגיע מערכת הרשימות (a5-list) ומהפלטה. */
+.gm-ds.gm-dpt .dlg .dpt-fields{display:flex;flex-direction:column;gap:14px;margin-top:14px;text-align:start}
+.gm-ds.gm-dpt .dlg .inpw{position:relative}
+.gm-ds.gm-dpt .dlg .inpw>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;pointer-events:none;z-index:1}
+.gm-ds.gm-dpt .dlg .inpw:has(>.ic)>.inp{padding-inline-start:44px}
+.gm-ds.gm-dpt .dlg .dpt-err{min-height:24px;margin:8px 0 14px;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;color:var(--k-ink,#fff);font-weight:600}
+.gm-ds.gm-dpt .dlg .dpt-err .ic{color:var(--gm-gold,#c9a227);flex:none}
+.gm-ds.gm-dpt .hv-btns .dpt-dis{display:inline-flex}

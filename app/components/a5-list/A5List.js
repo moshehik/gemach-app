@@ -217,11 +217,12 @@ function A5ListInner(props, ref) {
     const t = e.target;
     if (t.closest('.hdet a,.hdet button,.hdet input')) return;
     if (t.closest('[data-expand]')) { e.stopPropagation(); toggleRow(getId(it)); return; }
-    if (onOpen) onOpen(it); else toggleRow(getId(it));
+    // onOpen שמחזיר false = אין יעד לשורה הזו - הפרטים נפתחים (תוספת תואמת-לאחור; יומן המיילים: שורה בלי הזמנה / לקוח)
+    if (!onOpen || onOpen(it) === false) toggleRow(getId(it));
   };
   const rowKey = (e, it) => {
     if (e.target !== e.currentTarget) return;
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (onOpen) onOpen(it); else toggleRow(getId(it)); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!onOpen || onOpen(it) === false) toggleRow(getId(it)); }
   };
 
   /* ---- ציור ---- */
@@ -370,7 +371,7 @@ function A5ListInner(props, ref) {
         </div>
       ) : null}
       <div className={`hres-bar${stuck ? ' stuck' : ''}`} ref={barRef}>
-        <span className="hres-n">{texts.countLabel}{' '}<b>{n}</b></span>
+        <span className="hres-n">{texts.countLabel}{' '}<b>{n}{texts.countSuffix || ''}</b></span>
         {columns.length ? <ViewSwitch value={view} onChange={setView2} /> : null}
         {sortEl}
         {barExtra}

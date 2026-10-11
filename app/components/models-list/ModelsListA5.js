@@ -22,7 +22,7 @@ import StatisticsModal from '../StatisticsModal';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import { runPrint } from '../a5-print/runPrint';
 import {
-  A5List, A5Page, A5SearchSlot, Ic, dayTitle, hDateFull, relDay, runListExport, useA5,
+  A5List, A5ListPage, A5Page, Ic, dayTitle, hDateFull, relDay, runListExport, useA5,
 } from '../a5-list';
 import {
   CATALOG_PAGE, SORTS, buildFilters, mergePages, modelRow, rowClass, rowIcon, isInactive, sizesPlain, statusReason, statusText,
@@ -217,47 +217,36 @@ function ModelsList() {
 
   return (
     <>
-      <div className="app" id="app">
-        <div className="topbar">
-          <button type="button" className="back" id="mdlBack" aria-label="חזרה למרכז הניהול" data-tip="חזרה למרכז הניהול" onClick={() => router.push('/admin')}><Ic id="back" /></button>
-          <div className="ttl"><h1><small>ניהול</small>דגמים</h1></div>
-          <div className="a5-tools"><PageVariantToggle screen="models_list" placement="header" systemTip /></div>
-        </div>
-        <A5SearchSlot id={SLOT_ID} />
-        <div className="layout one">
-          <main className="main">
-            <section className="panel on" id="p-list">
-              <div className="card hist">
-                <div className="card-h"><div className="ico gold"><Ic id="dress" size="lg" /></div><h2>קטלוג דגמים</h2>
-                  {isHead ? <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/dashboard/dresses/new')}><Ic id="plus" />דגם חדש</button> : null}</div>
-                <A5List
-                  items={rows}
-                  getId={(m) => m.id}
-                  texts={{ placeholder: 'חיפוש דגם (שם, קוד, מידה, מס׳ סידורי)…', aiPlaceholder: 'בקשו מה-AI למצוא דגמים (למשל: דגמים שלא הושכרו השנה)…', countLabel: 'דגמים', emptyText: 'לא נמצאו דגמים התואמים את החיפוש' }}
-                  localSearch={false}
-                  onQueryChange={onQueryChange}
-                  filters={filters}
-                  sorts={SORTS}
-                  defaultSort={{ k: 'name', dir: 1 }}
-                  rowClass={rowClass}
-                  rowMain={rowMain}
-                  detail={detail}
-                  columns={columns}
-                  onOpen={open}
-                  searchSlot={SLOT_ID}
-                  ai={aiHidden ? null : ai}
-                  onStats={aiHidden ? null : () => setStats(true)}
-                  notices={notices}
-                  exportSpec={{ what: 'רשימת הדגמים', onExport, onPrint: printDoc('print'), onDownload: printDoc('download') }}
-                  loading={data === null || (busy && !rows.length)}
-                  error={loadErr}
-                  onRetry={() => load(query)}
-                />
-              </div>
-            </section>
-          </main>
-        </div>
-      </div>
+      <A5ListPage
+        title="דגמים" backId="mdlBack" onBack={() => router.push('/admin')}
+        tools={<PageVariantToggle screen="models_list" placement="header" systemTip />}
+        slotId={SLOT_ID} cardIcon="dress" cardTitle="קטלוג דגמים"
+        cardAction={isHead ? <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/dashboard/dresses/new')}><Ic id="plus" />דגם חדש</button> : null}
+      >
+        <A5List
+          items={rows}
+          getId={(m) => m.id}
+          texts={{ placeholder: 'חיפוש דגם (שם, קוד, מידה, מס׳ סידורי)…', aiPlaceholder: 'בקשו מה-AI למצוא דגמים (למשל: דגמים שלא הושכרו השנה)…', countLabel: 'דגמים', emptyText: 'לא נמצאו דגמים התואמים את החיפוש' }}
+          localSearch={false}
+          onQueryChange={onQueryChange}
+          filters={filters}
+          sorts={SORTS}
+          defaultSort={{ k: 'name', dir: 1 }}
+          rowClass={rowClass}
+          rowMain={rowMain}
+          detail={detail}
+          columns={columns}
+          onOpen={open}
+          searchSlot={SLOT_ID}
+          ai={aiHidden ? null : ai}
+          onStats={aiHidden ? null : () => setStats(true)}
+          notices={notices}
+          exportSpec={{ what: 'רשימת הדגמים', onExport, onPrint: printDoc('print'), onDownload: printDoc('download') }}
+          loading={data === null || (busy && !rows.length)}
+          error={loadErr}
+          onRetry={() => load(query)}
+        />
+      </A5ListPage>
       {stats ? <StatisticsModal isOpen onClose={() => setStats(false)} pageContext="dresses" position={null} /> : null}
     </>
   );

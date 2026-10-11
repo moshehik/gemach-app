@@ -1,0 +1,7 @@
+/* יומן שליחת המיילים (gm-eml): רק התוספות של שורות הפירוט (גוף מייל מקוצר, סיבת כשל, קישורי דרייב). כל השאר מגיע מערכת הרשימות (a5-list) ומהפלטה. */
+.gm-ds.gm-eml .hv-r .el-body{white-space:pre-wrap;overflow-wrap:anywhere;font-weight:500}
+.gm-ds.gm-eml .hv-r .el-err{color:var(--gold-d);overflow-wrap:anywhere;white-space:pre-wrap;display:block;max-height:140px;overflow:auto;direction:ltr;text-align:start}
+.gm-ds.gm-eml .hv-r .el-links{display:flex;flex-direction:column;gap:4px;min-width:0}
+.gm-ds.gm-eml .hv-r .el-links a{overflow-wrap:anywhere}
+/* כתובת מייל ארוכה בלי נקודת שבירה (test@example.com) גלשה מעבר לשורה בטלפון (390px): שבירה בכל מקום בכותרת השורה */
+.gm-ds.gm-eml .hres .li .t b{overflow-wrap:anywhere}

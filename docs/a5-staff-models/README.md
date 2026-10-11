@@ -11,6 +11,8 @@ Index and the points worth remembering. Details live in the per-area files next 
 | New model wizard | `/dashboard/dresses/new` | `model_new` | same |
 | Orders list (admin) | `/admin/orders-list` | none (no legacy page) | head management + programmer only |
 | Customers list (admin) | `/admin/customers-list` | none (no legacy page) | head management + programmer only |
+| Data history (audit log) | `/admin/data-history` | `data_history` | programmer = new, everyone else = old (self-switch for all) - `data-history-notes.md` |
+| API / visit history | `/management/history` | `management_history` | same - `management-history-notes.md` (also tightened `GET /api/history` to head management) |
 Print / PDF sheets (`app/components/a5-print/`) for employees list, models list, model card, orders list, customers list.
 
 **Who may choose the new design (owner decision 2026-10-11):** every active employee, for themselves, per screen (icon `PageVariantToggle` / "עיצוב ותצוגה"); until they choose they stay on the old design, only the programmer defaults to the new one. One rule, one place: `canEmployeeSelfSwitch` in `lib/uiVariantSelfSwitch.js` (narrow it again with `SELF_SWITCH_ONLY_ROLE_IDS`). The new design grants no permission. Details: `security-audit.md` section 8, `docs/page-variant-switch-2026-10-04.md`.
@@ -48,3 +50,12 @@ Fixed in this work: stored XSS via upload/attachment content types; full employe
 - **Duplicate model name (2026-10-11):** `DressModel.name` is unique in the DB (soft-deleted rows included). `POST /api/dresses` and the rename in `PUT /api/dresses/[id]` now answer 400 `{error:"דגם בשם «X» כבר קיים (קוד N)", field:"name"}` (or "...קיים ברשימת המחוקים (קוד N) — אפשר לשחזר אותו") before writing (`lib/dressNameConflict.js`, also maps Prisma P2002). The new wizard and the new card show it inline under the name field; the old wizard / card show it through their existing error display.
 - Statistics/AI buttons inside the model card lists are scoped to the model (smart-search with the model code in the prompt; rentals tab sends `pageContext:'rentals'` on purpose).
 - Disk C: was nearly full (98 MB free at one point); `.next` of a dev worktree is ~600 MB.
+
+## Addendum 2026-10-11 - email log + departments (admin pages on the same kit)
+| Screen | Route | Variant id | Notes |
+|---|---|---|---|
+| Email log | `/admin/site-settings/email-logs` | `email_logs` | programmer only; type derived from the subject; password-mail bodies never returned; `email-logs-notes.md` / `email-logs-fidelity.md` |
+| Departments | `/admin/departments` | `departments` | same APIs and server rules; create / rename / delete in dark dialogs; `departments-notes.md` / `departments-fidelity.md` |
+Registry also holds `management_history` and `data_history` (built by the other agent). Shared shell for every list page: `A5ListPage` (`kit-notes.md`, "Uniform page header"). Print docs: `email-log`, `departments-employees` (`pkSpecsAdmin.js`, surfaces `a5-email-log` / `a5-departments` -> `page:admin`).
+
+**Security audit of this addendum (2026-10-11, `security-audit.md` section 10):** go for upload after F10-F15 were fixed. Main points: the audit twin of every password-reset mail held the clear-text temporary password and was readable through `/api/audit` by any signed-in employee (now masked at write + read, not searchable); `DELETE /api/history` now needs a head-management / programmer session in addition to the manager code, `GET /api/history` is head-only and bounded; text searches over `changesJson` / `pageUrl` can no longer be used as a secret oracle; NUL bytes in a search no longer 500. Open owner decision: stop storing the temporary password in `EmailLog.body` (exact change in 10.5). Tests: `scripts/test_a5_staff_models_security.mjs` (static, 79) and `ADMIN_LOGS_LIVE=1 node scripts/test_a5_admin_logs_security_live.mjs` (live, TEST only).

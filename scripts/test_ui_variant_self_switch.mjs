@@ -10,6 +10,10 @@ import { getScreenEntry } from '../lib/uiVariantScreens.js';
 const STAFF = ['employees_list', 'models_list', 'model_card', 'model_new'];
 const STAFF_BUILT = STAFF.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const STAFF_NOT_YET = STAFF.filter((id) => !STAFF_BUILT.includes(id));
+// יומן מיילים / מחלקות / היסטוריות (11.10.2026): נרשמו יחד, newExists הופך ל-true כשהמסך החדש מחובר.
+const LOGS = ['email_logs', 'departments', 'management_history', 'data_history'];
+const LOGS_BUILT = LOGS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
+const LOGS_NOT_YET = LOGS.filter((id) => !LOGS_BUILT.includes(id));
 
 let passed = 0;
 async function ta(name, fn) {
@@ -49,12 +53,12 @@ await ta('canEmployeeSelfSwitch: כל עובד פעיל בכל תפקיד (0 / 1
 });
 // 4.10.2026: הרשימה נגזרת מ-lib/uiVariantScreens.js (selfSwitch + שתי הגרסאות קיימות) - נוספו 4 המסכים של אותו יום.
 await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מהרשומה)', () => {
-  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT]);
-  for (const s of ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT]) assert.equal(isSelfSwitchScreen(s), true);
-  for (const s of ['employee_card', ...STAFF_NOT_YET, '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
+  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT, ...LOGS_BUILT]);
+  for (const s of ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT, ...LOGS_BUILT]) assert.equal(isSelfSwitchScreen(s), true);
+  for (const s of ['employee_card', ...STAFF_NOT_YET, ...LOGS_NOT_YET, '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
 });
 await ta('describeSelfSwitch: כל עובד פעיל (הנהלה, מתכנת, מנהל סניף, עובד רגיל) רואה את הסעיף; מושבת ואורח לא', () => {
-  const all = { canSelfSwitch: true, screens: ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT] };
+  const all = { canSelfSwitch: true, screens: ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT, ...LOGS_BUILT] };
   for (const roleId of [0, 1, 2, 3, 5, null, undefined]) assert.deepEqual(describeSelfSwitch(emp({ roleId })), all, String(roleId));
   for (const e of [emp({ isActive: false }), emp({ roleId: 0, isActive: false }), null]) assert.deepEqual(describeSelfSwitch(e), { canSelfSwitch: false, screens: [] });
 });
