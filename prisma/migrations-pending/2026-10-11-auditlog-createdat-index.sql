@@ -1,5 +1,5 @@
 -- סטטוס: ממתין להרצה. ההרצה נעשית בסקריפט scripts/create_log_indexes.js (בודק זהות DB, CREATE INDEX CONCURRENTLY, בודק indisvalid), לא ידנית מהקובץ הזה.
--- הורץ ב-____ (תאריך/שעה) על ____ (TEST / PROD גמח ראשי / PROD נווה יעקב; host + gmach_name) על ידי scripts/create_log_indexes.js   <- המתאם ממלא אחרי ההרצה
+-- הורץ ב-11.10.2026 על PROD גמח ראשי (ep-weathered-tree-avpypjjr, "מכובד- השכרת שמלות") ועל PROD נווה יעקב (ep-young-math-b1veujp3, "גמ"ח שמלות נווה יעקב") על ידי scripts/create_log_indexes.js --apply: AuditLog_createdAt_idx + EmailLog_sentAt_idx, CONCURRENTLY, תקינים בשני ה-DB.
 -- ה-@@index המתאים כבר הוכרז ב-prisma/schema.prisma (השם זהה לברירת המחדל של Prisma, ולכן prisma db push לא ינסה ליצור/למחוק אותו).
 -- המלצה בלבד - לא הורץ באף DB (אסור DDL בענף feature/a5-admin-logs-history-departments-2026-10-11). אינדקס על AuditLog.createdAt.
 -- למה: "היסטוריית נתונים" (/admin/data-history) ממיינת לפי createdAt (החדש ראשון) ואין ל-AuditLog אינדקס על העמודה, ולכן כל עמוד = סריקה מלאה + top-N heapsort.
