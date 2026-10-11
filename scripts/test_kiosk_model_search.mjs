@@ -37,12 +37,15 @@ t('דגם בלי קידומת: חיפוש לפי שם עדיין עובד', () =
 t('normalizeModelQuery מנקה #, "דגם" ורווחים', () => assert.equal(normalizeModelQuery('  דגם #567 '), '567'));
 
 console.log('חיבור לעמוד');
-const page = readFileSync(new URL('../app/customer-interface/page.js', import.meta.url), 'utf8');
-t('העמוד מייבא את הפונקציה ומחבר אותה מאחורי kiosk_model_search', () => {
-  assert.match(page, /from '@\/lib\/kioskModelSearch'/);
-  assert.match(page, /settings\.kiosk_model_search === 'true'/);
-  assert.match(page, /modelMatchesQuery\(d, modelQuery\)/);
-});
-t('פס התאריך הדביק מאחורי kiosk_sticky_date_bar', () => assert.match(page, /settings\.kiosk_sticky_date_bar === 'true'/));
+// שתי הגרסאות של העמדה: הישנה (מוקפאת) והחדשה (A5)
+const pages = ['../app/customer-interface/LegacyKioskPage.js', '../app/components/kiosk/KioskA5.js'].map((f) => readFileSync(new URL(f, import.meta.url), 'utf8'));
+for (const page of pages) {
+  t('העמוד מייבא את הפונקציה ומחבר אותה מאחורי kiosk_model_search', () => {
+    assert.match(page, /from '@\/lib\/kioskModelSearch'/);
+    assert.match(page, /settings\.kiosk_model_search === 'true'/);
+    assert.match(page, /modelMatchesQuery\(d, modelQuery\)/);
+  });
+  t('פס התאריך הדביק מאחורי kiosk_sticky_date_bar', () => assert.match(page, /settings\.kiosk_sticky_date_bar === 'true'/));
+}
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);
