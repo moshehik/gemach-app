@@ -91,6 +91,8 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([employeeId])
+  // "היסטוריית נתונים" ממיינת לפי createdAt (החדש ראשון). נוצר ב-DB ע"י scripts/create_log_indexes.js (CREATE INDEX CONCURRENTLY), בשם ברירת המחדל של Prisma: AuditLog_createdAt_idx. לא להריץ prisma db push.
+  @@index([createdAt])
 }
 
 // One row per cloud backup attempt (see scripts/cloud_backup.js + BACKUPS.md). Written
@@ -638,6 +640,8 @@ model EmailLog {
 
   @@index([customerId])
   @@index([employeeId])
+  // יומן המיילים ממיין לפי sentAt (החדש ראשון). נוצר ב-DB ע"י scripts/create_log_indexes.js, בשם ברירת המחדל של Prisma: EmailLog_sentAt_idx.
+  @@index([sentAt])
 }
 
 model QueryLog {

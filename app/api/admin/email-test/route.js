@@ -113,6 +113,7 @@ export async function POST(request) {
     const result = await sendSystemEmail({
       to: address,
       subject: sample.subject,
+      emailId: id !== 'ALL' ? id : undefined, // מייל דוגמה של איפוס סיסמה (containsSecret) נרשם ביומן בלי הגוף
       body: sample.body,
       html: sample.html,
       attachments: sample.attachments,

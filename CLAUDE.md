@@ -179,6 +179,7 @@ The automated AI agent (fix-reports GitHub Actions run, or any other unattended/
 - New department/employee access decisions go into `PERMISSION_CATALOG` (see the standing rule above); every client-side gate, PIN dialogs included, needs its server-side twin.
 - `getVerifiedAuthCookie()` for every `auth_token` read, `SAFE_EMPLOYEE_SELECT` for every employee join, `legacyId` lookups for digits-only input only.
 - Never type a password into a live site — use `/api/dev/agent-login` (or an API key after merge).
+- A new e-mail whose body carries a secret (temporary password, reset code, access token): set `containsSecret: true` on its `lib/emailCatalog.js` entry and pass `emailId` to `sendSystemEmail`, so `EmailLog.body` stores the placeholder instead (the mail itself is unchanged; see EMAILS.md). Same rule as the audit trail: a model that can hold a secret goes into `AUDIT_SECRET_FIELDS` / `SECRET_FIELDS_BY_ENTITY` **and** `scripts/scrub_logged_secrets.js` (`test_scrub_logged_secrets.mjs` checks the three lists are equal).
 
 ### AI
 - `normalizeAiSql` runs after `processHebrewDateMacro` in every AI route; use the `HEBREW_MONTH_START/END` macros instead of `eventDateHebrew LIKE` (that column stores day letters without gershayim).

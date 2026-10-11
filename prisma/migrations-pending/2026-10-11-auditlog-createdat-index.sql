@@ -1,3 +1,6 @@
+-- סטטוס: ממתין להרצה. ההרצה נעשית בסקריפט scripts/create_log_indexes.js (בודק זהות DB, CREATE INDEX CONCURRENTLY, בודק indisvalid), לא ידנית מהקובץ הזה.
+-- הורץ ב-____ (תאריך/שעה) על ____ (TEST / PROD גמח ראשי / PROD נווה יעקב; host + gmach_name) על ידי scripts/create_log_indexes.js   <- המתאם ממלא אחרי ההרצה
+-- ה-@@index המתאים כבר הוכרז ב-prisma/schema.prisma (השם זהה לברירת המחדל של Prisma, ולכן prisma db push לא ינסה ליצור/למחוק אותו).
 -- המלצה בלבד - לא הורץ באף DB (אסור DDL בענף feature/a5-admin-logs-history-departments-2026-10-11). אינדקס על AuditLog.createdAt.
 -- למה: "היסטוריית נתונים" (/admin/data-history) ממיינת לפי createdAt (החדש ראשון) ואין ל-AuditLog אינדקס על העמודה, ולכן כל עמוד = סריקה מלאה + top-N heapsort.
 -- נמדד על טבלה זמנית של 400,000 שורות (docs/a5-staff-models/data-history-notes.md): רשימה ללא סינון 283 ms, עם אינדקס אמורה לרדת למילישניות (סריקה לאחור על האינדקס + LIMIT 50).

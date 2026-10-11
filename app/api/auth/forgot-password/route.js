@@ -58,6 +58,7 @@ export async function POST(request) {
     const emailResult = await sendSystemEmail({
       to: employee.email,
       subject: emailSubject('passwordResetSelf'),
+      emailId: 'passwordResetSelf', // containsSecret: ביומן נשמר ממלא מקום ולא הסיסמה הזמנית (lib/emailCatalog.js)
       body: `שלום ${employee.firstName || ''},\n\nביקשת לאפס את סיסמתך למערכת הגמ"ח.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, אפשר להתעלם מהודעה זו ולפנות למנהל המערכת.`,
       html: renderPasswordResetEmailHtml({
         firstName: employee.firstName,
