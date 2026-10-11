@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import useDebounce from '@/hooks/useDebounce';
 import { usePopup } from './PopupProvider';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
+import { runQuickBarcode } from '@/components/orders/barcodeFlowClient';
 
 // Ports GlobalSidebar's barcode-return / global-search / recently-viewed logic
 // into the topbar quick-search box + dropdown panel (design-v2 topbar-search pattern).
@@ -121,6 +122,21 @@ export default function TopbarSearch() {
     try {
       // רק ספרות/אותיות: הקלדה/הדבקה מ-RTL יכולה להכניס תווים בלתי נראים (השרת מנקה גם הוא)
       const cleanBarcode = barcode.replace(/[^0-9A-Za-z]/g, '');
+      // זרימת הברקוד ברצף (barcodeFlowClient.js): פריט מושכר -> חלון "השכרה והחזרה" שמחזיר בתוכו; פריט פנוי + ההגדרה
+      // quick_search_barcode_opens_rental -> חלון ההשכרה של ההזמנה שמחכה לו. flow.legacy (אין הרשאה) = ההתנהגות הקודמת למטה.
+      const flow = await runQuickBarcode(cleanBarcode, { openRentalModal });
+      if (flow.handled && !flow.pick) {
+        setOpen(false);
+        setBarcode('');
+        return;
+      }
+      if (!flow.legacy) {
+        setBarcode('');
+        setReturnNote(flow.pick ? `${flow.message}: ${flow.pick.map((c) => '#' + c.orderId).join(', ')}` : (flow.message || ''));
+        setQuery(cleanBarcode);
+        setOpen(true);
+        return;
+      }
       const res = await fetch('/api/returns/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -159,7 +175,7 @@ export default function TopbarSearch() {
         <input
           type="text"
           id="topbarSearchInput"
-          placeholder="חיפוש לקוח, הזמנה, ברקוד…"
+          placeholder="הקלד ברקוד או חפש..."
           autoComplete="off"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

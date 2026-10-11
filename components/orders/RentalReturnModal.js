@@ -21,12 +21,39 @@ const LEGACY_UI = {
   },
 };
 
-export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
+// זרימת הברקוד ברצף (12.10.2026): ברקוד של פריט שמושכר בהזמנה אחרת מעביר את החלון להזמנה ההיא (הפנימי מורכב מחדש עליה, עם
+// הברקוד כ-initialBarcode, כך שההחזרה עוברת את אותה בדיקת איחור / אישור החזרה מוקדמת). ההורה לא צריך לדעת: orderId שהוא מעביר
+// הוא ההזמנה ההתחלתית, ושינוי שלו (או initialBarcode חדש) מאפס את החלון. onItemReturned(item, order) - נקודת חיבור אחרי כל החזרה.
+export default function RentalReturnModal({ orderId, initialBarcode = '', onClose, onUpdate, onItemReturned }) {
+  const [cur, setCur] = React.useState({ orderId, barcode: initialBarcode, seq: 0 });
+  const [seen, setSeen] = React.useState({ orderId, initialBarcode });
+  if (seen.orderId !== orderId || seen.initialBarcode !== initialBarcode) { // ההורה פתח הזמנה/ברקוד אחרים
+    setSeen({ orderId, initialBarcode });
+    setCur((c) => ({ orderId, barcode: initialBarcode, seq: c.seq + 1 }));
+  }
+  const switchOrder = React.useCallback((nextOrderId, barcode) => {
+    setCur((c) => ({ orderId: nextOrderId, barcode: barcode || '', seq: c.seq + 1 }));
+  }, []);
+  return (
+    <RentalReturnModalBody
+      key={`${cur.orderId}:${cur.seq}`}
+      orderId={cur.orderId}
+      initialBarcode={cur.barcode}
+      onSwitchOrder={switchOrder}
+      onItemReturned={onItemReturned}
+      onClose={onClose}
+      onUpdate={onUpdate}
+    />
+  );
+}
+
+function RentalReturnModalBody({ orderId, initialBarcode, onSwitchOrder, onItemReturned, onClose, onUpdate }) {
   const { getLabel } = useLabels();
 
   const {
     selectedOrder,
     setSelectedOrder,
+    scanNotice,
     loading,
     enableAlterations,
     lateReturnThresholdDays,
@@ -86,7 +113,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     attemptCloseCard,
     handlePrintPreConfirm,
     getItemStatus,
-  } = useRentalReturn({ orderId, onClose, onUpdate, ui: LEGACY_UI });
+  } = useRentalReturn({ orderId, onClose, onUpdate, ui: LEGACY_UI, initialBarcode, onSwitchOrder, onItemReturned });
 
   // הופך את ה-changesJson הגולמי (JSON טכני עם שמות שדות באנגלית) לשורת "צ'יפים"
   // קריאה בעברית: שם שדה מתורגם + ערך ישן (מחוק) → ערך חדש.
@@ -222,6 +249,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   />
                 </div>
                 <button data-agy-id="rentalreturnmodal_button_4" type="submit" className="hidden" style={{ display: 'none' }}>סרוק</button>
+                <div
+                  id="rrmScanNotice"
+                  role="status"
+                  aria-live="polite"
+                  style={{ minHeight: '20px', marginTop: '6px', fontSize: '13px', fontWeight: 600, color: scanNotice ? (scanNotice.kind === 'ok' ? 'var(--success)' : scanNotice.kind === 'err' ? 'var(--danger)' : 'var(--text-2)') : 'var(--text-3)' }}
+                >
+                  {scanNotice ? scanNotice.text : ''}
+                </div>
               </form>
 
               {(selectedOrder.orderNotes || selectedOrder.notes) && (

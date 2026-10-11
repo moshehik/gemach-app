@@ -37,13 +37,17 @@ export function PopupProvider({ children }) {
 
   // Global Rental Modal state
   const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
+  const [globalRentalModalBarcode, setGlobalRentalModalBarcode] = useState('');
 
-  const openRentalModal = useCallback((orderId) => {
+  // opts.barcode: ברקוד שהוקש בחיפוש המהיר - החלון מעבד אותו (החזרה / השכרה) אחרי שההזמנה נטענה (זרימת הברקוד ברצף)
+  const openRentalModal = useCallback((orderId, opts) => {
+    setGlobalRentalModalBarcode((opts && opts.barcode) || '');
     setGlobalRentalModalOrderId(orderId);
   }, []);
 
   const closeRentalModal = useCallback(() => {
     setGlobalRentalModalOrderId(null);
+    setGlobalRentalModalBarcode('');
   }, []);
 
 
@@ -425,6 +429,7 @@ export function PopupProvider({ children }) {
       {globalRentalModalOrderId && (
         <RentalReturnModal
           orderId={globalRentalModalOrderId}
+          initialBarcode={globalRentalModalBarcode}
           onClose={closeRentalModal}
           onUpdate={() => {}}
         />

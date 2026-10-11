@@ -24,9 +24,16 @@ import { describeMismatch } from '../../lib/rentalBarcodeMatch';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG } from '../../lib/businessDays';
 import { postReturnScan } from './returnScanClient';
+import { resolveBarcode } from './barcodeFlowClient';
 
-export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
+// זרימת הברקוד ברצף (12.10.2026):
+//   initialBarcode  - ברקוד שהוקש בחיפוש המהיר: אחרי טעינת ההזמנה הוא עובר בדיוק את מה שעובר ברקוד שנסרק בשדה "סריקה מהירה"
+//   onSwitchOrder   - (orderId, barcode) => void: ברקוד של פריט שמושכר בהזמנה אחרת מעביר את החלון להזמנה ההיא (RentalReturnModal
+//                     מרכיב אותו מחדש עליה); בלי הפונקציה - הודעה בלבד
+//   onItemReturned  - (item, order) => void: נקרא אחרי כל החזרה מוצלחת בחלון (נקודת חיבור, למשל התראת סניף)
+export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode = '', onSwitchOrder = null, onItemReturned = null }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [scanNotice, setScanNotice] = useState(null); // { kind: 'ok'|'err'|'info', text, at } - תוצאת הברקוד האחרון, מתחת לשדה הסריקה
   const [loading, setLoading] = useState(true);
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
@@ -93,9 +100,10 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
   }, [orderId]);
 
   const refreshOrder = async () => {
-    if (!orderId) return;
+    const currentId = (selectedOrder && selectedOrder.orderId) || orderId;
+    if (!currentId) return;
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await fetch(`/api/orders/${currentId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedOrder(data);
@@ -132,11 +140,12 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
       .catch(console.error);
   }, []);
 
+  // שורת הברקוד נשארת בפוקוס אחרי כל סריקה (השדה מנוטרל בזמן העיבוד ואז מאבד פוקוס) - כדי שאפשר יהיה לסרוק ברצף בלי עכבר
   useEffect(() => {
-    if (selectedOrder && modalBarcodeRef.current) {
+    if (selectedOrder && !isProcessing && modalBarcodeRef.current) {
       modalBarcodeRef.current.focus({ preventScroll: true });
     }
-  }, [selectedOrder, duplicates]);
+  }, [selectedOrder, duplicates, isProcessing]);
 
   const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
   const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
@@ -284,14 +293,21 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
 
       if (res.ok) {
         patchItem(data.item.id, { isReturned: data.item.isReturned, returnedOk: data.item.returnedOk, returnDate: data.item.returnDate });
+        // נקודת חיבור לאחר החזרה מוצלחת (התראת סניף וכד'): prop + אירוע חלון
+        if (onItemReturned) { try { onItemReturned(data.item, selectedOrder); } catch (hookErr) { console.error(hookErr); } }
+        try { window.dispatchEvent(new CustomEvent('gemach:item-returned', { detail: { item: data.item, order: selectedOrder, source: 'rental-return-modal' } })); } catch { /* ignore */ }
+        return { ok: true, item: data.item };
       } else if (!data?.cancelled) {
         ui.alert(data?.error || 'שגיאה בהחזרת פריט');
         // The item may already be up to date on the server (e.g. a previous click
         // already went through) - refresh so the card stops showing a stale status.
         await refreshOrder();
+        return { ok: false, error: data?.error || 'שגיאה בהחזרת פריט' };
       }
+      return { ok: false, cancelled: true };
     } catch (err) {
       console.error(err);
+      return { ok: false, error: 'שגיאת תקשורת' };
     } finally {
       setIsBusy(false);
     }
@@ -317,6 +333,78 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
     return true;
   };
 
+  // ---- זרימת הברקוד ברצף (12.10.2026) ----
+  const notify = (kind, text) => setScanNotice({ kind, text, at: Date.now() });
+  const itemLabel = (item) => (item && item.description ? `"${item.description}"` : 'הפריט');
+
+  // האם יש בהזמנה שורה שמחכה לברקוד כזה - אותו כלל כמו POST /api/rentals/scan (שורה בלי ברקוד, אותה קידומת ואותה מידה).
+  // כשלא ניתן לקבוע קידומת/מידה לשורה - נחשב "כן" (ההתנהגות הקודמת: ניסיון השכרה והשרת מחליט).
+  const hasRentalSlotFor = (clean) => {
+    const prefix = parseInt(clean.substring(0, clean.length - 4), 10);
+    const size = parseInt(clean.substring(clean.length - 4, clean.length - 2), 10);
+    return activeItems.some((i) => {
+      if (i.barcode) return false;
+      const pfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+      const sz = i.dressItem?.sizeText || i.sizeText || '';
+      if (pfx === null || pfx === undefined || sz === '') return true;
+      return pfx === prefix && parseInt(sz, 10) === size;
+    });
+  };
+
+  // ברקוד אחד, אחרי ניקוי: החזרה אם הפריט אצל הלקוח בהזמנה הזו; השכרה אם יש בהזמנה שורה שמחכה לו; אחרת בודקים בשרת מה הברקוד
+  // (מושכר בהזמנה אחרת -> עוברים אליה; הוחזר / פנוי / לא מוכר -> הודעה). שגיאה אף פעם לא חוסמת את הרצף - השדה נשאר בפוקוס.
+  const processBarcode = async (cleanBarcode) => {
+    const awaitingReturnItem = activeItems.find(i => i.barcode === cleanBarcode && i.isTaken && !i.isReturned);
+    if (awaitingReturnItem) {
+      const handledAsLate = await checkLateReturnPrompt(awaitingReturnItem);
+      if (handledAsLate) return;
+      const r = await handleReturnScan(cleanBarcode);
+      const who = selectedOrder.customer ? ` · ${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}`.trimEnd() : '';
+      if (r && r.ok) notify('ok', `הוחזר: ${itemLabel(r.item || awaitingReturnItem)} · הזמנה #${selectedOrder.orderId}${who}`);
+      else if (r && r.cancelled) notify('info', 'ההחזרה בוטלה');
+      else notify('err', (r && r.error) || 'שגיאה בהחזרה');
+      return;
+    }
+    const returnedHere = activeItems.find(i => i.barcode === cleanBarcode && i.isReturned);
+    if (returnedHere) {
+      notify('err', `${itemLabel(returnedHere)} כבר הוחזר בהזמנה הזו`);
+      return;
+    }
+    if (hasRentalSlotFor(cleanBarcode)) {
+      await handleRentalScan(cleanBarcode);
+      return;
+    }
+    const info = await resolveBarcode(cleanBarcode);
+    if (!info.ok) { // אין הרשאת השכרות והחזרות / שגיאת רשת - ההתנהגות הקודמת
+      await handleRentalScan(cleanBarcode);
+      return;
+    }
+    const d = info.data;
+    if (d.state === 'rented' && d.orderId !== selectedOrder.orderId) {
+      if (pendingCount > 0) {
+        notify('err', `הברקוד שייך להזמנה #${d.orderId}, אבל בהזמנה הזו יש ${pendingCount} פריטים שנסרקו וממתינים לאישור - אשר/י או בטל/י אותם לפני המעבר`);
+        return;
+      }
+      if (onSwitchOrder) {
+        notify('info', `עובר להזמנה #${d.orderId}…`);
+        onSwitchOrder(d.orderId, cleanBarcode);
+        return;
+      }
+      notify('err', `הפריט מושכר בהזמנה #${d.orderId}`);
+      return;
+    }
+    if (d.state === 'rented') { // הנתונים בחלון ישנים - מרעננים
+      await refreshOrder();
+      notify('info', 'הנתונים רועננו - סרוק/י שוב');
+      return;
+    }
+    if (d.state === 'free') {
+      notify('err', d.lastReturnError || 'הפריט פנוי - לא מושכר כרגע ואינו ממתין בהזמנה הזו');
+      return;
+    }
+    notify('err', d.error || 'ברקוד לא מוכר');
+  };
+
   // Single smart scan bar: detects whether the barcode belongs to an item
   // currently with the customer (return) or a still-unassigned item (rental).
   const handleGlobalBarcodeScan = async (e) => {
@@ -327,20 +415,28 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
     const cleanBarcode = modalBarcode.replace(/\s+/g, '');
 
     try {
-      const awaitingReturnItem = activeItems.find(i => i.barcode === cleanBarcode && i.isTaken && !i.isReturned);
-      if (awaitingReturnItem) {
-        const handledAsLate = await checkLateReturnPrompt(awaitingReturnItem);
-        if (!handledAsLate) {
-          await handleReturnScan(cleanBarcode);
-        }
-      } else {
-        await handleRentalScan(cleanBarcode);
-      }
+      await processBarcode(cleanBarcode);
       setModalBarcode('');
     } finally {
-      setIsProcessing(false);
+      if (isMountedRef.current) setIsProcessing(false);
     }
   };
+
+  // ברקוד שהוקש בחיפוש המהיר: רץ פעם אחת, אחרי שההזמנה נטענה (כמו סריקה בשדה "סריקה מהירה")
+  const initialScanRef = useRef(false);
+  useEffect(() => {
+    if (!initialBarcode || initialScanRef.current || !selectedOrder) return;
+    initialScanRef.current = true;
+    (async () => {
+      setIsProcessing(true);
+      try {
+        await processBarcode(String(initialBarcode).replace(/\s+/g, ''));
+      } finally {
+        if (isMountedRef.current) setIsProcessing(false);
+      }
+    })();
+    // רק ברגע שההזמנה נטענה לראשונה (תלות ב-selectedOrder בלבד)
+  }, [selectedOrder]);
 
   const confirmInlineRent = async (item) => {
     if (isBusy) return;
@@ -626,6 +722,8 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
   return {
     selectedOrder,
     setSelectedOrder,
+    scanNotice,
+    setScanNotice,
     loading,
     enableAlterations,
     lateReturnThresholdDays,
