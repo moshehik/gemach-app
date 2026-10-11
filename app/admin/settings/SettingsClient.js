@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
+import TermsFileManager from '@/app/components/shared/TermsFileManager';
 import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
@@ -817,6 +818,8 @@ export default function SettingsClient({ mode = 'general' }) {
               <NeonUsageCard />
             </>
           )}
+
+          {activeTab === 'הזמנות' && <TermsFileManager variant="legacy" />}
 
           {activeTab === 'מיילים' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>

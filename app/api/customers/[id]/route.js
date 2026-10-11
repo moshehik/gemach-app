@@ -1,4 +1,4 @@
-import prisma, { auditAs } from '@/app/lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS, validateCustomerBankFields } from '@/lib/customerBankFields';
@@ -9,7 +9,9 @@ import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerR
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
 import { deleteBlockers } from '@/lib/customerAccount';
-import { customerRowHasSignatureColumns, planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
+import { customerRowHasSignatureColumns, readSignatureFlag } from '@/lib/customerSignature';
+import { prepareStaffConsent, recordConsentEntries, loadLatestConsents, summarizeConsents } from '@/lib/customerConsent';
+import { loadConsentContext } from '@/lib/consentDocsLoad';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -47,6 +49,12 @@ export async function GET(request, { params }) {
     }
 
     customer.email = normalizeEmail(customer.email, customer.emailSuffix);
+
+    // מצב ההסכמות מיומן ההסכמות (רק כשההסכמה המפורשת פעילה בארגון; כשל = בלי השדה, הכרטיס נופל להצגה לפי העמודות)
+    try {
+      const consentRows = await getAllCachedSettings();
+      if ((consentRows.find((r) => r.key === 'explicit_consent_enabled') || {}).value === 'true') customer.consents = summarizeConsents(await loadLatestConsents(prisma, id));
+    } catch (e) { console.error('customer consents summary failed (card falls back to the columns)', e); }
 
     return NextResponse.json(customer);
   } catch (error) {
@@ -101,7 +109,16 @@ export async function PUT(request, { params }) {
     if (requestedSignature === 'invalid') {
       return NextResponse.json({ error: 'ערך חתימה על התקנון לא תקין' }, { status: 400 });
     }
-    if (requestedSignature !== undefined && !customerRowHasSignatureColumns(oldCustomer)) {
+    // הסכמות מפורשות (lib/customerConsent.js): תקנון כן/לא, דיוור כן/לא, אישור פרטיות -> עמודות הלקוחה (החתימה דרך planSignatureWrite הקיים)
+    // + שורות ביומן CustomerConsent. החתימה במסלול הישן של הכרטיס (signatureEdit) עוברת באותה תוכנית ולכן נרשמת גם היא ביומן.
+    let consentCtx = { map: new Map(), docs: {} };
+    try { consentCtx = await loadConsentContext(); } catch (e) { console.error('consent docs unavailable (fail-open)', e); }
+    const consent = await prepareStaffConsent({
+      prisma, body, settings: consentCtx.map, existing: oldCustomer, customerId: id, docs: consentCtx.docs, employeeId: await getActingEmployeeId(),
+      legacyTerms: typeof requestedSignature === 'boolean' ? requestedSignature : undefined,
+    });
+    if (consent.errors.length) return NextResponse.json({ error: consent.errors.join(', '), ...(consent.status === 409 ? { code: 'CONSENT_DOC_CHANGED' } : {}) }, { status: consent.status || 400 });
+    if ((requestedSignature !== undefined || consent.answers.terms !== undefined) && !customerRowHasSignatureColumns(oldCustomer)) {
       // קליינט/DB בלי העמודות: מסרבים במפורש במקום להחזיר הצלחה שלא נשמרה
       return NextResponse.json({ error: 'חתימה על התקנון אינה זמינה בשרת הזה', code: 'SIGNATURE_UNAVAILABLE' }, { status: 503 });
     }
@@ -120,7 +137,9 @@ export async function PUT(request, { params }) {
       bankOn = customerBankFieldsEnabled(sMap);
       const errors = [];
       if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
-        if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
+        // טפסי ההסכמה המפורשת שולחים marketingConsent רק כשנענה / השתנה - אז הערך השמור הוא התקף
+        const effectiveMarketing = body.marketingConsent !== undefined ? body.marketingConsent : oldCustomer.marketingConsent;
+        if (!effectiveMarketing) errors.push('חובה לאשר קבלת דיוורים');
       }
       if (sMap.get('strict_mandatory_fields') === 'true') {
         const mandatory = (sMap.get('mandatory_fields') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -207,12 +226,9 @@ export async function PUT(request, { params }) {
       }
     });
 
-    // חתימה: אחרי לולאת ההשוואה כדי שביומן תיכתב שורה אחת ("חתימה על התקנון") ולא גם שורה למועד החתימה (אובייקט Date)
-    const signaturePlan = planSignatureWrite({ requested: requestedSignature, current: oldCustomer, now: new Date() });
-    if (signaturePlan) {
-      Object.assign(data, signaturePlan.data);
-      Object.assign(changes, signaturePlan.changes);
-    }
+    // חתימה + דיוור מתוכנית ההסכמות: אחרי לולאת ההשוואה כדי שביומן תיכתב שורה אחת ("חתימה על התקנון") ולא גם שורה למועד החתימה (אובייקט Date)
+    Object.assign(data, consent.plan.data);
+    Object.assign(changes, consent.plan.changes);
 
     // 3. Perform the update. הפירוט "לפני ← אחרי" עובר לתוסף היומן דרך auditAs, כך שנרשמת
     // שורת היסטוריה אחת בלבד (וכלום, כששמרו בלי לשנות) — במקום שורה גנרית עם צילום כל
@@ -223,7 +239,8 @@ export async function PUT(request, { params }) {
       changes
     ));
 
-    return NextResponse.json(updatedCustomer);
+    const journal = await recordConsentEntries(prisma, id, consent.plan.entries);
+    return NextResponse.json(journal.ok ? updatedCustomer : { ...updatedCustomer, consentWarning: 'הלקוחה נשמרה, אך ההסכמות לא נרשמו ביומן ההסכמות - יש לעדכן את מנהל המערכת' });
   } catch (error) {
     console.error('Error updating customer:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -19,6 +19,9 @@ import { CcPortalRoot } from './CcPortal';
 import { CcUiProvider, useCcUi } from './CcUi';
 import { CcEmailInput, CcInput, Tip } from './CcFields';
 import { buildNewCustomerPayload, isStarred, newCustomerInitial, validateForSave } from './customerCardLogic';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import ConsentFields, { useConsentInfo } from '@/app/components/shared/ConsentFields';
+import { EMPTY_CONSENT_ANSWERS, explicitConsentOn, invalidConsentFields, missingConsentLabels, withConsentBody } from '@/lib/consentForm';
 
 const FIELD_NAMES = { firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', phone2: 'טלפון נוסף', email: 'מייל' };
 
@@ -48,6 +51,9 @@ function NewBody() {
   const [settings, setSettings] = useState({});
   const [loc, setLoc] = useState({ cities: [], streets: [] });
   const [saving, setSaving] = useState(false);
+  // הסכמות מפורשות (explicit_consent_enabled): תקנון כן/לא, דיוורים כן/לא, אישור פרטיות - בלי ברירת מחדל (docs/customer-consents.md)
+  const [cons, setCons] = useState(EMPTY_CONSENT_ANSWERS);
+  const [consTried, setConsTried] = useState(false);
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((d) => { if (Array.isArray(d)) setSettings(d.reduce((a, s) => ({ ...a, [s.key]: s.value }), {})); })
@@ -62,6 +68,8 @@ function NewBody() {
   const set = (k) => (v) => setC((p) => ({ ...p, [k]: v }));
   const star = (k) => isStarred(k, c, { requiredKeys, isNew: true, settings });
   const groups = parseFieldGroups(settings.mandatory_field_groups);
+  const explicit = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicit);
 
   const save = async (e) => {
     if (e) e.preventDefault();
@@ -72,11 +80,18 @@ function NewBody() {
       if (v.field) setTimeout(() => { const el = document.querySelector(`.gm-cc [data-f="${v.field}"]`); if (el) el.focus(); }, 40);
       return;
     }
+    if (explicit) {
+      const missingConsents = missingConsentLabels(cons, settings, { isNew: true });
+      if (missingConsents.length) { setConsTried(true); ui.toast('error', 'יש להשלים את ההסכמות', missingConsents.join(' · ')); return; }
+    }
     setSaving(true);
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildNewCustomerPayload(c, { bankEnabled })) });
+      const base = buildNewCustomerPayload(c, { bankEnabled });
+      const body = explicit ? withConsentBody(base, cons, consentInfo, 'new-customer') : base;
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { ui.toast('error', data.error || data.message || 'שגיאה בשמירת נתונים'); return; }
+      if (data.consentWarning) ui.toast('error', 'ההסכמות לא נרשמו ביומן', data.consentWarning);
       if (data.id) {
         ui.toast('info', 'הלקוחה נוספה', 'פותחים את כרטיס הלקוחה…');
         router.push(`/customers/${data.id}`);
@@ -88,13 +103,16 @@ function NewBody() {
     }
   };
 
+  // Enter עובר לשדה הבא בכל הסדר (גם דרך מתגים ובחירות כן/לא) ובשדה האחרון שומר - lib/enterNavigation.js
+  const onFormKeyDown = useEnterNavigation(() => save());
+
   return (
     <div className="app cc-app cc-new" id="app">
       <div className="topbar">
         <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" onClick={() => router.back()}><CcIcon name="back" /></button>
         <div className="ttl"><h1><small>לקוח</small><bdi>חדש</bdi></h1></div>
       </div>
-      <form className="layout cc-layout-msg" onSubmit={save} autoComplete="off" noValidate>
+      <form className="layout cc-layout-msg" onSubmit={save} onKeyDown={onFormKeyDown} autoComplete="off" noValidate>
         <main className="main">
           <section className="panel on">
             <div className="card dfields">
@@ -115,7 +133,10 @@ function NewBody() {
                   {groups.map((g) => `יש למלא לפחות אחד מבין: ${g.map((k) => FIELD_NAMES[k] || k).join(' / ')}`).join(' · ')}
                 </div>
               ) : null}
-              {settings.hide_marketing_consent_field !== 'true' ? (
+              {explicit ? (
+                <ConsentFields idPrefix="nCn" isNew settings={settings} info={consentInfo} value={cons} onChange={(patch) => setCons((p) => ({ ...p, ...patch }))}
+                  invalid={consTried ? invalidConsentFields(cons, settings, { isNew: true }) : {}} />
+              ) : settings.hide_marketing_consent_field !== 'true' ? (
                 <div className="trow cc-mt24">
                   <label className="sw"><input type="checkbox" id="newMarketingConsent" data-f="marketingConsent" checked={!!c.marketingConsent} onChange={(e) => setC((p) => ({ ...p, marketingConsent: e.target.checked }))} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
                   <b>מאשר/ת קבלת דיוורים</b><Tip text="תזכורות ועדכוני מבצעים במייל" />

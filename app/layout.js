@@ -59,7 +59,11 @@ export default async function RootLayout({ children }) {
   // (תפריט עליון / סרגל צד / באנרים / תחתית האתר / כפתורי צף) ובלי באנרי סביבה. body.hide-global-nav לבדו לא הספיק: הוא מסתיר רק את
   // מעטפת "אריג" הישנה, לא את מעטפת A5 (.snav / .nb-area / .gm-shellfoot), והבאנרים שמעל המעטפת בכלל לא מכוסים. העיצוב תמיד בהיר
   // (המסמך המודפס לא תלוי בערכת הנושא של העובד/ת).
-  const printBare = requestPathname === '/schedule/print' || requestPathname.startsWith('/schedule/print/');
+  // עמודי המסמכים הציבוריים (/privacy, /terms - מדיניות פרטיות ותקנון, docs/customer-consents.md): לקוחה בלי חשבון קוראת אותם (מהעמדה / מקישור), לכן
+  // פטורים מקיר ההתחברות ומוצגים "חשופים" כמו דפי ההדפסה - בלי תפריט, בלי העוזר וכפתורי העובדים.
+  const docPath = requestPathname.endsWith('/') ? requestPathname.slice(0, -1) : requestPathname;
+  const isPublicDoc = docPath === '/privacy' || docPath === '/terms';
+  const printBare = requestPathname === '/schedule/print' || requestPathname.startsWith('/schedule/print/') || isPublicDoc;
   const isPublicKiosk = requestPathname.startsWith('/customer-interface');
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
@@ -300,7 +304,7 @@ export default async function RootLayout({ children }) {
     );
   }
 
-  const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk && !isPunchClock;
+  const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk && !isPunchClock && !isPublicDoc;
 
   // דגלי "ישן / A5" לכל מסך (lib/uiVariant.js): עקיפה אישית (uiVariants בעוגיית designPrefs_<id>,
   // מראה של Employee.themeColor) > הגדרת הארגון ui_variant_<screen> (מאותה קריאת הגדרות בלי שאילתה
