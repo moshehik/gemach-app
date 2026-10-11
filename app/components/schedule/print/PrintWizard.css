@@ -56,6 +56,14 @@
 .gm-ds.gm-lz .lz-pgb small{display:block;font-size:12.5px;line-height:1.4;color:var(--k-faint)}
 .gm-ds.gm-lz .lz-wver{margin-top:8px;width:min(360px,100%);font-size:13px}
 .gm-ds.gm-lz .lz-wver button{padding:6px 8px;font-size:13px}
+/* מתג דו-מצבי בגווני המערכת: מסלול שקוף עם מסגרת, מחוון בהיר שמחליק בין המצבים */
+.gm-ds.gm-lz .lz-wver.seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:3px;gap:0;--i:0;--n:2}
+.gm-ds.gm-lz .lz-wver.seg.pill .pth{position:absolute;top:3px;bottom:3px;height:auto;margin:0;width:calc((100% - 6px)/var(--n));inset-inline-start:calc(3px + (100% - 6px)/var(--n)*var(--i));background:var(--gm-sky-50);border-radius:999px;pointer-events:none;transition:inset-inline-start .28s cubic-bezier(.4,.1,.2,1)}
+.gm-ds.gm-lz .lz-wver.seg.pill button{position:relative;z-index:1;flex:1;min-width:0;border:0;background:transparent;box-shadow:none;border-radius:999px;font-weight:500;color:var(--k-sub);white-space:nowrap;transition:color .25s}
+.gm-ds.gm-lz .lz-wver.seg.pill button:hover{background:transparent;color:#fff}
+.gm-ds.gm-lz .lz-wver.seg.pill button.on,.gm-ds.gm-lz .lz-wver.seg.pill button.on:hover{background:transparent;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-lz .lz-wver.seg.pill button:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .lz-wver.seg.pill .pth,.gm-ds.gm-lz .lz-wver.seg.pill button{transition:none}}
 
 /* ===== תיבת סימון (כהה; זהב כשמסומן; קו במצב ביניים) ===== */
 .gm-ds.gm-lz .lz-cb{-webkit-appearance:none;appearance:none;flex:none;width:20px;height:20px;margin:2px 0 0;padding:0;border-radius:6px;border:1.5px solid var(--k-faint);background:rgba(255,255,255,.06);display:inline-grid;place-content:center;cursor:pointer}
