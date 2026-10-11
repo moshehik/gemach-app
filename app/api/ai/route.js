@@ -16,6 +16,7 @@ import { HDate } from '@hebcal/core';
 import { processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../lib/sqlGuard';
+import { assertSqlTables, tablesForTier, aiTierForRole } from '../../../lib/ai/sqlTablePolicy';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
 import { buildHowToGuide } from '../../../lib/howToGuide';
 import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
@@ -197,7 +198,7 @@ async function handleAiPost(req) {
     // Employee Classification Protections - שיטה משותפת עם app/api/ai/statistics/route.js
     // (loadEmployeeAccess ב-lib/ai/aiCommon.js), במקום עותק קשיח נפרד כאן.
     const cookieStore = await cookies();
-    const { isManager, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+    const { isManager, employeeContext, roleId: aiRoleId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     const mainChatRestrictionConfig = await getFeatureRestrictionConfig('main_chat');
     // loadEmployeeAccess() already computed the default financial-data-restriction text above;
@@ -532,6 +533,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
           console.log(`AI generated ${label}:`, sql);
           try {
             assertReadOnlySelect(sql);
+            assertSqlTables(sql, tablesForTier(aiTierForRole(aiRoleId))); // R4b: only tables this caller's tier may read
           } catch (guardErr) {
             console.error(`SQL Guard rejected AI-generated ${label}:`, guardErr.message, '\nRejected SQL:', sql);
             throw guardErr;
