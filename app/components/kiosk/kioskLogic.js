@@ -119,7 +119,7 @@ export function holidayLabel(hd) {
   try {
     const evs = HebrewCalendar.getHolidaysOnDate(hd, true) || [];
     for (const e of evs) {
-      const label = CHAG_LABELS[e.getDesc()];
+      const label = CHAG_LABELS[String(e.getDesc()).replace(/\s+\d{4}$/, '')]; // "Rosh Hashana 5787" -> בלי השנה
       if (label) return label;
     }
   } catch (e) { /* בלי חגים */ }
@@ -224,4 +224,19 @@ export function formatHebrewDate(date) {
     const month = getMonthsForYear(hd.getFullYear()).find((m) => m.value === hd.getMonth())?.label || '';
     return `${gershayim(HEBREW_DAYS[hd.getDate()])} ${month} ${gematriya(hd.getFullYear())}`;
   } catch (e) { return ''; }
+}
+
+/**
+ * רמזי הטופס של ה-API הציבורי (GET /api/public-kiosk/config, השדה registration: { required, oneOf, marketingMustBeYes }) -> אותם מפתחות הגדרה
+ * ש-getMissingRegFields מכיר, כך שהמסלול הציבורי (בלי גישה ל-/api/settings) מסמן שדות חובה בדיוק כמו העמדה. השרת אוכף בכל מקרה.
+ */
+export function settingsFromRules(rules) {
+  if (!rules || typeof rules !== 'object') return {};
+  const r = rules.required || {};
+  return {
+    require_customer_email: r.email ? 'true' : 'false',
+    require_full_address: r.address ? 'true' : 'false',
+    require_customer_id_number: r.idNumber ? 'true' : 'false',
+    require_marketing_consent: rules.marketingMustBeYes ? 'true' : 'false',
+  };
 }

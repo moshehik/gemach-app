@@ -5,15 +5,16 @@ import { readFileSync } from 'node:fs';
 import { HDate } from '@hebcal/core';
 import {
   escHtml, getModelDisplayName, modelHasRealName, modelInitials, tileColor, getModelSizeInfo, buildSizeChipData,
-  getMonthsForYear, holidayLabel, parshaLabelForSaturday, buildMonthCells, formatHebrewDate, gershayim, getMissingRegFields,
+  getMonthsForYear, holidayLabel, parshaLabelForSaturday, buildMonthCells, formatHebrewDate, gershayim, getMissingRegFields, settingsFromRules,
 } from '../app/components/kiosk/kioskLogic.js';
+import { submitRegistration, REGISTRATION_ENDPOINT } from '../app/components/kiosk/kioskRegistrationApi.js';
 
 let passed = 0;
-function t(name, fn) {
-  try { fn(); passed++; console.log('  ok   -', name); } catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
-}
+const tasks = [];
+const h = (title) => tasks.push([null, title]);
+const t = (name, fn) => tasks.push([name, fn]);
 
-console.log('שמות דגם');
+h('שמות דגם');
 t('"ללא שם" מוצג כמספר הדגם; שם רגיל נשאר', () => {
   assert.equal(getModelDisplayName({ name: 'ללא שם - 1245', barcodePrefix: 565 }), '565');
   assert.equal(getModelDisplayName({ name: 'אבן חרוזים', barcodePrefix: 440 }), 'אבן חרוזים');
@@ -35,7 +36,7 @@ t('צבע האריח יציב לאותו דגם ובתוך הרשימה', () => 
 });
 t('escHtml מנטרל HTML', () => assert.equal(escHtml('<b>"x"&\'</b>'), '&lt;b&gt;&quot;x&quot;&amp;&#39;&lt;/b&gt;'));
 
-console.log('סיכום מידות');
+h('סיכום מידות');
 const MODEL = { items: [
   { sizeText: '38', quantity: 1, count: 2 },
   { sizeText: '38', quantity: 0, count: 1 },
@@ -59,7 +60,7 @@ t('מידות לחיפוש: ייחודיות, ממוינות מספרית, עם 
   assert.deepEqual(data, [['9', 1], ['38', 2], ['40', 1]]);
 });
 
-console.log('לוח עברי');
+h('לוח עברי');
 t('חודשי שנה מעוברת כוללים אדר א\' / אדר ב\'', () => {
   const leap = getMonthsForYear(5784).map((m) => m.label);
   assert.ok(leap.includes("אדר א'") && leap.includes("אדר ב'"));
@@ -88,12 +89,12 @@ t('פרשה רק בתא של שבת', () => {
 t('כתיב התאריך העברי: גרשיים באותיות היום והשנה, בלי תאריך לועזי', () => {
   assert.equal(gershayim('יג'), 'י״ג');
   assert.equal(gershayim('ט'), 'ט׳');
-  const s = formatHebrewDate(new Date(2026, 9, 25, 12)); // י"ג חשוון תשפ"ז
-  assert.equal(s, 'י״ג חשוון תשפ״ז');
+  const s = formatHebrewDate(new Date(2026, 9, 25, 12)); // י"ד חשוון תשפ"ז
+  assert.equal(s, 'י״ד חשוון תשפ״ז');
   assert.equal(formatHebrewDate('not a date'), '');
 });
 
-console.log('מילוי פרטים אישיים - ולידציה');
+h('מילוי פרטים אישיים - ולידציה');
 const FULL = { firstName: 'א', lastName: 'ב', zeout: '', phone1: '0501234567', email: '', city: '', street: '', houseNum: '', acceptedTerms: true, marketingConsent: false, acceptedPrivacy: true };
 t('טופס מלא בהגדרות ברירת מחדל: אין חסר', () => assert.deepEqual(getMissingRegFields(FULL, {}), []));
 t('שם פרטי / משפחה / טלפון תמיד חובה', () => {
@@ -117,7 +118,43 @@ t('הגדרות חובה: מייל / כתובת מלאה / ת"ז / mandatory_fie
   assert.deepEqual(getMissingRegFields(FULL, { mandatory_fields: 'עיר, מספר בית' }), ['city', 'houseNum']);
 });
 
-console.log('חיבור קבצים');
+t('רמזי ה-API הציבורי הופכים להגדרות שהוולידציה מכירה', () => {
+  const eff = settingsFromRules({ required: { email: true, address: true, idNumber: false }, oneOf: [], marketingMustBeYes: true });
+  assert.deepEqual(getMissingRegFields({ ...FULL, marketingConsent: false }, eff), ['email', 'city', 'street', 'houseNum', 'marketingConsent']);
+  assert.deepEqual(settingsFromRules(null), {});
+});
+
+h('submitRegistration (fetch מדומה)');
+const withFetch = async (impl, fn) => { const real = globalThis.fetch; globalThis.fetch = impl; try { return await fn(); } finally { globalThis.fetch = real; } };
+const reply = (status, json) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => json });
+let sent = null;
+t('גוף הבקשה: idNumber, channel לפי mode, honeypot, הסכמות מפורשות', async () => {
+  await withFetch(async (url, init) => { sent = { url, body: JSON.parse(init.body) }; return { ok: true, status: 200, json: async () => ({ ok: true }) }; }, async () => {
+    const r = await submitRegistration({ ...FULL, zeout: '123456789', acceptedTerms: false }, { mode: 'public' });
+    assert.equal(r.ok, true);
+  });
+  assert.equal(sent.url, REGISTRATION_ENDPOINT);
+  assert.equal(sent.body.channel, 'public');
+  assert.equal(sent.body.idNumber, '123456789');
+  assert.equal(sent.body.acceptedTerms, false);
+  assert.equal(sent.body.marketingConsent, false);
+  assert.equal(sent.body.website, '');
+  await withFetch(async (url, init) => { sent = { url, body: JSON.parse(init.body) }; return { ok: true, status: 200, json: async () => ({ ok: true }) }; }, async () => {
+    await submitRegistration({ ...FULL, acceptedTerms: null, marketingConsent: null });
+  });
+  assert.equal(sent.body.channel, 'kiosk');
+  assert.equal(sent.body.acceptedTerms, null);
+});
+t('400: שגיאות ושדות מהשרת; 404 / 429 / רשת: הודעה ברורה', async () => {
+  const bad = await withFetch(reply(400, { ok: false, code: 'validation', errors: ['שם פרטי חובה'], fields: { firstName: 'שם פרטי חובה' } }), () => submitRegistration(FULL));
+  assert.equal(bad.ok, false); assert.deepEqual(bad.fields, { firstName: 'שם פרטי חובה' }); assert.match(bad.error, /שם פרטי חובה/);
+  assert.equal((await withFetch(reply(404, { ok: false }), () => submitRegistration(FULL))).status, 404);
+  assert.equal((await withFetch(reply(429, { ok: false }), () => submitRegistration(FULL))).status, 429);
+  const net = await withFetch(async () => { throw new Error('x'); }, () => submitRegistration(FULL));
+  assert.equal(net.ok, false); assert.equal(net.status, 0);
+});
+
+h('חיבור קבצים');
 const read = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 const kiosk = read('../app/components/kiosk/KioskA5.js');
 const reg = read('../app/components/kiosk/KioskRegistration.js');
@@ -141,4 +178,8 @@ t('הנעילה: מחלקת הגוף, מסך מלא, שחרור באישור ע�
   assert.match(kiosk, /\/api\/login/);
 });
 
-console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);
+for (const [name, fn] of tasks) {
+  if (name === null) { console.log(fn); continue; }
+  try { await fn(); passed++; console.log('  ok   -', name); } catch (e) { console.error('  FAIL -', name, e.message); process.exitCode = 1; }
+}
+console.log(passed + ' passed' + (process.exitCode ? ' (with failures)' : ''));

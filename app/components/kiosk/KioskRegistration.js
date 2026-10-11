@@ -16,13 +16,13 @@ import { Dlg, DlgBadge } from '../a5-list/A5Ui';
 import { KIcon, YesNo } from './KioskParts';
 import { useEnterNav as useLocalEnterNav } from './kioskEnterNav';
 import { submitRegistration } from './kioskRegistrationApi';
-import { getMissingRegFields, CUSTOMER_FIELD_LABELS } from './kioskLogic';
+import { getMissingRegFields, settingsFromRules, CUSTOMER_FIELD_LABELS } from './kioskLogic';
 
 export const TERMS_URL = '/api/public-terms';
 export const PRIVACY_URL = '/privacy';
 
 const EMPTY = {
-  firstName: '', lastName: '', zeout: '', phone1: '', email: '', city: '', street: '', houseNum: '',
+  firstName: '', lastName: '', zeout: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', website: '',
   acceptedTerms: null, marketingConsent: null, acceptedPrivacy: false,
 };
 
@@ -66,6 +66,7 @@ function DocDialog({ title, url, onClose }) {
 export default function KioskRegistration({
   mode = 'station',
   settings = {},
+  rules = null,
   onBack = null,
   onDone = null,
   submit = submitRegistration,
@@ -79,19 +80,24 @@ export default function KioskRegistration({
   const [error, setError] = useState('');
   const [done, setDone] = useState(null); // { legacyId? } אחרי שמירה
   const [doc, setDoc] = useState(null); // 'terms' | 'privacy'
+  const [serverFields, setServerFields] = useState({}); // שדות שהשרת סימן כלא תקינים (400 fields), מתנקים בעריכה
   const formRef = useRef(null);
   useEnterNav(formRef);
 
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-  const missing = getMissingRegFields(form, settings);
-  const bad = (k) => touched && missing.includes(k);
+  // מסלול ציבורי: הגדרות הטופס מגיעות מ-rules (GET /api/public-kiosk/config); בעמדה - מ-settings
+  const eff = rules ? { ...settings, ...settingsFromRules(rules) } : settings;
+  const showPhone2 = !!(rules && Array.isArray(rules.oneOf) && rules.oneOf.some((g) => Array.isArray(g) && g.includes('phone2')));
+  const set = (k) => (e) => { const v = e.target.value; setForm((p) => ({ ...p, [k]: v })); setServerFields((f) => (f[k] ? { ...f, [k]: undefined } : f)); };
+  const missing = getMissingRegFields(form, eff);
+  const bad = (k) => (touched && missing.includes(k)) || !!serverFields[k] || (k === 'zeout' && !!serverFields.idNumber);
   const req = (cond) => (cond ? ' *' : '');
-  const showMarketing = settings.hide_marketing_consent_field !== 'true';
-  const needFullAddress = settings.require_full_address === 'true';
+  const showMarketing = eff.hide_marketing_consent_field !== 'true';
+  const needFullAddress = eff.require_full_address === 'true';
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setServerFields({});
     setTouched(true);
     if (missing.length > 0) {
       setError(`נא להשלים: ${missing.map((k) => CUSTOMER_FIELD_LABELS[k] || k).join(', ')}`);
@@ -106,6 +112,7 @@ export default function KioskRegistration({
         setTouched(false);
       } else {
         setError((out && out.error) || 'שגיאה בשמירה, נא לפנות לצוות הגמ"ח');
+        setServerFields((out && out.fields) || {});
       }
     } finally {
       setBusy(false);
@@ -151,7 +158,7 @@ export default function KioskRegistration({
             <input id="ks-r-last" className="inp" data-enter="lastName" data-agy-id="reg_lastName_input" value={form.lastName} onChange={set('lastName')} autoComplete="off" />
           </div>
           <div className={`field${bad('zeout') ? ' bad' : ''}`}>
-            <label className="lbl" htmlFor="ks-r-id">תעודת זהות{req(settings.require_customer_id_number === 'true')}</label>
+            <label className="lbl" htmlFor="ks-r-id">תעודת זהות{req(eff.require_customer_id_number === 'true')}</label>
             <input id="ks-r-id" className="inp" dir="ltr" inputMode="numeric" maxLength={9} data-enter="zeout" data-agy-id="reg_zeout_input" value={form.zeout}
               onChange={(e) => setForm((p) => ({ ...p, zeout: e.target.value.replace(/\D/g, '') }))} autoComplete="off" />
           </div>
@@ -159,8 +166,14 @@ export default function KioskRegistration({
             <label className="lbl" htmlFor="ks-r-phone">טלפון נייד *</label>
             <input id="ks-r-phone" className="inp" type="tel" dir="ltr" inputMode="tel" data-enter="phone1" data-agy-id="reg_phone1_input" value={form.phone1} onChange={set('phone1')} autoComplete="off" />
           </div>
+          {showPhone2 ? (
+            <div className={`field${bad('phone2') ? ' bad' : ''}`}>
+              <label className="lbl" htmlFor="ks-r-phone2">טלפון נוסף</label>
+              <input id="ks-r-phone2" className="inp" type="tel" dir="ltr" inputMode="tel" data-enter="phone2" data-agy-id="reg_phone2_input" value={form.phone2} onChange={set('phone2')} autoComplete="off" />
+            </div>
+          ) : null}
           <div className={`field ks-span2${bad('email') ? ' bad' : ''}`}>
-            <label className="lbl" htmlFor="ks-r-mail">אימייל{req(settings.require_customer_email === 'true')}</label>
+            <label className="lbl" htmlFor="ks-r-mail">אימייל{req(eff.require_customer_email === 'true')}</label>
             <input id="ks-r-mail" className="inp" type="email" dir="ltr" inputMode="email" data-enter="email" data-agy-id="reg_email_input" value={form.email} onChange={set('email')} autoComplete="off" />
           </div>
         </div>
@@ -177,6 +190,12 @@ export default function KioskRegistration({
             <label className="lbl" htmlFor="ks-r-house">מספר בית{req(needFullAddress)}</label>
             <input id="ks-r-house" className="inp" inputMode="numeric" data-enter="houseNum" data-agy-id="reg_houseNum_input" value={form.houseNum} onChange={set('houseNum')} autoComplete="off" />
           </div>
+        </div>
+
+        {/* honeypot (נקודת חיבור לשרת: השדה website): אדם לא רואה ולא ממלא; בוט שממלא מקבל "הצלחה" ושום דבר לא נשמר */}
+        <div className="ks-hp" aria-hidden="true">
+          <label htmlFor="ks-r-website">אתר</label>
+          <input id="ks-r-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={form.website} onChange={set('website')} />
         </div>
 
         <div className="ks-consent">

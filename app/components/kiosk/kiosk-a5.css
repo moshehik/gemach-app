@@ -258,6 +258,7 @@
 .gm-ds.gm-ks .ks-span2{grid-column:1/-1}
 .gm-ds.gm-ks .ks-form .field{margin:0}
 .gm-ds.gm-ks .ks-form .inp{width:100%}
+.gm-ds.gm-ks .ks-hp{position:absolute;inset-inline-start:-9999px;top:auto;width:1px;height:1px;overflow:hidden;opacity:0}
 .gm-ds.gm-ks .ks-consent{display:grid;gap:14px;margin-top:20px;padding-top:18px;border-top:1px solid var(--gm-sky-200)}
 .gm-ds.gm-ks .ks-consent-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px}
 .gm-ds.gm-ks .ks-yn{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:4px 6px;border-radius:14px}
