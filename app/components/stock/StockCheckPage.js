@@ -400,7 +400,6 @@ export default function StockCheckPage() {
                 ))}
               </div>
             )}
-            <div className="pg-sub">חובה דגם או מידה, או שניהם. עם כמה מידות מוצגים רק דגמים שכולן פנויות בהם באותו תאריך.</div>
           </section>
           <section className="advs" aria-label="בדיקה גמישה">
             <div className="advs-h">

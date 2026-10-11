@@ -20,15 +20,8 @@
 }
 .gm-ds.gm-home.stock-page .tblw { max-width: 100%; }
 
-/* הכרטיסים בתוך המסגרת (.hero-in.jshell .card): בעיצוב המאושר של הדף הזה הם "זכוכית" - לבן 30% עם טשטוש (כלל הפלטה
-   .gm-ds .card), ולא שקופים כמו בדף הבית (home.css כלל 9 מכוון לדף הבית, ששם המסגרת היא הרקע). אותם ערכים בדיוק כמו הפלטה.
-   אומת מול בדיקת-מלאי.html ב-scripts/stock-bg-audit (1280 ו-390: אין הבדלי סגנון, רק הבדלי מבנה של נתוני הדוגמה). */
-.gm-ds.gm-home.stock-page .hero-in.jshell .card {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
+/* הכרטיסים בתוך המסגרת (.hero-in.jshell .card): שקופים כמו בחיפוש המתקדם בדף הבית (home.css כלל 9) - המסגרת עצמה
+   (לבן 60%) היא הרקע, בלי שכבת זכוכית נוספת. */
 
 /* בדיקת מלאי: כפתור ההסבר (tip) צמוד לכותרת "בדיקה גמישה" ולא בקצה השורה (כמו בעיצוב) */
 .gm-ds.gm-home.stock-page .advp .advs-h h3:has(+ .tip) { flex: 0 1 auto; }
