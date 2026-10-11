@@ -65,3 +65,11 @@
 .gm-ds.gm-home.stock-page .hero-in.jshell .res-one { border-radius: 30px; }
 /* שורת הכותרת של הכרטיס (.card-h) מקבלת גבול עליון אפור 1px ישר מכלל גלובלי ישן - הוא בולט מחוץ לפינות המעוגלות של המסגרת ("שבור בקצוות") */
 .gm-ds.gm-home.stock-page .hero-in.jshell .res-one > .card-h { border-top: 0; }
+
+/* כותרת הטופס: אייקון + שם הדף באותה שורה בצד ימין, והלחצנים (בדיקה / נקה) בצד שמאל - בלי שורה נפרדת לכותרת */
+.gm-ds.gm-home.stock-page .advp > .card-h { flex-wrap: nowrap; margin-bottom: 10px; }
+.gm-ds.gm-home.stock-page .advp > .card-h h2 { order: 0; flex: 1 1 auto; min-width: 0; }
+@media (max-width: 480px) {
+  .gm-ds.gm-home.stock-page .advp > .card-h { flex-wrap: wrap; }
+  .gm-ds.gm-home.stock-page .advp > .card-h h2 { flex: 1 1 0; }
+}

@@ -354,6 +354,7 @@ export default function StockCheckPage() {
       <div className="hero-in jshell advonly">
         <div className="card res-one advp" id="stock-form">
           <div className="card-h">
+            <span className="advs-i" aria-hidden="true"><Ic id="box" /></span>
             <h2 id="stock-h">בדיקת מלאי</h2>
             <button type="button" className="ibtn" data-act="adv-apply" aria-label="בדיקה" onClick={() => run()}><Ic id="search" size="sm" /><span>בדיקה</span></button>
             <button type="button" className="ibtn" data-act="adv-clear" aria-label="נקה" onClick={clearAll}><Ic id="eraser" size="sm" /><span>נקה</span></button>
@@ -371,7 +372,7 @@ export default function StockCheckPage() {
             </div>
           )}
           <section className="advs" aria-label="מה לבדוק">
-            <div className="advs-h"><span className="advs-i"><Ic id="box" /></span><h3>מה לבדוק</h3></div>
+            <div className="advs-h"><span className="advs-i"><Ic id="dress" /></span><h3>מה לבדוק</h3></div>
             <div className="advgrid">
               <div className="stock-datew">
                 {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
