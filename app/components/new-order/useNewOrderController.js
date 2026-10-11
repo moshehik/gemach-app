@@ -549,7 +549,7 @@ export default function useNewOrderController({ router }) {
       .then(data => {
         if (off) return;
         if (!NL.isValidCalculation(data)) throw new Error('calculate: bad response');
-        setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 });
+        setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0, sharedDelivery: data.sharedDelivery || null });
         setCalculating(false);
       })
       .catch(() => {
@@ -561,7 +561,7 @@ export default function useNewOrderController({ router }) {
       });
     return () => { off = true; };
      
-  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, calcTick]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, order.deliveryAddress, order.deliveryOneDayBefore, order.customerId, calcTick]);
   const retryCalc = () => setCalcTick(t => t + 1);
   const calcBlock = NL.calcBlockMessage({ calculating, calcError });
   const totalAmount = calculatedData.totalAmount;

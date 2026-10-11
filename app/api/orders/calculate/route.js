@@ -5,6 +5,8 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { findPriceRowForSize, normalizeGapRule } from '@/lib/priceRows';
 import { resolveEffectiveDeliveryCity } from '@/lib/pricingCalc';
+import { previewSharedDelivery } from '@/lib/sharedDelivery';
+import { computeLegAmounts } from '@/lib/sharedDeliveryCalc';
 
 export async function POST(request) {
   // /api/* לא עובר דרך middleware.js, ולכן בלי בדיקה כאן ראוט זה היה פתוח לגולש אנונימי.
@@ -131,6 +133,7 @@ export async function POST(request) {
     // ההזמנה) נשאר פתוח/לא משולם על אף שהוצג "שולם במלואו" באשף - ר' דיווח org2 e799b1e0.
     // אותה נוסחת מחיר בדיוק כמו applyDeliveryCharge ב-lib/pricingEngine.js.
     let deliveryAmount = 0;
+    let sharedDelivery = null;
     const priceByCity = getSetting('delivery_price_by_city', '');
     // בלי עיר משלוח מפורשת נופלים לעיר הלקוח (אם בטבלה) - כמו applyDeliveryCharge (org2 06467870).
     const deliveryCity = isDelivery
@@ -147,10 +150,34 @@ export async function POST(request) {
       const dir = deliveryDirection || 'הלוך-חזור';
       const count = dir === 'הלוך-חזור' ? 2 : 1;
       deliveryAmount = Number(cityPrice) * count;
+      // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל): אותה כתובת ואותו יום אירוע של הזמנה קיימת => מחיר מוזל לצד שיש בו משלוח ראשי אחר.
+      // אותו חישוב כמו applyDeliveryCharge (הזמנה חדשה נחשבת כנרשמת עכשיו => אחרונה בסדר הרישום). כשל לא עוצר את החישוב.
+      try {
+        const sp = await previewSharedDelivery({
+          orderId: data.orderId || null,
+          customerId: data.customerId || null,
+          eventDate: isAbroad && data.fromDate ? data.fromDate : eventDate,
+          fromDate: data.fromDate || null,
+          isDelivery: true,
+          deliveryAddress: data.deliveryAddress || null,
+          deliveryCity: explicitDeliveryCity || null,
+          deliveryDirection: dir,
+          deliveryOneDayBefore: !!data.deliveryOneDayBefore,
+        });
+        if (sp.enabled) {
+          const regularAmount = deliveryAmount;
+          if (sp.discount) {
+            deliveryAmount = computeLegAmounts({ direction: dir, regularPerLeg: Number(cityPrice), discountedPerLeg: sp.discount.discountedPerLeg, discountedLegs: sp.discount.discountedLegs }).amount;
+          }
+          sharedDelivery = { shared: sp.shared, isPrimary: sp.isPrimary, discounted: deliveryAmount < regularAmount, regularAmount, matches: sp.matches || [] };
+        }
+      } catch (sharedErr) {
+        console.error('shared delivery preview failed (showing regular price)', sharedErr);
+      }
     }
     totalAmount += deliveryAmount;
 
-    return NextResponse.json({ totalAmount, calculatedItems, deliveryAmount });
+    return NextResponse.json({ totalAmount, calculatedItems, deliveryAmount, ...(sharedDelivery ? { sharedDelivery } : {}) });
   } catch (error) {
     console.error('Error in calculate route:', error);
     return NextResponse.json({ error: 'Failed to calculate' }, { status: 500 });
