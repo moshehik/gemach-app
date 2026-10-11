@@ -789,14 +789,22 @@ t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSpri
 
 console.log('קישורי תפריט "בית" (scope / adv / recent) — 2.10.2026');
 t('parseHomeParams: רשימה סגורה — רק scope מוכר, adv=1 בדיוק, recent=changes בדיוק', () => {
-  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, advFocus: null, recent: 'changes', run: null, q: null, emp: null, any: true });
   assert.deepEqual(Object.keys(HOME_SCOPES), ['customers', 'orders', 'rentals', 'returns', 'alterations']);
   assert.deepEqual([...HOME_RECENT_VALUES], ['changes', 'mine']);
-  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, advFocus: null, recent: 'mine', run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('').any, false); assert.equal(parseHomeParams(undefined).any, false); assert.equal(parseHomeParams(null).any, false);
+});
+t('parseHomeParams: adv=capacity (תפריט הזמנה > תפוסה) פותח את החיפוש המתקדם ישר בתחום; תחום לא מוכר נזרק; מפתח ההוראה שונה מ-adv=1', () => {
+  assert.deepEqual(parseHomeParams('?adv=capacity'), { scope: null, adv: true, advFocus: 'capacity', recent: null, run: null, q: null, emp: null, any: true });
+  assert.equal(parseHomeParams('?adv=1').advFocus, null);
+  for (const bad of ['?adv=customers', '?adv=Capacity', '?adv=__proto__', '?adv=', '?adv=capacity%20']) assert.deepEqual([parseHomeParams(bad).adv, parseHomeParams(bad).advFocus], [false, null], bad);
+  assert.equal(parseHomeParams('?scope=orders&adv=capacity').scope, null, 'adv עדיף על scope');
+  assert.equal(homeDirectiveKey(parseHomeParams('?adv=capacity')), 'adv:capacity');
+  assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
 });
 t('parseHomeParams: ערכים לא מוכרים נזרקים (בלי prototype, XSS, redirect, רישיות)', () => {
   for (const bad of ['?scope=evil', '?scope=__proto__', '?scope=constructor', '?scope=toString', '?scope=Customers', '?scope=customers%20', '?scope=', '?scope=<script>alert(1)</script>',
@@ -815,16 +823,16 @@ t('parseHomeParams: מקבל גם URLSearchParams; קלט ענק נחתך; q נ�
   assert.equal(parseHomeParams(big).scope, null, 'מעבר לתקרת האורך — לא נקרא');
 });
 t('parseHomeParams: הוראה אחת — adv עדיף על recent על scope (כתובת, כותרת והדגשת תפריט תואמות)', () => {
-  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, advFocus: null, recent: 'changes', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').q, 'כ'); assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').scope, 'orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?scope=orders')), 'scope:orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=changes')), 'recent:changes');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine')), 'recent:mine');
-  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, advFocus: null, recent: 'mine', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, advFocus: null, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(homeDirectiveKey(parseHomeParams('?q=x')), '');
 });
 t('homeScopeTitle: "<קטגוריה> - מה תרצי לחפש?" לכל קטגוריה, מהטבלה בלבד; לא מוכר = null', () => {

@@ -62,6 +62,7 @@ export const HOME_SCOPES = Object.freeze({
   alterations: Object.freeze({ label: 'תיקונים', only: 'בתיקונים', icon: 'scissors', via: 'adv', focus: 'alterations' }),
 });
 export const HOME_RECENT_VALUES = Object.freeze(['changes', 'mine']); // changes = רשימת '@' (האחרונים שלי); mine = "השינויים שלי" (תצוגת התוצאות של '&')
+export const HOME_ADV_FOCI = Object.freeze(['capacity']); // /?adv=<תחום>: פותח את החיפוש המתקדם ישר בתחום הזה (רשימה סגורה; /?adv=1 = שלב בחירת התחום)
 export const HOME_RUN_VALUES = Object.freeze(['debts', 'unsaved']); // /?run= : פעולות "#" שנפתחות בתצוגת תוצאות (חובות = ממתינים לתשלום; unsaved = טיוטות בעמדה) - רשימה סגורה
 const MAX_PARAMS_CHARS = 2000;
 const MAX_Q_CHARS = 200;
@@ -72,14 +73,16 @@ const MAX_Q_CHARS = 200;
  * @param {string|URLSearchParams} search מחרוזת query (עם או בלי '?')
  */
 export function parseHomeParams(search) {
-  const out = { scope: null, adv: false, recent: null, run: null, q: null, emp: null, any: false };
+  const out = { scope: null, adv: false, advFocus: null, recent: null, run: null, q: null, emp: null, any: false };
   let params;
   try {
     params = search instanceof URLSearchParams ? search : new URLSearchParams(str(search).slice(0, MAX_PARAMS_CHARS).replace(/^\?/, ''));
   } catch { return out; }
   const scope = params.get('scope');
   if (scope !== null && Object.prototype.hasOwnProperty.call(HOME_SCOPES, scope)) out.scope = scope;
-  if (params.get('adv') === '1') out.adv = true;
+  const adv = params.get('adv');
+  if (adv === '1') out.adv = true;
+  else if (adv !== null && HOME_ADV_FOCI.includes(adv)) { out.adv = true; out.advFocus = adv; }
   const recent = params.get('recent');
   if (recent !== null && HOME_RECENT_VALUES.includes(recent)) out.recent = recent;
   const run = params.get('run');
@@ -98,7 +101,7 @@ export function parseHomeParams(search) {
 
 /** כותרת הקטגוריה: { label, rest } = "<קטגוריה> - מה תרצי לחפש?"; null לקטגוריה לא מוכרת. התווית רק מהטבלה, לא מהקלט. */
 /** מפתח יציב להוראה (לזיהוי "אותה הוראה שכבר הוחלה"). */
-export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent + (dir.emp ? ':' + dir.emp : '') : dir.run ? 'run:' + dir.run : dir.scope ? 'scope:' + dir.scope : '');
+export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' + (dir.advFocus ? ':' + dir.advFocus : '') : dir.recent ? 'recent:' + dir.recent + (dir.emp ? ':' + dir.emp : '') : dir.run ? 'run:' + dir.run : dir.scope ? 'scope:' + dir.scope : '');
 
 export const SCOPE_TITLE_REST = 'מה תרצי לחפש?';
 export function homeScopeTitle(scope) {

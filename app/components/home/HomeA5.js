@@ -119,6 +119,7 @@ export default function HomeA5() {
   // סינון לקטגוריה (קישורי תפריט "בית": /?scope=customers...). תמיד אחד ממפתחות HOME_SCOPES (רשימה סגורה), לעולם לא טקסט מהכתובת.
   const [scope, setScope] = useState(null);
   const [wantAdv, setWantAdv] = useState(false); // /?adv=1: נפתח ישר לחיפוש המתקדם ברגע שההרשאות נטענו
+  const [wantAdvFocus, setWantAdvFocus] = useState(null); // /?adv=capacity: ישר לתחום הזה (אם מותר לה), אחרת לשלב בחירת התחום
   const scopeRef = useRef(null);
   const urlMode = useRef(null); // { kind: 'adv'|'recent'|'mine', open } — הפרמטר נשאר בכתובת כל עוד המצב פעיל (להדגשת פריט התפריט)
   const mine = useMyActivity(); // "השינויים שלי" ('&' / ?recent=mine): נתוני GET /api/me/recent-activity, נטענים רק כשצריך; ההנהלה בוחרת עובדת אחרת (mine.setWho)
@@ -314,6 +315,7 @@ export default function HomeA5() {
     urlMode.current = null;
     if (dir.adv) {
       urlMode.current = { kind: 'adv', open: false };
+      setWantAdvFocus(dir.advFocus);
       setWantAdv(true);
       return;
     }
@@ -390,7 +392,12 @@ export default function HomeA5() {
   useEffect(() => {
     if (!wantAdv || !bootDone) return;
     setWantAdv(false);
-    if (advAvailable) { setAdvPrev('start'); setAdv(emptyAdv()); setAdvEnter(false); setView('adv'); }
+    setWantAdvFocus(null);
+    if (advAvailable) {
+      const f = visibleFoci({ settings, isManager, isHead: !!(boot && boot.isHead), navPaths });
+      const focus = wantAdvFocus && f.main.concat(f.extra).includes(wantAdvFocus) ? wantAdvFocus : null;
+      setAdvPrev('start'); setAdv(emptyAdv(focus)); setAdvEnter(false); setView('adv');
+    }
     else { urlMode.current = null; replaceUrl(''); }
   }, [wantAdv, bootDone, advAvailable]);
 
