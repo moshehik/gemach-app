@@ -55,6 +55,11 @@ export default async function RootLayout({ children }) {
   // no other way to know the current route.
   const headersList = await headers();
   const requestPathname = headersList.get('x-pathname') || '';
+  // דפי ההדפסה של הלו״ז (/schedule/print/*: הדפדפן מדפיס אותם, PDF נוצר מהם, והאשף מציג אותם ב-iframe): המסמך בלבד, בלי שום מעטפת
+  // (תפריט עליון / סרגל צד / באנרים / תחתית האתר / כפתורי צף) ובלי באנרי סביבה. body.hide-global-nav לבדו לא הספיק: הוא מסתיר רק את
+  // מעטפת "אריג" הישנה, לא את מעטפת A5 (.snav / .nb-area / .gm-shellfoot), והבאנרים שמעל המעטפת בכלל לא מכוסים. העיצוב תמיד בהיר
+  // (המסמך המודפס לא תלוי בערכת הנושא של העובד/ת).
+  const printBare = requestPathname === '/schedule/print' || requestPathname.startsWith('/schedule/print/');
   const isPublicKiosk = requestPathname.startsWith('/customer-interface');
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
@@ -316,7 +321,7 @@ export default async function RootLayout({ children }) {
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
   // שכבר נטענו למעלה (בלי שאילתה נוספת). BRAND_LOGO: העץ מכיל רק האם קיים (hasLogoSetting), לא את ה-base64.
   // שמות העובד / המחלקה / המשמרת מגיעים בלקוח מ-/api/me (כמו UserMenu), כדי לא להוסיף שאילתת DB לכל בקשה.
-  const menuTree = uiVariants.shell === 'a5' && !showLogin
+  const menuTree = uiVariants.shell === 'a5' && !showLogin && !printBare
     ? buildMenuTree({
       user: isAuthenticated ? { id: authToken.value, roleId: emp ? emp.roleId : null } : null,
       roleId: emp ? emp.roleId : null,
@@ -358,7 +363,7 @@ export default async function RootLayout({ children }) {
   // התאמה מדויקת לנתיב (לא תחילית גולמית): רק /punch-clock ותת-נתיביו. isPunchClock (פטור הכניסה למעלה) נשאר כמו שהיה.
   const isPunchClockPage = requestPathname === '/punch-clock' || requestPathname.startsWith('/punch-clock/');
   const punchBare = isPunchClockPage && loginVariant.useNew;
-  const lightChrome = showLogin || punchBare;
+  const lightChrome = showLogin || punchBare || printBare;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -821,24 +826,28 @@ function cpCssText(vars) {
         <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
-          <ClipboardDebugger data-element-name="רכיב_layout_2" />
-          <DevEnvBanner data-element-name="רכיב_layout_3" />
-          <PreviewModeBanner />
-          <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />
+          {!printBare && <ClipboardDebugger data-element-name="רכיב_layout_2" />}
+          {!printBare && <DevEnvBanner data-element-name="רכיב_layout_3" />}
+          {!printBare && <PreviewModeBanner />}
+          {!printBare && <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />}
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
-        <Suspense data-element-name="רכיב_layout_5" fallback={null}>
-          <PageTracker data-element-name="רכיב_layout_6" />
-        </Suspense>
-        <Suspense fallback={null}>
-          <StickyTableHeaders />
-        </Suspense>
+        {!printBare && (
+          <Suspense data-element-name="רכיב_layout_5" fallback={null}>
+            <PageTracker data-element-name="רכיב_layout_6" />
+          </Suspense>
+        )}
+        {!printBare && (
+          <Suspense fallback={null}>
+            <StickyTableHeaders />
+          </Suspense>
+        )}
         {/* Per-user design prefs: DB (Employee.themeColor JSON) is the source
             of truth; this syncs it into the fast cookie/localStorage mirrors
             on load (and migrates legacy local-only prefs into the DB once). */}
-        {!showLogin && isAuthenticated && <DesignPrefsSync />}
+        {!showLogin && !printBare && isAuthenticated && <DesignPrefsSync />}
         {showLogin ? (
           <LoginGate data-element-name="רכיב_layout_7" />
-        ) : punchBare ? (
+        ) : (punchBare || printBare) ? (
           <LabelsProvider>
             <PopupProvider>
               {children}
