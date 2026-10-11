@@ -6,6 +6,8 @@ import { getActingEmployeeId } from '@/app/lib/prisma';
 import { listOrderMarkIds } from '@/lib/schedule/marks';
 
 
+const HEAD_ONLY_AUDIT_ENTITIES = ['Employee', 'Shift', 'EmployeePermissionOverride', 'DepartmentPermission', 'PermissionPageGroup', 'TrustedDevice', 'ApiKey', 'Department'];
+
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
@@ -24,20 +26,23 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
 
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
-    const page = parseInt(searchParams.get('page') || '1', 10);
+    // capped: limit=100000 used to stream the whole table (1.5MB+ in one request)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '100', 10) || 100, 1), 2000);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1);
 
     let where = {};
     // The change history of Employee records (wages, roles, passwords) is head-management
     // material; every other logged-in employee gets the log without those rows.
     const canSeeEmployeeHistory = await checkAuth('הנהלה ראשית');
+    // Shift rows carry hourlyWageSnapshot / totalCalculated / paymentMethod of every employee, and the permission / device / key
+    // tables are access-control data - same audience as Employee (found 2026-10-09: a secretary could read coworkers' shift wages here).
     if (entityType) {
-      if (entityType === 'Employee' && !canSeeEmployeeHistory) {
+      if (HEAD_ONLY_AUDIT_ENTITIES.includes(entityType) && !canSeeEmployeeHistory) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       where.entityType = entityType;
     } else if (!canSeeEmployeeHistory) {
-      where.entityType = { not: 'Employee' };
+      where.entityType = { notIn: HEAD_ONLY_AUDIT_ENTITIES };
     }
     if (entityId) where.entityId = entityId;
     if (entityIds) {

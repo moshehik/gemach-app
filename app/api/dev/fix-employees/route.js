@@ -8,7 +8,7 @@ export async function GET(request) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Available only in development mode' }, { status: 403 });
   }
-  if (!(await checkAuth())) {
+  if (!(await checkAuth('מתכנת'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
