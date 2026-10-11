@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../../../lib/auth';
-import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
+import { recalculateOrderObligations, applyDeliveryCharge } from '../../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../../../../lib/priceRows';
@@ -263,6 +263,10 @@ export async function PUT(request, { params }) {
 
     // Recalculate obligations asynchronously after updating item
     await recalculateOrderObligations(parsedId);
+    // recalculateOrderObligations מוחק כל חיוב לא-ידני שאינו חלק מ-computeOrderObligations (שלא מכיר משלוח),
+    // כולל חיוב ה"משלוח" - ולכן חייבים ליצור אותו מחדש מיד אחרי, בדיוק כמו ב-PUT של ההזמנה. בלי זה הוספת/עריכת
+    // שמלה בהזמנת משלוח "שכחה" את המשלוח והסכום ירד (דיווח Neve, הזמנה 53636).
+    try { await applyDeliveryCharge(parsedId); } catch (e) { console.error(`Order ${parsedId}: delivery charge after item change failed:`, e); }
 
     // Fetch the fully updated order data to return (like in POST).
     // finalOrder/items/payments/obligations/priceList are independent - fetch concurrently.

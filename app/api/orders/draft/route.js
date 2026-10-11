@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
-import { recalculateOrderObligations } from '@/lib/pricingEngine';
+import { recalculateOrderObligations, applyDeliveryCharge } from '@/lib/pricingEngine';
 import { validateOrderItemsAvailability, reconcileDressItemIds } from '@/lib/inventory';
 import { checkAuth } from '@/lib/auth';
 import { getHebrewDateString } from '@/lib/hebrewDate';
@@ -174,6 +174,10 @@ export async function POST(request) {
 
     // Run pricing engine
     await recalculateOrderObligations(orderId);
+    // recalculateOrderObligations מוחק כל חיוב לא-ידני שאינו חלק מ-computeOrderObligations (שלא מכיר משלוח),
+    // כולל חיוב ה"משלוח" - ולכן חייבים ליצור אותו מחדש מיד אחרי, בדיוק כמו ב-PUT של ההזמנה. בלי זה הוספת/עריכת
+    // שמלה בהזמנת משלוח "שכחה" את המשלוח והסכום ירד (דיווח Neve, הזמנה 53636).
+    try { await applyDeliveryCharge(orderId); } catch (e) { console.error(`Order ${orderId}: delivery charge after item change failed:`, e); }
 
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: orderId }
