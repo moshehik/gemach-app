@@ -75,13 +75,8 @@
 
 /* ---- one flat step card ---- */
 .gm-ds.gm-mn .mn-app .one-body{display:flex;flex-direction:column}
-.gm-ds.gm-mn .mn-app .one-body>.blk+.blk{margin-top:26px;padding-top:26px;border-top:1px dashed var(--line)}
-.gm-ds.gm-mn .mn-app .card.one{padding:28px}
-@media (max-width:640px){.gm-ds.gm-mn .mn-app .card.one{padding:20px 16px}}
 .gm-ds.gm-mn .app.mn-app .one .blk{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;outline:0!important}
 .gm-ds.gm-mn .app.mn-app .one .blk::before,.gm-ds.gm-mn .app.mn-app .one .blk::after{display:none!important}
-.gm-ds.gm-mn .app.mn-app .one .one-body>.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
-.gm-ds.gm-mn .mn-app .one .sub-h{display:flex;align-items:center;gap:10px;margin:0 0 16px}
 .gm-ds.gm-mn .mn-app .one .sub-h h2{margin:0;font-size:17px;font-weight:600;color:var(--ink);flex:1;min-width:0;display:flex;align-items:center;gap:6px}
 .gm-ds.gm-mn .mn-app .one .sub-h .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--sky-100);color:var(--navy)}
 .gm-ds.gm-mn .mn-app .one .sub-h .ico .ic{width:20px;height:20px}
@@ -201,24 +196,12 @@
 .gm-ds.gm-mn #toast.error,.gm-ds.gm-mn #toast.warn{border-color:var(--gm-rose-500)}
 .gm-ds.gm-mn #toast.error .tb,.gm-ds.gm-mn #toast.warn .tb{background:var(--gm-rose-300);color:var(--gm-navy-900)}
 
-/* ---- rail: summary tiles + items cart ---- */
-.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled,.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled:hover{background:rgba(255,255,255,.1)!important;background-image:none!important;color:#9fb7d3!important;border:1.5px solid rgba(255,255,255,.28)!important;box-shadow:none!important;transform:none!important;cursor:not-allowed}
-.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled .ic{color:#9fb7d3!important;stroke:#9fb7d3!important}
-.gm-ds.gm-mn .rail .gl .gv bdi{unicode-bidi:isolate}
-.gm-ds.gm-mn .rail .gl.mn0{opacity:.55}
-.gm-ds.gm-mn .rail .cl .cl-t small{display:block}
-@media (max-width:1023px){
-  .gm-ds.gm-mn .mn-app{padding-bottom:380px}
-  .gm-ds.gm-mn .glance{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr))}
-  .gm-ds.gm-mn .glance .gl{padding:6px 8px;gap:6px;font-size:14px;min-height:40px}
-  .gm-ds.gm-mn .glance .gl .ic{width:18px;height:18px}
-  .gm-ds.gm-mn .glance .gl.loc{display:none}
-}
-@media (max-width:480px){
-  .gm-ds.gm-mn .glance .gl{flex-direction:column;justify-content:center;text-align:center;gap:2px;padding:6px 4px;font-size:13px;min-height:52px}
-  .gm-ds.gm-mn .glance .gl .gv{white-space:normal;line-height:1.2}
-}
-
 /* ---- טעינה / הרשאה ---- */
 .gm-ds.gm-mn .mn-loading{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--gm-ink2)}
 .gm-ds.gm-mn .mn-banner{margin-top:24px}
+
+/* ===== טופס רציף (מקטע תחת מקטע): הפריסה והפס הנדבק מ-new-order.css (השורש נושא גם gm-no); כאן רק הדבק ===== */
+.gm-ds.gm-mn .layout{grid-template-columns:minmax(0,1fr)}
+.gm-ds.gm-mn .mn-app .no-sec-nav .mn-foot-l{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gm-ds.gm-mn .mn-app .no-sec-nav .tipw{display:inline-block}
+.gm-ds.gm-mn .mn-app .no-sec-nav.row.spread{justify-content:space-between}
