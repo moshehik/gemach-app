@@ -202,6 +202,10 @@ function KioskInner({ initialSettings }) {
   const [splashKey, setSplashKey] = useState(0);
   const [regKey, setRegKey] = useState(0);
 
+  // העוזר החכם (הלוגיקה בהמשך הקובץ); המצב מוצהר כאן כי אפקט הסרק מנקה אותו
+  const [aiInput, setAiInput] = useState('');
+  const [aiChats, setAiChats] = useState(INITIAL_AI_CHATS);
+
   const aiEnabled = settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true';
   const kioskSelfServiceOn = settings.kiosk_customer_self_service === 'true';
   // kiosk_sticky_date_bar (דיווחים ea8a2ed1, b2bda17b, 998381ee, 59ffb080) ו-kiosk_model_search (7983b79d, b2cf3796, e6f564d6), נווה יעקב:
@@ -298,8 +302,6 @@ function KioskInner({ initialSettings }) {
   }, [zoomPopoverOpen]);
 
   // ---------------------------------------------------------------- העוזר החכם ----------------------------------------------------------------
-  const [aiInput, setAiInput] = useState('');
-  const [aiChats, setAiChats] = useState(INITIAL_AI_CHATS);
   const chatKey = stage === 3 ? 2 : 1;
   const aiMessages = aiChats[chatKey] || [];
   const [aiLoading, setAiLoading] = useState(false);

@@ -84,3 +84,20 @@ lockdown product. That's a machine-level Windows configuration decision for
 whoever manages the physical customer-facing PC, not something this repo can
 set up remotely — this `.bat` script is the practical middle ground: real
 OS-level kiosk browsing without administrative lockdown of the whole machine.
+
+## A5 design (2026-10-12)
+
+`/customer-interface` renders `app/components/kiosk/KioskSwitch.js`: the A5 kiosk (`KioskA5.js`) unless the org setting `ui_variant_kiosk` is `legacy`
+(then the frozen `app/customer-interface/LegacyKioskPage.js`, the old "Warm-Atelier" skin with its own `kiosk.css`). Approved design:
+`תצוגות-עיצוב/עמדת-לקוח.html`. Nothing was removed from the kiosk: lock / fullscreen / employee-approved unlock and print, model search, filters, Hebrew
+calendar, the model-orders window, the AI assistant and every `kiosk_*` / `hide_dress_images` setting work as before.
+
+- Flow: splash (`kiosk_splash_screen`, default on; `false` skips it; org name from `gmach_name`; while the screen is locked a minute without touch returns to
+  the splash and clears the customer's choices, AI chat and any typed personal details) -> step 1 date -> step 2 model number + size (real sizes from the stock) ->
+  step 3 results (tiles by default; list / table / filter panel / zoom / AI / print / lock live in the results bar).
+- "מילוי פרטים אישיים" (`KioskRegistration.js`, shared component, `mode="station"|"public"`): shown when `kiosk_customer_self_service` is on. Its single send point is
+  `submitRegistration` in `kioskRegistrationApi.js` (POST `/api/public-kiosk/register`, `channel:'kiosk'` for the store kiosk / `'public'` for the public link).
+  Explicit yes / no (no default) for terms and marketing, a required privacy checkbox, Enter moves to the next field (`kioskEnterNav.js`), and "צפייה בתקנון" /
+  "מדיניות פרטיות" open in a window inside the screen (iframe of `/api/public-terms` and `/privacy`), so the locked kiosk is never left.
+- Tests: `node scripts/test_kiosk_logic.mjs`, `node --import ./scripts/business-days-tests/register.mjs scripts/test_kiosk_model_search.mjs`.
+
