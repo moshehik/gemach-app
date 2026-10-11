@@ -19,7 +19,7 @@ const walk = (dir) => readdirSync(new URL(`../${dir}`, import.meta.url)).flatMap
 });
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-const NEW_DIRS = ['app/components/a5-list', 'app/components/a5-print', 'app/components/dress-card', 'app/components/employees-list', 'app/components/models-list'];
+const NEW_DIRS = ['app/components/a5-list', 'app/components/a5-print', 'app/components/dress-card', 'app/components/employees-list', 'app/components/models-list', 'app/components/email-logs', 'app/components/departments'];
 const NEW_FILES = [...NEW_DIRS.flatMap(walk), ...walk('app/components/dress-new').filter((f) => !/LegacyNewDressPage/.test(f))].filter((f) => /\.js$/.test(f));
 
 console.log('אין חלונות מערכת בדפדפן');
