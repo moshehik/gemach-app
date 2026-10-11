@@ -36,7 +36,9 @@ const { REPORT_DATA, REPORT_COLS } = await import(pathToFileURL(path.join(SPDIR,
 const { T } = await import(pathToFileURL(path.join(SPDIR, `suites/${suiteName}.mjs`)).href);
 
 // מנהל (תפקיד 1/2) ועובד רגיל - נבחרים אוטומטית מהמסד
-const mgr = (await prisma.employee.findFirst({ where: { roleId: { in: [1, 2] } }, select: { id: true } }))?.id;
+// תפקיד 2 (הנהלה) קודם: תפקיד 1 אינו מחזיק feature:ai כברירת מחדל, ואז כל הבקשות מחזירות 403
+const mgr = (await prisma.employee.findFirst({ where: { roleId: 2 }, select: { id: true } }))?.id
+  || (await prisma.employee.findFirst({ where: { roleId: { in: [1, 2] } }, select: { id: true } }))?.id;
 const std = (await prisma.employee.findFirst({ where: { roleId: { notIn: [0, 1, 2] } }, select: { id: true } }))?.id || mgr;
 
 async function call(t) {

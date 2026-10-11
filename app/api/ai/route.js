@@ -28,6 +28,7 @@ import {
   finalizeAiText,
   validateSettingTags,
   validateLinkTags,
+  extractSqlQueries,
   buildUserDateHints,
   rowCountFacts,
   resultsHaveData,
@@ -39,6 +40,8 @@ import {
 import { downloadRecording } from '../../../lib/driveBridgeServer';
 import { getFeatureRestrictionConfig, buildRestrictionPromptBlock, isRestrictionEnabled } from '../../../lib/ai/restrictionsConfig';
 import { detectBarcodePrompt, answerBarcode } from '../../../lib/ai/barcodeLookup';
+import { createNameSession, runSqlWithSmartNames, buildNameHint } from '../../../lib/ai/smartNames';
+import { findFuzzyNameSpellings, findKnownNameWords } from '../../../lib/searchDb';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
@@ -227,11 +230,15 @@ The system will then give you a catalog of common operational actions (title, sh
     const sharedRules = buildSharedSqlRules({ draftStatus: DRAFT_ORDER_STATUS, reservedStatus: RESERVED_ORDER_STATUS });
     const userDateHints = buildUserDateHints([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), prompt].join('\n'));
 
+    // איות חכם לשמות (lib/ai/smartNames.js): שמות לקוחות שמופיעים בשאלה מזוהים מול המסד ונכנסים לפרומפט כעובדה; אותו סשן מרחיב אחר כך את תנאי השם ב-SQL.
+    const nameSession = createNameSession({ lookup: (table, word) => findFuzzyNameSpellings(word, { table }) });
+    const nameHint = await buildNameHint(prompt, { session: nameSession, probe: (words) => findKnownNameWords(words) });
+
     const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${mainChatRestrictionBlock}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${userDateHints}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${mainChatRestrictionBlock}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${userDateHints}${nameHint}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -241,6 +248,7 @@ The system will then give you a catalog of common operational actions (title, sh
     
     let tableData = null;
     let sqlQueryToReturn = null;
+    let nameNotice = ''; // שורת איות חכם שהשרת כותב בראש התשובה (lib/ai/smartNames.js)
 
     // Check for the settings-guide action (see settingsGuideInstructions above) -
     // only ever requested when isManager is true, but re-checked here defensively
@@ -496,23 +504,38 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
         queries.push(q.trim());
       }
 
+      // שם לקוח מופיע בשאלה אבל ה-SQL שהמודל כתב בלי אף תנאי שם (בבדיקה: "יש שיינועטר שלקחו שמלות?" נענתה על כל הלקוחות) - תיקון אחד בלבד
+      if (queries.length > 0 && nameSession.droppedNameFilter(queries)) {
+        try {
+          const fixed = extractSqlQueries(await generateContent(`${initialPrompt}\n\nYOUR PREVIOUS ANSWER WAS REJECTED BY THE SERVER:\n${queries.join('\n')}\nThe user's message contains the customer name(s) ${nameSession.flagged().map((w) => `"${w}"`).join(', ')}, but this SQL has no customer-name filter at all, so it answers about ALL customers. Output the corrected SQL (each query starting with "SQL: ") that filters by the customer name as a first/last-name condition (rule S4). If the word is clearly not a person's name, output the same SQL again.`));
+          if (fixed.length > 0) queries.splice(0, queries.length, ...fixed);
+        } catch (nameFixErr) {
+          console.error('AI name-filter correction failed, keeping the original SQL:', nameFixErr);
+        }
+      }
+
       if (queries.length > 0) {
         let combinedResults = [];
         let dbErrorStr = null;
 
-        try {
-          for (let i = 0; i < queries.length; i++) {
-            queries[i] = normalizeAiSql(processHebrewDateMacro(queries[i]));
-            console.log(`AI generated SQL query ${i + 1}:`, queries[i]);
-            try {
-              assertReadOnlySelect(queries[i]);
-            } catch (guardErr) {
-              console.error('SQL Guard rejected AI-generated query:', guardErr.message, '\nRejected SQL:', queries[i]);
-              throw guardErr;
-            }
-            const res = stripSecretColumns(await prisma.$queryRawUnsafe(queries[i]));
-            combinedResults.push(res);
+        // תנאי שם שהמודל כתב מורחבים בקוד לאיותים הקרובים שבמסד (nameSession, אותה לוגיקה של חיפוש דף הבית), בלי קריאת Gemini נוספת.
+        // על ה-SQL המורחב רצות אותן הגנות (assertReadOnlySelect + stripSecretColumns).
+        const executeAiQuery = async (sql, label) => {
+          console.log(`AI generated ${label}:`, sql);
+          try {
+            assertReadOnlySelect(sql);
+          } catch (guardErr) {
+            console.error(`SQL Guard rejected AI-generated ${label}:`, guardErr.message, '\nRejected SQL:', sql);
+            throw guardErr;
           }
+          return stripSecretColumns(await prisma.$queryRawUnsafe(sql));
+        };
+
+        try {
+          for (let i = 0; i < queries.length; i++) queries[i] = normalizeAiSql(processHebrewDateMacro(queries[i]));
+          const ran = await runSqlWithSmartNames(queries, { execute: (sql) => executeAiQuery(sql, 'query'), session: nameSession });
+          combinedResults = ran.results;
+          queries.splice(0, queries.length, ...ran.queries);
         } catch (dbError) {
           console.error('AI DB Query Error attempt 1:', dbError.message);
           dbErrorStr = dbError.message;
@@ -533,20 +556,10 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
 
           if (retryQueries.length > 0) {
             try {
-              combinedResults = [];
-              for (let i = 0; i < retryQueries.length; i++) {
-                retryQueries[i] = normalizeAiSql(processHebrewDateMacro(retryQueries[i]));
-                console.log(`AI generated Retry SQL query ${i + 1}:`, retryQueries[i]);
-                try {
-                  assertReadOnlySelect(retryQueries[i]);
-                } catch (guardErr) {
-                  console.error('SQL Guard rejected AI-generated retry query:', guardErr.message, '\nRejected SQL:', retryQueries[i]);
-                  throw guardErr;
-                }
-                const res = stripSecretColumns(await prisma.$queryRawUnsafe(retryQueries[i]));
-                combinedResults.push(res);
-              }
-              queries.splice(0, queries.length, ...retryQueries);
+              for (let i = 0; i < retryQueries.length; i++) retryQueries[i] = normalizeAiSql(processHebrewDateMacro(retryQueries[i]));
+              const ran = await runSqlWithSmartNames(retryQueries, { execute: (sql) => executeAiQuery(sql, 'retry query'), session: nameSession });
+              combinedResults = ran.results;
+              queries.splice(0, queries.length, ...ran.queries);
               dbErrorStr = null;
             } catch (retryErr) {
               console.error('AI DB Query Error attempt 2:', retryErr.message);
@@ -559,7 +572,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
            aiResponse = "מצטער, נתקלתי בשגיאה בעת שליפת הנתונים מהמסד (שגיאת תחביר שאילתה). אנא נסה לנסח את השאלה אחרת.";
         } else {
           // In the UI, we show the LAST successful query's results as the tableData
-          tableData = combinedResults[combinedResults.length - 1];
+          tableData = nameSession.annotateRows(combinedResults[combinedResults.length - 1]);
           sqlQueryToReturn = queries.join('\\n');
 
           const followupPrompt = `The user asked: "${prompt}".
@@ -581,7 +594,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 8. Today's date/time and the calendar are given below - use them if you need to mention today. Never invent a date pair.
 9. ROW COUNTS (facts computed by the server): ${rowCountFacts(combinedResults)}. The SQL already applied the user's filters, so every returned row matches the request - if rows came back never say nothing was found.
 Summarize the information nicely as a helpful customer service representative. For example, instead of listing all items, say "יש לנו 5 שמלות מדגם זה במידות 38-42".
-${dateContext}${userDateHints}`;
+${nameSession.facts({ rowsEmpty: !resultsHaveData(combinedResults) })}${dateContext}${userDateHints}`;
           
           aiResponse = await generateContent(followupPrompt);
           // תשובה שסותרת את הנתונים ("לא נמצאו" כשחזרו שורות): ניסיון חוזר אחד עם אזהרה, ואז תשובה מהנתונים עצמם
@@ -594,6 +607,7 @@ WARNING: your previous answer claimed nothing was found, but the database DID re
               aiResponse = Array.isArray(last) && last.length > 1 ? `נמצאו ${last.length} רשומות התואמות לחיפוש. הרשימה המלאה מוצגת בטבלה.` : 'נמצאו נתונים התואמים לחיפוש. הם מוצגים בטבלה.';
             }
           }
+          nameNotice = nameSession.notice({ rowsEmpty: !resultsHaveData(combinedResults) });
         }
       }
     }
@@ -605,7 +619,7 @@ WARNING: your previous answer claimed nothing was found, but the database DID re
       loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
       loadHowToCatalog: async () => buildHowToGuide(),
     });
-    return NextResponse.json({ response: finalText, data: safeData, sqlQuery: sqlQueryToReturn });
+    return NextResponse.json({ response: nameNotice ? `${nameNotice}\n${finalText}` : finalText, data: safeData, sqlQuery: sqlQueryToReturn });
   } catch (error) {
     console.error('API Route Error:', error);
     return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 });
