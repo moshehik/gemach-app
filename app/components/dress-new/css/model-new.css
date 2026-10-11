@@ -1,0 +1,224 @@
+/* אשף "דגם חדש" (A5) - CSS מקומי לדף, בהיקף .gm-ds.gm-mn בלבד (לא נוגע ב-design-system/ ולא בשום דף אחר).
+   מקור: העיצוב המאושר תצוגות-עיצוב/עובדים-ודגמים/model-new.html (scratch/emp-models-build/model-new.css) - הכללים הועתקו 1:1 והוגדרו בהיקף:
+   ".mn-app X" -> ".gm-ds.gm-mn .mn-app X", "body .app.mn-app X" -> ".gm-ds.gm-mn .app.mn-app X", ".rail X" -> ".gm-ds.gm-mn .rail X". רכיבי הפלטה (כרטיס, שדה,
+   .seg.pill, .cb, .hrow, .glance, .cart, .dlg ...) באים מ-design-system/components.css. גופן שאלת השלב: ../new-order/css/new-order-font.css (FB Melatef, כמו ההזמנה החדשה).
+   שורש הדף .gm-ds.gm-mn.home-bg.dlg-dark - בלי .gm-home (העור של דף הבית דורס לחצנים/שדות). נטרולי הדליפה של ה-CSS הגלובלי (globals.css / design-overrides.css /
+   app/design-system.css) מסומנים "דליפה" - אותם נטרולים כמו הזמנה חדשה (new-order.css) וכרטיס הזמנה (oc-base.css). */
+
+/* ===== גוף הדף + נטרולי דליפה ===== */
+/* דליפה: design-overrides.css כופה Assistant/Frank Ruhl ב-!important על לחצנים, שדות וכותרות - הפלטה היא Rubik */
+.gm-ds.gm-mn *{font-family:var(--gm-font)}
+.gm-ds.gm-mn :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-mn :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+.gm-ds.gm-mn [hidden]:not([hidden=until-found i]){display:none!important}
+/* מלא-רוחב: המעטפת עוטפת כל דף ב-.app-shell .main .content עם padding ו-max-width; בעיצוב הרווחים באים מ-.app של הפלטה */
+.app-shell .main .content:has(> .gm-ds.gm-mn){max-width:none;margin-inline:0;padding:0}
+/* דליפה: app/design-system.css .topbar (sticky + רקע + blur + קו) - בעיצוב שקוף, יחסי ובלי ריפוד */
+.gm-ds.gm-mn .mn-app .topbar{position:relative;top:auto;z-index:auto;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.gm-ds.gm-mn .mn-app .ttl h1{color:var(--gm-navy-900);letter-spacing:-.3px}
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצני הכותרת / הרייל בעיצוב נושאים את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-mn .back{padding:1px 6px}
+.gm-ds.gm-mn .ibtn{padding:1px 6px}
+.gm-ds.gm-mn .rail :is(.cl-u,.redo){padding:1px 6px}
+/* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בא מ-gap של הרשת */
+.gm-ds.gm-mn .field{margin-bottom:0}
+/* דליפה: app/design-system.css .main{order:1;display:flex} - בתוך .layout העמודה הראשית נשארת ראשונה, כבלוק רגיל */
+.gm-ds.gm-mn .layout>.main{order:0;display:block;flex:none}
+/* דליפה: design-overrides.css input:not(...) צובע טקסט בחום וגבול בבז' - .inp.inp מחזיר את ערכי הפלטה */
+.gm-ds.gm-mn .mn-app .inp.inp{color:var(--gm-ink)}
+.gm-ds.gm-mn .mn-app .inp.inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-mn .mn-app .inp.inp:focus{border-color:var(--gm-brand)}
+/* דליפה: הכרטיס - בעיצוב הגרדיאנט "פנינה" (pearl-faces) ולא זכוכית 30% של הפלטה - אותם ערכים כמו כרטיס הזמנה / הזמנה חדשה */
+.gm-ds.gm-mn .app :is(.card,.stepper,.itm,.scan,.coll[open],.leg,.dhero){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+/* דליפה: globals.css div:has(> table) - לא רלוונטי כאן (אין טבלאות) */
+/* דליפה: מתג הפעלה - ה-input מוסתר אך globals/design-overrides נותנים לו רקע לבן */
+.gm-ds.gm-mn .sw input{background:transparent}
+/* שאלת השלב בגופן הכותרת של העיצוב (הכלל של h1-h6 למעלה מכריח inherit עם !important) */
+.gm-ds.gm-mn .hero-t .hero-q{font-family:'FB Melatef','Suez One',serif!important}
+.gm-ds.gm-mn .mn-portal{position:static}
+/* PageVariantToggle (רק להנהלה ראשית / מתכנת): בקצה הנגדי של שורת הכותרת, מחוץ לזרימה - כך שהכותרת והפסים נשארים בדיוק כמו בעיצוב (שאין בו את האייקון) */
+.gm-ds.gm-mn .mn-app .topbar{position:relative}
+.gm-ds.gm-mn .mn-app .topbar > .tools{position:absolute;inset-inline-start:auto;inset-inline-end:0;top:50%;translate:0 -50%;display:flex;align-items:center}
+
+/* ---- progress stripes (4 steps) ---- */
+.gm-ds.gm-mn .mn-app .pbars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:start;margin-top:22px}
+.gm-ds.gm-mn .mn-app .pb{display:flex;flex-direction:column;gap:8px;min-width:0}
+.gm-ds.gm-mn .mn-app .pb[data-go]{cursor:pointer}
+.gm-ds.gm-mn .mn-app .pb[data-go]:focus-visible{outline:3px solid var(--gold);outline-offset:4px;border-radius:8px}
+.gm-ds.gm-mn .mn-app .pb-bar{height:8px;border-radius:999px;background:var(--sky-300);overflow:hidden;position:relative}
+.gm-ds.gm-mn .mn-app .pb-bar i{position:absolute;inset-block:0;inset-inline-start:0;width:0;border-radius:999px;background:var(--brand);transition:width .45s cubic-bezier(.22,1,.36,1)}
+.gm-ds.gm-mn .mn-app .pb.done .pb-bar i{width:100%}
+.gm-ds.gm-mn .mn-app .pb.cur .pb-bar i{width:100%;background:var(--gbtn)}
+.gm-ds.gm-mn .mn-app .pb[data-go]:not(.cur):hover .pb-bar{background:var(--sky-200)}
+.gm-ds.gm-mn .mn-app .pb-d{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:6px 8px;text-align:start;color:var(--ink);font:inherit}
+.gm-ds.gm-mn .mn-app .pb[data-go]:hover .pb-t b,.gm-ds.gm-mn .mn-app .pb[data-go]:focus-visible .pb-t b{text-decoration:underline}
+.gm-ds.gm-mn .mn-app .pb-d .ic{color:var(--brand);margin-top:2px;flex:none}
+.gm-ds.gm-mn .mn-app .pb-t{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.gm-ds.gm-mn .mn-app .pb-t b{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-mn .mn-app .pb-d.ph{min-height:0;padding:0;pointer-events:none}
+@media (max-width:520px){.gm-ds.gm-mn .mn-app .pbars{gap:6px}.gm-ds.gm-mn .mn-app .pb-d{padding:4px}.gm-ds.gm-mn .mn-app .pb-d .ic{display:none}.gm-ds.gm-mn .mn-app .pb-t b{font-size:13px}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-mn .mn-app .pb-bar i{transition:none}}
+
+/* ---- step question (site headline face) ---- */
+.gm-ds.gm-mn .mn-app .hero-q{margin:0;font-family:'FB Melatef','Suez One',serif;font-size:84px;font-weight:700;line-height:1;color:var(--navy-900)}
+@media (max-width:520px){.gm-ds.gm-mn .mn-app .hero-q{font-size:64px}}
+.gm-ds.gm-mn .mn-app .hero-t{margin-bottom:16px}
+/* שאלת השלב ממורכזת עם הילה לבנה - הכלל של דף הבית שהעיצוב מכיל (ב-components.css רק תחת gm-home); כמו בהזמנה החדשה */
+.gm-ds.gm-mn .hero-t{margin-top:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.8);overflow-wrap:anywhere}
+.gm-ds.gm-mn .mn-app .hero-t{margin-bottom:16px}
+
+/* ---- navigation row (above and below the step) ---- */
+.gm-ds.gm-mn .mn-app .mn-nav{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin:0 0 20px}
+.gm-ds.gm-mn .mn-app #navBot .mn-nav{margin:24px 0 0}
+.gm-ds.gm-mn .mn-app .mn-nav .tipw{display:inline-flex}
+.gm-ds.gm-mn .mn-app .mn-nav .mn-gap{flex:1}
+
+/* ---- one flat step card ---- */
+.gm-ds.gm-mn .mn-app .one-body{display:flex;flex-direction:column}
+.gm-ds.gm-mn .mn-app .one-body>.blk+.blk{margin-top:26px;padding-top:26px;border-top:1px dashed var(--line)}
+.gm-ds.gm-mn .mn-app .card.one{padding:28px}
+@media (max-width:640px){.gm-ds.gm-mn .mn-app .card.one{padding:20px 16px}}
+.gm-ds.gm-mn .app.mn-app .one .blk{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;outline:0!important}
+.gm-ds.gm-mn .app.mn-app .one .blk::before,.gm-ds.gm-mn .app.mn-app .one .blk::after{display:none!important}
+.gm-ds.gm-mn .app.mn-app .one .one-body>.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
+.gm-ds.gm-mn .mn-app .one .sub-h{display:flex;align-items:center;gap:10px;margin:0 0 16px}
+.gm-ds.gm-mn .mn-app .one .sub-h h2{margin:0;font-size:17px;font-weight:600;color:var(--ink);flex:1;min-width:0;display:flex;align-items:center;gap:6px}
+.gm-ds.gm-mn .mn-app .one .sub-h .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--sky-100);color:var(--navy)}
+.gm-ds.gm-mn .mn-app .one .sub-h .ico .ic{width:20px;height:20px}
+.gm-ds.gm-mn .mn-app .one .field,.gm-ds.gm-mn .mn-app .one .seg.pill{max-width:440px}
+.gm-ds.gm-mn .mn-app .one .inpw{position:relative;max-width:440px}
+.gm-ds.gm-mn .mn-app .one .lbl.with-ic{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-mn .mn-app .one .lbl.with-ic>.ic{width:18px;height:18px;color:var(--navy-500)}
+.gm-ds.gm-mn .mn-app .one .field+.field{margin-top:0}
+.gm-ds.gm-mn .mn-app .one .inpw>.inpx{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%}
+.gm-ds.gm-mn .mn-app .one .inpw:has(>.inpx)>.inp{padding-inline-end:44px}
+.gm-ds.gm-mn .mn-app .mn-g2{display:grid;grid-template-columns:repeat(2,minmax(0,440px));gap:22px 32px;align-items:start}
+@media (max-width:900px){.gm-ds.gm-mn .mn-app .mn-g2{grid-template-columns:minmax(0,1fr)}}
+.gm-ds.gm-mn .mn-app .mn-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:440px}
+.gm-ds.gm-mn .mn-app .mn-line .inpw{flex:1;min-width:150px}
+.gm-ds.gm-mn .mn-app .field.bad .inp,.gm-ds.gm-mn .mn-app .field.bad .cb-t{border-color:var(--gold-700)}
+/* דליפה: .inp.inp:not(:focus) למעלה (0,5,0) גובר על .field.bad .inp - שדה שגוי שומר על גבול הזהב-כהה של העיצוב */
+.gm-ds.gm-mn .mn-app .field.bad .inp.inp:not(:focus){border-color:var(--gold-700)}
+.gm-ds.gm-mn .mn-app .mn-e{display:flex;align-items:center;gap:6px;min-height:22px;margin-top:6px;color:var(--gold-700);font-weight:600;font-size:14px}
+.gm-ds.gm-mn .mn-app .mn-e:empty{min-height:0;margin:0}
+.gm-ds.gm-mn .mn-app .mn-e .ic{width:16px;height:16px;flex:none}
+.gm-ds.gm-mn .mn-app .req{color:var(--gold-700);margin-inline-start:2px}
+.gm-ds.gm-mn .mn-app .mn-need{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--gold-700);font-weight:600}
+.gm-ds.gm-mn .mn-app .mn-need .ic{width:18px;height:18px;flex:none}
+.gm-ds.gm-mn .mn-app .mn-need:empty{display:none}
+
+/* ---- price category combo / entry date / tips (as in the model card) ---- */
+.gm-ds.gm-mn .mn-app .mn-date{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:440px}
+.gm-ds.gm-mn .mn-app .mn-date .inpw{flex:1;min-width:190px}
+.gm-ds.gm-mn .mn-app .lbl .tip{vertical-align:middle;margin-inline-start:6px}
+
+/* ---- image frame ---- */
+.gm-ds.gm-mn .mn-frame{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:230px;max-width:440px;padding:24px;border-radius:var(--r-sm);text-align:center;color:var(--navy);overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,var(--gold-100) 0%,var(--sky-50) 55%,var(--sky-100) 100%);border:1.5px solid var(--navy);box-shadow:inset 0 0 0 4px rgba(255,255,255,.55),inset 0 0 0 5px var(--gold-300)}
+.gm-ds.gm-mn .mn-frame>.ic{width:72px;height:72px;color:var(--navy);stroke-width:1.4}
+.gm-ds.gm-mn .mn-frame>b{font-size:19px;font-weight:600}
+.gm-ds.gm-mn .mn-frame small{color:var(--ink3);font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-mn .mn-frame img{width:150px;height:187px;object-fit:cover;border-radius:12px;border:2px solid var(--gold-300);box-shadow:0 10px 24px -12px rgba(15,44,82,.55)}
+.gm-ds.gm-mn .mn-frame.has{min-height:0}
+.gm-ds.gm-mn .mn-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
+.gm-ds.gm-mn .mn-swrow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:56px;max-width:440px}
+.gm-ds.gm-mn .mn-swrow>b{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;color:var(--navy-900)}
+.gm-ds.gm-mn .app .mn-swrow .seg.pill{width:240px;max-width:100%;flex:none}
+
+/* ---- stock step ---- */
+.gm-ds.gm-mn .mn-barc{display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600;font-size:18px}
+.gm-ds.gm-mn .mn-barc .ic{color:var(--navy-500)}
+.gm-ds.gm-mn .mn-addrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+.gm-ds.gm-mn .mn-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:150px;padding:20px;border-radius:var(--r-sm);background:var(--sky-100);border:1.5px dashed var(--sky-300);color:var(--navy);text-align:center;max-width:440px}
+.gm-ds.gm-mn .mn-empty .ic{width:44px;height:44px;color:var(--navy-500)}
+.gm-ds.gm-mn .mn-empty b{font-weight:600;font-size:17px}
+.gm-ds.gm-mn .mn-rows .hgrp{max-width:none;margin:0}
+.gm-ds.gm-mn .mn-rows .li{cursor:default;padding:18px 8px}
+.gm-ds.gm-mn .mn-rows .li:hover,.gm-ds.gm-mn .mn-rows .li:focus-visible{background:none}
+.gm-ds.gm-mn .mn-rows .li:hover .t b{color:inherit}
+.gm-ds.gm-mn .mn-rows .li>.ibtn{margin-inline-start:auto;flex:none}
+.gm-ds.gm-mn .mn-rows .hrow.enter{animation:mn-rowin .32s var(--ease) both}
+.gm-ds.gm-mn .mn-rows .hrow{border-bottom:1px solid var(--sky-200)}
+.gm-ds.gm-mn .mn-rows .hrow:last-child{border-bottom:0}
+@keyframes mn-rowin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-mn .mn-rows .hrow.enter{animation:none}}
+/* שורות הפריט (.hrow של הפלטה): שורה שנייה - אייקון + טקסט, כמו ברשימות הדגמים (page.css של העיצוב) */
+.gm-ds.gm-mn .hres .li .t .ln.mi{display:flex;flex-wrap:wrap;align-items:center;gap:4px 20px}
+.gm-ds.gm-mn .ln .lni{display:inline-block}
+.gm-ds.gm-mn .ln .lni bdi{white-space:nowrap}
+.gm-ds.gm-mn .ln .lni .ic{width:15px;height:15px;color:var(--navy-500);flex:none;transition:color .25s;vertical-align:-3px;margin-inline-end:6px}
+.gm-ds.gm-mn .hres .li .t b{font-size:21px;font-weight:600;line-height:1.3}
+.gm-ds.gm-mn .hres .li .t .ln,.gm-ds.gm-mn .hres .li .t .ln .lni,.gm-ds.gm-mn .hres .li .t .ln .lni b{font-size:14px}
+.gm-ds.gm-mn .hres .hgrp{width:100%;max-width:none;margin-inline:0;gap:0}
+.gm-ds.gm-mn .hres .li{align-items:center;gap:16px;padding:28px 12px}
+.gm-ds.gm-mn .hres .li .t{gap:6px}
+.gm-ds.gm-mn .hres .hrow .li{min-height:0}
+.gm-ds.gm-mn .hres .li .ic-b.sq{width:75px;height:48px;padding:0 6px;border-radius:14px}
+.gm-ds.gm-mn .hres .hrow .li{min-height:0}
+@media (max-width:479px){.gm-ds.gm-mn .hres .li{padding:20px 8px}}
+@media (max-width:640px){.gm-ds.gm-mn .hres .li .t .ln.mi{gap:4px 14px}}
+.gm-ds.gm-mn .mn-rows .li{padding:18px 8px}
+
+/* ---- summary step ---- */
+.gm-ds.gm-mn .mn-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;max-width:560px}
+.gm-ds.gm-mn .mn-st{display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 8px;border-radius:var(--r-sm);background:var(--sky-50);border:1px solid var(--sky-200);color:var(--navy);text-align:center}
+.gm-ds.gm-mn .mn-st .ic{width:22px;height:22px;color:var(--navy-500);margin-bottom:4px}
+.gm-ds.gm-mn .mn-st b{font-size:30px;font-weight:700;line-height:1.1;color:var(--navy);font-variant-numeric:tabular-nums}
+.gm-ds.gm-mn .mn-st small{font-size:14px;color:var(--ink3)}
+.gm-ds.gm-mn .mn-app .kv .f .missv{display:inline-flex;align-items:center;gap:4px}
+.gm-ds.gm-mn .mn-app .kv .f b{white-space:pre-wrap;overflow-wrap:anywhere}
+.gm-ds.gm-mn .mn-app .one .status{max-width:560px}
+.gm-ds.gm-mn .mn-app .one .status .t{flex:1;min-width:0}
+.gm-ds.gm-mn .mn-app .one .status .t b{display:flex;align-items:center;gap:6px;font-weight:600}
+.gm-ds.gm-mn .mn-app .one .status .btn{flex:none}
+/* פריטים שנכשלו (אחרי היצירה): שורות הפירוט בתוך אותו .status - הרחבה של העיצוב, ר' docs/a5-staff-models/model-new-notes.md */
+.gm-ds.gm-mn .mn-fail{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--ink2)}
+.gm-ds.gm-mn .mn-fail bdi{font-weight:600;color:var(--navy-900)}
+
+/* ---- dialogs ---- */
+.gm-ds.gm-mn .mn-dlg-val{display:flex;align-items:center;justify-content:center;gap:10px;font-size:20px;font-weight:600;margin:6px 0}
+.gm-ds.gm-mn .mn-dlg-val .ic{color:var(--gold-300)}
+.gm-ds.gm-mn .mn-dlg-dates{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0 4px}
+.gm-ds.gm-mn .mn-dlg-dates .btn{min-height:40px;padding:6px 12px;font-size:14px}
+.gm-ds.gm-mn .mn-spin .ic{animation:mn-spin 1.1s linear infinite}
+@keyframes mn-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-mn .mn-spin .ic{animation:none}}
+/* חלונות כהים: לחצן "ביטול/סגירה" השקוף בתחתית החלון - בעיצוב (:is(#dlg,#dlg2) .btn.ghost) ואינו ב-components.css (כמו oc-base.css / new-order.css) */
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2){position:relative;background:transparent;border:0;box-shadow:none;color:var(--k-ghost);font-weight:600;min-height:44px!important;width:auto;align-self:center;padding:8px 18px;text-decoration:none;transform:none}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:active,:focus-visible){background:transparent;color:var(--k-ghost);box-shadow:none;transform:none;text-decoration:none}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::before{content:none;display:none}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::after{inset-inline:18px;bottom:6px;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat,linear-gradient(90deg,#e0bf5a,#c9a227,#f1dc8f);background-size:45% 100%,100% 100%;background-position:-130% 0,0 0}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2) svg{color:var(--k-ghost)!important;stroke:var(--k-ghost)!important}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:focus-visible) .ic{transform:translateX(3px)}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gm-gold);outline-offset:2px;box-shadow:none}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .inp.inp{border-radius:14px}
+.gm-ds.gm-mn :is(#dlg,#dlg2) .inp:focus{outline:0}
+.gm-ds.gm-mn .dlg .lbl.with-ic{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-mn .dlg .lbl.with-ic>.ic{width:18px;height:18px}
+.gm-ds.gm-mn .dlg .inpw{position:relative}
+.gm-ds.gm-mn .dlg .inpw>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;pointer-events:none;z-index:1}
+.gm-ds.gm-mn .dlg .inpw:has(>.ic)>.inp{padding-inline-start:44px}
+.gm-ds.gm-mn #toast.error,.gm-ds.gm-mn #toast.warn{border-color:var(--gm-rose-500)}
+.gm-ds.gm-mn #toast.error .tb,.gm-ds.gm-mn #toast.warn .tb{background:var(--gm-rose-300);color:var(--gm-navy-900)}
+
+/* ---- rail: summary tiles + items cart ---- */
+.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled,.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled:hover{background:rgba(255,255,255,.1)!important;background-image:none!important;color:#9fb7d3!important;border:1.5px solid rgba(255,255,255,.28)!important;box-shadow:none!important;transform:none!important;cursor:not-allowed}
+.gm-ds.gm-mn .rail .cart-actions .btn.primary:disabled .ic{color:#9fb7d3!important;stroke:#9fb7d3!important}
+.gm-ds.gm-mn .rail .gl .gv bdi{unicode-bidi:isolate}
+.gm-ds.gm-mn .rail .gl.mn0{opacity:.55}
+.gm-ds.gm-mn .rail .cl .cl-t small{display:block}
+@media (max-width:1023px){
+  .gm-ds.gm-mn .mn-app{padding-bottom:380px}
+  .gm-ds.gm-mn .glance{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .gm-ds.gm-mn .glance .gl{padding:6px 8px;gap:6px;font-size:14px;min-height:40px}
+  .gm-ds.gm-mn .glance .gl .ic{width:18px;height:18px}
+  .gm-ds.gm-mn .glance .gl.loc{display:none}
+}
+@media (max-width:480px){
+  .gm-ds.gm-mn .glance .gl{flex-direction:column;justify-content:center;text-align:center;gap:2px;padding:6px 4px;font-size:13px;min-height:52px}
+  .gm-ds.gm-mn .glance .gl .gv{white-space:normal;line-height:1.2}
+}
+
+/* ---- טעינה / הרשאה ---- */
+.gm-ds.gm-mn .mn-loading{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--gm-ink2)}
+.gm-ds.gm-mn .mn-banner{margin-top:24px}
