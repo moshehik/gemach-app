@@ -50,7 +50,8 @@ function MiniProgress({ ctl, activeN }) {
       {ctl.steps.map((s, i) => {
         const n = i + 1;
         const open = n === 1 || ctl.step1Ok;
-        const state = n < activeN ? 'done' : n === activeN ? 'cur' : 'fut';
+        const filled = [ctl.step1Ok, ctl.step1Ok && !!(S.d.img || String(S.d.notes || '').trim()), S.items.length > 0, false][i];
+        const state = n === activeN ? 'cur' : filled ? 'done' : 'fut';
         const cap = caption(n, s);
         const go = () => ctl.go(n);
         return (

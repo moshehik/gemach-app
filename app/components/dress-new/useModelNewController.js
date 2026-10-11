@@ -198,6 +198,7 @@ export default function useModelNewController({ router }) {
     const ok = await ask('discard');
     if (!ok) return;
     await reset();
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); // אחרי האיפוס המקטעים 2-4 נעולים - חוזרים לראש הטופס
     say('info', 'הטופס אופס', '');
   }, [ask, reset, say]);
 
@@ -208,7 +209,8 @@ export default function useModelNewController({ router }) {
 
   // ---------- שלב 1 ----------
   const setField = useCallback((p) => upd((prev) => ({ d: { ...prev.d, ...p }, ...(p.name !== undefined && prev.nameErr ? { nameErr: '' } : {}) })), [upd]);
-  const onCode = useCallback((v) => setField({ code: L.sanitizeCode(v, codeLen) }), [setField, codeLen]);
+  // שינוי קוד מנקה גם הודעת "שם כפול" שנגזרה ממנו (כש-useModelNames=false אין שדה שם שינקה אותה)
+  const onCode = useCallback((v) => { setField({ code: L.sanitizeCode(v, codeLen) }); upd((prev) => (prev.nameErr ? { nameErr: '' } : null)); }, [setField, codeLen, upd]);
   const touch = useCallback((k) => upd((prev) => ({ touched: { ...prev.touched, [k]: 1 } })), [upd]);
   const autoCode = useCallback(async () => {
     try {
@@ -292,7 +294,12 @@ export default function useModelNewController({ router }) {
         if (e.duplicate) setTakenMap((p) => ({ ...p, [String(cur.d.code).trim()]: true }));
         // שם דגם שכבר קיים (400, field:'name'): ההודעה ליד שדה השם (או ליד הקוד כשהשם אוטומטי) והמיקוד בו
         upd({ busy: false, touched: { ...Sref.current.touched, code: 1, ...(e.nameDuplicate ? { name: 1 } : {}) }, ...(e.nameDuplicate ? { nameErr: e.msg } : {}) });
-        if (e.nameDuplicate && typeof document !== 'undefined') setTimeout(() => { const i = document.getElementById('mnName'); if (i) i.focus(); }, 60);
+        // קוד תפוס / שם כפול: המקטעים 2-4 ננעלים - חוזרים למקטע הזיהוי וממקדים את השדה הבעייתי (הטוסט נעלם, וההודעה האדומה יושבת שם)
+        if ((e.duplicate || e.nameDuplicate) && typeof document !== 'undefined') {
+          const first = document.getElementById('mn-sec-1');
+          if (first) first.scrollIntoView({ behavior: 'auto', block: 'start' });
+          setTimeout(() => { const i = document.getElementById(e.nameDuplicate && useModelNames ? 'mnName' : 'mnCode'); if (i) i.focus({ preventScroll: true }); }, 60);
+        }
         say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : e.nameDuplicate ? 'שם הדגם כבר קיים' : 'יצירת הדגם נכשלה', e.msg);
         return;
       }
@@ -328,6 +335,16 @@ export default function useModelNewController({ router }) {
       say('warn', 'שגיאה בתקשורת עם השרת', '');
     }
   }, [head, step1Ok, missing, touchAll, upd, say, showBusy, useModelNames, locations, goCard]);
+
+  // הגנת יציאה (כמו "הזמנה חדשה"): PageVariantToggle שואל על window.__gmDirty, ורענון / סגירת לשונית מזהירים כשהוזנו פרטים ועוד לא נוצר דגם
+  const dirtyRef = useRef(false);
+  useEffect(() => { dirtyRef.current = !!dirty && !S.saved; }, [dirty, S.saved]);
+  useEffect(() => {
+    window.__gmDirty = () => dirtyRef.current;
+    const warn = (e) => { if (dirtyRef.current) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => { window.__gmDirty = false; window.removeEventListener('beforeunload', warn); };
+  }, []);
 
   // ---------- מקלדת: Escape סוגר חלון (לא בזמן יצירה) / רשימת הקטגוריות ----------
   useEffect(() => {
