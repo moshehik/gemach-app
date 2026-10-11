@@ -40,7 +40,6 @@
 .gm-ds.gm-home.stock-page .empty .stock-empty-t { font-size: 19px; margin-top: 8px; color: var(--gm-ink); }
 .gm-ds.gm-home.stock-page .empty .stock-empty-s { margin-top: 6px; }
 .gm-ds.gm-home.stock-page .empty .stock-retry { margin-top: 16px; }
-.gm-ds.gm-home.stock-page .res-one > .stock-sum { margin: 0; padding: 0 4px 10px; }
 .gm-ds.gm-home.stock-page .res-one > .stock-warn { margin: 0; padding: 0 4px 10px; }
 
 /* ציר המידות של "בדיקה גמישה": המידה במרכז, שתי מידות מעלה ומטה מסומנות בזהב כשהגמישות פעילה, שתי הקצוות מעומעמות (לא נבדקות). */
@@ -67,7 +66,8 @@
 .gm-ds.gm-home.stock-page .hero-in.jshell .res-one > .card-h { border-top: 0; }
 
 /* כותרת הטופס: אייקון + שם הדף באותה שורה בצד ימין, והלחצנים (בדיקה / נקה) בצד שמאל - בלי שורה נפרדת לכותרת */
-.gm-ds.gm-home.stock-page .advp > .card-h { flex-wrap: nowrap; margin-bottom: 10px; }
+.gm-ds.gm-home.stock-page .advp > .card-h { flex-wrap: nowrap; }
+.gm-ds.gm-home.stock-page #stock-form > .card-h { margin-bottom: 10px; }
 .gm-ds.gm-home.stock-page .advp > .card-h h2 { order: 0; flex: 1 1 auto; min-width: 0; }
 @media (max-width: 480px) {
   .gm-ds.gm-home.stock-page .advp > .card-h { flex-wrap: wrap; }

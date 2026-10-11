@@ -314,6 +314,26 @@ export default function StockCheckPage() {
     try { sessionStorage.removeItem(STOCK_CHECK_STORE_KEY); } catch { /* ignore */ }
     focusField('model');
   };
+  const goEdit = () => {
+    const f = document.getElementById('stock-form');
+    if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    focusField('model');
+  };
+  // כותרת הכרטיס של התוצאות - כמו תוצאות החיפוש המתקדם בבית: אייקון + "עדכן" / "נקה" בשורה אחת, ומתחתיה כותרת הסיכום (advsum)
+  const resHead = (count) => (
+    <>
+      <div className="card-h">
+        <span className="advs-i" aria-hidden="true"><Ic id="box" /></span>
+        <button type="button" className="ibtn" data-act="adv-update" aria-label="עדכן בדיקה" onClick={goEdit}><Ic id="sliders" size="sm" /><span>עדכן בדיקה</span></button>
+        <button type="button" className="ibtn" data-act="adv-reopen-clear" aria-label="נקה" onClick={clearAll}><Ic id="eraser" size="sm" /><span>נקה</span></button>
+      </div>
+      <div className="advsum">
+        <b id="stock-rc">תוצאות בדיקת מלאי <bdi>({count})</bdi></b>
+        <span>{summary}{res && res.truncated ? ' · מוצגות 200 הראשונות' : ''}</span>
+      </div>
+      {res && res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
+    </>
+  );
   const addFromInput = () => {
     if (sizeIn.trim()) { setSizes((cur) => addSizes(cur, sizeIn)); setSizeIn(''); setInvalid(null); }
     focusField('size');
@@ -471,8 +491,8 @@ export default function StockCheckPage() {
         </div>
       </div>
 
-      <div className="hero-in jshell" id="stock-res" ref={resRef}>
-        <div className="card res-one" aria-live="polite">
+      <div className="hero-in jshell advonly" id="stock-res" ref={resRef}>
+        <div className="card res-one advp" aria-live="polite">
           {phase === 'idle' && (
             <>
               <div className="card-h"><h2>תוצאות</h2></div>
@@ -504,9 +524,7 @@ export default function StockCheckPage() {
           )}
           {phase === 'none' && (
             <>
-              <div className="card-h"><h2>תוצאות <span className="faint">(0)</span></h2></div>
-              <div className="pg-sub stock-sum">{summary}</div>
-              {res && res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
+              {resHead(0)}
               <div className="empty" role="status">
                 <Ic id="search" size="lg" />
                 <div>אין תוצאות לחיפוש הזה</div>
@@ -516,12 +534,10 @@ export default function StockCheckPage() {
           )}
           {phase === 'results' && res && (
             <>
-              <div className="card-h">
-                <h2>תוצאות <span className="faint">({results.length})</span></h2>
+              {resHead(results.length)}
+              <div className="xlrow xlrow2">
                 <ViewSwitch table={view === 'table'} onChange={(t) => { const v = t ? 'table' : 'rows'; setView(v); persist({ date, model, sizes, view: v, res }); }} />
               </div>
-              <div className="pg-sub stock-sum">{summary}{res.truncated ? ' · מוצגות 200 הראשונות' : ''}</div>
-              {res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
               {view === 'table' ? (
                 <ResultsTable
                   columns={columns}
