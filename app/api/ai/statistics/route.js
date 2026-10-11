@@ -31,6 +31,8 @@ import {
   finalizeTagsAndText,
 } from '../../../../lib/ai/aiCommon';
 import { getFeatureRestrictionConfig, buildRestrictionPromptBlock, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
+import { createNameSession, runSqlWithSmartNames, buildNameHint } from '../../../../lib/ai/smartNames';
+import { findFuzzyNameSpellings, findKnownNameWords } from '../../../../lib/searchDb';
 
 // עוזר הסטטיסטיקה (StatisticsModal). עד 2026-09-20 קיבל סכימה חלקית (SCHEMA_MAP) בלי שדות כמו
 // isDelivery / zeout / takenDate, דרש שהתשובה תתחיל ב-"SQL:" (אחרת הציג את השאילתה הגולמית
@@ -90,9 +92,14 @@ export async function POST(req) {
     const userDateHints = buildUserDateHints([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), prompt].join('\n'));
     const sharedRules = buildSharedSqlRules({ draftStatus: DRAFT_ORDER_STATUS, reservedStatus: RESERVED_ORDER_STATUS });
 
-    const initialPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${statsRestrictionBlock}${dateContext}${userDateHints}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History (the user's latest message may dispute or refine the previous answer - re-check the data instead of apologizing or asking permission):\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    // איות חכם לשמות (lib/ai/smartNames.js) - אותו מנגנון של הצ'אט הצף
+    const nameSession = createNameSession({ lookup: (table, word) => findFuzzyNameSpellings(word, { table }) });
+    const nameHint = await buildNameHint(prompt, { session: nameSession, probe: (words) => findKnownNameWords(words) });
+
+    const initialPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${statsRestrictionBlock}${dateContext}${userDateHints}${nameHint}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History (the user's latest message may dispute or refine the previous answer - re-check the data instead of apologizing or asking permission):\n${historyText}\n\nCurrent User Question: ${prompt}`;
     let aiResponse = await generateContent(initialPrompt);
     let tableRows = null;
+    let nameNotice = ''; // שורת איות חכם שהשרת כותב בראש התשובה (lib/ai/smartNames.js)
 
     // --- הדרכות: "איפה ההגדרה" / "איך עושים" (בשימוש אמיתי נשאלו כאן שאלות כאלה והתשובה הייתה ניחוש)
     const wantsSettings = isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse);
@@ -116,25 +123,35 @@ export async function POST(req) {
       // --- שאילתות: מחפשים "SQL:" בכל מקום בתשובה (לא רק בתחילתה)
       let queries = extractSqlQueries(aiResponse).map(q => normalizeAiSql(processHebrewDateMacro(q)));
 
+      // שם לקוח מופיע בשאלה אבל ה-SQL בלי אף תנאי שם - תיקון אחד בלבד (ר' app/api/ai/route.js)
+      if (queries.length > 0 && nameSession.droppedNameFilter(queries)) {
+        try {
+          const fixed = extractSqlQueries(await generateContent(`${initialPrompt}\n\nYOUR PREVIOUS ANSWER WAS REJECTED BY THE SERVER:\n${queries.join('\n')}\nThe user's message contains the customer name(s) ${nameSession.flagged().map((w) => `"${w}"`).join(', ')}, but this SQL has no customer-name filter at all, so it answers about ALL customers. Output the corrected SQL (each query starting with "SQL: ") that filters by the customer name as a first/last-name condition (rule S4). If the word is clearly not a person's name, output the same SQL again.`)).map(q => normalizeAiSql(processHebrewDateMacro(q)));
+          if (fixed.length > 0) queries = fixed;
+        } catch (nameFixErr) {
+          console.error('Statistics name-filter correction failed, keeping the original SQL:', nameFixErr);
+        }
+      }
+
       if (queries.length > 0) {
-        const runAll = async (qs) => {
-          const results = [];
-          for (const q of qs) {
-            try {
-              assertReadOnlySelect(q);
-            } catch (guardErr) {
-              console.error('SQL Guard rejected AI-generated statistics query:', guardErr.message, '\nRejected SQL:', q);
-              throw guardErr;
-            }
-            results.push(stripSecretColumns(await prisma.$queryRawUnsafe(q)));
+        // ההגנות רצות על ה-SQL המורחב (nameSession)
+        const executeOne = async (q) => {
+          try {
+            assertReadOnlySelect(q);
+          } catch (guardErr) {
+            console.error('SQL Guard rejected AI-generated statistics query:', guardErr.message, '\nRejected SQL:', q);
+            throw guardErr;
           }
-          return results;
+          return stripSecretColumns(await prisma.$queryRawUnsafe(q));
         };
+        const runAll = (qs) => runSqlWithSmartNames(qs, { execute: executeOne, session: nameSession });
 
         let combinedResults = null;
         let dbErrorStr = null;
         try {
-          combinedResults = await runAll(queries);
+          const ran = await runAll(queries);
+          combinedResults = ran.results;
+          queries = ran.queries;
         } catch (dbError) {
           dbErrorStr = dbError.message;
           // תיקון עצמי: מחזירים למודל את השגיאה
@@ -143,8 +160,9 @@ export async function POST(req) {
           const retryQueries = extractSqlQueries(retryResponse).map(q => normalizeAiSql(processHebrewDateMacro(q)));
           if (retryQueries.length > 0) {
             try {
-              combinedResults = await runAll(retryQueries);
-              queries = retryQueries;
+              const ran = await runAll(retryQueries);
+              combinedResults = ran.results;
+              queries = ran.queries;
               dbErrorStr = null;
             } catch (retryErr) {
               dbErrorStr = retryErr.message;
@@ -165,7 +183,7 @@ export async function POST(req) {
           // הטבלה שמוצגת למשתמשת: תוצאת השאילתה האחרונה שהיא רשימה (לא ספירה בודדת)
           const lastList = [...safeResults].reverse().find(r => Array.isArray(r) && r.length > 0 && Object.keys(r[0]).length > 0);
           if (lastList && !(lastList.length === 1 && Object.keys(lastList[0]).filter(k => !k.startsWith('_')).length === 1)) {
-            tableRows = lastList.slice(0, MAX_ROWS_FOR_UI);
+            tableRows = nameSession.annotateRows(lastList.slice(0, MAX_ROWS_FOR_UI));
           }
 
           const followupPrompt = `The user asked: "${prompt}".
@@ -183,7 +201,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 4. NEVER show SQL, table/column names or long UUIDs. NEVER write links or file names, and never promise an Excel/PDF/CSV file - you cannot create files.
 5. If the user asked for a list/details and rows were returned, say how many records were found and that the full list is shown in the table below your answer. Do not repeat every row in the text.
 6. If the results are empty, say plainly that no matching records were found and state exactly what was searched (names/dates/model). Do not invent reasons and do not ask the user for permission to search again.
-7. Output ONLY the final answer to the user - no meta text, no "here is a summary".${dateContext}${userDateHints}`;
+7. Output ONLY the final answer to the user - no meta text, no "here is a summary".${nameSession.facts({ rowsEmpty: !resultsHaveData(safeResults) })}${dateContext}${userDateHints}`;
 
           aiResponse = await generateContent(followupPrompt);
 
@@ -197,6 +215,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
             }
           }
           if (tableRows) aiResponse = trimEnumeration(aiResponse);
+          nameNotice = nameSession.notice({ rowsEmpty: !resultsHaveData(safeResults) });
         }
       }
     }
@@ -206,6 +225,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
       loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
       loadHowToCatalog: async () => buildHowToGuide(),
     });
+    if (nameNotice) aiResponse = `${nameNotice}\n${aiResponse}`;
 
     try {
       if (employeeId) {
