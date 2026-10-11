@@ -90,3 +90,21 @@ node scripts/set-ui-variant.js --screen attendance --value legacy --scope user -
 * ברירת המחדל החדשה פירושה שאחרי הפריסה כל מי שאינו מתכנת יראה את הפרופיל, מסך הניהול, הנוכחות וחלון הדיווח **הישנים**
   (מכוון). מי שעבר לחדש באייקון — נשאר בחדש (עקיפה אישית).
 * `/employees/attendance` בגרסה הישנה מפנה ל-`/employees` (בעבר זו הייתה לשונית); הלשונית נפתחת על "רשימת עובדים".
+
+## עובדים ודגמים (9.10.2026, ענף feature/a5-staff-models-2026-10-09)
+
+ארבעה מסכים נרשמו ברשומה: `employees_list` (`/employees`, לשונית "רשימת עובדים"), `models_list` (`/dashboard/dresses`), `model_card` (`/dashboard/dresses/:id`, בלי `/new`) ו-`model_new`
+(`/dashboard/dresses/new`). `newExists:true` רק לשתי הרשימות (נבנו על ערכת הרשימות `app/components/a5-list`); `model_card` / `model_new` נשארים `false` עד שהכרטיס / האשף מחוברים.
+
+| מסך | ישן | חדש |
+|---|---|---|
+| `employees_list` | `app/employees/LegacyEmployeesListPage.js` (= `app/employees/page.js` של main 51eae39f בייט-בבייט) | `EmployeesSwitch` -> `EmployeesListA5` |
+| `models_list` | `app/dashboard/dresses/LegacyDressesListPage.js` (= `page.js` של main 51eae39f בייט-בבייט) | `ModelsListSwitch` -> `ModelsListA5` |
+
+* **/employees הוא נתיב של שני מסכים**: `attendance` (הלשונית הישנה "נוכחות" שבתוך הדף הישן) ו-`employees_list`. כש-`attendance='legacy'` מוצג הדף הישן כולו (כולל הנוכחות הישנה) והדגל `employees_list` לא נבדק;
+  כש-`attendance='a5'` הדגל `employees_list` מכריע (חדש = הרשימה החדשה, שהלשונית "נוכחות" שלה מובילה ל-`/employees/attendance`; ישן = הדף הישן בלי לשונית נוכחות פנימית, עם אייקון המעבר בפינה).
+  כדי שכל הארגון יראה את הרשימה החדשה צריך `ui_variant_attendance='a5'` וגם `ui_variant_employees_list='a5'`.
+* ברירת מחדל לפי תפקיד: מתכנת חדש, כל השאר ישן. לא שונתה אף הגדרה / DB.
+* האייקון: `<PageVariantToggle screen="employees_list|models_list" placement="header" systemTip />` בכותרת הרשימה החדשה, ובפינה בדף הישן (`VariantFrame`).
+* בדיקות: `scripts/test_page_variant_switch.mjs` (הקבצים הישנים ב-`RESTORED`, בלוק "employees_list / models_list"), `scripts/test_a5_list_logic.mjs`, `scripts/test_a5_employees_list.mjs`, `scripts/test_a5_models_list.mjs`.
+* פירוט ההחלטות, מקורות הנתונים וטבלאות הנאמנות: `docs/a5-staff-models/`.

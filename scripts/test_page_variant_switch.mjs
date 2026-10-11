@@ -31,12 +31,16 @@ async function t(name, fn) {
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
 const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
-const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
+// עובדים ודגמים (feature/a5-staff-models-2026-10-09): ארבעה מסכים נרשמו יחד; רק מה שנבנה בפועל (newExists) נספר כ"שתי הגרסאות". model_card / model_new הופכים ל-true כשהחדש מחובר.
+const STAFF_SCREENS = ['employees_list', 'models_list', 'model_card', 'model_new'];
+const STAFF_BUILT = STAFF_SCREENS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
+const STAFF_NOT_YET = STAFF_SCREENS.filter((id) => !STAFF_BUILT.includes(id));
+const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS, ...STAFF_BUILT]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
 
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
   assert.equal(new Set(UI_SCREEN_IDS).size, UI_SCREEN_IDS.length);
-  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS]);
+  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS, ...STAFF_SCREENS]);
   for (const e of UI_SCREEN_REGISTRY) {
     assert.match(e.id, /^[a-z][a-z_]{1,30}$/, e.id);
     assert.ok(typeof e.label === 'string' && /[֐-׿]/.test(e.label), `${e.id}: label בעברית`);
@@ -51,7 +55,8 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
 });
 await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / order_card / customer_card / new_order (6.10.2026); employee_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['employee_card', ...STAFF_NOT_YET]) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['employees_list', 'models_list']) assert.equal(hasBothVersions(id), true, `${id}: הרשימות החדשות נבנו`);
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -119,6 +124,47 @@ await t('new_order: NewOrderSwitch עוטף ב-VariantFrame (פינה בישן),
   const a5 = code(read('app/components/new-order/NewOrderA5.js'));
   assert.match(a5, /<PageVariantToggle screen="new_order" placement="header" systemTip \/>/);
   assert.ok(!/useCanSelfSwitch|VariantFrame/.test(code(read('app/orders/new/LegacyNewOrderPage.js'))), 'הקובץ הישן נשאר קפוא (אין בו כלום מהמעבר)');
+});
+await t('employees_list / models_list (9.10.2026): נתיבים, ברירת מחדל לפי תפקיד, אייקון רק להנהלה / מתכנת ורק בנתיב שלהם; model_card / model_new לא תופסים את /dashboard/dresses ולא זה את זה', () => {
+  for (const id of ['employees_list', 'models_list']) {
+    const e = getScreenEntry(id);
+    assert.equal(e.newExists, true); assert.equal(e.legacyExists, true); assert.equal(e.selfSwitch, true);
+    for (const roleId of [0, 1, 3, null, undefined]) assert.equal(roleDefaultVariant(id, roleId), 'legacy', `${id} role ${String(roleId)}`);
+    assert.equal(roleDefaultVariant(id, 2), 'a5', id);
+    assert.equal(resolveUiVariant(id, { roleId: 2, settings: rows({ [`ui_variant_${id}`]: 'legacy' }) }), 'legacy', 'הגדרת ארגון גוברת');
+    assert.equal(resolveUiVariant(id, { roleId: 0, settings: rows({ [`ui_variant_${id}`]: 'a5' }) }), 'a5');
+  }
+  assert.equal(screenMatchesPath('employees_list', '/employees'), true);
+  assert.equal(screenMatchesPath('employees_list', '/employees/abc'), false);
+  assert.equal(screenMatchesPath('employees_list', '/employees/attendance'), false);
+  assert.equal(screenMatchesPath('models_list', '/dashboard/dresses'), true);
+  assert.equal(screenMatchesPath('models_list', '/dashboard/dresses/abc'), false);
+  assert.equal(screenMatchesPath('model_card', '/dashboard/dresses/abc'), true);
+  assert.equal(screenMatchesPath('model_card', '/dashboard/dresses/new'), false, 'excludeRoutes');
+  assert.equal(screenMatchesPath('model_card', '/dashboard/dresses'), false);
+  assert.equal(screenMatchesPath('model_new', '/dashboard/dresses/new'), true);
+  assert.equal(screenMatchesPath('model_new', '/dashboard/dresses/abc'), false);
+  for (const roleId of [0, 2]) { assert.ok(canSelfSwitchScreen(roleId, 'employees_list')); assert.ok(canSelfSwitchScreen(roleId, 'models_list')); }
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employees_list', pathname: '/employees' }), true);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employees_list', pathname: '/employees/attendance' }), false);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: false, screen: 'models_list', pathname: '/dashboard/dresses' }), false);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'models_list', pathname: '/dashboard/dresses/abc' }), false);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'model_card', pathname: '/dashboard/dresses/abc' }), getScreenEntry('model_card').newExists);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'model_new', pathname: '/dashboard/dresses/new' }), getScreenEntry('model_new').newExists);
+});
+await t('employees_list / models_list: ה-Switch עוטף ב-VariantFrame; הרשימה החדשה מציגה PageVariantToggle בכותרת; attendance=legacy גובר על employees_list; הקבצים הישנים קפואים', () => {
+  const es = code(read('app/components/employees-list/EmployeesSwitch.js'));
+  assert.match(es, /if \(attendance === 'legacy'\) return <LegacyEmployeesListPage \/>;/);
+  assert.match(es, /return <VariantFrame screen="employees_list" variant="a5"><EmployeesListA5 \/><\/VariantFrame>/);
+  assert.match(code(read('app/components/employees-list/EmployeesListA5.js')), /<PageVariantToggle screen="employees_list" placement="header" systemTip \/>/);
+  const ms = code(read('app/components/models-list/ModelsListSwitch.js'));
+  assert.match(ms, /return <VariantFrame screen="models_list" variant="a5"><ModelsListA5 \/><\/VariantFrame>/);
+  assert.match(code(read('app/components/models-list/ModelsListA5.js')), /<PageVariantToggle screen="models_list" placement="header" systemTip \/>/);
+  assert.match(code(read('app/employees/page.js')), /<EmployeesSwitch \/>/);
+  assert.match(code(read('app/dashboard/dresses/page.js')), /<ModelsListSwitch \/>/);
+  for (const f of ['app/employees/LegacyEmployeesListPage.js', 'app/dashboard/dresses/LegacyDressesListPage.js']) {
+    assert.ok(!/useCanSelfSwitch|employees_list|models_list/.test(code(read(f))), `${f}: הקובץ הישן נשאר קפוא (אין בו כלום מהמעבר)`);
+  }
 });
 await t('matchRoute / switchTargetFor', () => {
   assert.ok(matchRoute('/orders/:id', '/orders/12')); assert.ok(matchRoute('/orders/:id', '/orders/12/?x=1'));
@@ -294,7 +340,9 @@ await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב 
     ['app/admin/page.js', /<VariantFrame screen="admin_hub" variant="legacy">\s*<LegacyAdminPage showSite=\{showSite\} \/>/],
     ['app/my-hours/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyMyHoursPage \/>/],
     ['app/employees/report/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyReportPage \/>/],
-    ['app/employees/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyEmployeesPage \/>/],
+    ['app/employees/LegacyEmployeesListPage.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyEmployeesPage \/>/], // page.js של /employees הועבר לשם (employees_list); ההכרעה של attendance נשארה בו
+    ['app/components/employees-list/EmployeesSwitch.js', /<VariantFrame screen="employees_list" variant="legacy"><LegacyEmployeesListPage \/><\/VariantFrame>/],
+    ['app/components/models-list/ModelsListSwitch.js', /<VariantFrame screen="models_list" variant="legacy"><LegacyDressesListPage \/><\/VariantFrame>/],
     ['app/components/home/HomeSwitch.js', /<VariantFrame screen="home" variant="legacy"><LegacyHome \/><\/VariantFrame>/],
     ['app/board/page.js', /<VariantFrame screen="board" variant=\{variant\}>[\s\S]*<LegacyBoardPage \/>/],
   ];
@@ -393,6 +441,9 @@ const RESTORED = [
   ['f3b1f771^1', 'app/my-hours/page.js', 'app/my-hours/LegacyMyHoursPage.js'],
   ['c944cb95', 'app/components/ErrorReportButton.js', 'app/components/LegacyErrorReportButton.js'],
   ['c944cb95', 'app/board/page.js', 'app/board/LegacyBoardPage.js'], // הלוח החודשי הישן (feature/board-new-design-2026-10-04)
+  ['51eae39f', 'app/dashboard/dresses/[id]/page.js', 'app/dashboard/dresses/[id]/LegacyDressCardPage.js'], // כרטיס הדגם הישן, כמו ש-main (51eae39f) מכיל אותו - הועבר 1:1 (model_card, feature/a5-staff-models-2026-10-09)
+  ['51eae39f', 'app/employees/page.js', 'app/employees/LegacyEmployeesListPage.js'], // רשימת העובדים הישנה (employees_list): page.js של main 51eae39f כפי שהוא (כולל הכרעת attendance של לשונית הנוכחות הישנה)
+  ['51eae39f', 'app/dashboard/dresses/page.js', 'app/dashboard/dresses/LegacyDressesListPage.js'], // רשימת הדגמים הישנה (models_list): page.js של main 51eae39f כפי שהוא
   ['ea579b00', 'app/orders/new/page.js', 'app/orders/new/LegacyNewOrderPage.js'], // אשף "הזמנה חדשה" הישן כפי ש-main מכיל אותו (כולל תיקוני ה-hotfix של lib/newOrderPayments)
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
