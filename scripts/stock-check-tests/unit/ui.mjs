@@ -61,5 +61,9 @@ eq('isPastDate (GQ-06d note only, never blocks)', [ui.isPastDate('2026-10-01', '
 eq('PAST_DATE_NOTE plain Hebrew', /הוחזרו/.test(ui.PAST_DATE_NOTE) && /פנויות/.test(ui.PAST_DATE_NOTE), true);
 eq('sanitizeStoredState: bad res dropped, bad view -> rows', ui.sanitizeStoredState({ model: 'a', res: { foo: 1 }, view: 'cards' }), { date: '', model: 'a', sizes: [], view: 'rows', res: null });
 
+eq('flexAxis on: 12 -> 8,10 | 12 | 14,16', ui.flexAxis('12', true).map((p) => p.label + ':' + p.state), ['8:out', '10:cand', '12:mid', '14:cand', '16:out']);
+eq('flexAxis off: neighbours stay out', ui.flexAxis('12', false).map((p) => p.state), ['out', 'out', 'mid', 'out', 'out']);
+eq('flexAxis size 2 keeps 0, drops negatives', ui.flexAxis('02', true).map((p) => p.label + ':' + p.state), [':none', '0:cand', '02:mid', '4:cand', '6:out']);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -22,7 +22,7 @@ import { useA5Shell } from '../menu/A5ShellContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import {
   STOCK_CHECK_STORE_KEY, FLEX_TIP, isNumericSize, addSizes, toggleFlex, validateForm, buildStockCheckUrl, buildOptionsUrl,
-  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
+  freeChipClass, freeLabel, flexNote, flexAxis, flexCandidatesText, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
 } from '@/lib/stockCheckUi';
 
 const OPT_TTL = 60 * 1000;
@@ -215,6 +215,24 @@ const BranchesText = ({ branches }) => (branches && branches.length
   ? branches.map((b, i) => <span key={b.name || i}>{i ? ' · ' : ''}{b.name} <bdi>{b.free}</bdi></span>)
   : <Dash />);
 const FreeChip = ({ n }) => <span className={`chip ${freeChipClass(n)}`}>{freeLabel(n)}</span>;
+
+// ציר מידות ויזואלי לבדיקה הגמישה: המידה במרכז, שתי מידות מעלה ומטה מסומנות כשהגמישות פעילה (הציר ב-LTR כמו כל מספרי מידה).
+function FlexAxis({ value, on, example }) {
+  const pts = flexAxis(value, on);
+  return (
+    <div className={`fx-row${example ? ' ex' : ''}`}>
+      <div className="fx-h">
+        <b>{example ? 'דוגמה: מידה ' : 'מידה '}<bdi dir="ltr">{value}</bdi></b>
+        <span className="fx-cap">{on ? `נבדקת גם ${flexCandidatesText(value)}` : 'נבדקת בדיוק'}</span>
+      </div>
+      <div className={`fx-ax${on ? ' on' : ''}`} dir="ltr" aria-hidden="true">
+        {pts.map((p) => (
+          <span key={p.d} className={`fx-t ${p.state}`}><i /><b>{p.label}</b></span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function StockCheckPage() {
   const shell = useA5Shell();
@@ -430,10 +448,16 @@ export default function StockCheckPage() {
                     );
                   })}
                 </div>
-                <div className="pg-sub" id="stock-flex-note">{flexNote(sizes)}</div>
+                <div className="fx-list">
+                  {sizes.filter((z) => isNumericSize(z.v)).map((z) => <FlexAxis key={z.v} value={z.v} on={!!z.flex} />)}
+                </div>
+                {!sizes.some((z) => isNumericSize(z.v)) && <div className="pg-sub" id="stock-flex-note">{flexNote(sizes)}</div>}
               </>
             ) : (
-              <div className="pg-sub">{flexNote([])}</div>
+              <>
+                <div className="pg-sub">{flexNote([])}</div>
+                <div className="fx-list"><FlexAxis value="12" on example /></div>
+              </>
             )}
           </section>
           <div className="advact">

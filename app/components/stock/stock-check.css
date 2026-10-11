@@ -42,3 +42,26 @@
 .gm-ds.gm-home.stock-page .empty .stock-retry { margin-top: 16px; }
 .gm-ds.gm-home.stock-page .res-one > .stock-sum { margin: 0; padding: 0 4px 10px; }
 .gm-ds.gm-home.stock-page .res-one > .stock-warn { margin: 0; padding: 0 4px 10px; }
+
+/* ציר המידות של "בדיקה גמישה": המידה במרכז, שתי מידות מעלה ומטה מסומנות בזהב כשהגמישות פעילה, שתי הקצוות מעומעמות (לא נבדקות). */
+.gm-ds.gm-home.stock-page .advp .fx-list { display: flex; flex-direction: column; gap: 14px; }
+.gm-ds.gm-home.stock-page .advp .fx-row { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+.gm-ds.gm-home.stock-page .advp .fx-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; color: var(--gm-ink); font-size: 14px; }
+.gm-ds.gm-home.stock-page .advp .fx-cap { color: var(--gm-ink3); font-size: 13px; }
+.gm-ds.gm-home.stock-page .advp .fx-ax { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); padding: 0 4px; }
+.gm-ds.gm-home.stock-page .advp .fx-ax::before { content: ""; position: absolute; top: 9px; left: 10%; right: 10%; height: 2px; border-radius: 2px; background: var(--gm-sky-300); }
+.gm-ds.gm-home.stock-page .advp .fx-ax.on::after { content: ""; position: absolute; top: 8px; left: 30%; right: 30%; height: 4px; border-radius: 4px; background: var(--gm-gold-b); }
+.gm-ds.gm-home.stock-page .advp .fx-t { position: relative; z-index: 1; display: grid; justify-items: center; gap: 6px; }
+.gm-ds.gm-home.stock-page .advp .fx-t > i { width: 12px; height: 12px; margin-top: 4px; border-radius: 50%; border: 2px solid var(--gm-sky-300); background: var(--gm-sky-50); }
+.gm-ds.gm-home.stock-page .advp .fx-t > b { font-size: 13px; font-weight: 500; color: var(--gm-ink3); }
+.gm-ds.gm-home.stock-page .advp .fx-t.out { opacity: 0.55; }
+.gm-ds.gm-home.stock-page .advp .fx-t.none { visibility: hidden; }
+.gm-ds.gm-home.stock-page .advp .fx-t.cand > i { width: 14px; height: 14px; margin-top: 3px; border-color: var(--gm-gold-b); background: var(--gm-gold-b); }
+.gm-ds.gm-home.stock-page .advp .fx-t.cand > b { color: var(--gm-ink); font-weight: 600; }
+.gm-ds.gm-home.stock-page .advp .fx-t.mid > i { width: 20px; height: 20px; margin-top: 0; border-color: var(--gm-navy); background: var(--gm-navy); }
+.gm-ds.gm-home.stock-page .advp .fx-t.mid > b { color: var(--gm-navy); font-weight: 700; font-size: 15px; }
+
+/* כרטיס התוצאות/הטופס בתוך המסגרת העגולה: בלי כרטיס-שער ישר מעל - כל ארבע הפינות מעוגלות כמו המסגרת (אין שורת .scan מעליו כמו בדף הבית) */
+.gm-ds.gm-home.stock-page .hero-in.jshell .res-one { border-radius: 30px; }
+/* שורת הכותרת של הכרטיס (.card-h) מקבלת גבול עליון אפור 1px ישר מכלל גלובלי ישן - הוא בולט מחוץ לפינות המעוגלות של המסגרת ("שבור בקצוות") */
+.gm-ds.gm-home.stock-page .hero-in.jshell .res-one > .card-h { border-top: 0; }
