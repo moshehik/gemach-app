@@ -496,7 +496,10 @@ t('"לוז": תפריט הריחוף "היום" / "מחר" (תפריט-חדש.ht
   assert.deepEqual(items.map((x) => [x.kind, x.id, x.label, x.icon, x.href, x.match]), [
     ['link', 'sched-today', 'היום', 'cal', '/schedule?date=today', '/schedule?date=2026-10-04'],
     ['link', 'sched-tomorrow', 'מחר', 'arrl', '/schedule?date=tomorrow', '/schedule?date=2026-10-05'],
+    // שורה שלישית: פעולה (לא קישור) שפותחת חלון לוח עברי במעטפת; הבחירה מנווטת ל-/schedule?date=<תאריך>
+    ['action', 'sched-pick', 'בחירת תאריך', 'cal', undefined, undefined],
   ]);
+  assert.equal(items[2].action, 'schedule-pick-date');
   // מעבר חודש/שנה בחשבון לוח-שנה טהור (ב-match)
   assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: '2026-12-31' }), 'sched').items[1].match, '/schedule?date=2027-01-01');
   // בלי todayKey: היום לפי שעון ישראל (YYYY-MM-DD), לא Invalid Date; ה-href לא תלוי בתאריך בכלל

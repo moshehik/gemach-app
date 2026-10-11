@@ -11,7 +11,7 @@ import './menu.css';
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
@@ -33,6 +33,7 @@ import SearchBody, { useMenuSearch } from './MenuSearchPanel';
 import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
 import ManagerMessageDialog from './ManagerMessageDialog';
+import SchedulePickDateDialog from './SchedulePickDateDialog';
 import NoticeBarArea, { NoticeBarProvider, useNoticeBarState } from './NoticeBar';
 import useNavHistory from './useNavHistory';
 import useAdminRecents from './useAdminRecents';
@@ -113,6 +114,8 @@ export default function MenuA5Shell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [acc, setAcc] = useState(null);
   const [msgOpen, setMsgOpen] = useState(false);
+  const [schedPickOpen, setSchedPickOpen] = useState(false);
+  const router = useRouter();
   const [loginOpen, setLoginOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -237,6 +240,7 @@ export default function MenuA5Shell({
       case 'login': setLoginOpen(true); break;
       case 'system-messages-history': clickHidden('[data-sn-hist-open]'); break;
       case 'message-to-manager': setMsgOpen(true); break;
+      case 'schedule-pick-date': setSchedPickOpen(true); break;
       case 'switch-to-legacy-shell': handleOldSite(); break;
       default: break;
     }
@@ -787,6 +791,13 @@ export default function MenuA5Shell({
           <div id="snScrim" className={drawerOpen ? 'on' : ''} onClick={() => setDrawerOpen(false)} />
           <NoticeBarArea items={notices.items} api={notices.api} />
           <div className="pl-tt" role="tooltip" ref={ttRef} />
+          {tree.user && tree.user.logged && (
+            <SchedulePickDateDialog
+              open={schedPickOpen}
+              onClose={() => setSchedPickOpen(false)}
+              onPick={(key) => { setSchedPickOpen(false); router.push('/schedule?date=' + key); }}
+            />
+          )}
           {tree.meta && tree.meta.managementMessages && !hideInternalMessaging && tree.user && tree.user.logged && (
             <ManagerMessageDialog
               open={msgOpen}
