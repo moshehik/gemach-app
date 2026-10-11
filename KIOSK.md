@@ -101,3 +101,22 @@ calendar, the model-orders window, the AI assistant and every `kiosk_*` / `hide_
   "מדיניות פרטיות" open in a window inside the screen (iframe of `/api/public-terms` and `/privacy`), so the locked kiosk is never left.
 - Tests: `node scripts/test_kiosk_logic.mjs`, `node --import ./scripts/business-days-tests/register.mjs scripts/test_kiosk_model_search.mjs`.
 
+
+## Public link (`/station`) - no login, backend contract (2026-10-12)
+
+`/station` is the customer kiosk reachable from home without logging in. The page itself is built on top of three public endpoints; the
+layout (`app/layout.js`, `stationBare`) renders it without the employee shell and exempts it from the `require_login` wall. There is no
+middleware allow-list in this repo (middleware.js only forwards the pathname; API auth is per route), so the public routes simply do not call `checkAuth()`.
+
+Settings (all default OFF when the row is missing; org2 "Neve Yaakov" is seeded to true by `scripts/seed_kiosk_public_settings.js --org=2`, dry-run by default):
+`kiosk_public_link_enabled`, `kiosk_public_show_inventory`, `kiosk_public_show_registration` (the last two only count while the first is on).
+
+Endpoints (`lib/publicKiosk/*`, rate limited per IP, field allow-lists, never cookie based):
+- `GET /api/public-kiosk/config` -> `{enabled:false}` or `{enabled,showInventory,showRegistration,hideImages,registration?}`.
+- `GET /api/public-kiosk/models?q=&category=&size=&eventDate=YYYY-MM-DD` -> `{ok,data:[{name,code,priceCategory,sizes:[{size,available?,qty?}],imageUrl?,thumbnailUrl?,inStock?}],categories,sizes,inventory}`.
+  Availability keys exist only when `showInventory` is on AND `eventDate` was sent (qty capped at 5).
+- `POST /api/public-kiosk/register` -> `{ok:true}` (identical for a new and for an existing customer) or `400 {ok:false,code:'validation',errors,fields}`.
+  A new customer is marked in `Customer.officeNotes` (`lib/kioskRegistration.js`); staff see it as a badge in the customer pickers and can list them with
+  `GET /api/customers?kioskPending=1`; `POST /api/customers/[id]/kiosk-verify` clears the mark.
+
+Tests (no DB / server): `node scripts/kiosk-public-tests/run.mjs`.
