@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
-import { checkAuth } from '../../../../lib/auth';
+import { checkAuth, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '../../../../lib/auth';
 import { checkAiAccess } from '../../../../lib/permissions';
 import { cookies } from 'next/headers';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
@@ -10,6 +10,12 @@ import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { buildDateContext, buildUserDateHints, normalizeAiSql, hebrewMonthRuleText } from '../../../../lib/ai/aiCommon';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
 import { getFeatureRestrictionConfig, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
+import {
+  EMPLOYEES_PAGE_SIZE, EMPLOYEES_MAX_PAGE, EMPLOYEES_STATEMENT_TIMEOUT_MS, buildEmployeesSystemPrompt, buildEmployeesQuery, buildEmployeesCountQuery,
+  describeEmployeesQuery, assertEmployeesWhere, mapEmployeeRows, isSensitiveEmployeesRequest,
+  MSG_EMPLOYEES_FORBIDDEN, MSG_EMPLOYEES_LOGIN, MSG_EMPLOYEES_LIMITED, MSG_EMPLOYEES_REJECTED,
+} from '../../../../lib/ai/employeesSearch';
+import { statementTimeoutSql, isStatementTimeout, MSG_NARROWER } from '../../../../lib/adminListGuards';
 
 // Columns used for "orders" smart-search results when the financial_columns_orders restriction
 // (lib/ai/restrictionsRegistry.js, feature "smart_search") is on for a non-manager - this route
@@ -65,18 +71,140 @@ const TABLE_MAP = {
   rentals: "OrderItem"
 };
 
+// pageContext 'employees' (חיפוש חכם ברשימת העובדים, security-audit.md R4). The generated condition runs against a SAFE PROJECTION of the employee
+// data only (lib/ai/employeesSearch.js: fixed CTEs + allow-list guard + read-only transaction + statement_timeout) and the rows are mapped to the
+// shape of GET /api/employees?all=true. This is reached only after the head-management gate in POST().
+async function handleEmployeesSearch({ prompt, page, reuseWhereClause }) {
+  const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  const pageNo = Math.min(EMPLOYEES_MAX_PAGE, page);
+
+  const runQuery = async (sql) => {
+    assertReadOnlySelect(sql);
+    const res = await prisma.$transaction([
+      prisma.$executeRawUnsafe('SET TRANSACTION READ ONLY'),
+      prisma.$executeRawUnsafe('SET LOCAL standard_conforming_strings = on'),
+      prisma.$executeRawUnsafe(statementTimeoutSql(EMPLOYEES_STATEMENT_TIMEOUT_MS)),
+      prisma.$queryRawUnsafe(sql),
+    ]);
+    return res[3];
+  };
+  const respond = async (whereClause) => {
+    const rows = mapEmployeeRows(await runQuery(buildEmployeesQuery(whereClause, pageNo)));
+    let total = rows.length;
+    try {
+      const countRows = await runQuery(buildEmployeesCountQuery(whereClause));
+      total = Number(countRows?.[0]?.count ?? total);
+    } catch (countError) {
+      console.error('Employees smart search count failed (falling back to page length):', countError.message);
+    }
+    return json({
+      data: rows,
+      query: describeEmployeesQuery(whereClause, pageNo),
+      whereClause: signWhere(whereClause, 'employees'),
+      total,
+      page: pageNo,
+      totalPages: Math.max(1, Math.ceil(total / EMPLOYEES_PAGE_SIZE)),
+    });
+  };
+  const failureResponse = (err) => {
+    if (err && err.employeesGuard) return json({ error: MSG_EMPLOYEES_REJECTED, code: 'rejected' }, 400);
+    if (isStatementTimeout(err)) return json({ error: MSG_NARROWER, code: 'timeout' }, 503);
+    return json({ error: 'שגיאה בביצוע חיפוש חכם.', details: 'Query execution failed after retry' }, 400);
+  };
+
+  if (reuseWhereClause && page > 1) {
+    const verified = readWhere(reuseWhereClause, 'employees');
+    if (!verified) return json({ error: 'החיפוש פג תוקף - יש להריץ אותו מחדש.' }, 400);
+    try {
+      assertEmployeesWhere(verified);
+      return await respond(verified);
+    } catch (err) {
+      console.error('Employees smart search (page reuse) failed:', err.message);
+      return failureResponse(err);
+    }
+  }
+
+  // A request that is plainly about data this search can never show gets a clear answer without an LLM call (UX only - the guard is the real barrier).
+  if (isSensitiveEmployeesRequest(prompt)) {
+    return json({ data: [], query: '', whereClause: signWhere('1=0', 'employees'), total: 0, page: 1, totalPages: 1, notice: MSG_EMPLOYEES_LIMITED });
+  }
+
+  const systemPrompt = buildEmployeesSystemPrompt();
+  const dateContext = buildDateContext() + buildUserDateHints(prompt);
+  const parseClause = (response) => {
+    let clause = String(response || '').trim();
+    const fenced = clause.match(/```(?:sql)?([\s\S]*?)```/);
+    if (fenced) clause = fenced[1].trim();
+    clause = clause.replace(/^SQL:\s*/i, '').trim().replace(/^WHERE\s+/i, '');
+    return clause.trim();
+  };
+  const finalize = (response) => {
+    const clause = normalizeAiSql(processHebrewDateMacro(parseClause(response)));
+    assertEmployeesWhere(clause); // empty / forbidden -> throws (there is no "1=1" fallback for employees)
+    return clause;
+  };
+
+  try {
+    const first = await generateContent(`${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}`);
+    console.log('AI Employees Search Raw Response:', first);
+    let firstError;
+    try {
+      return await respond(finalize(first));
+    } catch (err) {
+      firstError = err;
+      console.error(err.employeesGuard ? 'Employees guard rejected AI-generated condition:' : 'Employees smart search DB error attempt 1:', err.message, err.rejectedSql ? `\nRejected: ${err.rejectedSql}` : '');
+    }
+    if (isStatementTimeout(firstError)) return failureResponse(firstError);
+
+    // SELF HEALING RETRY (once) - the model is told why the first condition was refused / failed.
+    const retryPrompt = `${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}\n\nYou generated this condition: ${parseClause(first).slice(0, 500)}\nIt was refused / failed: ${firstError.message}\n\nOutput ONLY a corrected condition over the views emp / emp_shifts starting with "SQL: " (or exactly "SQL: 1=0" if the request cannot be answered with these columns).`;
+    const second = await generateContent(retryPrompt);
+    console.log('AI Employees Search Retry Response:', second);
+    try {
+      return await respond(finalize(second));
+    } catch (err) {
+      console.error(err.employeesGuard ? 'Employees guard rejected AI-generated retry condition:' : 'Employees smart search DB error attempt 2:', err.message);
+      return failureResponse(err);
+    }
+  } catch (err) {
+    console.error('Employees smart search failed:', err.message);
+    return failureResponse(err);
+  }
+}
+
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
-  
+
+  // The body is read before the AI-access check only to see whether this is the employees context, which has its own (stricter) gate.
+  let body;
+  let bodyUnreadable = false;
+  try { body = await req.json(); } catch { bodyUnreadable = true; }
+  const isEmployeesContext = !!body && body.pageContext === 'employees';
+  if (isEmployeesContext) {
+    // Same audience as the /employees pages (head management + programmer), checked server-side against the live session employee (fail closed:
+    // no verified active employee - deactivated, deleted, or the open-mode guest - is refused). Other roles never reach the employee data.
+    const me = await getSessionEmployee();
+    if (!me) return NextResponse.json({ error: MSG_EMPLOYEES_LOGIN }, { status: 403 });
+    if (!HEAD_MANAGEMENT_ROLES.includes(me.roleId)) return NextResponse.json({ error: MSG_EMPLOYEES_FORBIDDEN }, { status: 403 });
+  }
+  if (!(await checkAiAccess())) {
+    if (isEmployeesContext) return NextResponse.json({ error: 'אין לך הרשאה לחיפוש חכם (AI).' }, { status: 403 });
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
+
   const PAGE_SIZE = 50;
 
   try {
-    const { prompt, pageContext, page: rawPage, whereClause: reuseWhereClause } = await req.json();
+    if (bodyUnreadable) throw new SyntaxError('Invalid JSON body');
+    const { prompt, pageContext, page: rawPage, whereClause: reuseWhereClause } = body || {};
     const page = Math.max(1, parseInt(rawPage, 10) || 1);
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
+
+    if (pageContext === 'employees') {
+      return await handleEmployeesSearch({ prompt: String(prompt), page, reuseWhereClause });
     }
 
     const schemaContext = SCHEMA_MAP[pageContext] || SCHEMA_MAP['customers'];

@@ -47,6 +47,8 @@ function EmployeesList() {
   const [raw, setRaw] = useState(null); // רשימת עובדים מהשרת
   const [aiRows, setAiRows] = useState(null); // תוצאות חיפוש חכם (מחליפות את הרשימה עד איפוס)
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiNote, setAiNote] = useState(null); // הודעה מתחת לשורת החיפוש: כמה נמצאו / לא נמצא / שגיאה (בלי alert)
+  const statusWidened = useRef(false); // תוצאות AI מרחיבות את סינון הסטטוס (ברירת מחדל 'פעילים' הסתיר 'עובדים לא פעילים'); חוזר לברירת המחדל באיפוס
   const [presence, setPresence] = useState({});
   const [loadErr, setLoadErr] = useState('');
   const [stats, setStats] = useState(false);
@@ -92,19 +94,40 @@ function EmployeesList() {
     { k: 'status', l: 'סטטוס', i: 'userck', get: (r) => (r.active ? 0 : 1) },
   ], []);
 
-  // חיפוש חכם: כמו הישן - POST /api/ai/smart-search; שגיאה בטוסט (לא alert)
+  // חיפוש חכם: POST /api/ai/smart-search עם pageContext 'employees' (הנהלה ראשית / מתכנת בלבד; השרת עונה מתצוגת עובדים בטוחה - ר' lib/ai/employeesSearch.js).
+  // התוצאות מחליפות את הרשימה עד איפוס; כמה עמודים (200 לעמוד) נטענים ברצף; ריק / שגיאה = הודעה בתוך הדף (aiNote), לא alert.
   const ai = useMemo(() => ({
     loading: aiBusy,
     onSubmit: async (prompt) => {
       setAiBusy(true);
+      setAiNote(null);
       try {
-        const res = await fetch('/api/ai/smart-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, pageContext: 'employees' }) });
-        const result = await res.json().catch(() => ({}));
-        if (res.ok) setAiRows(result.data || []); else a5.say(result.error || 'שגיאה בחיפוש החכם', 'error');
-      } catch { a5.say('שגיאת תקשורת', 'error'); } finally { setAiBusy(false); }
+        const call = (extra) => fetch('/api/ai/smart-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, pageContext: 'employees', ...extra }) });
+        const res = await call({});
+        const first = await res.json().catch(() => ({}));
+        if (!res.ok) { setAiRows(null); setAiNote({ kind: 'ai-error', text: first.error || 'שגיאה בחיפוש החכם' }); return; }
+        let all = first.data || [];
+        for (let p = 2; p <= Math.min(first.totalPages || 1, 10); p++) {
+          const r = await call({ page: p, whereClause: first.whereClause });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) break;
+          all = all.concat(j.data || []);
+        }
+        setAiRows(all);
+        if (all.length) {
+          if (listRef.current && listRef.current.setGroup) { listRef.current.setGroup('status', []); statusWidened.current = true; }
+          setAiNote({ kind: 'ai-found', text: `החיפוש החכם מצא ${all.length} עובדים${first.total > all.length ? ` מתוך ${first.total}` : ''}` });
+        } else {
+          setAiNote({ kind: 'ai-empty', text: first.notice || 'החיפוש החכם לא מצא עובדים מתאימים. נסו לנסח אחרת (שם, מחלקה, פעיל / לא פעיל, טלפון, כניסות למשמרת).' });
+        }
+      } catch { setAiRows(null); setAiNote({ kind: 'ai-error', text: 'שגיאת תקשורת' }); } finally { setAiBusy(false); }
     },
-    onReset: () => setAiRows(null),
-  }), [aiBusy, a5]);
+    onReset: () => {
+      setAiRows(null);
+      setAiNote(null);
+      if (statusWidened.current && listRef.current && listRef.current.setGroup) { statusWidened.current = false; listRef.current.setGroup('status', ['active']); }
+    },
+  }), [aiBusy]);
 
   const open = (r) => router.push(`/employees/${r.id}`);
   const goCardFor = (r, msg) => { if (msg) a5.say(msg, 'info'); router.push(`/employees/${r.id}`); };
@@ -206,6 +229,7 @@ function EmployeesList() {
                   ai={aiHidden ? null : ai}
                   onStats={aiHidden ? null : () => setStats(true)}
                   exportSpec={{ what: 'רשימת העובדים', onExport, onPrint: printDoc('print'), onDownload: printDoc('download') }}
+                  notices={aiNote ? [aiNote] : []}
                   loading={raw === null}
                   error={loadErr}
                   onRetry={load}
