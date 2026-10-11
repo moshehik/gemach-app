@@ -17,6 +17,9 @@
 /* פינת הכותרת: אייקון המעבר "ישן / חדש" (PageVariantToggle) בקצה, כמו .lz-dtools בסיכום הנוכחות */
 .gm-ds.gm-a5 .app .topbar .a5-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
 
+/* כותרת הכרטיס האחידה (A5ListPage): גובה זהה גם כשאין בה לחצן פעולה (68px = הגובה עם לחצן "הזמנה חדשה" / "דגם חדש"), כך שסרגל התוצאות נשאר באותו מקום בכל הדפים */
+.gm-ds.gm-a5 .card.hist>.card-h{min-height:68px;box-sizing:border-box}
+
 /* ===== נטרול דליפות ===== */
 /* globals.css מאפס padding לכל אלמנט: לחצני האייקון בעיצוב נושאים את ריפוד ברירת המחדל של הדפדפן (1px 6px) */
 .gm-ds.gm-a5 :is(.back,.ibtn,.hf-cl,.hf-ib){padding:1px 6px}

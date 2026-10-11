@@ -26,3 +26,18 @@ and the same shared kit CSS for popup / expanded row / table / dialog (verified 
 | Empty / loading / error / notices, mobile 390 | identical |
 
 No `missing` items.
+
+## Shared header shell (11.10.2026)
+The page now renders its title row, search slot, card and card header through the kit component `A5ListPage` (`app/components/a5-list/A5ListPage.js`; same markup the page had by hand, so nothing visual changed). Measured before / after in the same viewport (iframe harness, 1440x900, `getBoundingClientRect`): **0 differences** on `.app`, `.topbar`, `.back`, `h1` (28px/600) and `h1 small` (18px/500), `.a5-tools` / toggle, `.hf-s`, `.card.hist`, `.card-h`, `.hres-bar`, first `.hrow`.
+| element (1440x900) | before = after |
+|---|---|
+| `.topbar` left / top / w x h | 129 / 88 / 1192 x 44.8 |
+| `.back` | 1277 / 88.4, 44x44 |
+| `h1 small` | 1226.5 / 102, 36.5x22 |
+| `.hf-s` | 725 / 146.8, 596x60 |
+| toggle (`.a5-tools`) where present | 129 / 90.4, 40x40 |
+| `.card.hist` top | 270.8 (employees: tabs row 270.8 x 60, card 394.8) |
+| `.hres-bar` top / h | 377.8 / 56 (employees 501.8) |
+(The iframe harness has a fixed 105px left offset; relative positions equal the spec of the coordinator's message: topbar 88/45, back 44x44, search 596x60 at 147, card 271.) 390x844: topbar 26 / 74, back 330 / 74.4, search 26 / 132.8 (348x60), card 26 / 238.8, toggle 280 / 76.4 on every page that has one.
+Static gate: `scripts/test_a5_list_header.mjs`.
+No legacy page => no toggle in the header (registered in `NO_LEGACY_PAGES`); at 390 the `<small>` therefore sits 50px closer to the arrow than on pages with a toggle - inherent, same as before.

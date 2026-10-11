@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import StatisticsModal from '../StatisticsModal';
 import { runPrint } from '../a5-print/runPrint';
-import { A5List, A5Page, A5SearchSlot, Ic, dayKey, dayTitle, hDateFull, hDateShort, runListExport, useA5 } from '../a5-list';
+import { A5List, A5ListPage, A5Page, Ic, dayKey, dayTitle, hDateFull, hDateShort, runListExport, useA5 } from '../a5-list';
 import { hebrewMonthTitle } from '../schedule/hebrewCalendar';
 import useAdminServerList, { smartSearchIds } from '../admin-lists/useAdminServerList';
 import RangeDialog from '../admin-lists/RangeDialog';
@@ -149,52 +149,41 @@ function OrdersList() {
 
   return (
     <>
-      <div className="app" id="app">
-        <div className="topbar">
-          <button type="button" className="back" id="ordBack" aria-label="חזרה למרכז הניהול" data-tip="חזרה למרכז הניהול" onClick={() => router.push('/admin')}><Ic id="back" /></button>
-          <div className="ttl"><h1><small>ניהול</small>הזמנות</h1></div>
-        </div>
-        <A5SearchSlot id={SLOT_ID} />
-        <div className="layout one">
-          <main className="main">
-            <section className="panel on" id="p-list">
-              <div className="card hist">
-                <div className="card-h"><div className="ico gold"><Ic id="file" size="lg" /></div><h2>רשימת הזמנות</h2>
-                  <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/orders/new')}><Ic id="plus" />הזמנה חדשה</button></div>
-                <A5List
-                  ref={listRef}
-                  items={rows}
-                  getId={(r) => r.orderId}
-                  texts={{ placeholder: 'חיפוש הזמנה (מספר הזמנה, שם לקוח, טלפון, ברקוד, דגם, תאריך עברי)…', aiPlaceholder: 'בקשו מה-AI למצוא הזמנות (למשל: הזמנות עם חוב מהחודש שעבר)…', countLabel: 'הזמנות', emptyText: 'לא נמצאו הזמנות התואמות את החיפוש' }}
-                  localSearch={false}
-                  total={data ? data.total : 0}
-                  page={L.page}
-                  onPage={L.setPage}
-                  onQueryChange={L.onQueryChange}
-                  onStateChange={L.onStateChange}
-                  onFilterOpen={L.onFilterOpen}
-                  filters={filters}
-                  sorts={SORTS}
-                  defaultSort={DEFAULT_SORT}
-                  rowClass={(r) => (r.state === 'deleted' ? 'off gone' : '')}
-                  rowMain={rowMain}
-                  detail={detail}
-                  columns={columns}
-                  onOpen={open}
-                  searchSlot={SLOT_ID}
-                  ai={aiHidden ? null : ai}
-                  onStats={aiHidden ? null : () => setStats(true)}
-                  notices={data ? data.notices : []}
-                  exportSpec={{ what: 'רשימת ההזמנות', onExport }}
-                  loading={data === null || (busy && !rows.length)}
-                  error={error}
-                  onRetry={L.reload}
-                />
-              </div>
-            </section>
-          </main>
-        </div>
-      </div>
+      <A5ListPage
+        title="הזמנות" backId="ordBack" onBack={() => router.push('/admin')}
+        slotId={SLOT_ID} cardIcon="file" cardTitle="רשימת הזמנות"
+        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/orders/new')}><Ic id="plus" />הזמנה חדשה</button>}
+      >
+        <A5List
+          ref={listRef}
+          items={rows}
+          getId={(r) => r.orderId}
+          texts={{ placeholder: 'חיפוש הזמנה (מספר הזמנה, שם לקוח, טלפון, ברקוד, דגם, תאריך עברי)…', aiPlaceholder: 'בקשו מה-AI למצוא הזמנות (למשל: הזמנות עם חוב מהחודש שעבר)…', countLabel: 'הזמנות', emptyText: 'לא נמצאו הזמנות התואמות את החיפוש' }}
+          localSearch={false}
+          total={data ? data.total : 0}
+          page={L.page}
+          onPage={L.setPage}
+          onQueryChange={L.onQueryChange}
+          onStateChange={L.onStateChange}
+          onFilterOpen={L.onFilterOpen}
+          filters={filters}
+          sorts={SORTS}
+          defaultSort={DEFAULT_SORT}
+          rowClass={(r) => (r.state === 'deleted' ? 'off gone' : '')}
+          rowMain={rowMain}
+          detail={detail}
+          columns={columns}
+          onOpen={open}
+          searchSlot={SLOT_ID}
+          ai={aiHidden ? null : ai}
+          onStats={aiHidden ? null : () => setStats(true)}
+          notices={data ? data.notices : []}
+          exportSpec={{ what: 'רשימת ההזמנות', onExport }}
+          loading={data === null || (busy && !rows.length)}
+          error={error}
+          onRetry={L.reload}
+        />
+      </A5ListPage>
       {dlg ? (
         <RangeDialog
           title="טווח תאריכי אירוע"

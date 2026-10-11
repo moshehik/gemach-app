@@ -18,7 +18,7 @@ import StatisticsModal from '../StatisticsModal';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import { runPrint } from '../a5-print/runPrint';
 import {
-  A5List, A5Page, A5SearchSlot, Ic, dayTitle, relDay, runListExport, timeHM, useA5,
+  A5List, A5ListPage, A5Page, A5Tabs, Ic, dayTitle, relDay, runListExport, timeHM, useA5,
 } from '../a5-list';
 import {
   STATUS_OPTIONS, deptNamesByRole, deptOptions, employeeHay, employeeRow, shiftText,
@@ -194,51 +194,41 @@ function EmployeesList() {
 
   return (
     <>
-      <div className="app" id="app">
-        <div className="topbar">
-          <button type="button" className="back" id="empBack" aria-label="חזרה למרכז הניהול" data-tip="חזרה למרכז הניהול" onClick={() => router.push('/admin')}><Ic id="back" /></button>
-          <div className="ttl"><h1><small>ניהול</small>עובדים ונוכחות</h1></div>
-          <div className="a5-tools"><PageVariantToggle screen="employees_list" placement="header" systemTip /></div>
-        </div>
-        <A5SearchSlot id={SLOT_ID} />
-        <div className="layout one">
-          <main className="main">
-            <nav className="tabs" id="tabs" role="tablist" aria-label="עובדים">
-              <button type="button" className="tab on" role="tab" aria-selected="true" data-tab="list"><span className="tico"><Ic id="users" /></span>רשימת עובדים</button>
-              <button type="button" className="tab" role="tab" aria-selected="false" data-tab="att" onClick={() => router.push('/employees/attendance')}><span className="tico"><Ic id="clock" /></span>נוכחות</button>
-            </nav>
-            <section className="panel on" id="p-list" role="tabpanel">
-              <div className="card hist">
-                <div className="card-h"><div className="ico gold"><Ic id="users" size="lg" /></div><h2>רשימת עובדים</h2>
-                  <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/employees/new')}><Ic id="plus" />עובד חדש</button></div>
-                <A5List
-                  ref={listRef}
-                  items={rows}
-                  getId={(r) => r.id}
-                  texts={{ placeholder: 'חיפוש עובד (שם, טלפון, קוד, מייל)…', aiPlaceholder: 'בקשו מה-AI למצוא עובדים (למשל: מי נכנס השבוע בלי לצאת)…', countLabel: 'עובדים', emptyText: 'לא נמצאו עובדים התואמים את החיפוש' }}
-                  hay={employeeHay}
-                  filters={filters}
-                  sorts={sorts}
-                  defaultSort={{ k: 'name', dir: 1 }}
-                  rowClass={(r) => (r.active ? '' : 'off')}
-                  rowMain={rowMain}
-                  detail={detail}
-                  columns={columns}
-                  onOpen={open}
-                  searchSlot={SLOT_ID}
-                  ai={aiHidden ? null : ai}
-                  onStats={aiHidden ? null : () => setStats(true)}
-                  exportSpec={{ what: 'רשימת העובדים', onExport, onPrint: printDoc('print'), onDownload: printDoc('download') }}
-                  notices={aiNote ? [aiNote] : []}
-                  loading={raw === null}
-                  error={loadErr}
-                  onRetry={load}
-                />
-              </div>
-            </section>
-          </main>
-        </div>
-      </div>
+      <A5ListPage
+        title="עובדים ונוכחות" backId="empBack" onBack={() => router.push('/admin')}
+        tools={<PageVariantToggle screen="employees_list" placement="header" systemTip />}
+        slotId={SLOT_ID} cardIcon="users" cardTitle="רשימת עובדים"
+        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/employees/new')}><Ic id="plus" />עובד חדש</button>}
+        tabs={<A5Tabs label="עובדים" items={[
+          { key: 'list', label: 'רשימת עובדים', icon: 'users', on: true },
+          { key: 'att', label: 'נוכחות', icon: 'clock', onClick: () => router.push('/employees/attendance') },
+        ]} />}
+        tabpanel
+      >
+        <A5List
+          ref={listRef}
+          items={rows}
+          getId={(r) => r.id}
+          texts={{ placeholder: 'חיפוש עובד (שם, טלפון, קוד, מייל)…', aiPlaceholder: 'בקשו מה-AI למצוא עובדים (למשל: מי נכנס השבוע בלי לצאת)…', countLabel: 'עובדים', emptyText: 'לא נמצאו עובדים התואמים את החיפוש' }}
+          hay={employeeHay}
+          filters={filters}
+          sorts={sorts}
+          defaultSort={{ k: 'name', dir: 1 }}
+          rowClass={(r) => (r.active ? '' : 'off')}
+          rowMain={rowMain}
+          detail={detail}
+          columns={columns}
+          onOpen={open}
+          searchSlot={SLOT_ID}
+          ai={aiHidden ? null : ai}
+          onStats={aiHidden ? null : () => setStats(true)}
+          exportSpec={{ what: 'רשימת העובדים', onExport, onPrint: printDoc('print'), onDownload: printDoc('download') }}
+          notices={aiNote ? [aiNote] : []}
+          loading={raw === null}
+          error={loadErr}
+          onRetry={load}
+        />
+      </A5ListPage>
       {stats ? <StatisticsModal isOpen onClose={() => setStats(false)} pageContext="employees" position={null} /> : null}
     </>
   );
