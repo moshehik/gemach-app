@@ -7,11 +7,13 @@ import { redactRequestQuery, redactUrl } from '@/lib/redactSensitive';
 
 
 export async function GET(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // היסטוריית הגלישה (נתיבים, גופי בקשות, שמות עובדים) לקריאה: הנהלה ראשית / מתכנת בלבד - כמו הדף /management/history (app/management/layout.js). לפני כן כל עובד מחובר יכול היה לקרוא אותה (R8).
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '60', 10);
+    // page / limit bounded (the legacy page sends 60): limit=1000000 used to stream the whole visit log in one request
+    const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 100000);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '60', 10) || 60, 1), 200);
     const search = searchParams.get('search') || '';
     const employeeId = searchParams.get('employeeId') || ''; // can be "guest", number, or empty
     const sort = searchParams.get('sort') || 'timestamp';
@@ -22,7 +24,11 @@ export async function GET(request) {
 
     if (search) {
       where.OR = [
-        { pageUrl: { contains: search } },
+        // כתובת עם פרמטר סודי לא נחפשת (pageUrl נשמר גולמי כולל query string; החיפוש בה היה אורקל לערך הפרמטר) - ממצא F11, ביקורת 11.10.2026
+        {
+          pageUrl: { contains: search },
+          NOT: ['token', 'secret', 'pass', 'pwd', 'otp', 'apikey', 'credential', 'authorization', 'bearer', 'gmk_'].map((w) => ({ pageUrl: { contains: `${w}`, mode: 'insensitive' } })),
+        },
         // לא מאפשרים חיפוש בתוך גופים שעלולים להכיל סודות (אחרת החיפוש משמש כאורקל לניחוש סיסמאות/PIN/ת"ז בשורות ישנות)
         {
           requestQuery: { contains: search },
@@ -93,13 +99,18 @@ export async function GET(request) {
 }
 
 export async function DELETE(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // Session gate = the audience of the page that offers the deletion (/management/history: head management / programmer, app/management/layout.js). The manager code
+  // below is a second factor on top of it, not a replacement: with the old plain checkAuth() any signed-in employee could try unlimited codes (a wrong code answered 401, a
+  // valid code of a non-manager 403 - a password oracle) against all active employees, since a blank username scans them all (finding F12, 2026-10-11).
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
-    const { ids, deleteAll, olderThanDays, username, password } = body;
+    const { ids, deleteAll, olderThanDays, password } = body;
+    // a non-string username (an object would be read by Prisma as a filter) is treated as "blank"
+    const username = typeof body.username === 'string' ? body.username : '';
 
     // username (employeeId) may legitimately be blank - see the fallback scan below
-    if (!password) {
+    if (!password || typeof password !== 'string') {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה לאישור המחיקה' }, { status: 401 });
     }
 

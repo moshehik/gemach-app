@@ -97,6 +97,9 @@ export async function GET(request) {
     if (search) {
       // Prisma string search inside changesJson
       where.changesJson = { contains: search, mode: 'insensitive' };
+      // The search must not be an oracle for secrets that older rows still hold unmasked (the temporary password of a password-reset mail, legacy password /
+      // pinHash / keyHash values): rows carrying those markers are left out of text searches (masked on the way out, see app/lib/auditLog.js; finding F10).
+      where.AND = [...(where.AND || []), { NOT: { OR: ['סיסמה זמנית', '"password":', '"pinHash":', '"keyHash":'].map((m) => ({ changesJson: { contains: m } })) } }];
     }
     
     const logs = await prisma.auditLog.findMany({

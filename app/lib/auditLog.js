@@ -46,6 +46,9 @@ function displayName(employee) {
 const SECRET_FIELDS_BY_ENTITY = {
   Employee: ['password', 'pinHash'],
   ApiKey: ['keyHash'],
+  // EmailLog CREATE rows hold the whole mail row: the body of a password-reset mail carries the temporary password in clear text (and bulk mails a confirm token).
+  // The mail itself stays in the EmailLog table (programmer-only log); the audit trail never needs the body (security audit 2026-10-11, finding F10).
+  EmailLog: ['body', 'confirmToken'],
 };
 function redactSecrets(log) {
   const secrets = SECRET_FIELDS_BY_ENTITY[log.entityType];

@@ -113,6 +113,8 @@ const PHONETIC_FIELDS = [
 const AUDIT_SECRET_FIELDS = {
   Employee: ['password', 'pinHash'],
   ApiKey: ['keyHash'],
+  // the mail row itself (EmailLog, programmer-only screen) keeps its body; the audit twin must not copy a password-reset mail's temporary password (finding F10, 2026-10-11)
+  EmailLog: ['body', 'confirmToken'],
 };
 
 // A scalar in Prisma write data is either the plain value (create) or `{ set: value }` (update).
@@ -265,7 +267,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 9;
+const CLIENT_SETUP_VERSION = 10;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {
