@@ -8,6 +8,9 @@
 | קובץ | תפקיד |
 |---|---|
 | `unit/aiCommon.basic.mjs`, `unit/aiCommon.hints.mjs` | בדיקות יחידה ל-`lib/ai/aiCommon.js` (72 בדיקות, בלי רשת ובלי מסד) |
+| `unit/smartNames.mjs` | 93 בדיקות יחידה לאיות החכם (`lib/ai/smartNames.js`, `rankNameSpellings` ב-`lib/searchFuzzy.js`): טבלת גיוונים אמיתיים, התאמה מדויקת מנצחת, שמות קצרים, הרחבת SQL, הודעות, עמודת סוג התאמה |
+| `unit/smartNames.route.mjs` | אינטגרציה דרך `app/api/ai/route.js` האמיתי מול מסד TEST בקריאה בלבד עם **Gemini מדומה** (`FAKE_GEMINI=1`, `shims/gemini.mjs`) - בלי מכסה |
+| `suites/smartnames.mjs` | שאלה אחת אמיתית על איות שם (2-3 קריאות Gemini) |
 | `suites/core.mjs` | 43 שאלות על 6 הסוכנים |
 | `suites/replay.mjs` | 35 שאלות אמיתיות מההיסטוריה, כולל הודעות אי-שביעות רצון ("לא נכון", "איפה הרשימה?") |
 | `run.mjs` | מריץ סוויטה ושומר תוצאות ל-`scratch/ai-reliability-out/` |
@@ -21,6 +24,11 @@
 # בדיקות יחידה
 node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/ai-reliability/unit/aiCommon.basic.mjs
 node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/ai-reliability/unit/aiCommon.hints.mjs
+
+# איות חכם (בלי מסד / בלי Gemini)
+node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/ai-reliability/unit/smartNames.mjs
+# איות חכם דרך הנתיב האמיתי, Gemini מדומה, מסד TEST לקריאה בלבד (TEST_DATABASE_URL מתוך .env)
+FAKE_GEMINI=1 EXPERIMENT_DB_URL="<TEST_DATABASE_URL>" node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/ai-reliability/unit/smartNames.route.mjs
 
 # סוויטה מול מסד (מפתחות Gemini נקראים מ-.env.local; העלות: כ-2-3 קריאות ל-Gemini לשאלה)
 EXPERIMENT_DB_URL="<כתובת Postgres>" node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/ai-reliability/run.mjs core

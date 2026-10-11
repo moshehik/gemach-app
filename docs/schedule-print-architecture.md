@@ -50,7 +50,7 @@
 | `app/components/schedule/print/templates.js` | מפת התבניות (`getTemplate`). |
 | `app/schedule/print/[page]/page.js` + `layout.js` | דף ההדפסה (לקוח): מושך את ה-API, מרנדר, `window.print()`. |
 | `app/components/schedule/ScheduleToolbarSlots.js` (PageTools / SectionTools, של קו הלו״ז) + `ScheduleDay.js` | לחצני XL / הורדה / הדפסה בכותרת הדף ובכל שלב; ScheduleDay מחבר אותם לאשף. |
-| `app/components/schedule/print/PrintWizard.js` (+`PrintWizard.css`) | האשף (בחירת דפים/גרסה, תצוגה מקדימה, הדפסה, הורדה Excel/PDF). |
+| `app/components/schedule/print/PrintWizard.js` (+`PrintWizard.css`) | האשף: חלון כהה, עץ קטגוריות (שלבים) -> דפים עם תיבות סימון מימין ותצוגה מקדימה גדולה משמאל. הפעולה (הדפסה / PDF / Excel) מגיעה מהלחצן שנלחץ בדף (`mode`/`format`), אין בורר בחלון. |
 | `scripts/schedule-print-tests/` | בדיקות (`run.mjs`) + harness רינדור (`render.mjs`). |
 
 ### 2. רשומת דף ב-registry
@@ -106,6 +106,7 @@
 - `downloadPdf=true`: בלי `window.print()`; `data-print-ready="true"` כשהנתונים נטענו (ל-`lib/pdf.js`).
 - `preview=1`: בלי הדפסה אוטומטית ובלי סרגל (ל-iframe של האשף).
 - `body.hide-global-nav` + `body.pp-print-mode` מוסתרים את המעטפת; `app/schedule/layout.js` (האב) אוכף `page:schedule`.
+- **בלי מעטפת בכלל (11.10.2026):** `app/layout.js` מזהה `/schedule/print/*` (`printBare`) ומרנדר רק את הדף: בלי תפריט A5 / סרגל, באנרים, תחתית האתר, כפתורי צף ובאנרי סביבה, ובערכת נושא בהירה. `body.hide-global-nav` לבדו הסתיר רק את מעטפת "אריג" הישנה ולא את A5, ולכן התצוגה המקדימה באשף (iframe), ההדפסה וה-PDF הציגו את התפריט / באנר / תחתית האתר.
 - כמה דפים = גיליון אחד אחרי השני, `break-before: page` ביניהם; מספור העמודים רציף לכל המסמך.
 
 ### 5. המעטפת (`PrintShell.js` + `print.css`)

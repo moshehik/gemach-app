@@ -13,5 +13,5 @@ test('quick popup / full wizard render checks', () => {
     cwd: proj, encoding: 'utf8', env: { ...process.env, PROJ: proj },
   });
   assert.equal(r.status, 0, (r.stdout || '') + (r.stderr || ''));
-  assert.match(r.stdout, /quick-popup: 6 passed/);
+  assert.match(r.stdout, /quick-popup: 7 passed/);
 });
