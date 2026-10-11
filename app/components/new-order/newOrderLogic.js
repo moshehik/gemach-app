@@ -555,6 +555,8 @@ export const STEP_KEYS = ['customer', 'dates', 'delivery', 'items', 'summary', '
 export const STEP_META = {
   customer: { l: 'לקוח', i: 'user', q: 'מי הלקוח?' },
   dates: { l: 'תאריכים', i: 'cal', q: 'מתי האירוע?' },
+  // mode = "אופן ההזמנה" (סוג הזמנה / סניף ביצוע / סניף איסוף) - שלב נפרד רק בטופס הרציף (SECTION_KEYS ב-layoutLogic); באשף הוא חלק משלב המשלוח
+  mode: { l: 'אופן', i: 'phone', q: 'איך מזמינים?' },
   delivery: { l: 'משלוח', i: 'truck', q: 'איך תרצו לקבל את ההזמנה?' },
   items: { l: 'פריטים', i: 'dress', q: 'אילו פריטים?' },
   summary: { l: 'סיכום', i: 'list', q: 'הכול נכון?' },
