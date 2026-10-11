@@ -26,7 +26,7 @@ function CustRow({ c, open, onClick }) {
       <div className="li rlink lrow" role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick(); } }}>
         <div className="ic-b"><Ic n="user" /></div>
         <div className="t">
-          <b>{getCustomerFullName(c)}{c.isBlocked ? <> <span className="chip red"><Ic n="lock" />לקוח חסום</span></> : null}</b>
+          <b>{getCustomerFullName(c)}{c.isBlocked ? <> <span className="chip red"><Ic n="lock" />לקוח חסום</span></> : null}{c.kioskReg === 'pending' || c.kioskReg === 'repeat' ? <> <span className="chip gold" data-tip="הלקוחה מילאה פרטים בעמדת הלקוח. לאמת איתה את הפרטים לפני שממשיכים בהזמנה (באישור: כרטיס הלקוח).">{c.kioskReg === 'repeat' ? 'נרשמה שוב בעמדה - לאמת פרטים' : 'נרשמה בעמדה - לאמת פרטים'}</span></> : null}</b>
           <span className="ln"><bdi>{custSub(c)}</bdi></span>
         </div>
         <span className="go" aria-hidden="true"><Ic n={open ? 'check' : 'chev'} c="sm" /></span>
