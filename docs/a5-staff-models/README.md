@@ -2,6 +2,8 @@
 
 Index and the points worth remembering. Details live in the per-area files next to this one.
 
+**Open items (what is still undone, with first steps): [open-items.md](open-items.md).**
+
 ## What shipped
 | Screen | Route | Variant id | Default |
 |---|---|---|---|
