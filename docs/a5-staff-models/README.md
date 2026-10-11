@@ -1,0 +1,47 @@
+# A5 staff screens — employees list, models list, model card, new model, orders/customers admin lists, print/PDF (2026-10-11)
+
+Index and the points worth remembering. Details live in the per-area files next to this one.
+
+## What shipped
+| Screen | Route | Variant id | Default |
+|---|---|---|---|
+| Employees list | `/employees` (list tab) | `employees_list` | programmer = new, everyone else = old |
+| Models list | `/dashboard/dresses` | `models_list` | same |
+| Model card | `/dashboard/dresses/[id]` | `model_card` | same |
+| New model wizard | `/dashboard/dresses/new` | `model_new` | same |
+| Orders list (admin) | `/admin/orders-list` | none (no legacy page) | head management + programmer only |
+| Customers list (admin) | `/admin/customers-list` | none (no legacy page) | head management + programmer only |
+Print / PDF sheets (`app/components/a5-print/`) for employees list, models list, model card, orders list, customers list.
+
+Turning a screen on for everyone = org setting `ui_variant_<id>='a5'` (rollback: `'legacy'`) — nothing was changed in any DB. **`/employees` is shared with the `attendance` screen:** the old attendance tab lives inside the legacy page, so both `ui_variant_attendance` and `ui_variant_employees_list` must be `a5` for non-programmers to get the new list.
+
+## Pattern (same as customer/order card)
+Registry entry in `lib/uiVariantScreens.js` + `*Switch` + byte-identical frozen `Legacy*.js` (asserted by tests) + new component tree under `app/components/<area>/` with its own CSS; `PageVariantToggle` in the new header. Admin lists have no legacy and are listed in `NO_LEGACY_PAGES`.
+
+## Shared kit
+`app/components/a5-list/` — search bar (AI + statistics buttons), ONE grouped "סינון" popup (zero-count options hidden unless selected), sort popup, rows/table switch, sticky results bar (turns peach when stuck), 50-per-page pager capsule, row anatomy 21px/14px with icon+number pairs (zero values never shown), chevron expander, export trio (XL / download / print). `kit-notes.md` = props and "what a new list screen needs".
+
+## Owner rules baked into the designs
+No tags/pills; explanations as tooltips; Hebrew dates only; rows like the main-search results; one control height in the results bar; every table column sortable; dark dialogs everywhere (no `window.confirm/alert/prompt` in new flows); two-state controls = `.seg.pill`; model card follows the LIVE order card structure (not the 4.10 static mock); print sheets: no duplicated data, no irrelevant data.
+
+## Fidelity protocol (the answer to "designs were omitted/changed on the way to the site")
+Every screen has `<screen>-fidelity.md` (every element/state of the mock → identical / adapted / missing; no `missing` left) built from numeric `getBoundingClientRect` + `getComputedStyle` diffs against the mock, plus `independent-review-1.md` (a separate reviewer re-measured everything; 4 blockers: 3 fixed, 1 fixed afterwards by wiring the AI/statistics buttons in the card lists). Known intended differences are listed in that file (card 26px lower = follows live order card; toggle icon in every header; mock dark-dialog texts that were unreadable were corrected). **When touching `globals.css` / `design-overrides.css` table rules, re-run the comparison** — global `table tbody td{border-bottom-color:…!important}` already leaked into the lists once and into the print sheets (fixed with sheet-level overrides).
+
+## Behaviour decisions
+- **Model card save semantics:** the old page saved item edits immediately; the new card batches everything as lines in "שינויים בכרטיס" and saves together (same endpoints/payloads; a failed step stays in the cart with an explanation). See `model-card-notes.md`.
+- **Models list** loads the whole catalog and pages 50/page in the browser (option counts and derived sorts are impossible with the paged API); search stays server-side.
+- **Employees "connected now":** new read-only route `app/api/employees/presence` (open shift); "last entry" = last shift entry. No DDL anywhere.
+- **Admin lists** use new read-only APIs (`/api/admin/orders-list`, `/api/admin/customers-list`, `…/counts`) built on one aggregate snapshot cached 30 s per server instance (order membership/sort/totals/counts can be up to 30 s old; the 50 visible rows are read fresh), counts load lazily when the filter popup opens, `statement_timeout` + concurrency cap + 503 "צמצמו את הסינון", page size ≤100 (export ≤500 per page, ≤5000 rows). Before: 15–87 DB statements per request, 7–14 s sorts; after: 1 cheap lookup. Derived order status is expressed as Prisma `where` clauses and was verified identical to `calculateOrderStatus` on all 27,397 TEST orders. Customer "created" filter uses the first-order date (no creation timestamp exists).
+- **StatisticsModal** is now a dark dialog everywhere (it is shared: old orders/customers/rentals/alterations/board pages show it dark too).
+
+## Print / PDF
+Registry `pkRegistry.js` (+ `PDF_HTML_SURFACE_KEYS` in `lib/printAccessKeys.js`): a new document = one spec builder + one registry line + one server permission entry, otherwise `/api/pdf` refuses it. The client paginates by measuring real layout (header/footer/table header repeat, group "(המשך)", totals never alone) and posts the finished sheets to `/api/pdf` (JS disabled in the renderer, only data:/about: and Google Fonts allowed); fallback = browser print dialog. HTML cap 3 MB (~300 sheets). Gotchas: Hebrew PDF filenames need an ASCII fallback + `filename*`; sheets must not depend on page-level `box-sizing`; PDF margin 0 for designed sheets. `print-specs.md` has the content rules per document.
+
+## Security (see `security-audit.md`)
+Fixed in this work: stored XSS via upload/attachment content types; full employee rows (wages, phones…) to every signed-in user; wage rows in the audit-log API; deactivated employees keeping API access up to 7 days; `next-code` unauthenticated; dev routes (`switch-env`, `fix-employees`, `db-import`) open to any user in `next dev`; PUT dress 500 on bad JSON; `/api/pdf` filename length. **Open owner decisions:** D1 any signed-in employee can create/edit/delete dress items (old UI relies on it); R1 both prod orgs must keep `require_login=true`; R4 employees AI search answers from the Customer table (same bug in the legacy page; fixing needs a head-management-only employees context). Residual: no per-user rate limit on PDF/heavy admin calls; PDF render timeout ~30 s for very large tables.
+
+## Operations / gotchas
+- Work was done in worktree `C:\wt\wt-a5-staff-models` on `.active-db=test`; after a machine restart the dev server once came up in PROD mode — always check `GET /api/dev/switch-env` before any write.
+- `DressModel.name` is unique in the DB (including soft-deleted): creating a duplicate name returns a generic 500 in both wizards — needs a clear 400 (not changed).
+- Statistics/AI buttons inside the model card lists are scoped to the model (smart-search with the model code in the prompt; rentals tab sends `pageContext:'rentals'` on purpose).
+- Disk C: was nearly full (98 MB free at one point); `.next` of a dev worktree is ~600 MB.
