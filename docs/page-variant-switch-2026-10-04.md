@@ -7,6 +7,23 @@
 באותו יום נכתבו בשני ה-DB של הייצור `ui_variant_shell='legacy'` ו-`ui_variant_home='legacy'` (במקום ה-'a5' שנכתב קודם באותו
 יום). לחשבון המתכנת יש עקיפות אישיות: בגמ"ח הראשי shell/home='a5'; בנווה יעקב shell='legacy', home='a5'.
 
+## מי רשאי לבחור את החדש - כולם (החלטת הבעלים, 11.10.2026)
+
+> "כולם דלוק לכולם אם בוחרים באתר החדש, כל עוד הם לא בוחרים בעצמם הוא נשאר בישן חוץ ממני שהוא ברירת מחדל בחדש"
+
+* **כל עיצוב חדש זמין לכל עובד פעיל** (כל roleId, כולל מנהל סניף, מזכירה, תופרת ועובד בלי תפקיד): כל אחד מחליף לעצמו, מסך-מסך, באייקון
+  `PageVariantToggle` או בדף "עיצוב ותצוגה". כל עוד לא בחר - נשאר בישן; רק המתכנת (roleId 2) מקבל את החדש כברירת מחדל
+  (`NEW_DESIGN_DEFAULT_ROLE_IDS` - לא השתנה). סדר ההכרעה (עקיפה אישית > הגדרת ארגון > ברירת מחדל לפי תפקיד) לא השתנה, ולא נכתבה שום הגדרת ארגון.
+* **הכלל במקום אחד:** `canEmployeeSelfSwitch(employee)` ב-`lib/uiVariantSelfSwitch.js` - עובד מאומת ופעיל (`isActive === true` מה-DB). אותה פונקציה
+  משמשת את ה-POST/GET (`applyUiVariantRequest`, `describeSelfSwitch`), את `app/layout.js` (הצגת האייקון) ואת הבדיקות. נמחקו `isManagementRole`,
+  `SELF_SWITCH_ROLE_IDS` וההודעות `a5Forbidden` / `homeForbidden`, וגם החריג של `shell` (עכשיו כל עובד רשאי להחליף גם אותו ל-`a5`).
+* **איך מצמצמים שוב:** בקובץ אחד, `lib/uiVariantSelfSwitch.js`: `SELF_SWITCH_ONLY_ROLE_IDS = null` (כולם) -> `Object.freeze([0, 2])` (רק הנהלה ראשית ומתכנת)
+  או כל רשימת roleId אחרת. השרת, ה-layout, הדף וה-API נגזרים ממנו; את הבדיקות מעדכנים (`scripts/test_ui_variant_self_switch.mjs`, `test_page_variant_switch.mjs`).
+* **מה לא השתנה (אבטחה):** העובד המטרה הוא תמיד המאומת (העוגייה החתומה; גוף הבקשה לא יכול להכיל מזהה עובד), הפעילות והתפקיד נקראים מה-DB בצד שרת,
+  לא מאומת 401, מושבת 403, מסך לא מוכר / בלי שתי גרסאות 404/400, תקרת גודל ל-`themeColor`, וריענון עוגיית `designPrefs_<id>` החתומה.
+  `PUT /api/me/design-prefs` ממשיך למחוק `uiVariants`. **החלפה לעיצוב החדש לא נותנת שום הרשאה:** הדפים החדשים עוברים באותם layouts (`/admin`, `/employees`,
+  `/dashboard/dresses`) ומשתמשים באותם API מוגנים - ר' `docs/a5-staff-models/security-audit.md` סעיף 8.
+
 ## סדר ההכרעה (lib/uiVariant.js)
 
 1. **עקיפה אישית** — `Employee.themeColor.uiVariants.<screen>` (המראה המהירה: עוגיית `designPrefs_<id>`).
@@ -25,7 +42,7 @@
 | `home` | דף הבית | `/` | LegacyHome | HomeA5 | (קיים) |
 | `order_card` | כרטיס הזמנה | `/orders/:id` | כן | **כן** (5.10.2026, ענף feature/order-card-a5; OrderCardSwitch) | הכרטיס החדש: app/components/order-card, הישן: LegacyOrderPage.js (= page.js של main) |
 | `customer_card` | כרטיס לקוח | `/customers/:id` | כן | **עוד לא** | ענף feature/customer-card-a5-2026-10-04 |
-| `new_order` | הזמנה חדשה | `/orders/new` | `app/orders/new/LegacyNewOrderPage.js` (נעול ב-PINNED_BLOBS) | **כן** (6.10.2026; NewOrderSwitch, `app/components/new-order`) | מתכנת - חדש כברירת מחדל, כל השאר ישן; הנהלה ראשית / מתכנת מחליפים באייקון (בכותרת האשף החדש, ובפינה בישן דרך VariantFrame). פירוט: docs/new-order-programmer-default-2026-10-06.md |
+| `new_order` | הזמנה חדשה | `/orders/new` | `app/orders/new/LegacyNewOrderPage.js` (נעול ב-PINNED_BLOBS) | **כן** (6.10.2026; NewOrderSwitch, `app/components/new-order`) | מתכנת - חדש כברירת מחדל, כל השאר ישן; כל עובד מחליף לעצמו באייקון (בכותרת האשף החדש, ובפינה בישן דרך VariantFrame). פירוט: docs/new-order-programmer-default-2026-10-06.md |
 | `profile` | הפרופיל שלי | `/profile` | `app/profile/LegacyProfilePage.js` | ProfilePage | `7917382f^:app/profile/page.js` |
 | `admin_hub` | מסך ניהול ראשי | `/admin` | `app/admin/LegacyAdminPage.js` (+ EmailListCard, menu/AdminHubA5Cards, components/FullEmailListModal בנתיבים המקוריים) | AdminHubPage | `079fc226^1` |
 | `attendance` | נוכחות | `/employees`, `/employees/attendance`, `/employees/report`, `/my-hours` | `app/employees/LegacyEmployeesPage.js`, `app/employees/report/LegacyReportPage.js`, `app/my-hours/LegacyMyHoursPage.js` | AttendancePage | `f3b1f771^1` |
@@ -40,9 +57,9 @@
 * לחצן אייקון עגול של הפלטה (רקע זהב `--gm-gbtn`, מסגרת שחורה 1.5px, אייקון 57 "החלפה" מה-sprite), טקסט
   "מעבר לתצוגה החדשה" / "חזרה לתצוגה הישנה". CSS עצמאי `pageVariantToggle.css` (היקף `.gm-pvt`, טוקנים גלובליים), כי הוא
   מוצג גם בדפים הישנים בלי הפלטה.
-* **מוצג רק** להנהלה ראשית / מתכנת (`SELF_SWITCH_ROLE_IDS` ב-`lib/uiVariantSelfSwitch.js` — המקום היחיד להרחבה), רק במסך עם
+* **מוצג** לכל עובד מחובר (מ-11.10.2026; `canEmployeeSelfSwitch` ב-`lib/uiVariantSelfSwitch.js` — המקום היחיד לצמצום), רק במסך עם
   שתי גרסאות, רק בנתיבי המסך שברשומה, ולא בקיוסק / שעון / הדפסה (`shouldShowVariantToggle`). ה-layout מעביר
-  `canSelfSwitch` מה-roleId שכבר יש לו — בלי בקשה נוספת.
+  `canSelfSwitch` ממה שכבר יש לו (עוגייה חתומה / שורת העובד) — בלי בקשה נוספת; ה-GET/POST בודקים שוב מה-DB.
 * לחיצה: `POST /api/me/ui-variant/<screen> { value }` (עקיפה אישית + רענון העוגייה בשרת) ואז טעינה מלאה, או מעבר לנתיב של הגרסה
   השנייה (`switchTargets`: `/employees` ↔ `/employees/attendance`).
 * מיקום — בדף חדש: בכותרת (פרופיל, מסך ניהול, סיכום נוכחות, שתי הכותרות של חלון הדיווח; בדף הבית — פינה עליונה של אזור
@@ -52,9 +69,9 @@
 ## API
 
 * `POST /api/me/ui-variant/<screen>` — נתיב כללי (`app/api/me/ui-variant/[screen]`), 404 למסך שלא ניתן להחלפה. `shell` / `home`
-  נשארים בנתיבים הסטטיים שלהם. אותה ליבה (`applyUiVariantRequest`): הנהלה ראשית / מתכנת — `a5` / `legacy` / `null`; תפריט — כל
-  עובד רק `legacy` / `null`; כל השאר 403. תמיד על העובד המאומת עצמו.
-* `GET /api/me/ui-variant` — `{ canSelfSwitch, screens }` לדף "עיצוב ותצוגה" (הרשימה מהרשומה, עם "ברירת מחדל" = `null`).
+  נשארים בנתיבים הסטטיים שלהם. אותה ליבה (`applyUiVariantRequest`): כל עובד פעיל — `a5` / `legacy` / `null` בכל מסך (כולל התפריט);
+  לא מחובר 401, מושבת 403. תמיד על העובד המאומת עצמו.
+* `GET /api/me/ui-variant` — `{ canSelfSwitch, screens }` (לכל עובד פעיל; מושבת 403, אורח 401) לדף "עיצוב ותצוגה" (הרשימה מהרשומה, עם "ברירת מחדל" = `null`).
 * **נתיבי תאימות לממשק הישן** (לא המטפלים הישנים — אלה נשארו מחוקים): `GET /api/employees/attendance` על השער המוקשח של
   "סיכום נוכחות" (`getAttendanceViewer` + `decideReadAccess scope:'month'`), רק השדות שהממשק הישן קורא; `GET /api/customers/emails`
   להנהלה ראשית / מתכנת בלבד, נכשל סגור. כל אחד בקומיט נפרד — אפשר להסיר.

@@ -39,7 +39,7 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { readSignedDesignPrefs } from './lib/designPrefsCookie';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
-import { isManagementRole } from '@/lib/uiVariantSelfSwitch';
+import { canEmployeeSelfSwitch } from '@/lib/uiVariantSelfSwitch';
 import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
 import { selectHub, accessForRole } from '@/lib/adminHubCatalog';
 import versionData from './version.json';
@@ -307,9 +307,10 @@ export default async function RootLayout({ children }) {
     pathname: requestPathname,
     roleId: isAuthenticated && emp && typeof emp.roleId === 'number' ? emp.roleId : null,
   });
-  // אייקון המעבר "ישן / חדש" (PageVariantToggle) מוצג רק למי שרשאי להחליף לעצמו (הנהלה ראשית / מתכנת). ה-roleId כבר נקרא
-  // למעלה (עוגיית auth_session או השאילתה הקיימת) — אין כאן שאילתה נוספת. ה-POST בודק שוב מה-DB.
-  const canSelfSwitchVariant = !!(isAuthenticated && emp && isManagementRole(emp.roleId));
+  // אייקון המעבר "ישן / חדש" (PageVariantToggle): מ-11.10.2026 זמין לכל עובד מחובר (canEmployeeSelfSwitch ב-lib/uiVariantSelfSwitch.js -
+  // המקום היחיד לכלל / לצמצום). ה-layout יודע רק שהעוגייה החתומה תקפה ושהעובד קיים (עובד מושבת נחתך בשכבת ההזדהות), ולכן מעביר
+  // isActive:true; GET/POST /api/me/ui-variant* בודקים שוב isActive ו-roleId מה-DB. אין כאן שאילתה נוספת.
+  const canSelfSwitchVariant = !!(isAuthenticated && emp && canEmployeeSelfSwitch({ roleId: emp.roleId, isActive: true }));
 
   // עץ התפריט של המעטפת החדשה (lib/menu/buildMenuTree.js): נבנה רק כשהמעטפת 'a5' - בלי דגל אין כאן שום עבודה
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות

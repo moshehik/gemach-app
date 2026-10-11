@@ -1,8 +1,8 @@
 // בדיקת יחידה ל"מעבר עצמאי בין העיצוב הישן לחדש" (lib/uiVariantSelfSwitch.js + buildUiVariantOverride):
-//   POST /api/me/ui-variant/shell|home — הנהלה ראשית / מתכנת בלבד, לרשומה של עצמם בלבד.
+//   POST /api/me/ui-variant/<screen> — כל עובד פעיל (החלטת הבעלים 11.10.2026: הכול זמין לכולם, כל אחד בוחר לעצמו), לרשומה של עצמו בלבד.
 // לא נוגעת ב-DB (לקוח prisma מזויף) ולא ב-Next. הרצה: node scripts/test_ui_variant_self_switch.mjs (קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
-import { applyUiVariantRequest, describeSelfSwitch, isManagementRole, isSelfSwitchScreen, SELF_SWITCH_SCREENS } from '../lib/uiVariantSelfSwitch.js';
+import { applyUiVariantRequest, canEmployeeSelfSwitch, describeSelfSwitch, isSelfSwitchScreen, SELF_SWITCH_ONLY_ROLE_IDS, SELF_SWITCH_SCREENS } from '../lib/uiVariantSelfSwitch.js';
 import { buildUiVariantOverride, buildLegacyShellOverride } from '../lib/designPrefsSchema.js';
 import { resolveUiVariant } from '../lib/uiVariant.js';
 import { getScreenEntry } from '../lib/uiVariantScreens.js';
@@ -39,9 +39,13 @@ const call = (screen, body, employee, fp = fakePrisma()) =>
 const stored = (calls) => JSON.parse(calls[0].data.themeColor);
 
 console.log('תפקידים ומסכים');
-await ta('isManagementRole: 0 ו-2 בלבד (כמו isHeadManagement ב-layout); 1 / null / מחרוזות / undefined לא', () => {
-  assert.equal(isManagementRole(0), true); assert.equal(isManagementRole(2), true);
-  for (const bad of [1, 3, -1, null, undefined, '0', '2', 'admin', NaN, [], {}, true, false]) assert.equal(isManagementRole(bad), false, String(bad));
+await ta('canEmployeeSelfSwitch: כל עובד פעיל בכל תפקיד (0 / 1 / 2 / 3 / null / undefined); לא מושבת, לא ריק, לא isActive לא-בוליאני', () => {
+  assert.equal(SELF_SWITCH_ONLY_ROLE_IDS, null, 'ברירת המחדל מ-11.10.2026: בלי צמצום תפקידים');
+  for (const roleId of [0, 1, 2, 3, 7, -1, null, undefined, '1', 'admin']) assert.equal(canEmployeeSelfSwitch({ roleId, isActive: true }), true, String(roleId));
+  assert.equal(canEmployeeSelfSwitch({ isActive: true }), true);
+  for (const bad of [null, undefined, 0, 1, 'x', true, [], [{ isActive: true }], {}, { roleId: 0 }, { roleId: 0, isActive: false }, { isActive: 'true' }, { isActive: 1 }, { isActive: null }, { isActive: undefined }]) {
+    assert.equal(canEmployeeSelfSwitch(bad), false, JSON.stringify(bad));
+  }
 });
 // 4.10.2026: הרשימה נגזרת מ-lib/uiVariantScreens.js (selfSwitch + שתי הגרסאות קיימות) - נוספו 4 המסכים של אותו יום.
 await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מהרשומה)', () => {
@@ -49,10 +53,10 @@ await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מ
   for (const s of ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT]) assert.equal(isSelfSwitchScreen(s), true);
   for (const s of ['employee_card', ...STAFF_NOT_YET, '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
 });
-await ta('describeSelfSwitch: הנהלה / מתכנת רואים את הסעיף; מנהל סניף, עובד, אורח לא', () => {
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT] });
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })), { canSelfSwitch: true, screens: ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT] });
-  for (const e of [emp({ roleId: 1 }), emp({ roleId: 5 }), emp({ roleId: null }), null]) assert.deepEqual(describeSelfSwitch(e), { canSelfSwitch: false, screens: [] });
+await ta('describeSelfSwitch: כל עובד פעיל (הנהלה, מתכנת, מנהל סניף, עובד רגיל) רואה את הסעיף; מושבת ואורח לא', () => {
+  const all = { canSelfSwitch: true, screens: ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', ...STAFF_BUILT] };
+  for (const roleId of [0, 1, 2, 3, 5, null, undefined]) assert.deepEqual(describeSelfSwitch(emp({ roleId })), all, String(roleId));
+  for (const e of [emp({ isActive: false }), emp({ roleId: 0, isActive: false }), null]) assert.deepEqual(describeSelfSwitch(e), { canSelfSwitch: false, screens: [] });
 });
 
 console.log('הנהלה ראשית / מתכנת: a5 / legacy / null על shell ו-home');
@@ -94,29 +98,45 @@ await ta('הערך שנכתב באמת משפיע על resolveUiVariant (a5 → 
   assert.equal(resolveUiVariant('home', { userVariants: l.nextPrefs.uiVariants, settings: { ui_variant_home: 'a5' } }), 'legacy');
 });
 
-console.log('כל מי שאינו הנהלה: כמו היום (shell legacy/null בלבד), בלי דרך ל-a5');
+console.log('כל עובד פעיל, בכל תפקיד (החלטת הבעלים 11.10.2026): a5 / legacy / null על כל מסך, לעצמו בלבד');
 for (const roleId of [1, 3, 7, null, undefined]) {
-  await ta(`roleId=${roleId}: shell='a5' → 403 בעברית, בלי כתיבה`, async () => {
-    const r = await call('shell', { value: 'a5' }, emp({ roleId }));
-    assert.equal(r.status, 403); assert.match(r.json.error, /[א-ת]/); assert.equal(r.json.success, false); assert.equal(r.fp.calls.length, 0); assert.equal(r.nextPrefs, undefined);
-  });
-  await ta(`roleId=${roleId}: shell='legacy' ו-null עובדים כמו קודם`, async () => {
-    const a = await call('shell', { value: 'legacy' }, emp({ roleId }));
-    assert.equal(a.status, 200); assert.deepEqual(stored(a.fp.calls).uiVariants, { shell: 'legacy' });
-    const b = await call('shell', { value: null }, emp({ roleId, themeColor: JSON.stringify({ v: 1, uiVariants: { shell: 'legacy' } }) }));
-    assert.equal(b.status, 200); assert.equal(b.fp.calls.length, 1); assert.equal(stored(b.fp.calls).uiVariants, undefined);
-  });
-  await ta(`roleId=${roleId}: home — כל ערך נדחה 403 (המעבר העצמאי של דף הבית להנהלה בלבד)`, async () => {
-    for (const value of ['a5', 'legacy', null]) {
-      const r = await call('home', { value }, emp({ roleId }));
-      assert.equal(r.status, 403, String(value)); assert.equal(r.fp.calls.length, 0);
+  await ta(`roleId=${String(roleId)} (מנהל סניף / מזכירה / עובד רגיל): shell ו-home — 'a5' / 'legacy' / null מצליחים, נכתבים לעובד המאומת בלבד`, async () => {
+    for (const screen of ['shell', 'home', 'profile', 'models_list', 'customer_card']) {
+      for (const value of ['a5', 'legacy']) {
+        const r = await call(screen, { value }, emp({ roleId }));
+        assert.equal(r.status, 200, `${screen}:${value}`); assert.equal(r.json.value, value);
+        assert.equal(r.fp.calls.length, 1); assert.deepEqual(r.fp.calls[0].where, { id: 'emp-me' });
+        assert.deepEqual(stored(r.fp.calls).uiVariants, { [screen]: value });
+      }
+      const b = await call(screen, { value: null }, emp({ roleId, themeColor: JSON.stringify({ v: 1, uiVariants: { [screen]: 'a5' } }) }));
+      assert.equal(b.status, 200); assert.equal(b.fp.calls.length, 1); assert.equal(stored(b.fp.calls).uiVariants, undefined);
     }
   });
 }
-await ta('הרשאה לפי התפקיד ב-DB, לא לפי הגוף: roleId / isHeadManagement / employeeId בגוף נתעלמים', async () => {
-  const body = { value: 'a5', roleId: 0, isHeadManagement: true, isProgrammer: true, role: 'admin', employeeId: 'emp-boss', id: 'emp-boss' };
-  const r = await call('shell', body, emp({ roleId: 1 }));
-  assert.equal(r.status, 403); assert.equal(r.fp.calls.length, 0);
+await ta('הרשאה לפי העובד המאומת מה-DB, לא לפי הגוף: roleId / isHeadManagement / employeeId בגוף נתעלמים', async () => {
+  const body = { value: 'a5', roleId: 0, isHeadManagement: true, isProgrammer: true, role: 'admin', employeeId: 'emp-boss', id: 'emp-boss', isActive: true };
+  const r = await call('shell', body, emp({ id: 'emp-clerk', roleId: 1 }));
+  assert.equal(r.status, 200); assert.equal(r.fp.calls.length, 1);
+  assert.deepEqual(r.fp.calls[0].where, { id: 'emp-clerk' }); assert.equal(r.json.employeeId, 'emp-clerk');
+  assert.deepEqual(Object.keys(r.fp.calls[0].data), ['themeColor']);
+  assert.equal(stored(r.fp.calls).roleId, undefined, 'שום שדה מהגוף לא נכנס ל-themeColor');
+  // והגוף לא יכול להחיות עובד מושבת:
+  const dead = await call('shell', { value: 'a5', isActive: true }, emp({ isActive: false }));
+  assert.equal(dead.status, 403); assert.equal(dead.fp.calls.length, 0);
+});
+await ta('עובד אחר בגוף (employeeId / id / where / data / employee) נתעלם: ה-update אחד, על employee.id של המאומת, ו-data = themeColor בלבד', async () => {
+  const bodies = [
+    { value: 'a5', employeeId: 'emp-victim' }, { value: 'a5', id: 'emp-victim' }, { value: 'a5', where: { id: 'emp-victim' } },
+    { value: 'a5', data: { roleId: 0, themeColor: 'x' } }, { value: 'a5', employee: { id: 'emp-victim', roleId: 0 } },
+    JSON.parse('{"value":"a5","__proto__":{"id":"emp-victim"},"constructor":{"prototype":{"id":"emp-victim"}}}'),
+  ];
+  for (const body of bodies) {
+    const r = await call('profile', body, emp({ id: 'emp-me', roleId: 5 }));
+    assert.equal(r.status, 200); assert.equal(r.fp.calls.length, 1);
+    assert.deepEqual(r.fp.calls[0].where, { id: 'emp-me' }); assert.deepEqual(Object.keys(r.fp.calls[0].data), ['themeColor']);
+    assert.deepEqual(stored(r.fp.calls).uiVariants, { profile: 'a5' }); assert.equal(r.json.employeeId, 'emp-me');
+  }
+  assert.equal({}.id, undefined);
 });
 
 console.log('מסכים אחרים, יעד אחר, ערכים עוינים');
@@ -157,7 +177,7 @@ await ta('גוף חסר / לא אובייקט / בלי value / JSON שבור →
 await ta('מפתחות מוזרים בגוף (__proto__ / constructor) לא משפיעים ולא מזהמים', async () => {
   const body = JSON.parse('{"value":"a5","__proto__":{"roleId":0},"constructor":{"prototype":{"roleId":0}}}');
   const r = await call('shell', body, emp({ roleId: 1 }));
-  assert.equal(r.status, 403); assert.equal({}.roleId, undefined);
+  assert.equal(r.status, 200); assert.equal({}.roleId, undefined); assert.equal(stored(r.fp.calls).roleId, undefined);
 });
 await ta('themeColor פגום / ישן אצל העובד — נתפס בלי לקרוס ובלי לשמר זבל', async () => {
   for (const themeColor of [null, '', 'standard', 'dark', '{bad json', '{"v":2}', '[]', '{"v":1,"uiVariants":"a5"}', '{"v":1,"uiVariants":{"shell":"hax","home":5,"zzz":"a5"}}']) {
