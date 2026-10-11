@@ -140,6 +140,23 @@
 `if (data.htmlBody) mailOptions.htmlBody = data.htmlBody`. (`docs/gas-mail-drive.gs` הוא סקריפט אחר, מורחב עם דרייב,
 שאינו פרוס - ר' docs/journal-2026.md, "Cloud backup to Drive".)
 
+## מיילים שהגוף שלהם מכיל סוד - `containsSecret` (2026-10-11)
+
+ביומן המיילים (`EmailLog`) נשמר גוף כל מייל, וזהו מסך למתכנת בלבד - אבל גוף מייל איפוס סיסמה מכיל **סיסמה זמנית בגלוי**, והיא הועתקה גם לתאום ב-`AuditLog`
+(ממצא F10 בביקורת האבטחה, [docs/a5-staff-models/security-audit.md](docs/a5-staff-models/security-audit.md) סעיף 10.5). לכן:
+
+- ברשומת הקטלוג של כל מייל שגופו מכיל סוד (סיסמה זמנית, קוד איפוס, קישור עם טוקן שמעניק גישה) קובעים `containsSecret: true`. כיום: `passwordResetSelf`, `passwordResetManager`.
+- אתר השליחה מעביר `emailId: '<המזהה>'` ל-`sendSystemEmail`. המייל עצמו יוצא **כרגיל, עם הסוד**; רק השורה ב-`EmailLog` נכתבת עם `body = SECRET_BODY_PLACEHOLDER`
+  (`[גוף ההודעה לא נשמר — מכיל סיסמה זמנית]`, מוגדר ב-`lib/emailCatalog.js`). נושא / נמען / סטטוס / קבצים / שולח נשמרים כרגיל.
+- `sendSystemEmail` מקבל גם `logBody` לעקיפה מפורשת של מה שנכתב ביומן (`null` = בלי גוף) - למקרה חד-פעמי שלא שייך לקטלוג.
+- רשת ביטחון (`resolveLoggedBody` ב-`lib/emailCatalog.js`): גם בלי `emailId`, נושא שזהה לנושא של מייל `containsSecret`, או גוף שמכיל "סיסמה זמנית:", נשמר כממלא מקום.
+  מזהה `emailId` לא מוכר זורק שגיאה **לפני** השליחה.
+- הבדיקה `scripts/test_email_log_secrets.mjs` מוודאת: כל מזהה `containsSecret` נרשם עם ממלא מקום והמייל עצמו עדיין נושא את הסיסמה; כל השאר ללא שינוי; `GET /api/email-logs` מחזיר את ממלא המקום;
+  וכל קובץ ששולח `emailSubject('<מייל סודי>')` מעביר `emailId`.
+- **מייל חדש עם סוד בגוף:** סמנו `containsSecret: true` בקטלוג **ולפני** כן ודאו שהסוד באמת חייב להישלח במייל. הבדיקה למעלה נכשלת אם מסמנים מייל נוסף בלי לעדכן אותה - זו החלטה מודעת.
+- ההודעה ההמונית (`bulkEventDate`) נושאת קישור אישור קבלה עם טוקן אקראי; הגוף נשמר ביומן (זה תוכן ההודעה ללקוחות), והטוקן עצמו מוסתר בתאום ה-`AuditLog`. הטוקן רק מסמן "נקרא" ואינו מעניק גישה - לא סומן כסוד.
+- ניקוי שורות קיימות: `scripts/scrub_logged_secrets.js` (ר' security-audit.md סעיף 10.5).
+
 ## פערים ידועים (לא טופלו)
 
 - `ModernSendEmailModal` (`components/customers/modern/ModernSendEmailModal.js`) אינו מאפשר צירוף קובץ.
