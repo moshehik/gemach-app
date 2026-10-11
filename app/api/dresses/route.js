@@ -4,6 +4,8 @@ import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { planListSearch, dressSearchAlternatives, sizeTextFilter, clampLimit, clampPage, buildRetryVariants } from '@/lib/listSearch';
 import { sizeMatches } from '@/lib/searchNormalize';
+import { validateModelInput } from '@/lib/dressInputValidation';
+const TX_OPTS = { timeout: 20000, maxWait: 10000 }; // כל כתיבה מוסיפה שורת היסטוריה (app/lib/prisma.js) וה-DB (Neon) איטי בהתעוררות - ברירת המחדל 5 שניות נפלה
 import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
 
 
@@ -348,38 +350,45 @@ export async function POST(request) {
   if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   let attemptedName = '';
   try {
-    const body = await request.json();
-    
-    // Check if duplicate barcodePrefix exists
-    if (body.barcodePrefix) {
-      const existing = await prisma.dressModel.findFirst({
-        where: { 
-          barcodePrefix: parseInt(body.barcodePrefix),
-          isDeleted: false
-        }
-      });
-      if (existing) {
-        return NextResponse.json({ error: 'הקוד כבר בשימוש!' }, { status: 400 });
-      }
-    }
+    const body = await request.json().catch(() => null);
+
+    // ולידציה בשרת (lib/dressInputValidation.js): אורך הקוד לפי ההגדרה, ספרות בלבד, שם לא ריק, קטגוריה קיימת, אורכי שדות - לא סומכים על הלקוח
+    const [lenSetting, catRows] = await Promise.all([
+      getCachedSetting('barcodePrefixLength'),
+      prisma.priceList.findMany({ select: { category: true }, distinct: ['category'] }),
+    ]);
+    const codeLen = lenSetting && lenSetting.value ? parseInt(lenSetting.value, 10) || 3 : 3;
+    const categories = catRows.map((c) => c.category).filter((c) => c && c.trim() !== '');
+    const v = validateModelInput(body, { codeLen, categories });
+    if (v.error) return NextResponse.json({ error: v.error, ...(v.field ? { field: v.field } : {}) }, { status: 400 });
+    const d = v.data;
 
     // DressModel.name הוא UNIQUE (כולל מחוקים רכות): שם שכבר קיים = 400 ברור, לא 500 כללי. השם האפקטיבי - גם השם האוטומטי "דגם <קוד>"
-    attemptedName = body.name || `דגם ${body.barcodePrefix || 'חדש'}`;
+    attemptedName = d.name || `דגם ${d.barcodePrefix || 'חדש'}`;
     const nameTaken = await findNameConflict(prisma, attemptedName);
     if (nameTaken) return NextResponse.json(duplicateNameBody(attemptedName, nameTaken), { status: 400 });
 
-    const newModel = await prisma.dressModel.create({
-      data: {
-        name: attemptedName,
-        barcodePrefix: body.barcodePrefix ? parseInt(body.barcodePrefix) : null,
-        priceCategory: body.priceCategory || null,
-        notes: body.notes || null,
-        inInspection: body.inInspection || false,
-        imageUrl: body.imageUrl || null,
-        thumbnailUrl: body.thumbnailUrl || null,
-        entryDateToRepo: body.entryDateToRepo ? new Date(body.entryDateToRepo) : new Date(),
+    // בדיקת קוד תפוס + יצירה תחת נעילת advisory לפי הקוד: שתי יצירות מקבילות עם אותו קוד (אין אילוץ unique ב-DB, ושינוי סכמה דורש DDL בשני המסדים) לא יכולות לעבור שתיהן
+    const newModel = await prisma.$transaction(async (tx) => {
+      if (d.barcodePrefix !== null) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`dress-model-code:${d.barcodePrefix}`}))`;
+        const existing = await tx.dressModel.findFirst({ where: { barcodePrefix: d.barcodePrefix, isDeleted: false }, select: { id: true } });
+        if (existing) return null;
       }
-    });
+      return tx.dressModel.create({
+        data: {
+          name: attemptedName,
+          barcodePrefix: d.barcodePrefix,
+          priceCategory: d.priceCategory,
+          notes: d.notes,
+          inInspection: d.inInspection,
+          imageUrl: d.imageUrl,
+          thumbnailUrl: d.thumbnailUrl,
+          entryDateToRepo: d.entryDateToRepo,
+        },
+      });
+    }, TX_OPTS);
+    if (!newModel) return NextResponse.json({ error: 'הקוד כבר בשימוש!' }, { status: 400 });
 
     return NextResponse.json(newModel);
   } catch (error) {

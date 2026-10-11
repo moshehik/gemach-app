@@ -54,12 +54,14 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       : dataToProcess;
   };
 
+  // ערכי התאים הם נתוני משתמש (שמות, הערות) שנכתבים ל-document.write של חלון ההדפסה - escape חובה
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const buildTableHtml = (dataToExport, useColumns = true) => {
     const withColumns = useColumns && columns.length > 0;
     const headers = withColumns ? columns.map(c => c.label) : Object.keys(dataToExport[0] || {});
     let tableHtml = '<table><thead><tr>';
     headers.forEach(header => {
-      tableHtml += `<th>${header}</th>`;
+      tableHtml += `<th>${esc(header)}</th>`;
     });
     tableHtml += '</tr></thead><tbody>';
     dataToExport.forEach(item => {
@@ -67,12 +69,12 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       if (withColumns) {
         columns.forEach(col => {
           const cellValue = item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '';
-          tableHtml += `<td>${cellValue}</td>`;
+          tableHtml += `<td>${esc(cellValue)}</td>`;
         });
       } else {
         headers.forEach(header => {
           const cellValue = item[header] !== undefined && item[header] !== null ? item[header] : '';
-          tableHtml += `<td>${cellValue}</td>`;
+          tableHtml += `<td>${esc(cellValue)}</td>`;
         });
       }
       tableHtml += '</tr>';

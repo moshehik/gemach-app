@@ -31,6 +31,7 @@ export function codeError(code, { len = DEFAULT_CODE_LEN, taken = false } = {}) 
   const c = String(code == null ? '' : code).trim();
   if (!c) return 'חובה להזין קוד דגם';
   if (!new RegExp(`^\\d{${len}}$`).test(c)) return `קוד דגם בן ${len} ספרות בדיוק`;
+  if (c.startsWith('0')) return 'קוד דגם לא יכול להתחיל ב-0'; // נשמר כמספר שלם - "007" היה נשמר כ-7 והברקודים לא היו מתאימים
   if (taken) return 'הקוד כבר קיים במאגר';
   return '';
 }
