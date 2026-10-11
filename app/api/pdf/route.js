@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
 import { renderPdf } from '../../../lib/pdf';
-import { canUsePrintSurface, PDF_HTML_PAGE_KEYS, printPathPageKeys } from '../../../lib/printAccess';
+import { canUsePrintSurface, PDF_HTML_PAGE_KEYS, pdfHtmlSurfaceKeys, printPathPageKeys } from '../../../lib/printAccess';
 
 // Puppeteer spawns a real Chromium process - the Edge runtime can't do that, this route
 // needs the Node.js runtime.
@@ -29,7 +29,9 @@ const MAX_DETAIL_LENGTH = 1500;
 //     Renders a self-contained HTML string via page.setContent() - no auth/cookie concerns,
 //     used when the caller already has fully server-rendered HTML (e.g. the order/rental
 //     report built in app/api/orders/[id]/email/route.js). Needs one of PDF_HTML_PAGE_KEYS
-//     (the order pages that contain the only caller). Because the markup is caller-supplied
+//     (the order pages that contain the only caller). With a `surface` name (the designed A5 print sheets,
+//     app/components/a5-print) the gate is that surface's own page permission instead (PDF_HTML_SURFACE_KEYS,
+//     lib/printAccessKeys.js); an unknown surface is a 400. Because the markup is caller-supplied
 //     and Chromium runs server-side, renderPdf locks this mode down: JavaScript is off and
 //     every network request except inline data: and Google Fonts is blocked (lib/pdf.js).
 //   { path: '/print/alterations?...', filename?, landscape?, format? }
@@ -51,7 +53,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'גוף הבקשה אינו JSON תקין' }, { status: 400 });
   }
 
-  const { html, path: pagePath, filename, landscape, format } = body || {};
+  const { html, path: pagePath, filename, landscape, format, surface } = body || {};
 
   if (!html && !pagePath) {
     return NextResponse.json({ error: 'יש לספק html או path' }, { status: 400 });
@@ -67,6 +69,9 @@ export async function POST(request) {
   }
   if (html && html.length > MAX_HTML_LENGTH) {
     return NextResponse.json({ error: 'ה-html גדול מדי' }, { status: 413 });
+  }
+  if (surface !== undefined && surface !== null && (typeof surface !== 'string' || !html)) {
+    return NextResponse.json({ error: 'surface לא נתמך' }, { status: 400 });
   }
 
   let url;
@@ -84,6 +89,15 @@ export async function POST(request) {
     }
     url = new URL(pagePath, request.nextUrl.origin).toString();
     cookieHeader = request.headers.get('cookie') || '';
+  } else if (surface) {
+    // designed print sheets of one screen: gated by THAT screen's page permission (not by the order pages)
+    const surfaceKeys = pdfHtmlSurfaceKeys(surface);
+    if (!surfaceKeys) {
+      return NextResponse.json({ error: 'surface לא נתמך' }, { status: 400 });
+    }
+    if (!(await canUsePrintSurface(surfaceKeys))) {
+      return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 });
+    }
   } else if (!(await canUsePrintSurface(PDF_HTML_PAGE_KEYS))) {
     return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 });
   }
@@ -95,17 +109,22 @@ export async function POST(request) {
       cookieHeader,
       landscape: !!landscape,
       format: format || 'A4',
+      // the designed sheets (surface) are complete A4 pages with their own margins: no extra page margin
+      margin: surface ? { top: '0', bottom: '0', left: '0', right: '0' } : undefined,
     });
 
     const HEBREW_RANGE_START = '֐';
     const HEBREW_RANGE_END = '׿';
     const safeNameChars = new RegExp(`[^\\w\\-. ${HEBREW_RANGE_START}-${HEBREW_RANGE_END}]`, 'g');
-    const safeName = (filename || 'document').replace(safeNameChars, '').trim() || 'document';
+    // String() + length cap: a non-string / 5000-char filename must not 500 after a full Chromium render or bloat the response header
+    const safeName = String(filename || 'document').slice(0, 120).replace(safeNameChars, '').trim() || 'document';
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${safeName}.pdf"`,
+        // HTTP header values must be Latin-1: a Hebrew filename in plain filename="..." makes `new NextResponse` throw (500 after a full
+        // Chromium render). ASCII fallback + RFC 5987 filename* carries the real (Hebrew) name.
+        'Content-Disposition': `inline; filename="${safeName.replace(/[^ -~]/g, '').trim() || 'document'}.pdf"; filename*=UTF-8''${encodeURIComponent(`${safeName}.pdf`)}`,
       },
     });
   } catch (err) {

@@ -1,0 +1,37 @@
+/* ================================================================
+   a5-print.css - התצוגה המקדימה של ההדפסה / ה-PDF (חלון מסך מלא כהה עם גיליונות A4 אמיתיים). פורט של print-kit.css (חלק ה-#pkv של המוק).
+   כללי הגיליונות עצמם (.pk-sheet ...) נמצאים ב-pkCss.js כמחרוזת - אותו טקסט בתצוגה, במדידה, בהדפסה ובמסמך שנשלח לשרת ה-PDF.
+   כללי @media print מוזרקים רק בזמן ההדפסה (pkCss.js PRINT_CSS) כדי ששום הדפסה אחרת באתר לא תושפע.
+   צבעים קבועים בלבד, בלי משתני ערכת הנושא (התצוגה צריכה להיראות אותו דבר בכל ערכה).
+   ================================================================ */
+#pkMeasure{position:fixed;left:-12000px;top:0;visibility:hidden;pointer-events:none;z-index:-1}
+#pkPrint{display:none}
+
+/* ---------- התצוגה המקדימה (כהה, כמו חלונות האתר) ---------- */
+#pkv{position:fixed;inset:0;z-index:20000;background:rgba(15,44,82,.97);display:none;flex-direction:column;direction:rtl;color:#fff;font:14px/1.4 "Rubik","Segoe UI",Arial,"Helvetica Neue",sans-serif}
+#pkv.on{display:flex}
+#pkv *{box-sizing:border-box}
+#pkv button{font-family:inherit!important} /* globals.css forces a button font (Assistant) on every button */
+#pkv .pk-vbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 14px;background:#0b2040;border-bottom:3px solid #c9a227}
+#pkv .pk-vt{display:flex;align-items:baseline;gap:10px;min-width:0}
+#pkv .pk-vt b{font-size:17px;font-weight:700}
+#pkv .pk-vt span{font-size:13px;color:#cfe0f7}
+#pkv .pk-sp{flex:1 1 20px}
+#pkv .pk-hint{flex:1 1 100%;order:9;font-size:12.5px;color:#dbe6f5;background:#12335f;border-radius:6px;padding:4px 10px}
+#pkv .pk-hint[hidden]{display:none}
+#pkv .pk-hint.err{background:#5b1f2a;color:#ffe3e6}
+#pkv .pk-seg{display:inline-flex;border:1px solid #7b93b7;border-radius:999px;overflow:hidden;background:transparent}
+#pkv .pk-seg button{border:0;background:transparent;color:#dbe6f5;padding:3px 12px;min-height:32px;font:inherit;font-size:13px;cursor:pointer}
+#pkv .pk-seg button+button{border-inline-start:1px solid #7b93b7}
+#pkv .pk-seg button[aria-pressed=true]{background:#c9a227;color:#1b1500}
+#pkv .pk-vb{border:1px solid #7b93b7;background:transparent;color:#fff;border-radius:8px;padding:4px 12px;min-height:34px;font:inherit;font-size:13px;cursor:pointer}
+#pkv .pk-vb:hover{background:rgba(255,255,255,.1)}
+#pkv .pk-vb.go{background:#c9a227;border-color:#c9a227;color:#1b1500;font-weight:700}
+#pkv .pk-vb.go:hover{background:#d8b43a}
+#pkv .pk-vb:disabled{opacity:.6;cursor:progress}
+#pkv .pk-vz{font-size:12.5px;color:#cfe0f7;min-width:42px;text-align:center}
+#pkv button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#pkv .pk-vscroll{flex:1;overflow:auto;padding:18px 16px;-webkit-overflow-scrolling:touch}
+.pk-sheetbox{position:relative;flex:none;width:calc(210mm*var(--z,1));height:calc(296.5mm*var(--z,1));margin:0 auto 16px}
+.pk-sheetbox .pk-sheet{position:absolute;left:0;top:0;transform:scale(var(--z,1));transform-origin:0 0;box-shadow:0 6px 26px rgba(0,0,0,.45)}
+@media (max-width:640px){#pkv .pk-vt b{font-size:15px}}
