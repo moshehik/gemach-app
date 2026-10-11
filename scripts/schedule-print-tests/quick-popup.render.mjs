@@ -57,23 +57,44 @@ ok('quick popup without export right: Excel request degrades to PDF only', () =>
 
 ok('quick without a valid stage falls back to the full wizard', () => {
   const h = html({ quick: true, initialTab: null, mode: 'print' });
-  assert.ok(h.includes('role="tablist"'));
+  assert.ok(h.includes('lz-tree'));
   assert.ok(!h.includes('lz-quick'));
 });
 
-ok('full wizard unchanged: tabs, mode switch, preview pane, all-day button', () => {
+ok('full wizard: category tree (right) + preview pane (left), all-day button, NO print/download or Excel/PDF switches, NO tabs', () => {
   const h = html({ mode: 'print' });
-  assert.ok(h.includes('role="tablist"'));
-  assert.ok(h.includes('aria-label="סוג הפעולה"'));
+  assert.ok(h.includes('lz-tree') && h.includes('lz-full'));
   assert.ok(h.includes('lz-wp'));
   assert.ok(h.includes('הדפס את כל דפי היום'));
   assert.ok(!h.includes('lz-quick'));
+  assert.ok(!h.includes('role="tablist"') && !h.includes('role="tab"'));
+  assert.ok(!h.includes('aria-label="סוג הפעולה"') && !h.includes('aria-label="סוג הקובץ"'));
+  // כל קטגוריה היא לחצן עם aria-expanded + תיבת סימון משלה; כל דף - תיבת סימון משלו (מקורית, נגישה)
+  const cats = new Set(PRINT_PAGES.map((p) => p.stages[0]));
+  assert.equal((h.match(/class="lz-cat[ "]/g) || []).length, cats.size);
+  assert.equal((h.match(/aria-expanded=/g) || []).length, cats.size);
+  assert.equal((h.match(/class="lz-pg[ "]/g) || []).length, PRINT_PAGES.length);
+  for (const p of PRINT_PAGES) assert.ok(h.includes(p.label), 'missing ' + p.label);
+});
+
+ok('full wizard: the action comes from the opener (title + go-button), Excel degrades to PDF without export right', () => {
+  const pr = html({ mode: 'print' });
+  assert.ok(pr.includes('הדפסה · דפי הלו״ז') && pr.includes('הדפס נבחרים ('));
+  const pdf = html({ mode: 'download', format: 'pdf' });
+  assert.ok(pdf.includes('הורדת PDF · דפי הלו״ז') && pdf.includes('הורד PDF (') && !pdf.includes('הורד Excel ('));
+  const xl = html({ mode: 'download', format: 'xlsx' });
+  assert.ok(xl.includes('ייצוא Excel · דפי הלו״ז') && xl.includes('הורד Excel (') && !xl.includes('הורד PDF ('));
+  const noXl = html({ mode: 'download', format: 'xlsx', canExport: false });
+  assert.ok(noXl.includes('הורד PDF (') && !noXl.includes('הורד Excel ('));
 });
 
 ok('ScheduleDay: header buttons (no stageKey) open the full wizard, section buttons the quick popup', () => {
   const src = fs.readFileSync(path.join(PROJ, 'app/components/schedule/ScheduleDay.js'), 'utf8');
   assert.equal((src.match(/quick: !!stageKey/g) || []).length, 3);
   assert.ok(src.includes('quick={!!wiz.quick}'));
+  // הלחצן "הורדה" = PDF, לחצן ה-XL = Excel (האשף לא שואל שוב)
+  assert.ok(src.includes("setWiz({ mode: 'download', format: 'pdf'"));
+  assert.ok(src.includes("setWiz({ mode: 'download', format: 'xlsx'"));
 });
 
 console.log(`quick-popup: ${n} passed`);

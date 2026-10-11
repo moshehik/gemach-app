@@ -18,5 +18,6 @@ export async function resolve(specifier, context, nextResolve) {
   const r = await tryResolve(specifier, context, nextResolve);
   if (r.url.endsWith('/app/lib/prisma.js')) return { url: SH('prisma.mjs'), shortCircuit: true };
   if (r.url.endsWith('/lib/auth.js')) return { url: SH('auth.mjs'), shortCircuit: true };
+  if (process.env.FAKE_GEMINI && r.url.endsWith('/lib/ai/gemini.js')) return { url: SH('gemini.mjs'), shortCircuit: true };
   return r;
 }
