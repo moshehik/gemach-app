@@ -729,6 +729,7 @@ export default function HomeA5() {
                   aria-label={ai ? 'שאלה לחיפוש החכם' : scopeDef ? `חיפוש רק ${scopeDef.only}` : 'חיפוש לקוח, הזמנה או פריט'}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
+                  placeholder={ai || scopeDef ? undefined : 'הקלד ברקוד או חפש...'}
                   disabled={loading}
                   name="gm-home-search"
                   type="text"
