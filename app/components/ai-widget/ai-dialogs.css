@@ -6,3 +6,16 @@
 .gm-ds.gm-no.ai-dlg-root .ai-dlg-table{max-height:min(60vh,520px);overflow:auto;margin-top:14px;border-radius:12px}
 .gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl{width:100%}
 .gm-ds.gm-no.ai-dlg-root .ai-dlg-table td{overflow-wrap:anywhere}
+/* צבעי הטבלה בחלון הכהה: .rtbl של הפלטה מיועדת למשטח בהיר (טקסט --gm-ink כחול כהה, מעבר גיר זהוב ב-:hover, וכלל גלובלי
+   "table tbody td{border-bottom-color:var(--divider)!important}" מ-globals.css), ולכן בתוך .dlg-dark הטקסט נעלם והקווים בהירים.
+   כאן מכסים אותם עם משתני הדיאלוג הכהה (--k-ink/--k-sub/--k-hair מ-.dlg-dark #dlg2) - הכללים בלי !important מנצחים בסלקטור הארוך,
+   ו-border-bottom-color דורש !important כדי לגבור על הכלל הגלובלי. */
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table{scrollbar-color:rgba(255,255,255,.28) transparent}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl thead th{position:sticky!important;top:0!important;z-index:2!important;background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;box-shadow:inset 0 -1px 0 rgba(255,255,255,.16)!important}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr{background:none;transition:none}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody td{color:var(--k-ink);background-color:transparent;border-bottom:1px solid rgba(255,255,255,.12)!important}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:last-child td{border-bottom-color:transparent!important}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:nth-child(even) td{background-color:rgba(255,255,255,.035)}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:hover,.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:focus-within{background:none}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:hover td,.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl tbody tr:focus-within td{background-color:rgba(188,194,200,.16);color:#fff}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl td a:not(.btn){color:var(--gm-gold-300);text-decoration:underline;text-underline-offset:3px}
