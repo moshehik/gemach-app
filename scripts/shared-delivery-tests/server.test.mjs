@@ -8,6 +8,7 @@ const L = (rel) => import(pathToFileURL(process.env.PROJ + '/' + rel).href);
 const SD = await L('lib/sharedDelivery.js');
 const Engine = await L('lib/pricingEngine.js');
 const Cache = await L('lib/settingsCache.js');
+const Join = await L('lib/deliveryJoin.js');
 
 const DAY = '2026-12-01';
 const EVENT = new Date(`${DAY}T00:00:00.000Z`); // כפי ש-UI שומר: חצות UTC של התאריך
@@ -32,6 +33,7 @@ function reset(settings = {}) {
   const rows = Object.entries({ ...BASE_SETTINGS, ...settings }).filter(([, v]) => v !== undefined && v !== null).map(([key, value]) => ({ key, value }));
   globalThis.__MOCK_DB = { order: [], customer: [], paymentObligation: [], payment: [], refund: [], systemSetting: rows, deliveryJoin: [] };
   Cache.invalidateAllSettingsCache();
+  Join.resetDeliveryJoinTableState();
 }
 const db = () => globalThis.__MOCK_DB;
 
@@ -506,7 +508,7 @@ test('כישלון בעדכון הזמנה אחת לא עוצר את השאר ו
 });
 
 test('previewSharedDelivery: הזמנה חדשה (אחרונה), הזמנה קיימת בעריכה, כתובת מפורשת, ללא כתובת מזוהה', async () => {
-  const a = addOrder();
+  const a = addOrder({ orderDate: new Date('2026-01-01T08:00:00Z') });
   await saveOrder(a.orderId);
   const cust = addCustomer();
   const p = await SD.previewSharedDelivery({ customerId: cust.id, eventDate: EVENT, isDelivery: true, deliveryDirection: 'הלוך-חזור' });
@@ -547,4 +549,27 @@ test('סיכום כספי אחרי סדרת פעולות: סך חיובי המש
   const total = os.reduce((s, o) => s + charge(o.orderId).amount, 0);
   // 0 ו-2 באותה כתובת (0 ראשית 80, 2 מוזלת 40), 1 בכתובת אחרת (80)
   assert.equal(total, 200);
+});
+
+test('שינוי עיר המשלוח (תעריף עירוני שונה) בהזמנה מוזלת: יוצאת מהקבוצה ומחויבת לפי תעריף העיר החדשה במחיר מלא', async () => {
+  const a = addOrder(); const b = addOrder();
+  await createFlow(a.orderId); await createFlow(b.orderId);
+  assert.equal(charge(b.orderId).amount, 40);
+  await editFlow(b.orderId, { deliveryCity: 'בית שמש', deliveryAddress: 'הנטקה 52' });
+  assert.equal(charge(b.orderId).amount, 140, 'בית שמש 70 לצד x2, מלא (אין כבר חבר בקבוצה)');
+  assert.equal(charge(a.orderId).amount, 80);
+  // שתי הזמנות באותה כתובת בבית שמש: מוזלת במחיר הגלובלי (20) ולא יותר מהרגיל
+  const c = addOrder({ deliveryCity: 'בית שמש', deliveryAddress: 'הנטקה 52' });
+  await createFlow(c.orderId);
+  assert.equal(charge(c.orderId).amount, 40);
+});
+
+test('מחיקה והחזרה של שורת ההזמנה (שמירה אחרי שהחיוב אבד) לא יוצרת חיוב כפול ולא זיכוי כפול', async () => {
+  const a = addOrder({ totalAmount: 80 }); const b = addOrder({ totalAmount: 40 });
+  await createFlow(a.orderId); await createFlow(b.orderId);
+  db().order.find((o) => o.orderId === b.orderId).totalAmount = 40; pay(b.orderId, 40);
+  for (let i = 0; i < 3; i += 1) await editFlow(b.orderId, {});
+  assert.equal(allObl(b.orderId).filter((o) => o.description.includes('משלוח')).length, 1);
+  assert.equal(charge(b.orderId).amount, 40);
+  assert.equal(refunds(b.orderId).length, 0);
 });

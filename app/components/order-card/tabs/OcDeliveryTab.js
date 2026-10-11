@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import { SLOTS } from '../slots';
+import SharedDeliveryPanel from '@/components/orders/SharedDeliveryPanel';
 import {
   DEFAULT_DIRECTION, DELIVERY_DIRECTIONS, deliveryCityOptions, deliveryFieldState, deliverySettingsOf, filterSuggestions, resolveCityInput
 } from '../parts/ocDetailsLogic';
@@ -206,6 +207,8 @@ export function OcDeliveryCards({ oc, ui }) {
         ) : null}
       </div>
       {JoinPicker ? <JoinPicker oc={oc} ui={ui} /> : null}
+      {/* משלוח משותף (shared_delivery_enabled): לא מרונדר כלום כשהפיצ'ר כבוי / אין קבוצה */}
+      {on && order.orderId ? <SharedDeliveryPanel orderId={order.orderId} order={order} /> : null}
     </>
   );
 }
