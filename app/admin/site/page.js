@@ -46,7 +46,6 @@ const categories = [
       { href: '/admin/access-import', icon: 'i-database', label: 'ייבוא מאקסס', subLabel: 'תיעוד תהליך הייבוא' },
       { href: '/admin/setup-new-machine', icon: 'i-download', label: 'התקנה על מחשב חדש', subLabel: 'סקריפט התקנה + תיעוד' },
       { href: '/admin/data-history', icon: 'i-history', label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
-      { href: '/admin/database', icon: 'i-database', label: 'גיבוי בסיס נתונים', subLabel: 'גיבוי ושחזור' },
       { href: '/admin/backups', icon: 'i-database', label: 'גיבוי לדרייב', subLabel: 'גיבוי אוטומטי, לחצן מיידי ולוג' },
       { href: '/admin/site-settings', icon: 'i-settings', label: 'הגדרות אתר', subLabel: 'מסד נתונים, מערכת ומיילים (מתכנת בלבד)' },
       { href: '/admin/site-settings/api-keys', icon: 'i-shield', label: 'מפתחות API', subLabel: 'כניסה בלי סיסמה לסוכנים וסקריפטים (מתכנת בלבד)' },

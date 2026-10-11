@@ -276,7 +276,6 @@ test('סטטי: כל הדגימות שנמצאו בסקר משתמשות ב-onAc
     'lib/pollClient.js', // הדוגם המשותף (פעמונים + דיווח תקלות) - docs/cpu-phase1a-poll-2026-10-06.md
     'app/components/OverdueRemindersWatcher.js',
     'app/admin/backups/page.js',
-    'app/admin/database/page.js',
   ];
   for (const f of polls) {
     const c = code(read(f));
