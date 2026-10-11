@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ScheduleIcon from '../ScheduleIcon';
 import { STAGE_ORDER, STAGE_META } from '../scheduleMeta';
-import { hebrewLong, hebrewParts } from '../hebrewCalendar';
+import { hebrewParts } from '../hebrewCalendar';
 import { PRINT_PAGES, defaultVersion, versionsParam } from '@/lib/schedule/print/registry';
 import { downloadScheduleXlsx } from '@/lib/schedule/print/xlsx';
 import { downloadPdf } from '@/app/lib/pdfClient';
@@ -58,7 +58,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   // מהבחירה כשתשובת ההרשאות מגיעה (ר' forbidden למטה)
   const [sel, setSel] = useState(() => {
     const s = {};
-    for (const p of PRINT_PAGES) s[p.key] = p.status === 'ready' && (startTab === 'all' ? (counts[p.stages[0]] || 0) > 0 : p.stages[0] === startTab);
+    for (const p of PRINT_PAGES) s[p.key] = false; // ברירת מחדל: שום דף לא מסומן
     return s;
   });
   // null = עדיין לא ידוע (הכל פתוח; השרת בודק בכל מקרה), אחרת Set של מפתחות אסורים
@@ -222,7 +222,6 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   const allLabel = mode === 'print' ? 'הדפס את כל דפי היום' : 'הורד את כל דפי היום';
   const dayTitle = date ? (() => { const h = hebrewParts(date); return h.dl + ' ' + h.m; })() : '';
   const actionTitle = mode === 'print' ? 'הדפסה' : format === 'pdf' ? 'הורדת PDF' : 'ייצוא Excel';
-  const actionVerb = mode === 'print' ? 'ולהדפיס' : 'ולהוריד';
 
   const pageRow = (p) => {
     const k = p.stages[0];
@@ -260,14 +259,12 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
           <>
             <div className="dbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>
             <h2 id="lz-wiz-title">{actionTitle + ' · ' + stageLabel}</h2>
-            <div className="sub">{date ? hebrewLong(date) + ' · ' : ''}בחרו דפים מהשלב</div>
           </>
         ) : (
           <div className="lz-wh">
             <div className="lz-wbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>
             <div className="lz-wht">
               <h2 id="lz-wiz-title">{actionTitle + ' · דפי הלו״ז' + (dayTitle ? ' · ' + dayTitle : '')}</h2>
-              <div className="lz-wsub">{date ? hebrewLong(date) + ' · ' : ''}בחרו דפים {actionVerb}</div>
             </div>
           </div>
         )}
@@ -277,7 +274,6 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
             <div className="lz-wall">
               <button type="button" className="lz-wallb" onClick={() => setAll(true)}>סמן הכל</button>
               <button type="button" className="lz-wallb" onClick={() => setAll(false)}>נקה בחירה</button>
-              <span className="lz-wsel" aria-live="polite">{n ? `${n} נבחרו` : 'לא נבחרו דפים'}</span>
             </div>
             {isQuick ? (
               <ul className="lz-pgs lz-flat" aria-label="דפים להדפסה">{listed.map(pageRow)}</ul>
@@ -295,8 +291,6 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
                         <button type="button" className="lz-catb" aria-expanded={isOpen} aria-controls={'lz-grp-' + k} onClick={() => toggleOpen(k)}>
                           <span className="lz-catic"><ScheduleIcon name={STAGE_META[k].icon} /></span>
                           <span className="lz-catn">{STAGE_META[k].label}</span>
-                          <span className="lz-chip" title="פריטים היום">{counts[k] || 0}</span>
-                          <span className="lz-cats">{onCount}/{pages.length}</span>
                           <ScheduleIcon name="chev" className="lz-chv" />
                         </button>
                       </div>
@@ -309,7 +303,6 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
           </div>
           {isQuick ? null : (
             <div className={'lz-wp' + (showPrev ? ' lz-wp-on' : '')} ref={prevRef}>
-              <div className="lz-wph">{focused ? 'תצוגה מקדימה · ' + focused.label : 'תצוגה מקדימה'}</div>
               <PreviewFrame
                 key={focused ? focused.key + (versions[focused.key] || '') + (date || '') + branch : 'none'}
                 title={focused ? 'תצוגה מקדימה: ' + focused.label : ''}
@@ -335,7 +328,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
         ) : null}
 
         <div className="dbtns mact lz-wf">
-          <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
+          <button type="button" className="btn primary" disabled={!n || busy} onClick={() => run(selected)}>
             <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
           </button>
           {isQuick ? null : <button type="button" className="btn" disabled={!allDay.length || busy} onClick={() => run(allDay)}>{allLabel}</button>}
