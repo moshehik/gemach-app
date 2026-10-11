@@ -152,14 +152,15 @@ export default function useModelNewController({ router }) {
 
   // ---------- ניווט ----------
   const touchAll = useCallback(() => upd({ touched: { code: 1, name: 1, cat: 1 } }), [upd]);
+  // טופס רציף: "מעבר למקטע n" = גלילה אליו (אין שלב נוכחי). מקטע 2-4 נעולים עד שזיהוי הדגם תקין - כמו הנעילה בהזמנה חדשה ברצף
   const go = useCallback((n) => {
     const cur = Sref.current;
-    if (cur.saved || cur.busy || n === cur.step || n < 1 || n > 4) return;
+    if (cur.saved || cur.busy || n < 1 || n > 4) return;
     if (n > 1 && !step1Ok) { touchAll(); say('warn', 'חסרים פרטי זיהוי', `יש להשלים: ${missing.join(', ')}`); return; }
-    upd({ step: n, catOpen: false });
-    if (typeof window !== 'undefined') {
-      const bars = document.getElementById('pbars');
-      if (bars && bars.getBoundingClientRect().top < 0) window.scrollTo({ top: 0, behavior: 'smooth' });
+    upd({ catOpen: false });
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById(`mn-sec-${n}`);
+      if (el) el.scrollIntoView({ behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     }
   }, [step1Ok, missing, touchAll, say, upd]);
 
@@ -197,6 +198,7 @@ export default function useModelNewController({ router }) {
     const ok = await ask('discard');
     if (!ok) return;
     await reset();
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); // אחרי האיפוס המקטעים 2-4 נעולים - חוזרים לראש הטופס
     say('info', 'הטופס אופס', '');
   }, [ask, reset, say]);
 
@@ -207,7 +209,8 @@ export default function useModelNewController({ router }) {
 
   // ---------- שלב 1 ----------
   const setField = useCallback((p) => upd((prev) => ({ d: { ...prev.d, ...p }, ...(p.name !== undefined && prev.nameErr ? { nameErr: '' } : {}) })), [upd]);
-  const onCode = useCallback((v) => setField({ code: L.sanitizeCode(v, codeLen) }), [setField, codeLen]);
+  // שינוי קוד מנקה גם הודעת "שם כפול" שנגזרה ממנו (כש-useModelNames=false אין שדה שם שינקה אותה)
+  const onCode = useCallback((v) => { setField({ code: L.sanitizeCode(v, codeLen) }); upd((prev) => (prev.nameErr ? { nameErr: '' } : null)); }, [setField, codeLen, upd]);
   const touch = useCallback((k) => upd((prev) => ({ touched: { ...prev.touched, [k]: 1 } })), [upd]);
   const autoCode = useCallback(async () => {
     try {
@@ -277,7 +280,7 @@ export default function useModelNewController({ router }) {
     const cur = Sref.current;
     if (cur.busy || cur.saved) return;
     if (head === false) { say('warn', 'אין הרשאה', 'יצירת דגם שמורה להנהלה ראשית'); return; }
-    if (!step1Ok) { touchAll(); if (cur.step !== 1) upd({ step: 1 }); say('warn', 'חסרים פרטי זיהוי', `יש להשלים: ${missing.join(', ')}`); return; }
+    if (!step1Ok) { touchAll(); say('warn', 'חסרים פרטי זיהוי', `יש להשלים: ${missing.join(', ')}`); return; }
     upd({ busy: true, catOpen: false });
     setProgress('');
     showBusy(true);
@@ -290,8 +293,13 @@ export default function useModelNewController({ router }) {
         const e = L.describeCreateError(res.status, created);
         if (e.duplicate) setTakenMap((p) => ({ ...p, [String(cur.d.code).trim()]: true }));
         // שם דגם שכבר קיים (400, field:'name'): ההודעה ליד שדה השם (או ליד הקוד כשהשם אוטומטי) והמיקוד בו
-        upd({ busy: false, step: 1, touched: { ...Sref.current.touched, code: 1, ...(e.nameDuplicate ? { name: 1 } : {}) }, ...(e.nameDuplicate ? { nameErr: e.msg } : {}) });
-        if (e.nameDuplicate && typeof document !== 'undefined') setTimeout(() => { const i = document.getElementById('mnName'); if (i) i.focus(); }, 60);
+        upd({ busy: false, touched: { ...Sref.current.touched, code: 1, ...(e.nameDuplicate ? { name: 1 } : {}) }, ...(e.nameDuplicate ? { nameErr: e.msg } : {}) });
+        // קוד תפוס / שם כפול: המקטעים 2-4 ננעלים - חוזרים למקטע הזיהוי וממקדים את השדה הבעייתי (הטוסט נעלם, וההודעה האדומה יושבת שם)
+        if ((e.duplicate || e.nameDuplicate) && typeof document !== 'undefined') {
+          const first = document.getElementById('mn-sec-1');
+          if (first) first.scrollIntoView({ behavior: 'auto', block: 'start' });
+          setTimeout(() => { const i = document.getElementById(e.nameDuplicate && useModelNames ? 'mnName' : 'mnCode'); if (i) i.focus({ preventScroll: true }); }, 60);
+        }
         say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : e.nameDuplicate ? 'שם הדגם כבר קיים' : 'יצירת הדגם נכשלה', e.msg);
         return;
       }
@@ -327,6 +335,16 @@ export default function useModelNewController({ router }) {
       say('warn', 'שגיאה בתקשורת עם השרת', '');
     }
   }, [head, step1Ok, missing, touchAll, upd, say, showBusy, useModelNames, locations, goCard]);
+
+  // הגנת יציאה (כמו "הזמנה חדשה"): PageVariantToggle שואל על window.__gmDirty, ורענון / סגירת לשונית מזהירים כשהוזנו פרטים ועוד לא נוצר דגם
+  const dirtyRef = useRef(false);
+  useEffect(() => { dirtyRef.current = !!dirty && !S.saved; }, [dirty, S.saved]);
+  useEffect(() => {
+    window.__gmDirty = () => dirtyRef.current;
+    const warn = (e) => { if (dirtyRef.current) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => { window.__gmDirty = false; window.removeEventListener('beforeunload', warn); };
+  }, []);
 
   // ---------- מקלדת: Escape סוגר חלון (לא בזמן יצירה) / רשימת הקטגוריות ----------
   useEffect(() => {

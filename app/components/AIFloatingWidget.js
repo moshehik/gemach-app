@@ -13,6 +13,49 @@ import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/u
 import { formatActionSteps } from '../../lib/actionRecorderCore';
 import { useUiVariant } from './UiVariantContext';
 import { useAiDialogs } from './ai-widget/AiDialogs';
+import { AI_FILE_INPUT_ACCEPT, validateAiFiles, isAiImageName } from '../../lib/aiAttachmentTypes';
+
+// תפריט צץ שנסגר בלחיצה/מיקוד מחוץ אליו (וגם מחוץ לכפתור שפותח אותו, שמטפל בפתיחה/סגירה בעצמו - אחרת הסגירה
+// והלחיצה על הכפתור מתחרות ויוצרות הבהוב) ובמקש Escape (המיקוד חוזר לכפתור). המאזינים מחוברים רק בזמן שהתפריט פתוח.
+// pointerdown בשלב ה-capture: נסגר גם כשהדף שמאחור או אזור השיחה עוצרים את האירוע. שאר סגירות (בחירת פריט, סגירת החלונית, מעבר דף) - אצל הקורא.
+function useDismissOnOutside(open, onDismiss, menuRef, toggleRef) {
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => { onDismissRef.current = onDismiss; });
+  useEffect(() => {
+    if (!open) return undefined;
+    const isInside = (target) => Boolean(
+      (menuRef.current && menuRef.current.contains(target)) || (toggleRef.current && toggleRef.current.contains(target))
+    );
+    const onOutside = (e) => { if (!isInside(e.target)) onDismissRef.current(); };
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onDismissRef.current();
+      if (toggleRef.current) toggleRef.current.focus();
+    };
+    document.addEventListener('pointerdown', onOutside, true);
+    document.addEventListener('focusin', onOutside, true);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onOutside, true);
+      document.removeEventListener('focusin', onOutside, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [open, menuRef, toggleRef]);
+}
+
+const readFileAsDataUrl = (file) => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => resolve(null);
+  reader.readAsDataURL(file);
+});
+// גודל בבתים של תוכן base64 (מתוך data URL) - לספירת הגבלת הגודל הכוללת
+const dataUrlBytes = (dataUrl) => {
+  const b64 = String(dataUrl || '').split(',')[1] || '';
+  return Math.floor((b64.length * 3) / 4);
+};
+let pendingFileSeq = 0;
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -103,6 +146,18 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [pendingRecordingUrl, setPendingRecordingUrl] = useState(null);
   const [pendingRecordingMeta, setPendingRecordingMeta] = useState(null);
   const [showCaptureMenu, setShowCaptureMenu] = useState(false);
+  // קבצים מהמחשב (תמונה/PDF/טקסט) שצורפו להודעה הבאה: { id, name, size, dataUrl } - נשלחים ל-AI יחד עם השאלה
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const captureMenuRef = useRef(null);
+  const captureToggleRef = useRef(null);
+  const fileInputRef = useRef(null);
+  useDismissOnOutside(showCaptureMenu, () => setShowCaptureMenu(false), captureMenuRef, captureToggleRef);
+  // מעבר בין דפים סוגר את התפריט (התאמת state בזמן רינדור - הדפוס המומלץ של React לאיפוס state לפי prop)
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (menuPathname !== pathname) {
+    setMenuPathname(pathname);
+    setShowCaptureMenu(false);
+  }
   const [recordingEnabled, setRecordingEnabled] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
@@ -124,6 +179,35 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     const capture = await captureViewport();
     setIsOpen(true);
     if (capture) setPendingImage(capture.dataUrl);
+  };
+
+  const closeWidget = () => {
+    setShowCaptureMenu(false);
+    setIsOpen(false);
+  };
+
+  const openFilePicker = () => {
+    setShowCaptureMenu(false);
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  // אותן בדיקות כמו בדיווח תקלה (סיומת מותרת, סה"כ עד 3MB) - ר' lib/aiAttachmentTypes.js, שמצמצם לסוגים שהעוזר באמת קורא
+  const handleFilesChosen = async (e) => {
+    const chosen = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!chosen.length) return;
+    const currentBytes = pendingFiles.reduce((sum, f) => sum + f.size, 0) + (pendingImage ? dataUrlBytes(pendingImage) : 0);
+    const checked = validateAiFiles(chosen, { currentBytes, currentCount: pendingFiles.length });
+    const errors = [];
+    const added = [];
+    for (const c of checked) {
+      if (!c.ok) { errors.push(c.error); continue; }
+      const dataUrl = await readFileAsDataUrl(c.file);
+      if (!dataUrl) { errors.push(`קריאת "${c.file.name}" נכשלה`); continue; }
+      added.push({ id: `f${++pendingFileSeq}`, name: c.file.name, size: c.file.size, dataUrl });
+    }
+    if (added.length) setPendingFiles((prev) => [...prev, ...added]);
+    if (errors.length) aiDlg.notify(errors.join('\n'), { title: 'צירוף קובץ' });
   };
 
   const startElementCaptureForChat = () => {
@@ -304,20 +388,22 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if ((!input.trim() && !pendingImage && !pendingRecordingUrl) || loading) return;
+    if ((!input.trim() && !pendingImage && !pendingRecordingUrl && pendingFiles.length === 0) || loading) return;
 
-    const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהסרטה הזו?' : 'מה רואים בתמונה הזו?');
+    const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהסרטה הזו?' : (!pendingImage && pendingFiles.length ? 'מה יש בקובץ המצורף?' : 'מה רואים בתמונה הזו?'));
     const imageToSend = pendingImage ? dataUrlToParts(pendingImage) : null;
+    const filesToSend = pendingFiles;
     const recordingToSend = pendingRecordingUrl;
     let recordingMetaToSend = pendingRecordingMeta;
     const stillUploading = Boolean(recordingToSend && isUploadingRecording && uploadPromiseRef.current);
     setInput('');
     setPendingImage(null);
+    setPendingFiles([]);
     setPendingRecordingUrl(null);
     setPendingRecordingMeta(null);
 
     // ההודעה מופיעה מיד; אם הוידאו עוד עולה, מסמנים אותה "מעלה הסרטה" והבקשה ל-AI יוצאת רק אחרי שההעלאה הסתיימה
-    const userMessage = { role: 'user', content: userMsg, attachedImage: pendingImage, attachedRecording: recordingToSend, uploadingRecording: stillUploading };
+    const userMessage = { role: 'user', content: userMsg, attachedImage: pendingImage, attachedFiles: filesToSend.map((f) => ({ name: f.name })), attachedRecording: recordingToSend, uploadingRecording: stillUploading };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setLoading(true);
@@ -357,9 +443,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           prompt: userMsg,
           history: historyContext,
           // השאלה הראשונה בשיחה (קיימת רק הודעת הפתיחה של ה-AI): השרת מצרף לתשובה כותרת לשיחה
-          firstQuestion: messages.filter((m) => m.role === 'assistant').length <= 1 && !imageToSend && !recordingMetaToSend,
+          firstQuestion: messages.filter((m) => m.role === 'assistant').length <= 1 && !imageToSend && !recordingMetaToSend && filesToSend.length === 0,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`,
           image: imageToSend,
+          files: filesToSend.length ? filesToSend.map((f) => ({ name: f.name, data: f.dataUrl.split(',')[1] || '' })) : undefined,
           recordingFileId: recordingMetaToSend?.fileId || null,
           recordingSteps: recordingMetaToSend?.stepsText || null,
         }),
@@ -590,7 +677,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <button data-element-name="כפתור_AIFloatingWidget_9"
               type="button"
               className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => { setShowCaptureMenu(false); setIsExpanded(!isExpanded); }}
               style={{ color: 'var(--text-on-primary)' }}
               title={isExpanded ? 'הקטן' : 'הגדל'}
             >
@@ -603,7 +690,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <button data-element-name="כפתור_AIFloatingWidget_12"
               type="button"
               className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={() => setIsOpen(false)}
+              onClick={closeWidget}
               style={{ color: 'var(--text-on-primary)' }}
               title="סגור"
             >
@@ -672,6 +759,16 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                     {msg.attachedImage && (
                       <img src={msg.attachedImage} alt="צילום מצורף" style={{ maxWidth: 180, maxHeight: 140, borderRadius: 6, marginTop: 6, display: 'block' }} />
                     )}
+                    {Array.isArray(msg.attachedFiles) && msg.attachedFiles.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        {msg.attachedFiles.map((f, i) => (
+                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, maxWidth: '100%' }}>
+                            <svg className="icon" style={{ width: 14, height: 14, flex: 'none' }}><use href="#i-upload" /></svg>
+                            <bdi style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</bdi>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {msg.attachedRecording && (
                       <video src={msg.attachedRecording} controls style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, marginTop: 6, display: 'block' }} />
                     )}
@@ -738,14 +835,27 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         </div>
 
         {/* תצוגה ממתינה - תמונה/הקלטת מסך שצורפו ועדיין לא נשלחו */}
-        {(pendingImage || pendingRecordingUrl || isUploadingRecording) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}>
+        {(pendingImage || pendingRecordingUrl || isUploadingRecording || pendingFiles.length > 0) && (
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}>
             {pendingImage && (
               <div style={{ position: 'relative' }}>
                 <img src={pendingImage} alt="צילום ממתין" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
                 <button type="button" onClick={() => setPendingImage(null)} style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, lineHeight: 1 }}>×</button>
               </div>
             )}
+            {pendingFiles.map((f) => (
+              <div key={f.id} style={{ position: 'relative' }} title={f.name}>
+                {isAiImageName(f.name) ? (
+                  <img src={f.dataUrl} alt={f.name} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)', display: 'block' }} />
+                ) : (
+                  <div style={{ width: 48, height: 48, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden' }}>
+                    <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-file" /></svg>
+                    <bdi style={{ fontSize: 9, maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</bdi>
+                  </div>
+                )}
+                <button type="button" aria-label={`הסר את ${f.name}`} onClick={() => setPendingFiles((prev) => prev.filter((x) => x.id !== f.id))} style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, lineHeight: 1 }}>×</button>
+              </div>
+            ))}
             {isUploadingRecording && <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
             {pendingRecordingUrl && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -778,34 +888,42 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <>
               <div style={{ position: 'relative' }}>
                 <button data-element-name="כפתור_AIFloatingWidget_22"
+                  ref={captureToggleRef}
                   type="button"
                   onClick={() => setShowCaptureMenu((v) => !v)}
                   className="icon-btn"
-                  title="צרף צילום/הסרטת מסך"
+                  title="צרף צילום/הסרטת מסך/קובץ"
+                  aria-haspopup="menu"
+                  aria-expanded={showCaptureMenu}
+                  aria-controls={showCaptureMenu ? 'ai-capture-menu' : undefined}
                 >
                   <svg className="icon"><use href="#i-grid" /></svg>
                 </button>
                 {showCaptureMenu && (
-                  <div style={{
+                  <div ref={captureMenuRef} id="ai-capture-menu" role="menu" style={{
                     position: 'absolute', bottom: '110%', insetInlineStart: 0,
                     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
                     boxShadow: 'var(--shadow-lg)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
                     minWidth: 190, zIndex: 10,
                   }}>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={startElementCaptureForChat}>
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={startElementCaptureForChat}>
                       <svg className="icon"><use href="#i-pin" /></svg>
                       צלם אזור באתר
                     </button>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={captureFullScreenForChat}>
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={captureFullScreenForChat}>
                       <svg className="icon"><use href="#i-grid" /></svg>
                       צלם את כל המסך
                     </button>
                     {recordingEnabled && (
-                      <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={toggleRecording}>
+                      <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={toggleRecording}>
                         <svg className="icon"><use href="#i-activity" /></svg>
                         הסרטת מסך
                       </button>
                     )}
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={openFilePicker} title="תמונה, PDF, טקסט או CSV - עד 3MB בסך הכל">
+                      <svg className="icon"><use href="#i-upload" /></svg>
+                      העלאת קובץ
+                    </button>
                   </div>
                 )}
               </div>
@@ -842,6 +960,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               </button>
             </>
           )}
+          <input ref={fileInputRef} type="file" multiple accept={AI_FILE_INPUT_ACCEPT} onChange={handleFilesChosen} style={{ display: 'none' }} />
         </form>
       </div>
       <ElementPickerOverlay isPicking={elementPicker.isPicking} hoverRect={elementPicker.hoverRect} />

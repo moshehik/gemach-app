@@ -23,6 +23,8 @@
 /* QA 2.10: טבלה עם border-collapse:collapse מתעלמת מ-padding - במסך (ובתצוגה המקדימה באשף) הטקסט יצא קצה לקצה בלי שולי 12 מ"מ
    של הדף. במסך בלבד עוברים למודל separate (border-spacing:0 כבר מוגדר) כדי שה-padding של הגיליון יחול; בהדפסה השוליים מ-@page */
 @media screen{.pp-paper .pp-sheet{border-collapse:separate}}
+/* תצוגה מקדימה באשף (iframe, ?preview=1): רקע אפור-כהה סביב הדף כמו תצוגת ההדפסה של Chrome, בתוך חלון כהה */
+@media screen{.pp-preview .pp-paper{background:#3c4249}}
 /* globals.css: `div:has(> table){max-height:75vh;overflow-y:auto}` ("כותרת דביקה" לטבלאות האתר) תופס כל div שהילד הישיר שלו טבלה - גם
    .pp-paper (עוטף את גיליונות .pp-sheet), בלוקי הזמנה/משפחה (.pp-ob) ועטיפות הגוף של הדפים - ובהדפסה זה חותך גוף ארוך לגובה 75vh עם
    גלילה. מנוטרל כאן פעם אחת לכל מה שבתוך .pp-root (מסך והדפסה), כך שתבנית רשאית לעטוף טבלה ב-div. */

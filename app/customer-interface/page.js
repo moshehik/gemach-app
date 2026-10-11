@@ -40,6 +40,9 @@ function KioskThumbImg({ model }) {
 // מספר הדגם (כמו שכבר קורה לדגמים בלי שם תיאורי בכלל) מאשר את המחרוזת המילולית.
 // שימי לב: \b ב-JS לא עובד על אותיות עברית (\w הוא ASCII בלבד) אז בדיקת regex עם \b
 // אף פעם לא תואמת כאן - ר' דיווח dd108f1f/13ca5dae, הבדיקה הקודמת לא זיהתה כלום.
+// הדוחות המודפסים נכתבים ל-document.write של חלון חדש: כל ערך שהוזן בידי משתמש (שם דגם, מידה, חיפוש) חייב escape, אחרת שם עם HTML רץ בהקשר האפליקציה
+const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function getModelDisplayName(model) {
   const rawName = (model.name || '').trim();
   if (rawName && !rawName.startsWith('ללא שם')) return rawName;
@@ -820,13 +823,13 @@ export default function CustomerInventoryViewer() {
       const sizesArray = Array.from(sizeMap.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
       let sizesHtml = sizesArray.map(([sName, sData]) => {
         const isAvail = sData.available > 0;
-        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available})</span>`;
+        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${escHtml(sName)} (${sData.available})</span>`;
       }).join('');
 
       tableRows += `
         <tr>
-          <td style="font-weight:bold;">${getModelDisplayName(model)}</td>
-          <td>${model.barcodePrefix || model.id || ''}</td>
+          <td style="font-weight:bold;">${escHtml(getModelDisplayName(model))}</td>
+          <td>${escHtml(model.barcodePrefix || model.id || '')}</td>
           <td style="font-weight:bold;">${totalAvailable}</td>
           <td style="direction:ltr; text-align:right;">${sizesHtml || 'אין מלאי'}</td>
         </tr>
@@ -863,7 +866,7 @@ export default function CustomerInventoryViewer() {
         <div class="bsd">בס"ד</div>
         <div class="report-header">
           <h1>דוח זמינות דגמים - גמ"ח שמלות</h1>
-          <p>תאריך אירוע מבוקש: ${dateStr} | סינון: ${modelsToPrint ? getModelDisplayName(modelsToPrint[0]) : (search ? `"${search}"` : 'ללא סינון')}</p>
+          <p>תאריך אירוע מבוקש: ${dateStr} | סינון: ${modelsToPrint ? escHtml(getModelDisplayName(modelsToPrint[0])) : (search ? `"${escHtml(search)}"` : 'ללא סינון')}</p>
         </div>
         <table>
           <thead>
