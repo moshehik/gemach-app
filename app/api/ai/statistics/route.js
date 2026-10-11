@@ -8,6 +8,7 @@ import { verifiedCookieStore } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
+import { assertSqlTables, tablesForTier, aiTierForRole } from '../../../../lib/ai/sqlTablePolicy';
 import { getAllCachedSettings } from '../../../../lib/settingsCache';
 import { buildSettingsGuide } from '../../../../lib/settingsMetadata';
 import { buildHowToGuide } from '../../../../lib/howToGuide';
@@ -72,7 +73,7 @@ export async function POST(req) {
     }
 
     const cookieStore = await cookies();
-    const { isManager, employeeId, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+    const { isManager, employeeId, employeeContext, roleId: aiRoleId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     const statsRestrictionConfig = await getFeatureRestrictionConfig('statistics');
     // loadEmployeeAccess() already computed the default financial-data-restriction text above;
@@ -138,6 +139,7 @@ export async function POST(req) {
         const executeOne = async (q) => {
           try {
             assertReadOnlySelect(q);
+            assertSqlTables(q, tablesForTier(aiTierForRole(aiRoleId))); // R4b: only tables this caller's tier may read
           } catch (guardErr) {
             console.error('SQL Guard rejected AI-generated statistics query:', guardErr.message, '\nRejected SQL:', q);
             throw guardErr;
