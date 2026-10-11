@@ -1,4 +1,5 @@
 import prisma, { auditAs } from '@/app/lib/prisma';
+import { reconcileAfterCustomerAddressChange } from '@/lib/sharedDelivery';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS, validateCustomerBankFields } from '@/lib/customerBankFields';
@@ -223,7 +224,21 @@ export async function PUT(request, { params }) {
       changes
     ));
 
-    return NextResponse.json(updatedCustomer);
+    // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל): שינוי רחוב / מספר בית / עיר בכרטיס הלקוחה משנה את כתובת המשלוח של הזמנות עתידיות שלה
+    // שאין להן כתובת משלוח מפורשת - הן עלולות לצאת מקבוצה (חוזרות למחיר מלא - צריך לגבות) או להיכנס לאחת. מיישרים ומחזירים התראה לעובד.
+    // כשל כאן לא מפיל את שמירת הלקוחה.
+    let sharedDelivery = null;
+    if (changes.street || changes.houseNum || changes.city) {
+      try {
+        const rec = await reconcileAfterCustomerAddressChange(id, { street: oldCustomer.street, houseNum: oldCustomer.houseNum, city: oldCustomer.city });
+        if (rec.enabled && rec.notices.length) sharedDelivery = { notices: rec.notices, affectedOrders: rec.affectedOrders };
+      } catch (sharedErr) {
+        console.error(`Customer ${id}: shared delivery reconcile after address change failed:`, sharedErr);
+        sharedDelivery = { notices: [], affectedOrders: [], error: 'עדכון המשלוח המשותף של הזמנות הלקוחה נכשל - יש לבדוק את הזמנות המשלוח העתידיות שלה' };
+      }
+    }
+
+    return NextResponse.json(sharedDelivery ? { ...updatedCustomer, sharedDelivery } : updatedCustomer);
   } catch (error) {
     console.error('Error updating customer:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

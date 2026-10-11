@@ -16,6 +16,7 @@ import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOr
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo } from '@/lib/sharedDelivery';
 import {
   planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
@@ -1035,6 +1036,21 @@ async function POST(request) {
     // org2 3a4d36df (2026-09-14) - "הוספתי משלוח להזמנה חדשה והוא לא עדכן את זה".
     await applyDeliveryCharge(order.orderId);
 
+    // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל): הזמנה חדשה בכתובת + יום של הזמנות קיימות. אם היא נרשמה ראשונה היא "ראשית";
+    // אחרת היא מוזלת (applyDeliveryCharge למעלה כבר חישב לפי הקבוצה). כאן מיישרים את שאר הקבוצה (למשל הזמנה ישנה שחויבה במחיר הרגיל
+    // והיא עדיין הראשית - לא משתנה; קבוצה שבה ההזמנה החדשה "הקדימה" ברישום - משתנה) ומחזירים התראות. כשל לא מפיל את השמירה.
+    let sharedDelivery = null;
+    try {
+      const sharedKey = await getSharedGroupKeyForOrder(order.orderId);
+      if (sharedKey) {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedKey], excludeOrderIds: [order.orderId], reason: `הזמנה חדשה #${order.orderId}` });
+        if (rec.enabled) sharedDelivery = { notices: rec.notices, self: await getSharedDeliveryInfo(order.orderId) };
+      }
+    } catch (sharedErr) {
+      console.error(`Order ${order.orderId}: shared delivery reconcile failed:`, sharedErr);
+      sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+    }
+
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
       include: {
@@ -1160,7 +1176,7 @@ async function POST(request) {
 
     const warning = [reservationWarning, pricingWarning].filter(Boolean).join('\n\n');
 
-    return NextResponse.json(warning ? { ...updatedOrder, warning } : updatedOrder);
+    return NextResponse.json({ ...updatedOrder, ...(warning ? { warning } : {}), ...(sharedDelivery ? { sharedDelivery } : {}) });
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json(
