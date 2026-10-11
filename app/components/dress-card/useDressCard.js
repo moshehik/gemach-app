@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cacheNamespace, fetchJson, getSettingsCached } from '@/app/lib/pageCache';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { addHistory } from '@/lib/historyManager';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { nextWorkingDay } from '@/lib/businessDays';
@@ -38,7 +39,8 @@ function makeStore() {
   return { get: () => value, subscribe: (fn) => { ls.add(fn); return () => ls.delete(fn); }, emit: (v) => { value = v; ls.forEach((f) => f()); } };
 }
 const fromRaw = (raw, rawItems) => ({ model: modelFromServer(raw), items: rawItems.map(itemFromServer) });
-const errText = async (res) => { try { const d = await res.json(); return (d && d.error) || ''; } catch { return ''; } };
+// text = הודעת השרת; field = השדה שהשרת מצביע עליו (למשל 'name' כששם הדגם כבר קיים) - להצגה ליד השדה
+const errInfo = async (res) => { try { const d = await res.json(); return { text: (d && d.error) || '', field: (d && d.field) || '' }; } catch { return { text: '', field: '' }; } };
 
 export default function useDressCard(dressId, ui) {
   const router = useRouter();
@@ -55,6 +57,9 @@ export default function useDressCard(dressId, ui) {
   const [uploading, setUploading] = useState(false);
   const [redoCount, setRedoCount] = useState(0);
   const [hit, setHit] = useState(null); // פריט שנמצא בסריקה (הדגשה קצרה)
+  // ניהול פריטי דגם (הוספה / עריכה / מחיקה / שחזור): feature:dress_items_manage, מ-/api/me. סגור עד שנטען - בלי ההרשאה הפריטים לקריאה בלבד (השרת אוכף בנפרד)
+  const [canManageItems, setCanManageItems] = useState(false);
+  const [nameConflict, setNameConflict] = useState(null); // {name, text} - השרת סירב לשם הדגם (כבר קיים); מוצג ליד השדה כל עוד השם לא השתנה
   const [rentals, setRentals] = useState({ status: 'idle', list: [], stats: { total: 0, lastYear: 0, outNow: 0, overdue: 0 } });
   const [logs, setLogs] = useState({ status: 'idle', modelLogs: [], itemLogs: [] });
   const [listIntent, setListIntent] = useState(null); // {tab, filter, n} - "צ'יפ" ברייל שמעביר לרשימת הפריטים עם סינון
@@ -85,6 +90,9 @@ export default function useDressCard(dressId, ui) {
     if (!lookup.categories) {
       fetchJson('/api/pricelists/categories').then((d) => { lookup.categories = Array.isArray(d) ? d : []; if (!off) setCategories(lookup.categories); }).catch((e) => console.error('Failed to load categories', e));
     }
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+      .then((me) => { if (!off) setCanManageItems(!!(me && me.employee && me.employee.canManageDressItems)); })
+      .catch(() => { if (!off) setCanManageItems(false); });
     return () => { off = true; };
   }, []);
 
@@ -196,12 +204,17 @@ export default function useDressCard(dressId, ui) {
       if (step.itemId && failedLines.has(`item:${step.itemId}`)) { failures.push({ step, error: 'דולג כי עריכה קודמת של הפריט נכשלה' }); continue; }
       try {
         const res = await fetch(step.req.url, { method: step.req.method, headers: step.req.body ? { 'Content-Type': 'application/json' } : undefined, body: step.req.body ? JSON.stringify(step.req.body) : undefined });
-        if (!res.ok) throw new Error((await errText(res)) || `שגיאה ${res.status}`);
+        if (!res.ok) {
+          const info = await errInfo(res);
+          const err = new Error(info.text || `שגיאה ${res.status}`);
+          err.field = info.field;
+          throw err;
+        }
         const data = await res.json().catch(() => ({}));
         st = applyStepResult(st, step, data);
         okLines += step.lines.length;
       } catch (e) {
-        failures.push({ step, error: (e && e.message) || 'שגיאה בתקשורת עם השרת' });
+        failures.push({ step, error: (e && e.message) || 'שגיאה בתקשורת עם השרת', field: (e && e.field) || '' });
         if (step.itemId) failedLines.add(`item:${step.itemId}`);
       }
     }
@@ -224,6 +237,10 @@ export default function useDressCard(dressId, ui) {
       setState({ saved: st.saved, cur: st.cur });
       dressCache.delete(dressId);
       setLogsVersion((v) => v + 1);
+      // שם דגם שכבר קיים: ההודעה נשארת ליד שדה השם (לשונית הפרטים במצב עריכה) ולא רק בחלון התקלות
+      const nameFail = failures.find((f) => f.step.kind === 'model' && f.field === 'name');
+      setNameConflict(nameFail ? { name: st.cur.model.name, text: nameFail.error } : null);
+      if (nameFail) { setTab('details'); setEditDet(true); }
       if (failures.length) {
         ui.hideToast();
         await ui.alert({
@@ -401,8 +418,10 @@ export default function useDressCard(dressId, ui) {
     return { day: israelDayKey(iso), time: israelTime(iso) };
   }, [raw]);
 
+  const nameError = nameConflict && cur && nameConflict.name === cur.model.name ? nameConflict.text : '';
+
   return {
-    dressId, status, raw, saved, cur, settings, flags, categories, locations, prefix,
+    dressId, status, raw, saved, cur, settings, flags, categories, locations, prefix, canManageItems, nameError,
     tab, setTab, editDet, setEditDet,
     changes, dirty, saving, uploading, redoCount, hit, setHit, listIntent, goFilter, locateItem,
     counts: cn, markers, rentals, rentalsStore, ensureRentals, logs, ensureLogs, historyRows, life, lastUpdate,

@@ -4,6 +4,7 @@ import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { planListSearch, dressSearchAlternatives, sizeTextFilter, clampLimit, clampPage, buildRetryVariants } from '@/lib/listSearch';
 import { sizeMatches } from '@/lib/searchNormalize';
+import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
 
 
 export const dynamic = 'force-dynamic';
@@ -345,6 +346,7 @@ export async function POST(request) {
   // יצירת דגם חדש בקטלוג — פעולת ניהול, מוגבלת להנהלה ראשית/מתכנת גם כשהקטלוג
   // עצמו פתוח לצפייה לכולם (ר' restrict_dress_catalog_to_head_management).
   if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  let attemptedName = '';
   try {
     const body = await request.json();
     
@@ -361,9 +363,14 @@ export async function POST(request) {
       }
     }
 
+    // DressModel.name הוא UNIQUE (כולל מחוקים רכות): שם שכבר קיים = 400 ברור, לא 500 כללי. השם האפקטיבי - גם השם האוטומטי "דגם <קוד>"
+    attemptedName = body.name || `דגם ${body.barcodePrefix || 'חדש'}`;
+    const nameTaken = await findNameConflict(prisma, attemptedName);
+    if (nameTaken) return NextResponse.json(duplicateNameBody(attemptedName, nameTaken), { status: 400 });
+
     const newModel = await prisma.dressModel.create({
       data: {
-        name: body.name || `דגם ${body.barcodePrefix || 'חדש'}`,
+        name: attemptedName,
         barcodePrefix: body.barcodePrefix ? parseInt(body.barcodePrefix) : null,
         priceCategory: body.priceCategory || null,
         notes: body.notes || null,
@@ -376,6 +383,11 @@ export async function POST(request) {
 
     return NextResponse.json(newModel);
   } catch (error) {
+    if (isNameUniqueViolation(error)) {
+      // מרוץ: דגם באותו שם נוצר בין הבדיקה לכתיבה
+      const taken = await findNameConflict(prisma, attemptedName).catch(() => null);
+      return NextResponse.json(duplicateNameBody(attemptedName, taken), { status: 400 });
+    }
     console.error('Error creating dress model:', error);
     return NextResponse.json({ error: 'שגיאה ביצירת הדגם' }, { status: 500 });
   }

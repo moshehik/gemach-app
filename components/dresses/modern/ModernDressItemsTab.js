@@ -2,6 +2,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ModernDressItemModal from './ModernDressItemModal';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
+
+const NO_ITEMS_PERM_TIP = 'נדרשת הרשאת ניהול פריטי דגם';
 
 const STATUS_FILTERS = [
   { id: 'all', label: 'הכל' },
@@ -56,6 +59,17 @@ export default function ModernDressItemsTab({
   highlightBarcode,
   onHighlightHandled
 }) {
+  // ניהול פריטי דגם (הוספה / עריכה / מיקום / קרטון / מחיקה / שחזור): feature:dress_items_manage, מ-/api/me (הנהלה ראשית ומתכנת תמיד).
+  // סגור עד שנטען; בלי ההרשאה הפריטים לקריאה בלבד (פרטי פריט והיסטוריה פתוחים) - והשרת חוסם בכל מקרה.
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    let off = false;
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+      .then((me) => { if (!off) setCanManage(!!(me && me.employee && me.employee.canManageDressItems)); })
+      .catch(() => { if (!off) setCanManage(false); });
+    return () => { off = true; };
+  }, []);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [colFilters, setColFilters] = useState({ sizeText: '', serialNumber: '', dressBarcode: '', location: '' });
@@ -440,13 +454,15 @@ export default function ModernDressItemsTab({
           <svg className="icon"><use href="#i-list" /></svg>
         </button>
 
-        <button
-          type="button"
-          className={`btn btn-sm ${showAddBar ? 'btn-secondary' : 'btn-primary'}`}
-          onClick={() => { setShowAddBar(v => !v); setAddError(''); }}
-        >
-          <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            className={`btn btn-sm ${showAddBar ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={() => { setShowAddBar(v => !v); setAddError(''); }}
+          >
+            <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט
+          </button>
+        )}
 
         <div className="toggle-btn-group">
           <button type="button" className={viewMode === 'rows' ? 'on' : undefined} onClick={() => setViewMode('rows')}>
@@ -459,7 +475,7 @@ export default function ModernDressItemsTab({
       </div>
 
       {/* ===== סרגל הוספה — נפתח רק בלחיצה על "הוסף פריט" ===== */}
-      {showAddBar && (
+      {showAddBar && canManage && (
         <div className="card card-pad" style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ fontSize: '13px' }}>הוספת פריט חדש</h3>
@@ -605,7 +621,8 @@ export default function ModernDressItemsTab({
                               className="select"
                               style={{ padding: '6px 9px', fontSize: '12.5px' }}
                               value={item.location || ''}
-                              disabled={quickMovingId === item.id || item.isDeleted}
+                              disabled={!canManage || quickMovingId === item.id || item.isDeleted}
+                              title={canManage ? undefined : NO_ITEMS_PERM_TIP}
                               onChange={e => e.target.value && quickSetLocation(item, e.target.value)}
                             >
                               {!item.location && <option value="" disabled hidden>---</option>}
@@ -632,7 +649,8 @@ export default function ModernDressItemsTab({
                               style={{ padding: '6px 9px', fontSize: '12.5px', width: '90px' }}
                               defaultValue={item.cartonNumber || ''}
                               key={item.cartonNumber || ''}
-                              disabled={quickCartonSavingId === item.id || item.isDeleted}
+                              disabled={!canManage || quickCartonSavingId === item.id || item.isDeleted}
+                              title={canManage ? undefined : NO_ITEMS_PERM_TIP}
                               onBlur={e => quickSetCartonNumber(item, e.target.value)}
                               onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
                             />
@@ -725,15 +743,17 @@ export default function ModernDressItemsTab({
                               </>
                             ) : (
                               <>
-                                <button
-                                  type="button"
-                                  className="btn btn-ghost btn-icon-only btn-sm"
-                                  title="עריכת הפריט"
-                                  onClick={() => startEdit(item)}
-                                  disabled={item.isDeleted}
-                                >
-                                  <svg className="icon"><use href="#i-edit" /></svg>
-                                </button>
+                                {canManage && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-icon-only btn-sm"
+                                    title="עריכת הפריט"
+                                    onClick={() => startEdit(item)}
+                                    disabled={item.isDeleted}
+                                  >
+                                    <svg className="icon"><use href="#i-edit" /></svg>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   className="btn btn-ghost btn-icon-only btn-sm"
@@ -742,7 +762,7 @@ export default function ModernDressItemsTab({
                                 >
                                   <svg className="icon"><use href="#i-info" /></svg>
                                 </button>
-                                {item.isDeleted ? (
+                                {!canManage ? null : item.isDeleted ? (
                                   <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר פריט" onClick={() => restoreItem(item)}>
                                     <svg className="icon"><use href="#i-refresh" /></svg>
                                   </button>
@@ -829,7 +849,7 @@ export default function ModernDressItemsTab({
                     </div>
                   </div>
 
-                  {size !== 'ללא מידה' && (
+                  {canManage && size !== 'ללא מידה' && (
                     <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => addItemForSize(size)}>
                       <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט למידה זו
                     </button>

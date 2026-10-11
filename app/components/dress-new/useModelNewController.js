@@ -31,7 +31,7 @@ const parseSettings = (data) => {
 };
 
 const freshForm = (today, loc) => ({
-  step: 1, saved: null, busy: false, catOpen: false, addErr: '', touched: {}, cartOpen: false, lastKey: 0,
+  step: 1, saved: null, busy: false, catOpen: false, addErr: '', nameErr: '', touched: {}, cartOpen: false, lastKey: 0,
   d: { code: '', name: '', cat: '', entry: today, img: '', thumb: '', imgLabel: '', notes: '', inspect: false },
   items: [], add: { size: '', serial: '', loc: loc || '' },
 });
@@ -206,7 +206,7 @@ export default function useModelNewController({ router }) {
   }, [reset]);
 
   // ---------- שלב 1 ----------
-  const setField = useCallback((p) => upd((prev) => ({ d: { ...prev.d, ...p } })), [upd]);
+  const setField = useCallback((p) => upd((prev) => ({ d: { ...prev.d, ...p }, ...(p.name !== undefined && prev.nameErr ? { nameErr: '' } : {}) })), [upd]);
   const onCode = useCallback((v) => setField({ code: L.sanitizeCode(v, codeLen) }), [setField, codeLen]);
   const touch = useCallback((k) => upd((prev) => ({ touched: { ...prev.touched, [k]: 1 } })), [upd]);
   const autoCode = useCallback(async () => {
@@ -289,8 +289,10 @@ export default function useModelNewController({ router }) {
         showBusy(false);
         const e = L.describeCreateError(res.status, created);
         if (e.duplicate) setTakenMap((p) => ({ ...p, [String(cur.d.code).trim()]: true }));
-        upd({ busy: false, step: 1, touched: { ...Sref.current.touched, code: 1 } });
-        say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : 'יצירת הדגם נכשלה', e.msg);
+        // שם דגם שכבר קיים (400, field:'name'): ההודעה ליד שדה השם (או ליד הקוד כשהשם אוטומטי) והמיקוד בו
+        upd({ busy: false, step: 1, touched: { ...Sref.current.touched, code: 1, ...(e.nameDuplicate ? { name: 1 } : {}) }, ...(e.nameDuplicate ? { nameErr: e.msg } : {}) });
+        if (e.nameDuplicate && typeof document !== 'undefined') setTimeout(() => { const i = document.getElementById('mnName'); if (i) i.focus(); }, 60);
+        say('warn', e.forbidden ? 'אין הרשאה ליצור דגם' : e.nameDuplicate ? 'שם הדגם כבר קיים' : 'יצירת הדגם נכשלה', e.msg);
         return;
       }
       // הפריטים נוצרים אחד-אחד; כישלון בפריט בודד לא מבטל את הדגם שכבר נוצר

@@ -12,12 +12,13 @@ export function StepIdentity({ ctl }) {
   const { S, codeLen } = ctl;
   const d = S.d;
   const showCe = ctl.codeErr && (S.touched.code || ctl.code !== '');
-  const showNe = ctl.useModelNames && S.touched.name && !ctl.nameOk;
+  const showNe = ctl.useModelNames && ((S.touched.name && !ctl.nameOk) || !!S.nameErr);
+  const autoNameErr = !ctl.useModelNames && !showCe ? S.nameErr : ''; // שם אוטומטי ("דגם <קוד>") שכבר קיים - ההודעה ליד הקוד שממנו הוא נגזר
   return (
     <div className="card blk">
       <SubH icon="tag" tone="gold" title="זיהוי הדגם" />
       <div className="mn-g2">
-        <div className={`field${showCe ? ' bad' : ''}`} id="mnCodeF">
+        <div className={`field${showCe || autoNameErr ? ' bad' : ''}`} id="mnCodeF">
           <label className="lbl with-ic" htmlFor="mnCode"><Ic n="hash" c="sm" />קוד דגם<span className="req">*</span>
             <Tip t={`קידומת הברקוד של הפריטים (${codeLen} ספרות). הקוד מרכיב את ברקודי הפריטים ולא ניתן לשינוי לאחר היצירה`} /></label>
           <div className="mn-line">
@@ -28,7 +29,7 @@ export function StepIdentity({ ctl }) {
             </div>
             <button type="button" className="btn sm" data-act="auto-code" data-tip="הקוד הפנוי הבא במאגר" onClick={ctl.autoCode}><Ic n="refresh" c="sm" />קוד פנוי</button>
           </div>
-          <div className="mn-e" id="mnCodeE">{showCe ? <Bad>{ctl.codeErr}</Bad> : null}</div>
+          <div className="mn-e" id="mnCodeE">{showCe ? <Bad>{ctl.codeErr}</Bad> : autoNameErr ? <Bad>{autoNameErr}</Bad> : null}</div>
         </div>
         {ctl.useModelNames ? (
           <div className={`field${showNe ? ' bad' : ''}`} id="mnNameF">
@@ -39,7 +40,7 @@ export function StepIdentity({ ctl }) {
               <button type="button" className="inpx" aria-label="ניקוי" data-tip="ניקוי" hidden={!d.name}
                 onClick={() => { ctl.setField({ name: '' }); const i = document.getElementById('mnName'); if (i) i.focus(); }}><Ic n="x" c="sm" /></button>
             </div>
-            <div className="mn-e" id="mnNameE">{showNe ? <Bad>חובה להזין שם דגם</Bad> : null}</div>
+            <div className="mn-e" id="mnNameE" role={S.nameErr ? 'alert' : undefined}>{showNe ? <Bad>{S.nameErr || 'חובה להזין שם דגם'}</Bad> : null}</div>
           </div>
         ) : null}
         <MnCatCombo id="mnCatT" value={d.cat} options={ctl.catOptions} open={S.catOpen} bad={S.touched.cat && !ctl.catOk}

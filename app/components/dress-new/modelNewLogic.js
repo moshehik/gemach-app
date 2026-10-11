@@ -115,11 +115,12 @@ export function buildItemPayload(it, created, d, locations) {
   };
 }
 
-// כותרת + פרטי שגיאה מתשובת ה-POST של הדגם (403 הרשאה / 400 "הקוד כבר בשימוש!" / 500)
+// כותרת + פרטי שגיאה מתשובת ה-POST של הדגם (403 הרשאה / 400 "הקוד כבר בשימוש!" / 400 שם דגם קיים (field:'name') / 500)
 export function describeCreateError(status, data) {
   const msg = (data && data.error) || 'יצירת הדגם נכשלה';
   const dup = /הקוד כבר בשימוש/.test(msg);
-  return { msg, duplicate: dup, forbidden: status === 403, text: `שגיאה: ${msg}` };
+  const nameDuplicate = status === 400 && !!data && data.field === 'name';
+  return { msg, duplicate: dup, nameDuplicate, forbidden: status === 403, text: `שגיאה: ${msg}` };
 }
 
 // טווח המחירים (לפי המחירון) של קטגוריה - השורה הקטנה באפשרות הבחירה. רק שורות בתוקף ב-now. null אם אין
