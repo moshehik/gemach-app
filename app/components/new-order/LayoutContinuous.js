@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Ic } from './NoUi';
 import { STEP_KEYS, STEP_META } from './newOrderLogic';
 import { STEP_VIEW } from './stepViews';
-import { sectionDomId, sectionDoneFlags, sectionProgress, stepNextAction, stepSummaries, visibleSectionKeys } from './layoutLogic';
+import { scrollToSection, sectionDomId, sectionDoneFlags, sectionProgress, stepKeyOfSection, stepNextAction, stepSummaries, visibleSectionKeys } from './layoutLogic';
 
 function MiniProgress({ ctl, progress }) {
   // הפס נדבק בגלילה: לפני כן (במקומו הטבעי) מראה בהיר ושקוף, ורק כשהוא נדבק לראש המסך (class stuck) מקבל את הגוון החם
@@ -33,7 +33,7 @@ function MiniProgress({ ctl, progress }) {
     return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); if (raf) window.cancelAnimationFrame(raf); };
   }, []);
   // כיתוב לפי ההזמנה: שלב שהושלם מציג את מה שמולא בו (שם הלקוח, התאריך, המשלוח, "N פריטים · ₪", "שולם ₪"); אחרת - שם השלב
-  const sums = stepSummaries(ctl);
+  const sums = stepSummaries(ctl, { split: true });
   const captionOf = (key, state) => {
     if (key === 'summary') return ctl.activeItems.length ? `${STEP_META[key].l} · ${sums.summary}` : STEP_META[key].l; // "סיכום · ₪1,200"
     if (key === 'payment') return ctl.totalPaid > 0 ? sums.payment : STEP_META[key].l;
@@ -43,8 +43,10 @@ function MiniProgress({ ctl, progress }) {
     <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="noMiniBars" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
       {progress.map(({ key, state }) => {
         const meta = STEP_META[key];
-        const g = ctl.gate(key);
-        const go = () => ctl.go(STEP_KEYS.indexOf(key));
+        const sk = stepKeyOfSection(key); // 'mode' נעול / נפתח כמו 'delivery'
+        const g = ctl.gate(sk);
+        // גוש 'mode' אין לו אינדקס באשף: פתוח - גוללים אליו; נעול - go() של 'delivery' מציג את הודעת הנעילה
+        const go = () => ((key === 'mode' && g.open && scrollToSection('mode')) ? undefined : ctl.go(STEP_KEYS.indexOf(sk)));
         const caption = captionOf(key, state);
         return (
           <div key={key} className={`pb ${state}${g.open ? '' : ' lock'}`}>
@@ -79,7 +81,7 @@ function SectionFooter({ ctl, k, skipDelivery }) {
 
 function Section({ ctl, k, n, skipDelivery }) {
   const View = STEP_VIEW[k];
-  const g = ctl.gate(k);
+  const g = ctl.gate(stepKeyOfSection(k));
   const locked = !g.open;
   const id = sectionDomId(k);
   // כל הגושים באותו רוחב (רוחב שלב הפריטים, 4) - המיכל .no-flowapp קובע אותו
@@ -90,7 +92,7 @@ function Section({ ctl, k, n, skipDelivery }) {
         <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}{locked ? <span className="no-sec-dots" aria-hidden="true"> ...</span> : null}</h2>
       </header>
       <div className="no-sec-body" inert={locked}>
-        <div className="sec" data-sec={k}><View ctl={ctl} /></div>
+        <div className="sec" data-sec={k}><View ctl={ctl} part={k === 'mode' || k === 'delivery' ? k : undefined} /></div>
         {locked ? null : <SectionFooter ctl={ctl} k={k} skipDelivery={skipDelivery} />}
       </div>
     </section>

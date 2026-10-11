@@ -116,16 +116,27 @@ test('הקובץ המשותף: go() בהקשר wizard לא גולל לגוש (ג
   assert.match(ctl, /if \(continuous\) confirmPickedCustomer\(c\);/);
 });
 
-test('שלבים מוצגים בטופס הרציף: משלוח רק כש-showMode / showDelivery של השער הקיים; בלי שינוי בסדר', () => {
-  const all = N.STEP_KEYS;
-  assert.deepEqual(LL.visibleSectionKeys({}), all.filter(k => k !== 'delivery' || N.deliveryStepVisibility({}).showDelivery || N.deliveryStepVisibility({}).showMode));
-  // ברירת מחדל ללא הגדרות: delivery_show_in_order !== 'false' אבל enable_deliveries חסר -> showDelivery false, showMode false -> בלי משלוח
-  assert.ok(!LL.visibleSectionKeys({}).includes('delivery'));
-  assert.deepEqual(LL.visibleSectionKeys({ enable_deliveries: 'true' }), all);
-  assert.deepEqual(LL.visibleSectionKeys({ enable_deliveries: 'true', delivery_show_in_order: 'false' }), all.filter(k => k !== 'delivery'), 'הכרטיס מוסתר בהגדרות');
-  assert.ok(LL.visibleSectionKeys({ phone_order_marker_enabled: 'true' }).includes('delivery'), 'אופן ההזמנה (טלפונית / סניף) חי בשלב המשלוח - נשאר');
-  assert.ok(LL.visibleSectionKeys({ track_branch_on_order: 'true', enable_deliveries: 'false' }).includes('delivery'));
-  assert.deepEqual(LL.visibleSectionKeys({ enable_deliveries: 'true' }).slice(0, 2), ['customer', 'dates']);
+test('שלבים מוצגים בטופס הרציף: "אופן ההזמנה" (mode) ו"משלוח" (delivery) שני גושים נפרדים - כל אחד לפי הדגל שלו; בלי שינוי בסדר', () => {
+  const base = ['customer', 'dates'];
+  const tail = ['items', 'summary', 'payment'];
+  const vis = (s) => N.deliveryStepVisibility(s);
+  // ברירת מחדל ללא הגדרות: אין סוג/סניף ואין משלוח -> אין אף אחד משני הגושים
+  assert.deepEqual(LL.visibleSectionKeys({}), [...base, ...tail]);
+  assert.ok(!vis({}).showMode && !vis({}).showDelivery);
+  // משלוח בלבד (enable_deliveries) -> רק delivery
+  assert.deepEqual(LL.visibleSectionKeys({ enable_deliveries: 'true' }), [...base, 'delivery', ...tail]);
+  // הכרטיס מוסתר בהגדרות -> בלי משלוח
+  assert.deepEqual(LL.visibleSectionKeys({ enable_deliveries: 'true', delivery_show_in_order: 'false' }), [...base, ...tail], 'הכרטיס מוסתר בהגדרות');
+  // סוג הזמנה (טלפונית) / סניף ביצוע -> mode, גם בלי משלוח
+  assert.deepEqual(LL.visibleSectionKeys({ phone_order_marker_enabled: 'true' }), [...base, 'mode', ...tail]);
+  assert.deepEqual(LL.visibleSectionKeys({ track_branch_on_order: 'true', enable_deliveries: 'false' }), [...base, 'mode', ...tail]);
+  // שניהם -> mode לפני delivery
+  assert.deepEqual(LL.visibleSectionKeys({ track_branch_on_order: 'true', enable_deliveries: 'true' }), [...base, 'mode', 'delivery', ...tail]);
+  // mode נועל/נפתח כמו delivery; ל-mode אין מקום ב-STEP_KEYS של האשף
+  assert.equal(LL.stepKeyOfSection('mode'), 'delivery');
+  assert.equal(LL.stepKeyOfSection('items'), 'items');
+  assert.ok(!N.STEP_KEYS.includes('mode'), 'האשף נשאר 6 שלבים');
+  assert.equal(N.STEP_META.mode.l, 'אופן');
 });
 
 test('sectionProgress: done / cur (הראשון שלא הושלם) / fut; אחרי שמירה הכול done', () => {
@@ -142,8 +153,8 @@ test('sectionDoneFlags: לקוח/תאריכים/פריטים לפי הנתוני
   const open = () => ({ open: true });
   const shut = () => ({ open: false });
   const ctl = { order: { customerId: 'c1' }, datesFilled: true, activeItems: [{ a: 1 }], saved: null };
-  assert.deepEqual(LL.sectionDoneFlags(ctl, open), { customer: true, dates: true, delivery: true, items: true, summary: true, payment: false });
-  assert.deepEqual(LL.sectionDoneFlags(ctl, shut), { customer: false, dates: false, delivery: false, items: false, summary: false, payment: false });
+  assert.deepEqual(LL.sectionDoneFlags(ctl, open), { customer: true, dates: true, mode: true, delivery: true, items: true, summary: true, payment: false });
+  assert.deepEqual(LL.sectionDoneFlags(ctl, shut), { customer: false, dates: false, mode: false, delivery: false, items: false, summary: false, payment: false });
   assert.equal(LL.sectionDoneFlags({ ...ctl, saved: { orderId: 1 } }, open).payment, true);
   assert.equal(LL.sectionDoneFlags({ ...ctl, activeItems: [] }, open).items, false);
 });

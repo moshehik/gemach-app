@@ -14,11 +14,14 @@ const ORDER_TYPES = [
   { v: true, label: 'הזמנה טלפונית', icon: 'phone', tip: 'הזמנה טלפונית וסניף ביצוע מוציאים זה את זה' },
 ];
 
-export default function StepDelivery({ ctl }) {
+// part: undefined (אשף - שני הבלוקים בשלב אחד) | 'mode' (אופן ההזמנה בלבד) | 'delivery' (המשלוח בלבד) - שני הגושים הנפרדים של הטופס הרציף
+export default function StepDelivery({ ctl, part }) {
   const s = ctl.settings;
   const o = ctl.order;
   // כמו הישן: "הזמנת משלוח" גם תחת delivery_show_in_order (שער הכרטיס) - deliveryStepVisibility
   const { showMode, showDelivery } = deliveryStepVisibility(s);
+  const modeBlock = showMode && part !== 'delivery';
+  const deliveryBlock = showDelivery && part !== 'mode';
   const branches = branchListOf(s);
   const set = (patch) => ctl.setOrder(prev => ({ ...prev, ...patch }));
   const cityOptions = [...new Set([...(o.deliveryCity ? [o.deliveryCity] : []), ...ctl.deliveryCityOptions])];
@@ -40,7 +43,7 @@ export default function StepDelivery({ ctl }) {
   }
   return (
     <OneCard>
-      {showMode ? (
+      {modeBlock ? (
         <Blk>
           <SubH icon="phone" title="אופן ההזמנה" />
           <div className="grid2">
@@ -66,7 +69,7 @@ export default function StepDelivery({ ctl }) {
           </div>
         </Blk>
       ) : null}
-      {showDelivery ? (
+      {deliveryBlock ? (
         <>
           <Blk className={`dhero${o.isDelivery ? '' : ' off'}`}>
             <div className="ico"><Ic n="truck" c="lg" /></div>

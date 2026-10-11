@@ -7,4 +7,5 @@ import StepItems from './StepItems';
 import StepSummary from './StepSummary';
 import StepPayment from './StepPayment';
 
-export const STEP_VIEW = { customer: StepCustomer, dates: StepDates, delivery: StepDelivery, items: StepItems, summary: StepSummary, payment: StepPayment };
+// mode = "אופן ההזמנה": אותו רכיב (StepDelivery) עם part='mode' - בטופס הרציף הוא גוש נפרד מהמשלוח (part='delivery')
+export const STEP_VIEW = { customer: StepCustomer, dates: StepDates, mode: StepDelivery, delivery: StepDelivery, items: StepItems, summary: StepSummary, payment: StepPayment };

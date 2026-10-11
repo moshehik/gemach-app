@@ -9,13 +9,15 @@ export const sectionDomId = (key) => `noSec-${key}`;
 export const shortHeb = (k) => { if (!k) return ''; const h = hebrewParts(k); return `${h.dl} ${h.m}`; };
 
 // הפרט שמולא של כל שלב (מתחת לפס שהושלם) - לשני הפסים (wizard / רציף)
-export function stepSummaries(ctl) {
+// split: הטופס הרציף (אופן ההזמנה ומשלוח כשני שלבים) - כיתוב המשלוח בלי "הזמנה טלפונית" (זה כיתוב 'mode'); באשף נשאר כמו תמיד
+export function stepSummaries(ctl, { split = false } = {}) {
   const o = ctl.order;
   const c = o.selectedCustomer;
   return {
     customer: o.customerId ? getCustomerFullName(c) : '',
     dates: o.isAbroad ? (o.fromDate && o.toDate ? `${shortHeb(o.fromDate)} — ${shortHeb(o.toDate)}` : '') : shortHeb(o.eventDate),
-    delivery: o.isDelivery ? `${o.deliveryDirection} · ${o.deliveryCity || (c && c.city) || ''}` : (o.isPhoneOrder ? 'הזמנה טלפונית' : 'ללא משלוח'),
+    mode: o.isPhoneOrder ? 'טלפונית' : (o.branch || 'רגילה'),
+    delivery: o.isDelivery ? `${o.deliveryDirection} · ${o.deliveryCity || (c && c.city) || ''}` : (!split && o.isPhoneOrder ? 'הזמנה טלפונית' : 'ללא משלוח'),
     items: ctl.activeItems.length ? `${ctl.activeItems.length} פריטים · ${moneyTxt(ctl.totalAmount)}` : '',
     summary: ctl.activeItems.length ? moneyTxt(ctl.totalAmount) : 'הושלם', // הסכום לתשלום (כמו הפריטים והתשלום - מוצג בפס ההתקדמות)
     payment: ctl.totalPaid > 0 ? `שולם ${moneyTxt(ctl.totalPaid)}` : 'רישום תשלום וסיום',
@@ -29,6 +31,7 @@ export function stepNextAction(ctl, key, { skipDelivery = false } = {}) {
   const table = {
     customer: ['המשך', !ctl.order.customerId, ctl.proceedToStep2],
     dates: skipDelivery ? ['המשך לבחירת פריטים', !ctl.datesFilled, () => ctl.go(iOf('items'))] : ['המשך למשלוח', !ctl.datesFilled, () => ctl.go(iOf('delivery'))],
+    mode: ['המשך', false, () => ctl.go(iOf('delivery'))],
     delivery: ['המשך לבחירת פריטים', !!ctl.deliveryError, () => ctl.go(iOf('items'))],
     items: ['המשך לסיכום', ctl.activeItems.length === 0, () => ctl.go(iOf('summary'))],
     summary: ['המשך לתשלום', false, () => ctl.go(iOf('payment'))],
@@ -36,12 +39,23 @@ export function stepNextAction(ctl, key, { skipDelivery = false } = {}) {
   return table[key] || null;
 }
 
-// אילו שלבים מוצגים בטופס הרציף. שלב המשלוח מכיל גם את "אופן ההזמנה" (טלפונית / סניף) ולכן נשאר כשאחד משני השערים הקיימים
-// (deliveryStepVisibility: showMode / showDelivery) דולק; כששניהם כבויים השלב היה רק הודעה "משלוח וסניפים כבויים" - לא מוצג בכלל
+// אילו שלבים מוצגים בטופס הרציף. 9.10.2026 (בקשת הבעלים): "אופן ההזמנה" (סוג הזמנה / סניפים) ו"משלוח" הם שני שלבים נפרדים -
+// 'mode' מוצג כשאחד מדגלי הסוג / סניף דולק (deliveryStepVisibility.showMode), 'delivery' כשהמשלוח עצמו מוצג (showDelivery).
+// באשף (שלב אחד בכל פעם) שניהם עדיין שלב אחד (STEP_KEYS) - 'mode' הוא מפתח של הטופס הרציף בלבד.
 export function visibleSectionKeys(settings) {
   const v = deliveryStepVisibility(settings || {});
-  return STEP_KEYS.filter((k) => k !== 'delivery' || v.showMode || v.showDelivery);
+  const keys = [];
+  for (const k of STEP_KEYS) {
+    if (k === 'delivery') {
+      if (v.showMode) keys.push('mode');
+      if (v.showDelivery) keys.push('delivery');
+    } else keys.push(k);
+  }
+  return keys;
 }
+
+// מפתח השלב של האשף / ה-controller שמאחורי גוש בטופס הרציף: 'mode' נועל ונפתח בדיוק כמו 'delivery' (אותם תנאי stepGate)
+export const stepKeyOfSection = (k) => (k === 'mode' ? 'delivery' : k);
 
 // מצב ההתקדמות של הפס הדק בטופס הרציף - לפי הנתונים בלבד (לא לפי מיקום הגלילה): done / cur (הראשון שעוד לא הושלם) / fut
 // done: { key: boolean } - מה הושלם לפי נתוני ההזמנה; saved: ההזמנה נשמרה (הכול הושלם)
@@ -61,6 +75,7 @@ export function sectionDoneFlags(ctl, gate) {
   return {
     customer: !!ctl.order.customerId && gate('dates').open,
     dates: ctl.datesFilled && gate('dates').open,
+    mode: gate('delivery').open,
     delivery: gate('delivery').open,
     items: itemsDone && gate('items').open,
     summary: itemsDone && gate('summary').open,
