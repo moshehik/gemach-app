@@ -192,11 +192,12 @@ export default function MenuA5Shell({
     }
   }, [nav, clearAdminRecents, showOverdueRemindersPopup, isProgrammer]);
 
-  // "האתר הישן" (זמני): עקיפה אישית shell=legacy, בכיוון אחד בלבד (השרת מקבל רק 'legacy' / null), ואז טעינה מלאה.
+  // "האתר הישן" (12.10.2026, נווה יעקב: האפשרות לחזור לקודם נשארת): עקיפה אישית 'legacy' בכל המסכים בבת אחת (POST /api/me/ui-variant),
+  // ולא רק למעטפת - אחרת "האתר הישן" היה נותן תפריט ישן עם דפים חדשים. בכותרת הישנה מופיע "חזרה לממשק החדש". ואז טעינה מלאה.
   const handleOldSite = useCallback(async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/me/ui-variant/shell', {
+      const res = await fetch('/api/me/ui-variant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: 'legacy' }),
