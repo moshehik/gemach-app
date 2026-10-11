@@ -14,7 +14,7 @@ import {
 } from '../lib/uiVariantScreens.js';
 import { UI_SCREENS, UI_VARIANT_SETTING_KEYS, UI_VARIANT_SETTING_KEY_LIST, resolveUiVariant, resolveUiVariants, sanitizeUiVariants } from '../lib/uiVariant.js';
 import {
-  SELF_SWITCH_SCREENS, SELF_SWITCH_ROLE_IDS, applyUiVariantRequest, canSelfSwitchScreen, describeSelfSwitch, isManagementRole,
+  SELF_SWITCH_SCREENS, SELF_SWITCH_ONLY_ROLE_IDS, applyUiVariantRequest, canEmployeeSelfSwitch, canSelfSwitchScreen, describeSelfSwitch,
   shouldShowVariantToggle,
 } from '../lib/uiVariantSelfSwitch.js';
 
@@ -69,10 +69,10 @@ await t('דפים בלי גרסה ישנה ודף הכניסה לא ברשומה
 await t('scripts/set-ui-variant.js מכיר בדיוק את מסכי הרשומה', () => {
   assert.deepEqual(require('./set-ui-variant.js').SCREENS, UI_SCREEN_IDS);
 });
-await t('תפקיד ברירת המחדל החדשה = DEVELOPER_ONLY_ROLES ב-lib/roles.js; תפקידי המעבר העצמאי = HEAD_MANAGEMENT_ROLES', () => {
+await t('תפקיד ברירת המחדל החדשה = DEVELOPER_ONLY_ROLES ב-lib/roles.js; המעבר העצמאי פתוח לכל עובד פעיל (SELF_SWITCH_ONLY_ROLE_IDS = null, 11.10.2026)', () => {
   const auth = read('lib/roles.js'); // הקבועים עברו ל-lib/roles.js (employee-card fix), lib/auth.js מייצא אותם מחדש
   assert.deepEqual([...NEW_DESIGN_DEFAULT_ROLE_IDS], JSON.parse(/DEVELOPER_ONLY_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
-  assert.deepEqual([...SELF_SWITCH_ROLE_IDS], JSON.parse(/HEAD_MANAGEMENT_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
+  assert.equal(SELF_SWITCH_ONLY_ROLE_IDS, null, 'החלטת הבעלים 11.10.2026: כולם. לצמצום - מערך roleId בקובץ lib/uiVariantSelfSwitch.js בלבד');
 });
 await t('employee_card: /employees/:id לא תופס את /employees/attendance ו-/employees/report (excludeRoutes), כן את מזהה העובד ו-/employees/new', () => {
   assert.ok(matchRoute('/employees/:id', '/employees/attendance'), 'matchRoute הגולמי תופס כל מקטע - לכן יש excludeRoutes');
@@ -107,9 +107,9 @@ await t('new_order (6.10.2026): /orders/new שייך רק ל-new_order ו-/order
   assert.equal(roleDefaultVariant('new_order', 2), 'a5');
   assert.equal(resolveUiVariant('new_order', { roleId: 2, settings: rows({ ui_variant_new_order: 'legacy' }) }), 'legacy', 'הגדרת ארגון גוברת');
   assert.equal(resolveUiVariant('new_order', { roleId: 0, settings: rows({ ui_variant_new_order: 'a5' }) }), 'a5');
-  for (const roleId of [0, 2]) {
+  for (const roleId of [0, 1, 2, 3, null]) {
     assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'new_order', pathname: '/orders/new' }), true);
-    assert.ok(canSelfSwitchScreen(roleId, 'new_order'));
+    assert.ok(canSelfSwitchScreen({ roleId, isActive: true }, 'new_order'));
   }
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: false, screen: 'new_order', pathname: '/orders/new' }), false);
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'new_order', pathname: '/orders/123' }), false, 'לא בכרטיס ההזמנה');
@@ -144,7 +144,7 @@ await t('employees_list / models_list (9.10.2026): נתיבים, ברירת מח
   assert.equal(screenMatchesPath('model_card', '/dashboard/dresses'), false);
   assert.equal(screenMatchesPath('model_new', '/dashboard/dresses/new'), true);
   assert.equal(screenMatchesPath('model_new', '/dashboard/dresses/abc'), false);
-  for (const roleId of [0, 2]) { assert.ok(canSelfSwitchScreen(roleId, 'employees_list')); assert.ok(canSelfSwitchScreen(roleId, 'models_list')); }
+  for (const roleId of [0, 1, 2, null]) { assert.ok(canSelfSwitchScreen({ roleId, isActive: true }, 'employees_list')); assert.ok(canSelfSwitchScreen({ roleId, isActive: true }, 'models_list')); }
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employees_list', pathname: '/employees' }), true);
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employees_list', pathname: '/employees/attendance' }), false);
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: false, screen: 'models_list', pathname: '/dashboard/dresses' }), false);
@@ -228,7 +228,8 @@ await t('ה-layout וההכרעה בשרת מעבירים roleId (ובלעדיו
   const layout = read('app/layout.js');
   assert.match(layout, /resolveUiVariants\(\{[\s\S]*?roleId: isAuthenticated && emp && typeof emp\.roleId === 'number' \? emp\.roleId : null,[\s\S]*?\}\)/);
   assert.match(layout, /<UiVariantProvider value=\{uiVariants\} canSelfSwitch=\{canSelfSwitchVariant\}>/);
-  assert.match(layout, /canSelfSwitchVariant = !!\(isAuthenticated && emp && isManagementRole\(emp\.roleId\)\)/);
+  assert.match(layout, /canSelfSwitchVariant = !!\(isAuthenticated && emp && canEmployeeSelfSwitch\(\{ roleId: emp\.roleId, isActive: true \}\)\)/);
+  assert.ok(!/isManagementRole/.test(layout), 'הכלל במקום אחד (canEmployeeSelfSwitch), לא isManagementRole');
   const srv = read('app/lib/uiVariantServer.js');
   assert.match(srv, /resolveUiVariant\(screen, \{ userVariants, settings, pathname: [^}]*roleId \}\)/);
   assert.match(srv, /readVerifiedSession\(cookieStore\)/);
@@ -237,16 +238,20 @@ await t('ה-layout וההכרעה בשרת מעבירים roleId (ובלעדיו
 console.log('3. מי רשאי לעבור בעצמו');
 const emp = (o = {}) => ({ id: 'emp-1', isActive: true, roleId: 0, themeColor: null, ...o });
 const fakePrisma = () => { const calls = []; return { calls, employee: { update: async (a) => { calls.push(a); return { id: a.where.id }; } } }; };
-await t('SELF_SWITCH_SCREENS מהרשומה; canSelfSwitchScreen רק להנהלה ראשית / מתכנת', () => {
+await t('SELF_SWITCH_SCREENS מהרשומה; canSelfSwitchScreen לכל עובד פעיל (כל תפקיד), לא למושבת / אורח', () => {
   assert.deepEqual([...SELF_SWITCH_SCREENS], BOTH);
-  for (const s of BOTH) { assert.ok(canSelfSwitchScreen(0, s)); assert.ok(canSelfSwitchScreen(2, s)); assert.ok(!canSelfSwitchScreen(1, s)); assert.ok(!canSelfSwitchScreen(null, s)); }
-  for (const s of ['employee_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(2, s), s);
-  assert.ok(!isManagementRole('0'));
+  for (const s of BOTH) {
+    for (const roleId of [0, 1, 2, 3, 7, null, undefined]) assert.ok(canSelfSwitchScreen(emp({ roleId }), s), `${s}/${String(roleId)}`);
+    assert.ok(!canSelfSwitchScreen(emp({ isActive: false }), s)); assert.ok(!canSelfSwitchScreen(null, s));
+  }
+  for (const s of ['employee_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(emp({ roleId: 2 }), s), s);
   assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })).screens, BOTH);
+  assert.deepEqual(describeSelfSwitch(emp({ roleId: null })).screens, BOTH);
+  assert.equal(canEmployeeSelfSwitch(emp({ roleId: 1 })), true);
 });
-await t('POST למסכים החדשים: הנהלה / מתכנת - a5 / legacy / null נכתבים לעובד המאומת בלבד', async () => {
+await t('POST למסכים החדשים: כל תפקיד (כולל מנהל סניף / עובד רגיל) - a5 / legacy / null נכתבים לעובד המאומת בלבד', async () => {
   for (const screen of NEW_SCREENS) {
-    for (const roleId of [0, 2]) {
+    for (const roleId of [0, 1, 2, 3, null]) {
       for (const value of ['a5', 'legacy', null]) {
         const fp = fakePrisma();
         const start = JSON.stringify({ v: 1, palette: 'forest', uiVariants: { shell: 'a5', [screen]: value === null ? 'a5' : (value === 'a5' ? 'legacy' : 'a5') } });
@@ -263,10 +268,10 @@ await t('POST למסכים החדשים: הנהלה / מתכנת - a5 / legacy /
     }
   }
 });
-await t('POST: מנהל סניף / עובד -> 403 בכל ערך; מסך לא מוכר / בלי גרסה חדשה -> 400; לא מחובר -> 401; בלי כתיבה', async () => {
-  for (const screen of NEW_SCREENS) for (const roleId of [1, 3, null]) for (const value of ['a5', 'legacy', null]) {
+await t('POST: עובד מושבת -> 403 בכל ערך; מסך לא מוכר / בלי גרסה חדשה -> 400; לא מחובר -> 401; בלי כתיבה', async () => {
+  for (const screen of NEW_SCREENS) for (const roleId of [0, 1, 2, 3, null]) for (const value of ['a5', 'legacy', null]) {
     const fp = fakePrisma();
-    const r = await applyUiVariantRequest({ screen, body: { value }, employee: emp({ roleId }), prisma: fp });
+    const r = await applyUiVariantRequest({ screen, body: { value }, employee: emp({ roleId, isActive: false }), prisma: fp });
     assert.equal(r.status, 403, `${screen}/${roleId}/${value}`); assert.equal(fp.calls.length, 0);
   }
   for (const screen of ['employee_card', 'login', 'schedule', '', '__proto__', 'PROFILE']) {

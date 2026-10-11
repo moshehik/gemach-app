@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -51,6 +52,7 @@ export async function PUT(request, { params }) {
   if (!(await checkAuth(isActivityToggleOnly ? undefined : 'הנהלה ראשית'))) {
     return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   }
+  let attemptedName = '';
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -77,6 +79,13 @@ export async function PUT(request, { params }) {
           return NextResponse.json({ error: 'הקוד כבר בשימוש בדגם פעיל אחר במערכת!' }, { status: 400 });
         }
       }
+    }
+
+    // שינוי שם לשם שכבר קיים (DressModel.name הוא UNIQUE, כולל מחוקים רכות) = 400 ברור לפני הכתיבה, לא 500 כללי
+    if (body.name !== undefined && typeof body.name === 'string' && body.name !== (currentModel ? currentModel.name : null)) {
+      attemptedName = body.name;
+      const nameTaken = await findNameConflict(prisma, body.name, id);
+      if (nameTaken) return NextResponse.json(duplicateNameBody(body.name, nameTaken), { status: 400 });
     }
 
     const updatedData = {};
@@ -117,6 +126,11 @@ export async function PUT(request, { params }) {
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (attemptedName && isNameUniqueViolation(error)) {
+      // מרוץ: שם זהה נכתב בין הבדיקה לעדכון
+      const taken = await findNameConflict(prisma, attemptedName, (await params).id).catch(() => null);
+      return NextResponse.json(duplicateNameBody(attemptedName, taken), { status: 400 });
+    }
     console.error('Error updating dress:', error);
     return NextResponse.json({ error: 'שגיאה בעדכון השמלה' }, { status: 500 });
   }

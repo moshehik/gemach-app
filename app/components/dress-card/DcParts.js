@@ -54,17 +54,18 @@ export function DcPill({ id, value, options, onChange, label, className = '' }) 
 const NOFILL = { autoComplete: 'nope', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
 /** שדה טקסט עם אייקון וכפתור ניקוי (fld בעיצוב) */
-export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, mode, tip, hint, inputStyle }) {
+export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, mode, tip, hint, inputStyle, error }) {
   const v = value == null ? '' : value;
   return (
-    <div className="field">
+    <div className={`field${error ? ' bad' : ''}`}>
       <label className="lbl" htmlFor={id}>{label}{tip ? <Tip text={tip} /> : null}</label>
       <div className="inpw">
         <OcIcon name={icon} size="sm" />
-        <input className="inp" id={id} name={`${id}-nofill`} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
+        <input className="inp" id={id} name={`${id}-nofill`} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-err` : undefined} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
           onChange={lock ? undefined : (e) => onChange(e.target.value)} {...NOFILL} />
         {lock ? null : <button type="button" className="inpx" aria-label="ניקוי" hidden={!v} onClick={() => { onChange(''); const el = document.getElementById(id); if (el) el.focus(); }}><OcIcon name="x" size="sm" /></button>}
       </div>
+      {error ? <div className="dc-err" id={`${id}-err`} role="alert" style={{ marginTop: 6 }}><OcIcon name="alert" size="sm" />{error}</div> : null}
       {hint ? <div className="dc-hint"><OcIcon name={lock ? 'lock' : 'info'} />{hint}</div> : null}
     </div>
   );

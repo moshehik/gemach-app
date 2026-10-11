@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { A5List, sortItems, findSorter } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
 import { DcAddItemDialog, DcEditItemDialog, DcItemInfoDialog } from '../dialogs/DcItemDialogs';
+import { Tip } from '../DcParts';
 import { exportItemsXlsx, runDressDoc } from '../dcPrint';
 import useDcListAi from '../useDcListAi';
 import {
@@ -20,6 +21,8 @@ let tempSeq = 0;
 export default function DcItemsTab({ dc, ui, active }) {
   const listRef = useRef(null);
   const { cur, saved, prefix, locations } = dc;
+  // הוספה / עריכה / מחיקה / שחזור של פריט - feature:dress_items_manage (הנהלה ראשית ומתכנת תמיד). בלי ההרשאה: צפייה בלבד, והשרת חוסם בכל מקרה
+  const canManage = !!dc.canManageItems;
   const lastLoc = useRef('');
   const aiS = useDcListAi({ dc, ui, which: 'items' });
   const intent = dc.listIntent;
@@ -62,6 +65,7 @@ export default function DcItemsTab({ dc, ui, active }) {
     await ui.openDialog(DcItemInfoDialog, { item: it, prefix, rentalsStore: dc.rentalsStore }, { layer: 2 });
   };
   const editItem = async (it) => {
+    if (!canManage) { openInfo(it.id); return; }
     const r = await ui.openDialog(DcEditItemDialog, { item: it, prefix, locations: locOpts, onInfo: openInfo });
     if (!r) return;
     if (r.action === 'delete') dc.deleteItem(it.id);
@@ -69,6 +73,7 @@ export default function DcItemsTab({ dc, ui, active }) {
     else dc.patchItem(it.id, { loc: r.loc, carton: r.carton, repair: r.st === 'repair', unused: r.st === 'unused', why: r.why });
   };
   const addItem = async () => {
+    if (!canManage) return;
     const r = await ui.openDialog(DcAddItemDialog, { items: cur.items, prefix, locations: locOpts, defaultLoc: lastLoc.current || locOpts[0] });
     if (!r) return;
     lastLoc.current = r.loc;
@@ -110,11 +115,11 @@ export default function DcItemsTab({ dc, ui, active }) {
         {r('פרטי הוספה', `${it.ent ? hFull(it.ent) : '—'}${added ? ` · ${added.who}` : ''}`)}
         {last && last !== added ? r('עודכן', `${hFull(last.ts.slice(0, 10))} · ${last.who}`) : null}
         {it.del
-          ? <div className="hv-r hv-act"><small>פעולות</small><b className="hv-btns"><button type="button" className="btn sm" onClick={() => dc.patchItem(it.id, { del: false })}><OcIcon name="undo" size="sm" />שחזור</button></b></div>
+          ? (canManage ? <div className="hv-r hv-act"><small>פעולות</small><b className="hv-btns"><button type="button" className="btn sm" onClick={() => dc.patchItem(it.id, { del: false })}><OcIcon name="undo" size="sm" />שחזור</button></b></div> : null)
           : (
-            <div className="hv-r hv-act"><small>פרטים ועריכה</small><b className="hv-btns">
+            <div className="hv-r hv-act"><small>{canManage ? 'פרטים ועריכה' : 'פרטים'}</small><b className="hv-btns">
               <button type="button" className="ibtn" aria-label="פרטים והיסטוריית השכרות" data-tip="פרטים והיסטוריית השכרות" onClick={() => openInfo(it.id)}><OcIcon name="info" size="sm" /></button>
-              <button type="button" className="ibtn" aria-label="עריכת פריט" data-tip="עריכת פריט" onClick={() => editItem(it)}><OcIcon name="pencil" size="sm" /></button>
+              {canManage ? <button type="button" className="ibtn" aria-label="עריכת פריט" data-tip="עריכת פריט" onClick={() => editItem(it)}><OcIcon name="pencil" size="sm" /></button> : null}
             </b></div>
           )}
       </>
@@ -134,7 +139,9 @@ export default function DcItemsTab({ dc, ui, active }) {
     <div className="card hist items-card">
       <div className="card-h">
         <div className="ico gold"><OcIcon name="box" size="lg" /></div><h2>פריטים ומלאי</h2>
-        <button type="button" className="btn navy" id="dcAddBtn" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>
+        {canManage
+          ? <button type="button" className="btn navy" id="dcAddBtn" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>
+          : <span id="dcItemsRo"><Tip text="צפייה בלבד: הוספה, עריכה ומחיקה של פריטים דורשות הרשאת ניהול פריטי דגם" /></span>}
       </div>
       <A5List
         key={intentKey}
@@ -169,7 +176,7 @@ export default function DcItemsTab({ dc, ui, active }) {
         }}
         detail={detail}
         columns={columns}
-        onOpen={editItem}
+        onOpen={canManage ? editItem : undefined}
         exportSpec={{
           what: 'רשימת הפריטים',
           onExport: (kind, list, state) => (kind === 'excel' ? exportItemsXlsx({ dc, ui, list }) : runDressDoc({ dc, ui, kind: kind === 'print' ? 'print' : 'download', which: 'items', list, state, filters })),

@@ -77,6 +77,18 @@ t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים 
   for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), 'legacy', 'הנהלה ראשית: ' + s);
 });
 
+console.log('everyone may choose the new design (owner decision 11.10.2026): defaults and order unchanged');
+t('כל תפקיד: בלי בחירה אישית נשאר ישן (חוץ ממתכנת); עקיפה אישית a5 מדליקה לכל תפקיד בכל מסך; בלי כתיבת הגדרת ארגון', () => {
+  for (const r of [0, 1, 3, 7, null, undefined]) {
+    for (const s of UI_SCREENS) {
+      assert.equal(resolveUiVariant(s, { roleId: r }), 'legacy', `ברירת מחדל ${s}/${String(r)}`);
+      assert.equal(resolveUiVariant(s, { roleId: r, userVariants: { [s]: 'a5' } }), 'a5', `${s}/${String(r)}`);
+      assert.equal(resolveUiVariant(s, { roleId: r, userVariants: { [s]: 'a5' }, settings: rows({ [`ui_variant_${s}`]: 'legacy' }) }), 'a5', 'אישי גובר על הארגון');
+    }
+  }
+  for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 1, settings: rows({ [`ui_variant_${s}`]: 'a5' }) }), 'a5', 'הגדרת ארגון גוברת על ברירת המחדל');
+});
+
 console.log('invalid values');
 t('ערך ארגון לא תקין / ריק / לא מחרוזת => legacy', () => {
   for (const bad of ['', '  ', 'A6', 'true', 'a5x', null, undefined, 5, {}, ['a5']]) {

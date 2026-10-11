@@ -1,10 +1,12 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { checkAuth } from '@/lib/auth';
+import { requireDressItemManager } from '@/lib/dressItemAccess';
 
 // Create a new DressItem for a specific DressModel
+// ניהול פריטי דגם (הוספה): feature:dress_items_manage - הנהלה ראשית / מתכנת תמיד, אחרים לפי הרשאה (lib/dressItemAccess.js)
 export async function POST(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  const denied = await requireDressItemManager();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
     const dressModelId = resolvedParams.id;

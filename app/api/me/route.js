@@ -2,7 +2,8 @@ import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
-import { getEmployeeEffectiveValue } from '@/lib/permissions';
+import { getEmployeeEffectiveValue, resolvePageAccess } from '@/lib/permissions';
+import { DRESS_ITEMS_MANAGE_KEY } from '@/lib/dressItemAccess';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { findLatestOpenShift } from '@/lib/openShift';
 
@@ -48,6 +49,11 @@ async function GET(request) {
     // exportMaxRows - כמות שורות מרבית לייצוא בלי אישור מנהל (components/ExportButtons.js),
     // לפי המחלקה של העובד או חריגה פרטנית לו - ר' lib/permissionsMetadata.js feature:export_max_rows
     employee.exportMaxRows = await getEmployeeEffectiveValue(employee, 'feature:export_max_rows');
+
+    // canManageDressItems - מי רשאי להוסיף / לערוך / למחוק פריטי דגם (feature:dress_items_manage; הנהלה ראשית ומתכנת תמיד). רק להצגת הבקרות בכרטיס הדגם
+    // ובאשף: השרת אוכף בעצמו (lib/dressItemAccess.js). resolvePageAccess = אותה הכרעה כמו שאר ההרשאות, עם מטמון קצר של שורות ההרשאה. כשל = סגור.
+    const itemsAccess = await resolvePageAccess(employee.roleId, employee.id, [DRESS_ITEMS_MANAGE_KEY]).catch(() => null);
+    employee.canManageDressItems = !!(itemsAccess && itemsAccess[DRESS_ITEMS_MANAGE_KEY]);
 
     // משמרת פתוחה (exitTime: null) בכל תאריך - לא רק היום: עובד שנכנס לפני חצות ועדיין לא יצא
     // נשאר עם משמרת מתוארכת ל"אתמול" (ר' הערה ב-/api/attendance), וסינון לפי תאריך היה

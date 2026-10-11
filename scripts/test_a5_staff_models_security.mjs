@@ -2,8 +2,9 @@
 // Pure logic + static source assertions - no DB, no Next, no server. Run: node scripts/test_a5_staff_models_security.mjs (exit 1 on failure).
 //   1. The REAL auth core (lib/authTokens.js): anonymous / forged cookie / deactivated employee / low role are refused, head management and
 //      programmer pass, a deactivated head-management employee is refused on the DB path.
-//   2. The REAL ui-variant self-switch core: low roles can never turn a screen to 'a5' (incl. the four new screens), foreign employee ids
-//      in the body are ignored.
+//   2. The REAL ui-variant self-switch core (owner decision 2026-10-11: every active employee may choose the new design for themselves):
+//      any role may set its OWN override, foreign employee ids in the body are ignored, anonymous 401 / deactivated 403, unknown screens and
+//      hostile values refused. Opt-in LIVE matrix against a running dev server on TEST: UI_VARIANT_LIVE=1 (see the block at the end).
 //   3. Gate manifest: every API route the four screens use still starts its handler with the expected server-side gate (the old UI and
 //      the new UI call the same endpoints, so a removed gate would silently open them). Update this table WITH the route, never just to turn it green.
 import assert from 'node:assert/strict';
@@ -86,32 +87,67 @@ await ta('checkPageAccessCore (/employees layout): head management passes, branc
   assert.equal(await run({ roleId: 0, isActive: false }), false);
 });
 
-console.log('ui-variant self switch: low roles can never reach a5');
+console.log('ui-variant self switch (owner decision 2026-10-11: every active employee may choose the new design for themselves, only for themselves)');
+const read0 = (rel) => fs.readFileSync(path.join(root, rel), 'utf8').split('\r\n').join('\n');
 const prismaStub = (calls) => ({ employee: { async update(a) { calls.push(a); return { id: a.where.id }; } } });
 for (const screen of ['shell', 'home', 'employees_list', 'models_list', 'model_card', 'model_new']) {
-  await ta(`${screen}: roleId 4 / 1 / 3 get a refusal and no DB write for 'a5'`, async () => {
+  await ta(`${screen}: every role (0 / 1 / 2 / 3 / 4 / null) may set its OWN override to a5 / legacy / null; the write targets only the authenticated employee`, async () => {
     const entry = getScreenEntry(screen);
     assert.ok(entry, `${screen} must exist in UI_SCREEN_REGISTRY`);
-    for (const roleId of [4, 1, 3, null]) {
-      const calls = [];
-      const r = await applyUiVariantRequest({ screen, body: { value: 'a5', employeeId: 'victim' }, employee: { id: 'me', roleId, isActive: true, themeColor: null }, prisma: prismaStub(calls) });
-      assert.ok([400, 403].includes(r.status), `${screen}/${roleId} -> ${r.status}`);
-      assert.equal(calls.length, 0, 'no write');
+    for (const roleId of [0, 1, 2, 3, 4, null]) {
+      for (const value of ['a5', 'legacy', null]) {
+        const calls = [];
+        const themeColor = value === null ? JSON.stringify({ v: 1, uiVariants: { [screen]: 'a5' } }) : null;
+        const r = await applyUiVariantRequest({ screen, body: { value, employeeId: 'victim', id: 'victim', where: { id: 'victim' } }, employee: { id: 'me', roleId, isActive: true, themeColor }, prisma: prismaStub(calls) });
+        assert.equal(r.status, 200, `${screen}/${roleId}/${value} -> ${r.status}`);
+        assert.equal(calls.length, 1, 'one write');
+        assert.deepEqual(calls[0].where, { id: 'me' }, 'never the id from the body');
+        assert.deepEqual(Object.keys(calls[0].data), ['themeColor']);
+      }
     }
   });
 }
-await ta('head management write always targets the authenticated employee, never an id from the body', async () => {
-  const calls = [];
-  const r = await applyUiVariantRequest({ screen: 'home', body: { value: 'a5', employeeId: 'victim', id: 'victim' }, employee: { id: 'me', roleId: 0, isActive: true, themeColor: null }, prisma: prismaStub(calls) });
-  assert.equal(r.status, 200);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].where.id, 'me');
+await ta('the rule is ONE predicate (canEmployeeSelfSwitch) used by the core, the layout and describeSelfSwitch; no leftover management-role gate', async () => {
+  const lib = await import('../lib/uiVariantSelfSwitch.js');
+  assert.equal(typeof lib.canEmployeeSelfSwitch, 'function');
+  assert.equal(lib.isManagementRole, undefined);
+  assert.equal(lib.SELF_SWITCH_ROLE_IDS, undefined);
+  assert.equal(lib.SELF_SWITCH_ONLY_ROLE_IDS, null, 'null = everyone; a roleId array here is the single place to narrow it again');
+  assert.match(read0('app/layout.js'), /canEmployeeSelfSwitch\(\{ roleId: emp\.roleId, isActive: true \}\)/);
+  assert.doesNotMatch(read0('app/layout.js'), /isManagementRole/);
+  assert.match(read0('lib/uiVariantSelfSwitch.js'), /canEmployeeSelfSwitch\(employee\)/);
 });
-await ta('anonymous and deactivated employees are refused', async () => {
+await ta('another employee id in the body is ignored; unknown / non-switchable screens, hostile values and oversized preferences are refused without a write; the size cap guard is still there', async () => {
   const calls = [];
+  const ok = await applyUiVariantRequest({ screen: 'home', body: { value: 'a5', employeeId: 'victim', id: 'victim' }, employee: { id: 'me', roleId: 4, isActive: true, themeColor: null }, prisma: prismaStub(calls) });
+  assert.equal(ok.status, 200); assert.equal(calls.length, 1); assert.equal(calls[0].where.id, 'me'); assert.equal(ok.json.employeeId, 'me');
+  const before = calls.length;
+  for (const screen of ['employee_card', '__proto__', 'constructor', 'login', 'schedule', '', undefined]) {
+    assert.equal((await applyUiVariantRequest({ screen, body: { value: 'a5' }, employee: { id: 'me', roleId: 4, isActive: true }, prisma: prismaStub(calls) })).status, 400, String(screen));
+  }
+  for (const value of ['A5', ' a5', 'admin', 1, true, ['a5'], { a: 1 }, undefined]) {
+    assert.equal((await applyUiVariantRequest({ screen: 'home', body: { value }, employee: { id: 'me', roleId: 4, isActive: true }, prisma: prismaStub(calls) })).status, 400, String(JSON.stringify(value)));
+  }
+  assert.equal(calls.length, before, 'no write for any refusal');
+  // the size cap is still enforced in the core (sanitised prefs cannot realistically exceed it, so assert the guard itself)
+  assert.match(read0('lib/uiVariantSelfSwitch.js'), /built\.serialized\.length > MAX_THEME_COLOR_LENGTH[\s\S]{0,120}status: 413/);
+});
+await ta('anonymous -> 401 and deactivated (any role) -> 403, with no write; the answer to GET also hides the section from them', async () => {
+  const calls = [];
+  const lib = await import('../lib/uiVariantSelfSwitch.js');
   assert.equal((await applyUiVariantRequest({ screen: 'home', body: { value: 'a5' }, employee: null, prisma: prismaStub(calls) })).status, 401);
-  assert.equal((await applyUiVariantRequest({ screen: 'home', body: { value: 'a5' }, employee: { id: 'me', roleId: 0, isActive: false }, prisma: prismaStub(calls) })).status, 403);
+  for (const roleId of [0, 1, 2, 4, null]) {
+    assert.equal((await applyUiVariantRequest({ screen: 'home', body: { value: 'a5' }, employee: { id: 'me', roleId, isActive: false }, prisma: prismaStub(calls) })).status, 403, String(roleId));
+    assert.deepEqual(lib.describeSelfSwitch({ id: 'me', roleId, isActive: false }), { canSelfSwitch: false, screens: [] });
+  }
   assert.equal(calls.length, 0);
+});
+await ta('the new design grants no permission: the designs are switched only by a display flag, every page gate and API gate in the manifest below is variant-independent', () => {
+  // resolveUiVariant is documented as display-only; no gate file imports the variant code.
+  for (const f of ['lib/auth.js', 'lib/authTokens.js', 'lib/roles.js', 'lib/permissions.js']) {
+    if (!fs.existsSync(path.join(root, f))) continue;
+    assert.doesNotMatch(read0(f), /uiVariant|resolveUiVariant|getRequestUiVariant/, `${f} must not depend on the display variant`);
+  }
 });
 
 console.log('gate manifest: each handler starts with its server-side gate');
@@ -122,6 +158,7 @@ function handlerBody(src, method) {
 }
 const HEAD = /checkAuth\('הנהלה ראשית'\)/;
 const ANY = /checkAuth\(\)/;
+const ITEM_MANAGER = /requireDressItemManager\(\)/; // feature:dress_items_manage (D1 resolved 2026-10-11) - details in scripts/test_dress_items_permission.mjs
 const MANIFEST = [
   // employees (head management / programmer only)
   ['app/api/employees/route.js', 'POST', HEAD, 'create employee'],
@@ -136,10 +173,10 @@ const MANIFEST = [
   ['app/api/dresses/route.js', 'POST', HEAD, 'create model'],
   ['app/api/dresses/[id]/route.js', 'GET', ANY, 'model card read'],
   ['app/api/dresses/[id]/route.js', 'DELETE', HEAD, 'delete model'],
-  ['app/api/dresses/[id]/items/route.js', 'POST', ANY, 'create item (any signed-in staff - owner decision)'],
+  ['app/api/dresses/[id]/items/route.js', 'POST', ITEM_MANAGER, 'create item (feature:dress_items_manage)'],
   ['app/api/dresses/[id]/rentals/route.js', 'GET', ANY, 'model rentals'],
-  ['app/api/dresses/items/[itemId]/route.js', 'PUT', ANY, 'edit item'],
-  ['app/api/dresses/items/[itemId]/route.js', 'DELETE', ANY, 'delete item'],
+  ['app/api/dresses/items/[itemId]/route.js', 'PUT', ITEM_MANAGER, 'edit item (feature:dress_items_manage)'],
+  ['app/api/dresses/items/[itemId]/route.js', 'DELETE', ITEM_MANAGER, 'delete item (feature:dress_items_manage)'],
   ['app/api/dresses/items/[itemId]/history/route.js', 'GET', ANY, 'item history'],
   ['app/api/dresses/next-code/route.js', 'GET', ANY, 'next free model code (was public)'],
   ['app/api/upload/route.js', 'POST', ANY, 'image upload'],
@@ -291,6 +328,174 @@ await ta('the print sheets escape every dynamic text with escH (head fields and 
   assert.match(core, /\$\{escH\(o\.title\)\}/); assert.match(core, /escH\(o\.chip\)/); assert.match(core, /escH\(o\.sub\)/);
   const specs = read('app/components/a5-print/pkSpecs.js');
   assert.match(specs, /escH\(m\.notes\)/); assert.match(specs, /escH\(m\.name\)/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// LIVE matrix (opt-in): UI_VARIANT_LIVE=1 node scripts/test_a5_staff_models_security.mjs   [UI_VARIANT_BASE=http://localhost:3072]
+// Needs a running `next dev` on the TEST database (GET /api/dev/switch-env must say "test" - the block refuses otherwise), AUTH_SECRET in
+// .env.local and TEST_DATABASE_URL in .env. Creates throwaway "UVSWITCH ..." employees DIRECTLY in the TEST database, mints their
+// sessions with the repo's createSessionToken, drives the real HTTP routes, then deletes the employees. Never touches PROD. No secrets printed.
+if (process.env.UI_VARIANT_LIVE === '1') {
+  console.log('LIVE: /api/me/ui-variant matrix on the TEST database (minted sessions)');
+  const BASE = process.env.UI_VARIANT_BASE || 'http://localhost:3072';
+  const parseEnv = (file) => {
+    try {
+      return Object.fromEntries(fs.readFileSync(path.join(root, file), 'utf8').split(/\r?\n/).map((l) => /^([A-Z0-9_]+)=(.*)$/.exec(l)).filter(Boolean).map((m) => [m[1], m[2].replace(/^["']|["']$/g, '')]));
+    } catch { return {}; }
+  };
+  const env = { ...parseEnv('.env'), ...parseEnv('.env.local'), ...process.env };
+  const mode = await (await fetch(`${BASE}/api/dev/switch-env`)).json().catch(() => ({}));
+  if (mode.mode !== 'test') { console.error('  FAIL - the dev server is not on the TEST database; live block refused'); process.exitCode = 1; }
+  else if (!env.AUTH_SECRET || !env.TEST_DATABASE_URL) { console.error('  FAIL - AUTH_SECRET / TEST_DATABASE_URL missing'); process.exitCode = 1; }
+  else {
+    const { PrismaClient } = require('@prisma/client');
+    const db = new PrismaClient({ datasourceUrl: env.TEST_DATABASE_URL });
+    const made = [];
+    const jar = {}; // per employee key -> { cookieName: value }
+    const mk = async (key, roleId, isActive = true) => {
+      const e = await db.employee.create({ data: { firstName: 'UVSWITCH', lastName: key, fullName: `UVSWITCH ${key}`, roleId, isActive } });
+      made.push(e.id);
+      jar[key] = { auth_token: e.id, auth_session: tokens.createSessionToken({ id: e.id, roleId }, env.AUTH_SECRET) };
+      return e;
+    };
+    const cookieHeader = (key) => Object.entries(jar[key] || {}).map(([k, v]) => `${k}=${v}`).join('; ');
+    const call = async (key, method, url, body, extraHeaders = {}) => {
+      const res = await fetch(`${BASE}${url}`, {
+        method,
+        redirect: 'manual',
+        signal: AbortSignal.timeout(240000), // first hit of a page compiles it in `next dev`
+        headers: { cookie: key ? cookieHeader(key) : '', ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...extraHeaders },
+        body: body === undefined ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)),
+      });
+      for (const sc of (res.headers.getSetCookie ? res.headers.getSetCookie() : [])) {
+        const m = /^([^=]+)=([^;]*)/.exec(sc);
+        if (m && key && /^designPrefs_/.test(m[1])) jar[key][m[1]] = m[2];
+      }
+      const text = await res.text();
+      let json = null; try { json = JSON.parse(text); } catch {}
+      return { status: res.status, json, text };
+    };
+    const stored = async (id) => { const r = await db.employee.findUnique({ where: { id }, select: { themeColor: true } }); try { return JSON.parse(r.themeColor).uiVariants || null; } catch { return null; } };
+    try {
+      const E = {};
+      for (const [key, roleId, active] of [['secretary', 4], ['branch', 1], ['seamstress', 3], ['regular', null], ['head', 0], ['programmer', 2], ['dead', 4, false], ['victim', 4]]) E[key] = await mk(key, roleId, active);
+
+      await ta('anonymous: GET and POST -> 401, nothing written', async () => {
+        assert.equal((await call(null, 'GET', '/api/me/ui-variant')).status, 401);
+        assert.equal((await call(null, 'POST', '/api/me/ui-variant/home', { value: 'a5', employeeId: E.victim.id })).status, 401);
+        assert.equal((await call(null, 'POST', '/api/me/ui-variant/shell', { value: 'a5' })).status, 401);
+        assert.equal(await stored(E.victim.id), null);
+      });
+      await ta('a hand-typed auth_token without a signed session is anonymous (cannot switch someone else by id)', async () => {
+        const res = await fetch(`${BASE}/api/me/ui-variant/home`, { method: 'POST', headers: { cookie: `auth_token=${E.victim.id}`, 'content-type': 'application/json' }, body: JSON.stringify({ value: 'a5' }) });
+        assert.equal(res.status, 401);
+        assert.equal(await stored(E.victim.id), null);
+      });
+      // each role runs ~16 HTTP calls (~5 min on a remote Neon DB); UI_VARIANT_LIVE_QUICK=1 keeps only the secretary
+      for (const key of (process.env.UI_VARIANT_LIVE_QUICK === '1' ? ['secretary'] : ['secretary', 'branch', 'seamstress', 'regular', 'head', 'programmer'])) {
+        await ta(`${key}: GET offers every switchable screen; may set / read back / clear their OWN a5 override; a victim id in the body is ignored`, async () => {
+          const g = await call(key, 'GET', '/api/me/ui-variant');
+          assert.equal(g.status, 200); assert.equal(g.json.canSelfSwitch, true);
+          for (const s of ['shell', 'home', 'models_list', 'customer_card', 'new_order', 'profile']) assert.ok(g.json.screens.includes(s), `${s} offered`);
+          for (const screen of ['home', 'models_list', 'customer_card', 'shell']) {
+            const p = await call(key, 'POST', `/api/me/ui-variant/${screen}`, { value: 'a5', employeeId: E.victim.id, id: E.victim.id, where: { id: E.victim.id }, roleId: 0 });
+            assert.equal(p.status, 200, `${screen}: ${p.status} ${p.text.slice(0, 120)}`);
+            assert.equal(p.json.employeeId, E[key].id);
+            assert.equal((await stored(E[key].id))[screen], 'a5');
+            assert.equal(await stored(E.victim.id), null, 'victim untouched');
+          }
+          const row = await db.employee.findUnique({ where: { id: E[key].id }, select: { roleId: true } });
+          assert.equal(row.roleId, E[key].roleId, 'role never changes through this route');
+          for (const screen of ['home', 'models_list', 'customer_card', 'shell']) assert.equal((await call(key, 'POST', `/api/me/ui-variant/${screen}`, { value: null })).status, 200);
+          assert.equal(await stored(E[key].id), null, 'cleared');
+        });
+      }
+      await ta('unknown / non-switchable screens -> 404, hostile values -> 400, broken JSON -> 400; nothing stored', async () => {
+        for (const screen of ['employee_card', 'login', 'schedule', '__proto__', 'constructor', 'SHELL', 'nope']) assert.equal((await call('secretary', 'POST', `/api/me/ui-variant/${screen}`, { value: 'a5' })).status, 404, screen);
+        for (const value of ['A5', ' a5', 'admin', 1, true, ['a5'], { a: 1 }]) assert.equal((await call('secretary', 'POST', '/api/me/ui-variant/home', { value })).status, 400, JSON.stringify(value));
+        assert.equal((await call('secretary', 'POST', '/api/me/ui-variant/home', {})).status, 400);
+        assert.equal((await call('secretary', 'POST', '/api/me/ui-variant/home', '{not json')).status, 400);
+        assert.equal(await stored(E.secretary.id), null);
+      });
+      await ta('PUT /api/me/design-prefs still cannot write uiVariants (the only write path is the audited route above)', async () => {
+        await call('secretary', 'PUT', '/api/me/design-prefs', { palette: 'standard', uiVariants: { home: 'a5' } });
+        assert.equal(await stored(E.secretary.id), null);
+      });
+      await ta('deactivated employee (valid signed session): GET 403, POST 403, nothing stored', async () => {
+        assert.equal((await call('dead', 'GET', '/api/me/ui-variant')).status, 403);
+        assert.equal((await call('dead', 'POST', '/api/me/ui-variant/home', { value: 'a5' })).status, 403);
+        assert.equal((await call('dead', 'POST', '/api/me/ui-variant/shell', { value: 'a5' })).status, 403);
+        assert.equal(await stored(E.dead.id), null);
+      });
+
+      // ---- the new design grants nothing: same page gates, same API answers, with the new design switched on ----
+      const bodyFlag = (html, name) => (new RegExp(`data-ui-${name}="(a5|legacy)"`).exec(html) || [])[1];
+      await ta('defaults: secretary / branch / regular / head start OLD everywhere; the programmer starts NEW', async () => {
+        for (const key of ['secretary', 'branch', 'regular', 'head']) {
+          const r = await call(key, 'GET', '/');
+          assert.equal(r.status, 200, key);
+          for (const n of ['shell', 'home', 'order-card', 'customer-card', 'new-order']) assert.equal(bodyFlag(r.text, n), 'legacy', `${key}/${n}`);
+        }
+        const p = await call('programmer', 'GET', '/');
+        // 'home' is skipped on purpose: an org setting (ui_variant_home) outranks the role default and the TEST database has one set to 'legacy'.
+        for (const n of ['shell', 'customer-card', 'new-order']) assert.equal(bodyFlag(p.text, n), 'a5', `programmer/${n}`);
+      });
+      await ta('choosing the new design: the secretary gets a5 for exactly the screens she chose, others stay old', async () => {
+        for (const screen of ['shell', 'home']) assert.equal((await call('secretary', 'POST', `/api/me/ui-variant/${screen}`, { value: 'a5' })).status, 200);
+        const r = await call('secretary', 'GET', '/');
+        assert.equal(r.status, 200);
+        assert.equal(bodyFlag(r.text, 'shell'), 'a5'); assert.equal(bodyFlag(r.text, 'home'), 'a5'); assert.equal(bodyFlag(r.text, 'customer-card'), 'legacy');
+        for (const screen of ['shell', 'home']) assert.equal((await call('secretary', 'POST', `/api/me/ui-variant/${screen}`, { value: null })).status, 200);
+      });
+      await ta('switching to the new design changes no page gate: secretary with every screen on a5 gets the same status / no-access result on every page as with the old design', async () => {
+        const probe = async () => {
+          const out = {};
+          for (const url of ['/admin', '/admin/settings', '/employees', '/employees/attendance', '/dashboard/dresses', '/dashboard/dresses/new', '/profile', '/orders/new', '/customers/new', '/my-hours', '/board']) {
+            const r = await call('secretary', 'GET', url);
+            out[url] = `${r.status}|${/אין הרשאה|אין לך הרשאה|no-access/i.test(r.text) ? 'noaccess' : 'page'}`;
+          }
+          return out;
+        };
+        const before = await probe();
+        const screens = (await call('secretary', 'GET', '/api/me/ui-variant')).json.screens;
+        for (const s of screens) assert.equal((await call('secretary', 'POST', `/api/me/ui-variant/${s}`, { value: 'a5' })).status, 200, s);
+        const after = await probe();
+        for (const s of screens) assert.equal((await call('secretary', 'POST', `/api/me/ui-variant/${s}`, { value: null })).status, 200, s);
+        assert.deepEqual(after, before, 'gate results are identical before / after switching to a5');
+        for (const url of ['/admin', '/admin/settings', '/employees']) assert.match(after[url], /noaccess/, `${url} must refuse a secretary`);
+      });
+      await ta('APIs answer the same with the new design on (the designs call the same endpoints): head-only APIs stay 401/403 for a secretary', async () => {
+        for (const s of ['shell', 'home', 'models_list', 'customer_card']) await call('secretary', 'POST', `/api/me/ui-variant/${s}`, { value: 'a5' });
+        for (const [m, url, ok] of [
+          ['GET', '/api/employees/' + E.victim.id, false], ['GET', '/api/employees/presence', false], ['GET', '/api/admin/orders-list', false], ['POST', '/api/dresses', false],
+          ['GET', '/api/dresses?fields=summary&counts=1', true],
+        ]) {
+          const r = await call('secretary', m, url, m === 'POST' ? {} : undefined);
+          if (ok) assert.equal(r.status, 200, `${m} ${url} -> ${r.status}`); else assert.ok([401, 403].includes(r.status), `${m} ${url} -> ${r.status}`);
+        }
+        const emp = await call('secretary', 'GET', '/api/employees?all=true');
+        assert.equal(emp.status, 200); assert.ok(!('hourlyWage' in (emp.json[0] || {})), 'secretary still gets the slim employee shape');
+        for (const s of ['shell', 'home', 'models_list', 'customer_card']) await call('secretary', 'POST', `/api/me/ui-variant/${s}`, { value: null });
+      });
+    } finally {
+      try { await db.pageVisitLog.deleteMany({ where: { employeeId: { in: made } } }); } catch {}
+      try { await db.employee.deleteMany({ where: { id: { in: made } } }); } catch (e) { console.error('  CLEANUP FAILED', e.message); process.exitCode = 1; }
+      const left = await db.employee.count({ where: { firstName: 'UVSWITCH' } }).catch(() => -1);
+      console.log(`  cleanup: ${made.length} throwaway employees created, ${left} left in TEST`);
+      await db.$disconnect();
+    }
+  }
+}
+
+// R4 (2026-10-11): the AI smart search 'employees' context is head management / programmer only and answers from a safe projection (full suite: scripts/test_ai_employees_context.mjs).
+await ta('smart-search: pageContext employees is gated by role BEFORE any data access and runs only guard-approved SQL', async () => {
+  const route = fs.readFileSync(path.join(root, 'app/api/ai/smart-search/route.js'), 'utf8').replace(/\r\n/g, '\n');
+  const post = route.slice(route.indexOf('export async function POST'));
+  const iGate = post.indexOf('HEAD_MANAGEMENT_ROLES.includes(me.roleId)');
+  assert.ok(post.indexOf('getSessionEmployee()') > -1 && iGate > post.indexOf('getSessionEmployee()') && iGate < post.indexOf('checkAiAccess()'), 'employees gate must precede checkAiAccess');
+  assert.ok(post.indexOf('handleEmployeesSearch(') > post.indexOf('checkAiAccess()'), 'handler only after the gates');
+  assert.match(route, /assertEmployeesWhere\(/);
+  assert.ok(!/employees:\s*"Table:/.test(route), 'no raw-table employees schema in SCHEMA_MAP');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' - WITH FAILURES' : ''}`);

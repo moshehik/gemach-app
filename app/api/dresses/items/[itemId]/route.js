@@ -1,10 +1,13 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { checkAuth } from '@/lib/auth';
+import { requireDressItemManager } from '@/lib/dressItemAccess';
 
-// Update a specific DressItem
+// Update a specific DressItem (מיקום / קרטון / בתיקון / לא בשימוש / שחזור מחיקה)
+// ניהול פריטי דגם: feature:dress_items_manage - הנהלה ראשית / מתכנת תמיד, אחרים לפי הרשאה (lib/dressItemAccess.js).
+// עדכוני מיקום שנגזרים מהשכרה / החזרה בהזמנה אינם עוברים כאן (rentals/confirm, rentals/scan, returns/scan) ונשארים פתוחים.
 export async function PUT(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  const denied = await requireDressItemManager();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
     const itemId = resolvedParams.itemId;
@@ -64,9 +67,10 @@ export async function PUT(request, { params }) {
   }
 }
 
-// Delete a specific DressItem
+// Delete a specific DressItem (מחיקה רכה)
 export async function DELETE(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  const denied = await requireDressItemManager();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
     const itemId = resolvedParams.itemId;

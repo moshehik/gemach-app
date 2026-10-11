@@ -170,7 +170,7 @@ export default function DcDetailsTab({ dc, ui }) {
           <div className="card-h"><div className="ico rose"><OcIcon name="tag" size="lg" /></div><h2>זיהוי הדגם</h2>{editBtn}</div>
           <div className="grid2">
             <Fld id="dcCode" label="קוד דגם" icon="hash" value={m.code} lock dir="ltr" tip={CODE_TIP} />
-            {dc.flags.useModelNames ? <Fld id="dcName" label="שם דגם" icon="tag" value={m.name} placeholder="שם הדגם..." onChange={(v) => dc.patchModel({ name: v })} /> : null}
+            {dc.flags.useModelNames ? <Fld id="dcName" label="שם דגם" icon="tag" value={m.name} placeholder="שם הדגם..." onChange={(v) => dc.patchModel({ name: v })} error={dc.nameError} /> : null}
             <CatField dc={dc} />
             <div className="field">
               <label className="lbl" htmlFor="dcEntry">תאריך כניסה למאגר</label>

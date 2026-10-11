@@ -103,7 +103,10 @@ await t('buildItemPayload: כמו האשף הישן (sizeText, serialNumber, dre
   assert.equal(L.buildItemPayload({ size: '38', serial: 2, loc: '' }, { barcodePrefix: 623, name: 'x' }, { code: '623', entry: '2026-10-09' }, ['חנות']).location, 'חנות');
 });
 await t('describeCreateError: כפילות / הרשאה / כללי', () => {
-  assert.deepEqual(L.describeCreateError(400, { error: 'הקוד כבר בשימוש!' }), { msg: 'הקוד כבר בשימוש!', duplicate: true, forbidden: false, text: 'שגיאה: הקוד כבר בשימוש!' });
+  assert.deepEqual(L.describeCreateError(400, { error: 'הקוד כבר בשימוש!' }), { msg: 'הקוד כבר בשימוש!', duplicate: true, nameDuplicate: false, forbidden: false, text: 'שגיאה: הקוד כבר בשימוש!' });
+  // שם דגם שכבר קיים (400 + field:'name', 11.10.2026): מוצג ליד שדה השם, לא נחשב כקוד תפוס
+  const nd = L.describeCreateError(400, { error: 'דגם בשם «ורד» כבר קיים (קוד 5)', field: 'name' });
+  assert.equal(nd.nameDuplicate, true); assert.equal(nd.duplicate, false); assert.equal(nd.msg, 'דגם בשם «ורד» כבר קיים (קוד 5)');
   assert.equal(L.describeCreateError(403, { error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }).forbidden, true);
   assert.equal(L.describeCreateError(500, null).msg, 'יצירת הדגם נכשלה');
 });

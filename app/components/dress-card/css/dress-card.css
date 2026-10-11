@@ -34,6 +34,7 @@
 .gm-ds.gm-dc .dc-barc{display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600}
 .gm-ds.gm-dc .dc-barc .ic{color:var(--navy-500)}
 .gm-ds.gm-dc .dc-err{display:flex;align-items:center;gap:6px;color:var(--gold-700);font-weight:600}
+.gm-ds.gm-dc .field.bad .inp.inp:not(:focus){border-color:var(--gold-700)}
 /* חלונות כהים (dlg-dark): הטקסטים הכחולים של הכרטיס הבהיר היו כחול-על-כחול (ביקורת חלונות צפות 2026-10-11) - עוברים לטוקני --k-* של שכבת הדיאלוגים */
 .gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .dc-barc{color:var(--k-ink)}
 .gm-ds.gm-dc.dlg-dark :is(#dlg,#dlg2) .dc-barc .ic{color:var(--k-ic)}

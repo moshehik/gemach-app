@@ -18,8 +18,8 @@ import { shouldShowVariantToggle } from '@/lib/uiVariantSelfSwitch';
 // data-ui-shell עלול להישאר 'a5'. אסור להתבסס עליהם ב-CSS (selectors כמו body[data-ui-shell=...]) או ב-JS;
 // רק ה-hooks כאן מחילים את כלל ה-pathname (isForcedLegacyPath) בצד הלקוח.
 const UiVariantContext = createContext({});
-// האם המשתמש המחובר רשאי להחליף לעצמו "ישן / חדש" (הנהלה ראשית / מתכנת — isManagementRole ב-lib/uiVariantSelfSwitch.js),
-// כפי ש-app/layout.js חישב בשרת מה-roleId (בלי בקשה נוספת). משמש רק להצגת האייקון PageVariantToggle — ה-POST אוכף מחדש מה-DB.
+// האם המשתמש המחובר רשאי להחליף לעצמו "ישן / חדש" (כל עובד מחובר מ-11.10.2026 — canEmployeeSelfSwitch ב-lib/uiVariantSelfSwitch.js),
+// כפי ש-app/layout.js חישב בשרת (בלי בקשה נוספת). משמש רק להצגת האייקון PageVariantToggle — ה-POST אוכף מחדש מה-DB.
 const UiVariantSelfSwitchContext = createContext(false);
 
 export function UiVariantProvider({ value, canSelfSwitch = false, children }) {

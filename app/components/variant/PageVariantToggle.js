@@ -2,8 +2,8 @@
 
 // PageVariantToggle — האייקון העגול "מעבר לתצוגה החדשה" / "חזרה לתצוגה הישנה" (בקשת הבעלים 4.10.2026). רכיב אחד לכל המסכים.
 //
-// מתי מוצג (useCanSelfSwitch, app/components/UiVariantContext.js): רק למי שרשאי להחליף לעצמו (הנהלה ראשית / מתכנת —
-// SELF_SWITCH_ROLE_IDS ב-lib/uiVariantSelfSwitch.js), רק במסך שברשומה (lib/uiVariantScreens.js) יש לו גם ישן וגם חדש, ולעולם
+// מתי מוצג (useCanSelfSwitch, app/components/UiVariantContext.js): לכל עובד מחובר (החלטת הבעלים 11.10.2026; הכלל
+// canEmployeeSelfSwitch ב-lib/uiVariantSelfSwitch.js, שם גם המקום היחיד לצמצום), רק במסך שברשומה (lib/uiVariantScreens.js) יש לו גם ישן וגם חדש, ולעולם
 // לא בקיוסק / שעון נוכחות / הדפסה (isForcedLegacyPath). אחרת — null (שום DOM).
 //
 // לחיצה: POST /api/me/ui-variant/<screen> { value: 'a5' | 'legacy' } — עקיפה אישית ב-Employee.themeColor.uiVariants, והשרת
