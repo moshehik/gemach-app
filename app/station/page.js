@@ -1,24 +1,23 @@
-// /station - עמדת הלקוח בקישור כללי (ציבורי, בלי התחברות). PLACEHOLDER: בודק רק את ההגדרה kiosk_public_link_enabled.
-// סוכן ה-skin ימלא כאן את המסך (קטלוג + רישום) מעל החוזה של /api/public-kiosk/{config,models,register} - ר' lib/publicKiosk/*.
-// בלי מעטפת עובדים: app/layout.js מרנדר /station ללא תפריט / עוזר AI (stationBare) וללא קיר התחברות.
+// /station - עמדת הלקוח הציבורית: קישור כללי שלקוחות פותחות מהטלפון (ציבורי, בלי התחברות, בלי שלד האתר: app/layout.js מרנדר אותו ב-stationBare).
+// הממשק: app/components/kiosk/KioskPublic.js (עיצוב דף נחיתה). מקור הנתונים - ה-API הציבורי בלבד (lib/publicKiosk/*, /api/public-kiosk/*).
+// הקונפיג נקרא כאן בשרת (אותה allow-list ואותו חוזה כמו GET /api/public-kiosk/config) כדי שהמסך ייפתח בלי הבהוב; קישור כבוי = "העמדה אינה זמינה".
 import { loadPublicKioskConfig } from '@/lib/publicKiosk/config';
+import KioskPublic from '@/app/components/kiosk/KioskPublic';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'עמדת לקוח', robots: { index: false, follow: false } };
 
 export default async function StationPage() {
   const cfg = await loadPublicKioskConfig();
-  if (!cfg.linkEnabled) {
-    return (
-      <main dir="rtl" style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center' }}>
-        <h1 style={{ fontSize: 24 }}>העמדה אינה זמינה</h1>
-      </main>
-    );
-  }
-  // TODO(kiosk-skin): כאן נכנס הממשק. הקונפיג (cfg) זמין בשרת; בצד הלקוח - GET /api/public-kiosk/config.
-  return (
-    <main dir="rtl" style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center' }}>
-      <h1 style={{ fontSize: 24 }}>עמדת לקוח</h1>
-    </main>
-  );
+  // רק הדגלים הציבוריים (כמו התשובה של /api/public-kiosk/config); storeSelfService ושאר ההגדרות הפנימיות לא יוצאים
+  const config = cfg.linkEnabled
+    ? {
+        enabled: true,
+        showInventory: cfg.showInventory,
+        showRegistration: cfg.showRegistration,
+        hideImages: cfg.hideImages,
+        ...(cfg.showRegistration ? { registration: cfg.registrationRules } : {}),
+      }
+    : { enabled: false };
+  return <KioskPublic config={config} />;
 }
