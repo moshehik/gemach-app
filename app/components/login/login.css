@@ -32,7 +32,7 @@
 
 /* ---- הבמה ---- */
 .gm-ds.gm-login .lg-stage{min-height:calc(100vh - 64px);display:grid;place-items:center;padding:32px 16px 48px}
-.gm-ds.gm-login .lg-wrap{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch;gap:20px;min-width:0}
+.gm-ds.gm-login .lg-wrap{width:100%;max-width:clamp(500px,46vw,580px);display:flex;flex-direction:column;align-items:stretch;gap:20px;min-width:0}
 .gm-ds.gm-login .lg-hero{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.85)}
 .gm-ds.gm-login .lg-hero h1{margin:0;font-size:clamp(46px,11vw,64px);line-height:1.05;font-weight:400;color:var(--gm-navy-900);text-wrap:balance;min-height:1.05em}
 .gm-ds.gm-login .lg-hero p{margin:0;font-size:17px;color:var(--gm-ink2);font-weight:500}
@@ -96,7 +96,8 @@
 .gm-ds.gm-login .punch{margin-top:18px;padding-top:16px;border-top:1px solid rgba(188,194,200,.75);display:flex;justify-content:center}
 .gm-ds.gm-login .punch a{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 14px;border-radius:12px;font-size:14px;font-weight:500;color:var(--gm-navy-700);text-decoration:none;transition:background-color .15s,color .15s}
 .gm-ds.gm-login .punch a:hover{background:rgba(255,255,255,.7);color:var(--gm-navy-900)}
-.gm-ds.gm-login .punch a u{text-decoration-color:var(--gm-gold);text-decoration-thickness:2px;text-underline-offset:4px}
+.gm-ds.gm-login .punch a span{text-wrap:balance}
+.gm-ds.gm-login .punch a u{white-space:nowrap;text-decoration-color:var(--gm-gold);text-decoration-thickness:2px;text-underline-offset:4px}
 .gm-ds.gm-login .lg-trusted{display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;margin:0 auto 14px;padding:4px 14px;border-radius:999px;background:var(--lg-ok-soft);color:var(--lg-ok);font-size:13px;font-weight:600}
 .gm-ds.gm-login .msg{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;font-size:14px;line-height:1.45;background:var(--lg-danger-soft);border:1px solid var(--lg-danger-line);color:var(--lg-danger)}
 .gm-ds.gm-login .msg .ic{margin-top:1px}
