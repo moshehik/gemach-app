@@ -222,3 +222,8 @@
 /* ---- טעינה / הרשאה ---- */
 .gm-ds.gm-mn .mn-loading{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--gm-ink2)}
 .gm-ds.gm-mn .mn-banner{margin-top:24px}
+
+/* ===== טופס רציף (מקטע תחת מקטע): הפריסה והפס הנדבק מ-new-order.css (השורש נושא גם gm-no); כאן רק הדבק ===== */
+.gm-ds.gm-mn .layout{grid-template-columns:minmax(0,1fr)}
+.gm-ds.gm-mn .mn-app .no-sec-nav .mn-foot-l{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gm-ds.gm-mn .mn-app .no-sec-nav .tipw{display:inline-block}
