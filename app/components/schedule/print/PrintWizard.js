@@ -255,6 +255,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   return (
     <div className="scrim on lz-wscrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={'dlg lz-wiz' + (isQuick ? ' lz-quick' : ' lz-full')} id="dlg" role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
+        <button type="button" className="lz-wx" aria-label="סגירה" onClick={onClose}><ScheduleIcon name="x" /></button>
         {isQuick ? (
           <>
             <div className="dbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>

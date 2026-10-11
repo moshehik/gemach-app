@@ -12,6 +12,12 @@
   --lz-focus:#f1dc8f;color-scheme:dark;scrollbar-color:rgba(188,194,200,.4) transparent}
 .gm-ds.gm-lz .lz-wscrim{z-index:140}
 .gm-ds.gm-lz .lz-wiz *{min-width:0}
+.gm-ds.gm-lz #dlg.lz-wiz{position:relative}
+/* לחצן X בפינה השמאלית העליונה (פיזית, גם ב-RTL) */
+.gm-ds.gm-lz .lz-wiz .lz-wx{position:absolute;top:10px;left:10px;z-index:3;width:34px;height:34px;display:grid;place-items:center;padding:0;margin:0;border:1px solid var(--k-bd);border-radius:50%;background:transparent;color:var(--k-ghost);cursor:pointer}
+.gm-ds.gm-lz .lz-wiz .lz-wx:hover{background:rgba(255,255,255,.1);border-color:var(--gm-gold);color:#fff}
+.gm-ds.gm-lz .lz-wiz .lz-wx:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+.gm-ds.gm-lz .lz-wiz .lz-wx .ic{width:16px;height:16px}
 
 /* ===== האשף המלא ===== */
 .gm-ds.gm-lz #dlg.lz-wiz.lz-full{width:min(1320px,96vw);max-width:none;height:min(880px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);
