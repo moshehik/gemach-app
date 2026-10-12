@@ -1,5 +1,6 @@
 'use client';
 
+// כיוון החצים (RTL, כמו בשאר האתר: דפדוף עמודים / חודשים / ימים): הקודם = arrr (מצביע ימינה), הבא = arrl (מצביע שמאלה).
 // KioskCalendar - לוח האירוע של עמדת הלקוח בעיצוב המאושר (עמדת-לקוח.html: .caldock): חודש עברי אחד עם חצי חודש קודם / הבא,
 // שמות חגים ופרשות בתאי הלוח (S07), הצללת שבת / חג, וכפתור "היום". מעל הלוח - שלוש רשימות היום / חודש / שנה (R17 - יכולת קיימת בעמדה).
 // הלוגיקה (hebcal) זהה ללוח הישן; המצב (תאריך נבחר) מוחזק אצל הקורא: selectedDate = Date | null, onSelect(Date).
@@ -111,9 +112,9 @@ export default function KioskCalendar({ selectedDate, onSelect, showSelects = tr
 
       <div className="caldock" id="cal1">
         <div className="dph">
-          <button type="button" className="dpn" data-calnav="-1" aria-label="החודש הקודם" onClick={prevMonth}><KIcon id="chev" size="sm" /></button>
+          <button type="button" className="dpn" data-calnav="-1" aria-label="החודש הקודם" onClick={prevMonth}><KIcon id="arrr" size="sm" /></button>
           <b className="dpt" aria-live="polite">{monthLabelOf(viewMonth, viewYear)} {gematriya(viewYear)}</b>
-          <button type="button" className="dpn" data-calnav="1" aria-label="החודש הבא" onClick={nextMonth}><KIcon id="chev" size="sm" /></button>
+          <button type="button" className="dpn" data-calnav="1" aria-label="החודש הבא" onClick={nextMonth}><KIcon id="arrl" size="sm" /></button>
         </div>
         <div className="dpw" aria-hidden="true">{WEEKDAYS.map((w) => <span key={w}>{w}</span>)}</div>
         <div className="dpg" role="grid">

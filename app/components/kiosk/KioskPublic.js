@@ -213,7 +213,7 @@ function DateStep({ date, onSelect, onNext, onBack }) {
       </div>
       <div className="row ks-center">
         <button type="button" className="btn primary kp-go" data-agy-id="station_show_models_btn" disabled={!date} onClick={onNext}>
-          הצגת השמלות<svg className="ic" viewBox="0 0 28 20" style={{ width: 22, height: 16 }} aria-hidden="true"><path d="M26 10H6M14 3L6 10l8 7" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          הצגת השמלות<KIcon id="arrl" size="sm" />
         </button>
       </div>
     </section>
@@ -266,7 +266,7 @@ function PublicInner({ config }) {
                 <span className="kp-bubble"><KIcon id="dress" size="lg" /></span>
                 <b>{showInventory ? 'בדיקת זמינות שמלה' : 'הדגמים שלנו'}</b>
                 <span>{showInventory ? 'בוחרות תאריך אירוע, ורואות אילו דגמים ומידות פנויים.' : 'מחפשות לפי מספר דגם, שם או מידה.'}</span>
-                <em>להתחלה<KIcon id="back" size="sm" /></em>
+                <em>להתחלה<KIcon id="arrl" size="sm" /></em>
               </button>
             ) : null}
             {showRegistration ? (
@@ -274,7 +274,7 @@ function PublicInner({ config }) {
                 <span className="kp-bubble kp-bubble-rose"><KIcon id="user" size="lg" /></span>
                 <b>מילוי פרטים אישיים</b>
                 <span>ממלאות פעם אחת, והעובדת תמשיך איתך להזמנה.</span>
-                <em>למילוי הפרטים<KIcon id="back" size="sm" /></em>
+                <em>למילוי הפרטים<KIcon id="arrl" size="sm" /></em>
               </button>
             ) : null}
           </div>

@@ -6,7 +6,7 @@
 @font-face{font-family:'FB Melatef';src:url('/kiosk/FBMelatef-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
 
 /* ===== גוף הדף ===== */
-.gm-ds.gm-ks{--ks-gold-txt:linear-gradient(120deg,#9a7a1f 0%,#f7e3ab 15%,#e0c56e 30%,#fff6d8 42%,#c9a227 55%,#9a7a1f 70%,#d9b84a 85%,#f7e3ab 100%)}
+.gm-ds.gm-ks{--ks-panel-bd:rgba(15,44,82,.14);--ks-panel-sh:0 10px 30px -14px rgba(15,44,82,.35);--ks-blur:blur(8px);--ks-gold-txt:linear-gradient(120deg,#9a7a1f 0%,#f7e3ab 15%,#e0c56e 30%,#fff6d8 42%,#c9a227 55%,#9a7a1f 70%,#d9b84a 85%,#f7e3ab 100%)}
 .gm-ds.gm-ks *{font-family:var(--gm-font)}
 .gm-ds.gm-ks :is(button,input,select,textarea){font-family:inherit!important}
 .gm-ds.gm-ks :is(h1,h2,h3){font-family:inherit!important;letter-spacing:normal}
@@ -70,7 +70,7 @@
 .ks-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:radial-gradient(circle,#fff6d8 0%,#e0c56e 60%,transparent 100%);box-shadow:0 0 6px 2px rgba(224,197,110,.85);pointer-events:none;z-index:600;animation:ksSparkOut .75s ease-out forwards}
 
 /* ===== לוח (caldock) ===== */
-.gm-ds.gm-ks .caldock{width:100%;max-width:760px;margin:0 auto;padding:18px;border-radius:20px;background:transparent;border:0;box-shadow:none}
+.gm-ds.gm-ks .caldock{width:100%;max-width:760px;margin:0 auto;padding:18px;border-radius:20px;background:var(--gm-milk);border:0;box-shadow:0 0 0 1px var(--ks-panel-bd),var(--ks-panel-sh)}
 .gm-ds.gm-ks .caldock .dph{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-18px -18px 14px;padding:16px 18px;background:var(--gm-navy);border-radius:19px 19px 0 0;justify-content:center;gap:20px}
 .gm-ds.gm-ks .caldock .dpt{font-size:20px;font-weight:700;color:var(--gm-gold-300);display:inline-block;min-width:150px;text-align:center}
 .gm-ds.gm-ks .caldock .dpn{position:relative;width:40px;height:40px;min-height:0;border-radius:50%;border:1.5px solid #fff;background:transparent;color:#fff;display:grid;place-items:center;padding:0;cursor:pointer;transition:border-color 150ms,color 150ms}
@@ -78,8 +78,7 @@
 .gm-ds.gm-ks .caldock .dpn:disabled{opacity:.35;cursor:not-allowed}
 .gm-ds.gm-ks .caldock .dpn::after{content:attr(aria-label);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);background:rgba(201,162,39,.9);color:var(--gm-navy-900);font-size:13px;font-weight:600;white-space:nowrap;padding:6px 12px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s ease,transform .15s ease;z-index:50}
 .gm-ds.gm-ks .caldock .dpn:hover::after,.gm-ds.gm-ks .caldock .dpn:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0)}
-.gm-ds.gm-ks [data-calnav="-1"] .ic{transform:rotate(-90deg)}
-.gm-ds.gm-ks [data-calnav="1"] .ic{transform:rotate(90deg)}
+/* חצי החודש: הקודם = arrr (ימינה), הבא = arrl (שמאלה) - האייקון עצמו מכוון (KioskCalendar.js), בלי סיבוב ב-CSS */
 .gm-ds.gm-ks .caldock .dpw,.gm-ds.gm-ks .caldock .dpg{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;direction:rtl}
 .gm-ds.gm-ks .caldock .dpw{margin:-16px -18px 10px;padding:8px 18px;background:#f4a68c;font-size:15px;font-weight:600;color:var(--gm-navy-900);text-align:center}
 .gm-ds.gm-ks .caldock .dpg{padding:4px 0}
@@ -251,25 +250,27 @@
 .gm-ds.gm-ks .ks-cta-stub .ks-cta-ico{background:var(--gm-sky-100);color:var(--gm-navy)}
 
 /* ===== מילוי פרטים אישיים ===== */
-.gm-ds.gm-ks .ks-reg{width:min(860px,100%);margin:0 auto;padding-top:28px}
+.gm-ds.gm-ks .ks-reg{width:min(560px,100%);margin:0 auto;padding-top:28px}
 .gm-ds.gm-ks .ks-reg-head{text-align:center;margin-bottom:18px}
 .gm-ds.gm-ks .ks-sub{margin:8px 0 0;font-size:18px;color:var(--gm-ink2)}
-.gm-ds.gm-ks .ks-card{padding:24px;background:var(--gm-milk);border:1px solid rgba(15,44,82,.14);border-radius:20px;box-shadow:0 10px 30px -14px rgba(15,44,82,.35)}
-.gm-ds.gm-ks .ks-grid{display:grid;gap:14px;margin-bottom:14px}
-.gm-ds.gm-ks .ks-grid-2{grid-template-columns:1fr 1fr}
-.gm-ds.gm-ks .ks-grid-3{grid-template-columns:1.2fr 1.2fr .6fr}
-.gm-ds.gm-ks .ks-span2{grid-column:1/-1}
-.gm-ds.gm-ks .ks-form .field{margin:0}
+.gm-ds.gm-ks .ks-card{padding:24px;background:var(--gm-milk);border:1px solid var(--ks-panel-bd);border-radius:20px;box-shadow:var(--ks-panel-sh)}
+/* הטופס: עמודה אחת, שדה בכל שורה. השדות עצמם מהפלטה (.dfields .field / .lbl / .inpw / .inp / .inpx - כמו טופס לקוחה חדשה), כאן רק פריסה */
+.gm-ds.gm-ks .ks-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.gm-ds.gm-ks .ks-form.dfields .field{margin:0;max-width:none;width:100%}
 .gm-ds.gm-ks .ks-form .inp{width:100%}
+.gm-ds.gm-ks .ks-form .field.bad .inp{border-color:var(--gm-rose-500)!important}
+.gm-ds.gm-ks .ks-ferr{display:flex;align-items:center;gap:6px;margin:6px 4px 0;font-size:14px;font-weight:600;color:var(--gm-rose-700)}
 .gm-ds.gm-ks .ks-hp{position:absolute;inset-inline-start:-9999px;top:auto;width:1px;height:1px;overflow:hidden;opacity:0}
-.gm-ds.gm-ks .ks-consent{display:grid;gap:14px;margin-top:20px;padding-top:18px;border-top:1px solid var(--gm-sky-200)}
-.gm-ds.gm-ks .ks-consent-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px}
-.gm-ds.gm-ks .ks-yn{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:4px 6px;border-radius:14px}
-.gm-ds.gm-ks .ks-yn-l{font-size:18px;font-weight:700;color:var(--gm-navy-900)}
-.gm-ds.gm-ks .ks-yn-b{display:inline-flex;gap:8px}
-.gm-ds.gm-ks .ks-yn.bad,.gm-ds.gm-ks .ks-privacy.bad{outline:2px solid var(--gm-gold-700);outline-offset:4px;border-radius:14px}
+.gm-ds.gm-ks .ks-consent{margin-top:20px;padding-top:18px;border-top:1px solid var(--gm-sky-200)}
+/* שורת מתג: מתג הפלטה (label.sw) + טקסט + הסבר מתחת לטקסט (עמודת הטקסט נפרדת, כך שההסבר מיושר לטקסט ולא למתג) */
+.gm-ds.gm-ks .ks-swrow{padding:4px 6px;border-radius:14px}
+.gm-ds.gm-ks .ks-swrow .trow{align-items:flex-start}
+.gm-ds.gm-ks .ks-swtxt{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.gm-ds.gm-ks .ks-swline{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
+.gm-ds.gm-ks .ks-swl{font-size:18px;font-weight:700;color:var(--gm-navy-900);cursor:pointer}
+.gm-ds.gm-ks .ks-swrow .ks-hint{margin:0}
+.gm-ds.gm-ks .ks-swrow.bad{outline:2px solid var(--gm-rose-500);outline-offset:4px}
 .gm-ds.gm-ks .ks-hint{margin:-6px 6px 0}
-.gm-ds.gm-ks .ks-privacy .ks-check{font-size:18px;font-weight:700}
 .gm-ds.gm-ks .ks-link{display:inline-flex;align-items:center;gap:6px;background:transparent;border:0;border-bottom:2px solid var(--gm-gold-d);padding:2px 2px 4px;font-size:16px;font-weight:600;color:var(--gm-navy-900);cursor:pointer}
 .gm-ds.gm-ks .ks-link:hover,.gm-ds.gm-ks .ks-link:focus-visible{color:var(--gm-gold-d)}
 .gm-ds.gm-ks .errline{color:var(--gm-gold-700);font-size:15px;font-weight:600;margin-top:12px;display:none}
@@ -319,7 +320,7 @@
 .gm-ds.gm-kp .kp-lead{margin:10px auto 0;max-width:620px;font-size:clamp(17px,4.2vw,22px);line-height:1.5;color:var(--gm-navy-900);font-weight:500;text-shadow:0 1px 3px rgba(255,255,255,.7),0 0 16px rgba(255,255,255,.55)}
 .gm-ds.gm-kp .kp-rule{display:block;width:min(260px,60%);height:3px;margin:18px auto 0;border-radius:2px;background:linear-gradient(90deg,#9a7a1f,#f7e3ab,#e0c56e,#fff6d8,#c9a227,#9a7a1f);background-size:250% 100%;animation:ksCtxShine 2.4s linear infinite}
 .gm-ds.gm-kp .kp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(14px,3vw,26px);margin-top:clamp(14px,4vw,30px)}
-.gm-ds.gm-kp .kp-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:clamp(20px,5vw,34px) 20px;text-align:center;background:rgba(255,255,255,.9);border:1px solid rgba(15,44,82,.14);border-radius:26px;box-shadow:0 14px 34px -16px rgba(15,44,82,.4);color:var(--gm-navy-900);cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:transform .18s ease,box-shadow .18s ease}
+.gm-ds.gm-kp .kp-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:clamp(20px,5vw,34px) 20px;text-align:center;background:var(--gm-milk);border:1px solid var(--ks-panel-bd);border-radius:26px;box-shadow:0 14px 34px -16px rgba(15,44,82,.4);color:var(--gm-navy-900);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
 .gm-ds.gm-kp .kp-card:hover,.gm-ds.gm-kp .kp-card:focus-visible{transform:translateY(-4px);box-shadow:0 20px 40px -16px rgba(15,44,82,.5);outline:2px solid var(--gm-gold);outline-offset:2px}
 .gm-ds.gm-kp .kp-card b{font-size:clamp(22px,5.5vw,28px);font-weight:700}
 .gm-ds.gm-kp .kp-card>span:not(.kp-bubble){font-size:16px;color:var(--gm-ink2);line-height:1.45;max-width:340px}
@@ -330,8 +331,8 @@
 .gm-ds.gm-kp .kp-bubble-rose{background:var(--gm-rose-200)}
 .gm-ds.gm-kp .kp-bubble .ic{width:36px;height:36px}
 .gm-ds.gm-kp .kp-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-.gm-ds.gm-kp .kp-bar .btn.ghost{background:rgba(255,255,255,.7)}
-.gm-ds.gm-kp .kp-datechip{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1.5px solid var(--gm-navy);background:rgba(255,255,255,.85);color:var(--gm-navy-900);font-weight:700;font-size:16px;cursor:pointer}
+.gm-ds.gm-kp .kp-bar .btn.ghost{background:var(--gm-milk)}
+.gm-ds.gm-kp .kp-datechip{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1.5px solid var(--gm-navy);background:var(--gm-milk);color:var(--gm-navy-900);font-weight:700;font-size:16px;cursor:pointer}
 .gm-ds.gm-kp .kp-datechip em{font-style:normal;font-weight:600;font-size:13px;color:var(--gm-gold-d);border-inline-start:1px solid var(--gm-sky-300);padding-inline-start:8px}
 .gm-ds.gm-kp .kp-calwrap{display:flex;flex-direction:column;align-items:center}
 .gm-ds.gm-kp .kp-calwrap>*{max-width:420px;width:100%}
@@ -353,9 +354,13 @@
 .gm-ds.gm-kp .kp-count{margin:4px 2px 10px;font-weight:700;color:var(--gm-navy-900);text-shadow:0 1px 3px rgba(255,255,255,.8)}
 .gm-ds.gm-kp .kp-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:14px}
 .gm-ds.gm-kp .kp-tile{cursor:default}
-.gm-ds.gm-kp .kp-unavail{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:clamp(40px,14vw,120px) 12px}
+.gm-ds.gm-kp .kp-unavail{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:clamp(40px,14vw,120px) 12px;background:var(--gm-milk);border:1px solid var(--ks-panel-bd);border-radius:26px;box-shadow:var(--ks-panel-sh)}
 .gm-ds.gm-kp .ks-reg{padding-top:0}
 .gm-ds.gm-kp .ks-card{padding:clamp(16px,4vw,24px)}
+/* הבחירה שבוצעה בשלב התאריך: גם היא מסגרת חצי שקופה (כמו תוצאות החיפוש בדף הבית) */
+.gm-ds.gm-kp .ks-datesum:not(:empty){width:fit-content;max-width:100%;margin-inline:auto;padding:12px 24px;background:var(--gm-milk);border:1px solid var(--ks-panel-bd);border-radius:20px;box-shadow:var(--ks-panel-sh)}
+/* כל המסגרות החצי שקופות (var(--gm-milk)) מקבלות טשטוש עדין של מה שמאחוריהן - אחד לכל העמדה, בשני המסלולים */
+.gm-ds.gm-ks :is(.ks-card,.tile,.caldock,.ks-toolbar,.ks-filter,.ks-cta,.ks-row,.ks-table-wrap,.empty.ks-state,.ks-msearch,.ks-aipill,.kp-card,.kp-datechip,.kp-bar .btn.ghost,.kp-unavail,.ks-datesum:not(:empty)){-webkit-backdrop-filter:var(--ks-blur);backdrop-filter:var(--ks-blur)}
 
 @media (max-width:900px){
   .gm-ds.gm-ks .ks-filter{grid-template-columns:1fr 1fr}
@@ -371,7 +376,6 @@
   .gm-ds.gm-ks .splash-in b{font-size:92px}
   .gm-ds.gm-ks .splash-in .typeline{font-size:38px}
   .gm-ds.gm-ks .splash-in .hello-pre{font-size:46px}
-  .gm-ds.gm-ks .ks-grid-2,.gm-ds.gm-ks .ks-grid-3{grid-template-columns:1fr}
   .gm-ds.gm-ks .ks-selects{grid-template-columns:1fr 1fr 1fr;gap:6px}
   .gm-ds.gm-ks .ks-filter{grid-template-columns:1fr}
   .gm-ds.gm-ks .ks-toolbar{padding:10px 12px}
