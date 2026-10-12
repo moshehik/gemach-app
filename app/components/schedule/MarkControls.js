@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import ScheduleIcon, { CheckCircleIcon, ChecksIcon } from './ScheduleIcon';
-import { MARK_TIPS, RETURN_STAGES, STAGE_META, subText } from './scheduleMeta';
+import { MARK_TIPS, RETURN_STAGES, STAGE_META, subText, customerDisplayName, orderCodeText } from './scheduleMeta';
 import { ConfirmDialog, DetailRows, confirmEffect, doneTip } from './MarkDialogs';
 
 // לחצני "בוצע" של הלו״ז. המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, statusHTML שורות 1976-1978 ו-allBtn
@@ -133,7 +133,7 @@ export function MarkAllButton({ stage, pending, busy, onMarkAll, dayLabel }) {
             {rows.slice(0, 5).map((r) => (
               <div className="li" key={r.orderId}>
                 <div className="ic-b"><ScheduleIcon name={meta.icon} /></div>
-                <div className="t"><b>{(r.customer && r.customer.name) || 'לא ידוע'} <bdi>#{r.orderId}</bdi></b><small>{subText(stage.key, r)}</small></div>
+                <div className="t"><b>{customerDisplayName(r.customer)}</b><small>{[orderCodeText(r.orderId), subText(stage.key, r)].filter(Boolean).join(' · ')}</small></div>
               </div>
             ))}
             {n > 5 ? <div className="lz-more">ועוד {n - 5} פריטים</div> : null}

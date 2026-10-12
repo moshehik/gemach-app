@@ -19,6 +19,21 @@ export const STAGE_META = {
 // "הזמנות שעודכנו" (UpdatedSection.js): מקטע מידע אחרון בדף ובציר; לא שלב של השרת ולכן לא ב-STAGE_META/STAGE_ORDER
 export const UPDATED_META = { key: 'updated', label: 'הזמנות שעודכנו', icon: 'pencil', color: '--c-order' };
 
+// שם הלקוחה בכותרת השורה הגדולה: תמיד שם מלא בלבד (פרטי + משפחה, או מה שיש מהם), בלי קוד הזמנה. קוד ההזמנה בשורה הקטנה
+// (orderCodeText). השרת (lib/schedule/loaders.js, updatedOrders.js) שולח "לא ידוע" כשאין שם בכלל; בכותרת מציגים
+// "ללא שם לקוחה" ולא את הקוד (החלטת הבעלים 12.10.2026).
+export const NO_CUSTOMER_NAME = 'ללא שם לקוחה';
+const SERVER_UNKNOWN_NAME = 'לא ידוע';
+export function customerDisplayName(customer) {
+  if (!customer) return NO_CUSTOMER_NAME;
+  const full = [customer.firstName, customer.lastName].map((s) => String(s || '').trim()).filter(Boolean).join(' ');
+  const name = full || String(customer.name || '').trim();
+  return !name || name === SERVER_UNKNOWN_NAME ? NO_CUSTOMER_NAME : name;
+}
+// קוד ההזמנה כחלק משורת הפרטים (השורה הקטנה): קטע ראשון, בלי אייקון ובלי תגית
+export const orderCodeText = (orderId) => 'הזמנה #' + orderId;
+export const ORDER_CODE_TIP = 'מספר הזמנה';
+
 // שעה בשעון ישראל (HH:MM) מרגע ISO
 export function timeText(iso) {
   if (!iso) return '';
@@ -147,7 +162,8 @@ export function subParts(stageKey, row, ctx = {}) {
       return [pb ? 'איסוף בסניף ' + pb : 'איסוף מקומי', count].filter(Boolean);
     }
     case 'event':
-      return ['אירוע ' + (row.eventDateHebrew || '—'), count].filter(Boolean);
+      // שלב "אירוע": בלי תאריך האירוע - הלשונית כבר מציגה אותו (החלטת הבעלים 12.10.2026)
+      return [count].filter(Boolean);
     case 'manret': {
       const addr = formatAddress(row.address);
       return [ctx.tbl ? '' : row.customer?.phone1 || '', addr, itemsCountText(row.dressCount)].filter(Boolean);
@@ -253,7 +269,7 @@ export function subItems(stageKey, row, ctx = {}) {
       return items;
     }
     case 'event':
-      add('cal', row.eventDateHebrew || '—', 'תאריך האירוע');
+      // בלי תאריך האירוע בשורה הקטנה של שלב "אירוע" (הלשונית כבר מציגה אותו; החלטת הבעלים 12.10.2026)
       dress();
       return items;
     case 'manret': {

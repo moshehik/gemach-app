@@ -5,6 +5,7 @@ import ScheduleIcon from './ScheduleIcon';
 import { MarkButton } from './MarkControls';
 import {
   STAGE_META, subText, subItems, flagLabels, alertText, itemText, alterationSummary, formatAddress, transferChip,
+  customerDisplayName, orderCodeText, ORDER_CODE_TIP,
 } from './scheduleMeta';
 
 // שורת לו״ז אחת (שורות / טבלה). המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, rowHTML/trHTML/statusHTML, שורות
@@ -140,16 +141,18 @@ function rowClass(stage, row, doneState) {
 function StageRow({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
   const [open, setOpen] = useState(false);
   const meta = STAGE_META[stage.key] || STAGE_META.order;
-  const name = row.customer?.name || 'לא ידוע';
+  const name = customerDisplayName(row.customer);
+  // השורה הגדולה = שם הלקוחה בלבד; קוד ההזמנה הוא הקטע הראשון בשורה הקטנה (שורת הפרטים)
+  const parts = [{ icon: null, text: orderCodeText(row.orderId), tip: ORDER_CODE_TIP }, ...subItems(stage.key, row)];
   return (
     <article className={'hrow irow ' + rowClass(stage, row, doneState) + (open ? ' open' : '')}>
       <div className="li lrow">
         <div className="ic-b"><ScheduleIcon name={meta.icon} /></div>
         <div className="t">
           <button type="button" className="lz-tbtn" data-guide-id="sched.row-open" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-            <b>{name} <bdi>#{row.orderId}</bdi></b>
+            <b>{name}</b>
             <span className="ln">
-              {subItems(stage.key, row).map((part, i) => (
+              {parts.map((part, i) => (
                 <span key={i} className="lz-p" data-tip={part.tip}>
                   {i > 0 ? ' · ' : ''}
                   <span className="lz-pn">
@@ -190,7 +193,7 @@ function StageTableRowImpl({ stage, row, onMarkDone, onBarcodes, doneState, dayL
     <tr className={rowClass(stage, row, doneState)}>
       <td><bdi>#{row.orderId}</bdi></td>
       <td>
-        <b>{row.customer?.name || 'לא ידוע'}</b>
+        <b>{customerDisplayName(row.customer)}</b>
         {row.customer?.phone1 ? <small className="lz-sm"><bdi dir="ltr">{row.customer.phone1}</bdi></small> : null}
       </td>
       <td>
