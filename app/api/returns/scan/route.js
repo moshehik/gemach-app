@@ -4,6 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { buildReturnAdvices } from '@/lib/returnBranchAdvice';
 
 // ברקוד תקין הוא ספרות/אותיות בלבד. הקלדה/הדבקה מתוך מסך RTL יכולה להכניס תווים בלתי נראים
 // (סימוני כיווניות U+200E/U+200F, רווח ברוחב אפס...) ש-s לא מסיר - והחיפוש המדויק נכשל על ברקוד
@@ -164,10 +165,20 @@ export async function POST(request) {
     // החזרה = בוודאי נלקח: הכנה אוטומטית אם עוד לא סומנה (נכשל בשקט)
     await autoMarkPrepBounded(updatedItem.orderId);
 
+    // ריבוי סניפים / רזרבה (docs/branches-plan.md, שלב ד): "להעביר לסניף אחר" / "להחזיר לרזרבה". כבוי כברירת מחדל (null), ולעולם לא מפיל החזרה.
+    // הלקוח (BranchReturnAlertHost) מציג חלון שנסגר ב-Enter; ההודעה כבר נרשמה בפעמון.
+    let branchAdvices = null;
+    try {
+      branchAdvices = await buildReturnAdvices({ barcode, dressItemId: updatedItem.dressItemId, actorId: await getActingEmployeeId() });
+    } catch (adviceErr) {
+      console.error('returns/scan: branch advice failed', adviceErr);
+    }
+
     return NextResponse.json({
       success: true, 
       orderId: updatedItem.orderId,
-      item: updatedItem 
+      item: updatedItem,
+      ...(branchAdvices ? { branchAdvices } : {})
     });
   } catch (error) {
     console.error('Error scanning return barcode:', error);

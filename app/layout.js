@@ -6,6 +6,7 @@ import prisma from './lib/prisma';
 import { isDeviceBackupRequest } from '@/lib/dbMode';
 import { readVerifiedSession } from '@/lib/auth';
 import { resolvePageAccess } from '@/lib/permissions';
+import { resolveBranchNoticeSettings } from '@/lib/branches';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings, hasBrandLogo } from '@/lib/settingsCache';
 
@@ -77,6 +78,8 @@ export default async function RootLayout({ children }) {
   let hideErrorReporting = false;
   let showDeliveries = false;
   let showOverdueRemindersPopup = false;
+  // ריבוי סניפים / התראת רזרבה בהחזרה (docs/branches-plan.md): null = כבוי = שום רכיב לא נטען ושום שינוי (ברירת המחדל)
+  let branchNotices = null;
 
   // The settings query and the employee-role query are independent — run
   // them in parallel instead of the old sequential awaits (each one is a
@@ -174,6 +177,18 @@ export default async function RootLayout({ children }) {
     const enableUnreturnedOrdersPopupSetting = settings.find(s => s.key === 'enable_unreturned_orders_popup');
     if (enableUnreturnedOrdersPopupSetting && enableUnreturnedOrdersPopupSetting.value === 'true') {
       showOverdueRemindersPopup = true;
+    }
+
+    {
+      const sv = (k) => settings.find(s => s.key === k)?.value;
+      const notice = resolveBranchNoticeSettings({
+        multi_branch_enabled: sv('multi_branch_enabled'), branch_transfer_banner_enabled: sv('branch_transfer_banner_enabled'),
+        branch_transfer_banner_days: sv('branch_transfer_banner_days'), branch_transfer_banner_scope: sv('branch_transfer_banner_scope'),
+        branch_return_alert_enabled: sv('branch_return_alert_enabled'), reserve_return_alert_enabled: sv('reserve_return_alert_enabled'),
+      });
+      if (notice.enabled || notice.reserveAlert) {
+        branchNotices = { multi: notice.enabled, bannerEnabled: notice.bannerEnabled, bannerDays: notice.bannerDays, bannerScope: notice.bannerScope, returnAlert: notice.returnAlert, reserveAlert: notice.reserveAlert };
+      }
     }
   }
 
@@ -864,6 +879,7 @@ function cpCssText(vars) {
                 hideErrorReporting={hideErrorReporting}
                 hideInternalMessaging={hideInternalMessaging}
                 showOverdueRemindersPopup={showOverdueRemindersPopup}
+                branchNotices={branchNotices}
                 authToken={authToken?.value}
                 themePreference={themePreference}
               >

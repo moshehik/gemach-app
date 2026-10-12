@@ -23,6 +23,7 @@ const SETTING_META = {
   [BRANCH_SETTING_KEYS.bannerScope]: { name: 'פס ההתראה: מה מופיע (להעביר / להחזיר / שניהם)', type: 'text' },
   [BRANCH_SETTING_KEYS.horizonDays]: { name: 'חישוב צרכים לפי סניף: טווח ימים קדימה', type: 'number' },
   [BRANCH_SETTING_KEYS.returnAlert]: { name: 'התראה בסריקת החזרה על פריט שצריך לעבור לסניף אחר', type: 'boolean' },
+  [BRANCH_SETTING_KEYS.reserveAlert]: { name: 'התראה בסריקת החזרה על פריט רזרבה שיצא באישור (להחזיר לרזרבה)', type: 'boolean' },
 };
 
 async function writeSetting(key, value) {
@@ -96,6 +97,7 @@ export async function PUT(request) {
     const s = body.settings || {};
     if (s.bannerEnabled !== undefined) writes[BRANCH_SETTING_KEYS.bannerEnabled] = s.bannerEnabled ? 'true' : 'false';
     if (s.returnAlert !== undefined) writes[BRANCH_SETTING_KEYS.returnAlert] = s.returnAlert ? 'true' : 'false';
+    if (s.reserveAlert !== undefined) writes[BRANCH_SETTING_KEYS.reserveAlert] = s.reserveAlert ? 'true' : 'false';
     if (s.bannerDays !== undefined) {
       const n = parseInt(s.bannerDays, 10);
       if (!Number.isFinite(n) || n < 0 || n > 60) return NextResponse.json({ error: 'ימי הפס חייבים להיות בין 0 ל-60' }, { status: 400 });
@@ -121,6 +123,16 @@ export async function PUT(request) {
       } catch (e) {
         console.error('branches: DressItem.branch missing?', e);
         return NextResponse.json({ error: 'עמודת "סניף" בטבלת הפריטים עדיין לא קיימת במסד הזה (scripts/branches-ddl.sql). לא ניתן להפעיל.' }, { status: 409 });
+      }
+    }
+
+    // התראת רזרבה דורשת את העמודה DressItem.locationBeforeRental (אותו DDL)
+    if (writes[BRANCH_SETTING_KEYS.reserveAlert] === 'true' && !ctx.notice.reserveAlert) {
+      try {
+        await prisma.dressItem.findFirst({ where: { locationBeforeRental: null }, select: { id: true } });
+      } catch (e) {
+        console.error('branches: DressItem.locationBeforeRental missing?', e);
+        return NextResponse.json({ error: 'העמודה לסימון פריטי רזרבה עדיין לא קיימת במסד הזה (scripts/branches-ddl.sql). לא ניתן להפעיל.' }, { status: 409 });
       }
     }
 

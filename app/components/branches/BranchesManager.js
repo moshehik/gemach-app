@@ -31,7 +31,7 @@ export default function BranchesManager({ compact = false }) {
   const [derived, setDerived] = useState(false);
   const [branches, setBranches] = useState([]);
   const [usage, setUsage] = useState({});
-  const [notice, setNotice] = useState({ bannerEnabled: false, bannerDays: 3, bannerScope: 'both', horizonDays: 14, returnAlert: true });
+  const [notice, setNotice] = useState({ bannerEnabled: false, bannerDays: 3, bannerScope: 'both', horizonDays: 14, returnAlert: true, reserveAlert: false });
   const [dirty, setDirty] = useState(false);
 
   const load = useCallback(async () => {
@@ -49,7 +49,7 @@ export default function BranchesManager({ compact = false }) {
       const n = data.notice || {};
       setNotice({
         bannerEnabled: !!n.bannerEnabled, bannerDays: n.bannerDays ?? 3, bannerScope: n.bannerScope || 'both',
-        horizonDays: n.horizonDays ?? 14, returnAlert: n.returnAlert !== false,
+        horizonDays: n.horizonDays ?? 14, returnAlert: n.returnAlert !== false, reserveAlert: !!n.reserveAlert,
       });
       setDirty(false);
     } catch {
@@ -221,6 +221,12 @@ export default function BranchesManager({ compact = false }) {
           </div>
         </>
       )}
+
+      <h2 className="section-title">פריטי רזרבה</h2>
+      <div className="card card-pad">
+        <Switch id="br-reserve-alert" checked={notice.reserveAlert} label="בסריקת החזרה של פריט רזרבה שיצא באישור: להקפיץ התראה על החזרה לרזרבה (נסגרת ב-Enter ונרשמת ברשימת ההתראות). לא תלוי בריבוי סניפים." onChange={(v) => touch(() => setNotice((n) => ({ ...n, reserveAlert: v })))} />
+        <div className="hint" style={{ color: 'var(--text-3)', marginTop: 6, fontSize: 12.5 }}>מסמן את הפריט כיצא מהרזרבה ברגע אישור ההשכרה (רק כשהשכרת רזרבה דורשת אישור מנהל), ומנקה את הסימון בהחזרה.</div>
+      </div>
 
       {clientErrors.length > 0 && dirty && <div className="callout callout-warning" style={{ marginTop: 14 }}>{clientErrors.join(' · ')}</div>}
       {msg && <div className={msg.type === 'success' ? 'callout callout-success' : 'callout callout-danger'} style={{ marginTop: 14 }} role="status">{msg.text}</div>}

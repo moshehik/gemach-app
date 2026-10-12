@@ -1,6 +1,6 @@
 // בדיקת יחידה לחישוב הצרכים לפי סניף (lib/branchNeeds.js). לא נוגעת ב-DB. הרצה: node scripts/test_branch_needs.mjs
 import assert from 'node:assert/strict';
-import { computeBranchNeeds, computeReturnAdvice, groupTransfers, isUnitInStock } from '../lib/branchNeeds.js';
+import { buildBannerRows, computeBranchNeeds, computeReturnAdvice, groupTransfers, isUnitInStock } from '../lib/branchNeeds.js';
 
 let passed = 0;
 function t(name, fn) {
@@ -68,6 +68,11 @@ t('בחירת הסניף עם הכי הרבה יחידות פנויות כמקו
   const r = computeBranchNeeds({ orders: [O(1, '2026-10-20', 'ב', [I('i1')])], units: [U('1003801', 'א'), U('1003802', 'ג'), U('1003803', 'ג')], cfg: cfg3 });
   assert.equal(r.transfers[0].from, 'ג');
 });
+t('יחידה מושכרת כעת מאותו דגם - pendingReturns (להעביר כשתחזור) ולא חוסר', () => {
+  const r = computeBranchNeeds({ orders: [O(1, '2026-10-20', 'ב', [I('i1')])], units: [U('1003801', 'א', { location: 'מושכר' })], cfg });
+  assert.equal(r.shortages.length, 0); assert.equal(r.transfers.length, 0);
+  assert.deepEqual(r.pendingReturns.map((x) => [x.barcode, x.to, x.orderId]), [['1003801', 'ב', 1]]);
+});
 t('groupTransfers: קיבוץ לפי מ-ל', () => {
   const g = groupTransfers([{ from: 'א', to: 'ב' }, { from: 'ב', to: 'א' }, { from: 'א', to: 'ב' }]);
   assert.deepEqual(g.map((x) => [x.from, x.to, x.items.length]), [['א', 'ב', 2], ['ב', 'א', 1]]);
@@ -87,5 +92,16 @@ t('התראת החזרה: ברקוד ששויך להזמנה בסניף אחר -
   const orders = [O(7, '2026-10-22', 'ב', [I('i1', { barcode: '1003801' })])];
   const a = computeReturnAdvice({ returnedBarcode: '1003801', atBranch: 'א', orders, units: [U('1003801', 'ב', { location: 'מושכר' })], cfg });
   assert.equal(a.direct, true); assert.equal(a.to, 'ב');
+});
+t('buildBannerRows: סינון לפי ימים והיקף, וניסוח', () => {
+  const transfers = [{ orderId: 5, barcode: '1003801', modelName: 'אורורה', size: 38, from: 'א', to: 'ב', daysUntil: 2 }, { orderId: 6, barcode: '1003802', from: 'א', to: 'ב', daysUntil: 9 }];
+  const pendingReturns = [{ orderId: 7, barcode: '1003803', modelName: 'לילי', to: 'ב', daysUntil: 0 }];
+  const all = buildBannerRows({ transfers, pendingReturns, scope: 'both', days: 3 });
+  assert.deepEqual(all.map((r) => r.key), ['t:5:1003801', 'r:7:1003803']);
+  assert.equal(all[0].text, 'להעביר אורורה מידה 38 (1003801) מא לב · הזמנה 5 · בעוד 2 ימים');
+  assert.equal(all[1].text, 'כשיוחזר לילי (1003803) - להעביר לב · הזמנה 7 · היום');
+  assert.equal(buildBannerRows({ transfers, pendingReturns, scope: 'transfer', days: 30 }).length, 2);
+  assert.equal(buildBannerRows({ transfers, pendingReturns, scope: 'return', days: 30 }).length, 1);
+  assert.equal(buildBannerRows({ transfers: [], pendingReturns: [] }).length, 0);
 });
 console.log(`\n${passed} בדיקות עברו${process.exitCode ? ', יש כשלים' : ''}`);

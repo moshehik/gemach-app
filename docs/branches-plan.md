@@ -31,15 +31,17 @@
 | `branch_transfer_banner_scope` | `transfer` / `return` / `both` (ברירת מחדל `both`) | מה מופיע בפס: פריטים שצריך **להעביר** לסניף אחר לפני אירוע, ו/או פריטים שצריך **להחזיר** לסניף אחר |
 | `branch_transfer_horizon_days` | מספר ימים (ברירת מחדל 14) | טווח ההזמנות העתידיות שנכנסות לחישוב הצרכים |
 | `branch_return_alert_enabled` | `true` / `false` (ברירת מחדל `true` כשהריבוי דלוק) | חלון ההתראה בסריקת החזרה |
+| `reserve_return_alert_enabled` | `true` / `false` (ברירת מחדל כבוי) | **לא תלוי בסניפים.** בסריקת החזרה של פריט רזרבה שיצא באישור: התראה "להחזיר לרזרבה". הסימון "יצא מהרזרבה" נכתב ב-`rentals/confirm` (עמודה `DressItem.locationBeforeRental`, רק כשההגדרה דלוקה וגם `allow_renting_reserve_items` כבוי = יציאה באישור מנהל) ומתנקה בהחזרה |
 
 אין צורך ב-DDL או בזריעה כדי שההגדרות יעבדו: `POST /api/settings` עושה upsert. שורה חסרה = כבוי.
 
-### 2.2 עמודה אחת חדשה - `DressItem.branch` (**דורש DDL**)
-סניף נוכחי של הפריט הפיזי (ברקוד). `String?`, ריק = "לא שויך" (נחשב כסניף הראשי בחישובים, ראו החלטה פתוחה #1) + אינדקס. הסיבה שזו עמודה ולא מחרוזת בתוך `location`: `location` נדרס ל"חנות" / "מושכר" בכל השכרה והחזרה, והסניף חייב לשרוד את זה.
+### 2.2 שתי עמודות חדשות ב-`DressItem` (**דורש DDL**)
+סניף נוכחי של הפריט הפיזי (ברקוד). `String?`, ריק = "לא שויך" (נחשב כסניף הראשי בחישובים, ראו החלטה פתוחה #1) + אינדקס. `locationBeforeRental String?` - סימון פריט רזרבה שיצא באישור (ראו `reserve_return_alert_enabled`). הסיבה שזו עמודה ולא מחרוזת בתוך `location`: `location` נדרס ל"חנות" / "מושכר" בכל השכרה והחזרה, והסניף חייב לשרוד את זה.
 
 ```sql
 ALTER TABLE "DressItem" ADD COLUMN IF NOT EXISTS "branch" TEXT;
 CREATE INDEX IF NOT EXISTS "DressItem_branch_idx" ON "DressItem"("branch");
+ALTER TABLE "DressItem" ADD COLUMN IF NOT EXISTS "locationBeforeRental" TEXT;
 ```
 הסקריפט המוכן: `scripts/branches-ddl.sql` (+ `scripts/apply_branches_ddl.js`, בודק host לפני כתיבה, ברירת מחדל dry-run). **לא הורץ על פרודקשן** - צריך אישור הרכז / הבעלים, והוא חייב לרוץ על שני המסדים לפני שהקוד עולה (ראו 5).
 
@@ -58,7 +60,7 @@ CREATE INDEX IF NOT EXISTS "DressItem_branch_idx" ON "DressItem"("branch");
 
 ## 4. החלטות פתוחות לבעלים
 1. פריט ללא סניף (`DressItem.branch` ריק) - לראות אותו כשייך לסניף הראשי? (בקוד: כן.)
-2. מי רשאי להעביר פריטים בהקלדה מהירה - ברירת מחדל: מי שיש לו ניהול פריטי דגם; פריט קטלוג נפרד `feature:item_transfer` קיים להרחבה.
+2. מי רשאי להעביר פריטים בהקלדה מהירה - כרגע אותה הרשאה כמו עריכת מיקום / קרטון בכרטיס הדגם (`feature:dress_items_manage`: הנהלה ראשית ומתכנת + מי שקיבל). אם עובדות מחסן צריכות רק את ההעברה - להוסיף פריט קטלוג נפרד.
 3. "מדידה" - כרגע דגל מידע בלבד (בורר סניף מדידה בהזמנה לא נבנה); האם נדרש שדה סניף מדידה בהזמנה?
 4. פס ההתראה: לכל העובדים או רק להנהלה / מנהלות סניף.
 
@@ -66,3 +68,9 @@ CREATE INDEX IF NOT EXISTS "DressItem_branch_idx" ON "DressItem"("branch");
 - **DDL לשני מסדי הייצור לפני שהקוד עולה** (כלל קבוע ב-CLAUDE.md): ברגע ש-`schema.prisma` כולל `DressItem.branch`, כל שאילתת `dressItem` בלי `select` מבקשת את העמודה, ובמסד שבלעדיה היא נופלת (P2022) גם כש-`multi_branch_enabled` כבוי. לכן הסדר הוא: DDL על שני המסדים, ורק אחריו מיזוג / פריסה.
 - כתיבה רק מול TEST בפיתוח; בלי `prisma db push`.
 - ההגדרות נכתבות לפי ה-org (code-fixes-vs-settings): הקוד עולה לשני הגמ"חים, ההפעלה בכל אחד בנפרד.
+
+## 6. מימוש - מה נבנה בפועל (נקודות חיבור)
+- **התראת החזרה (סעיף 7):** `POST /api/returns/scan` קורא ל-`buildReturnAdvices` (lib/returnBranchAdvice.js) אחרי שההחזרה נרשמה; כבוי = null בלי שאילתה; כשל לעולם לא מפיל החזרה. הסניף שבו נסרקה ההחזרה = העוגייה `gm_my_branch` (המחשב בוחר "באיזה סניף אני" פעם אחת - `MyBranchPrompt`, ואפשר לשנות בחלונית ההעברה המהירה). התשובה כוללת `branchAdvices`; הלקוח (`BranchReturnAlertHost`, מותקן במעטפת רק כשההגדרות דלוקות) עוטף את fetch ומציג חלון **לא גונב מיקוד** שנסגר ב-Enter (ואם כבר נסרק ברקוד הבא - ה-Enter עובר הלאה והסריקה נשמרת). ההודעה נרשמת ב-`Notification` של העובדת שסרקה (הפעמון בשתי המעטפות).
+- **חיבור ל-quick-barcode:** אין צורך לשנות את זרימת הסריקה. אם הזרימה החדשה לא עוברת דרך `POST /api/returns/scan`: `import { notifyReturnToOtherBranch } from '@/app/components/branches/returnAlert'` וקריאה `notifyReturnToOtherBranch(advices)` עם אותו מבנה; ובשרת - `buildReturnAdvices({ barcode, dressItemId, actorId })`. נכון ליצירת המסמך ענף quick-barcode עדיין בלי commits.
+- **פס בראש הדף (סעיף 6):** `BranchNotices` (מותקן ב-AppShell וב-MenuA5Shell לפי `branchNotices` מ-layout.js): A5 = `NoticeBar`, ישן = פס בתוך הדף. מקור הנתונים `GET /api/branches/needs` (העברות + "כשיוחזר - להעביר"); ההגדרות מתערכות ב-/admin/branches.
+- **לו"ז:** בשלב "הכנה" שבב "להעביר ... מ-A ל-B" (`row.transfers`, `transferChip`), רק כש-`multi_branch_enabled`. החישוב על ה-horizon של `branch_transfer_horizon_days` (ברירת מחדל 14 יום מהיום) - לו"ז של יום רחוק יותר לא יציג שבבים.

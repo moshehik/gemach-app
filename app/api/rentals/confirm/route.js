@@ -4,6 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
+import { getCachedSetting } from '@/lib/settingsCache';
 
 export async function POST(request) {
   // העובד נקרא לפני כל await (ר' rentals/toggle ו-lib/schedule/afterResponse.js)
@@ -46,6 +47,14 @@ export async function POST(request) {
 
     // Update dress item locations
     const dressItemIds = pendingItems.map(item => item.dressItemId).filter(id => id !== null);
+    // התראת רזרבה בהחזרה (reserve_return_alert_enabled, ברירת מחדל כבוי = שום שינוי): פריט שיוצא מהרזרבה באישור (allow_renting_reserve_items כבוי)
+    // מסומן locationBeforeRental='רזרבה' לפני שהמיקום נדרס ל"מושכר"; הסימון מתנקה בהחזרה (lib/returnBranchAdvice.js). ההגדרות מהמטמון - בלי שאילתה נוספת.
+    const [reserveAlertSetting, allowReserveSetting] = await Promise.all([getCachedSetting('reserve_return_alert_enabled'), getCachedSetting('allow_renting_reserve_items')]);
+    const pendingBarcodes = pendingItems.map(item => item.barcode).filter(Boolean); // ברוב הגמ"ח הראשי dressItemId ריק - מזהים גם לפי הברקוד
+    const markReserveOut = reserveAlertSetting?.value === 'true' && allowReserveSetting?.value !== 'true' && (dressItemIds.length > 0 || pendingBarcodes.length > 0);
+    const markReserve = markReserveOut
+      ? prisma.dressItem.updateMany({ where: { isDeleted: false, location: { contains: 'רזרבה' }, OR: [{ id: { in: dressItemIds } }, { dressBarcode: { in: pendingBarcodes } }] }, data: { locationBeforeRental: 'רזרבה' } })
+      : null;
     const updateLocations = prisma.dressItem.updateMany({
       where: { id: { in: dressItemIds } },
       data: { location: 'מושכר' }
@@ -65,7 +74,7 @@ export async function POST(request) {
     // eslint-disable-next-line no-restricted-syntax -- updateMany אינו מייצר שורות יומן
     const createLogs = prisma.auditLog.createMany({ data: auditLogs });
 
-    await prisma.$transaction([updateItems, updateLocations, createLogs]);
+    await prisma.$transaction([...(markReserve ? [markReserve] : []), updateItems, updateLocations, createLogs]);
 
     // אחרי הטרנזקציה, במקביל ובלי להאט את התשובה (after(); נכשל בשקט): הכנה אוטומטית + תיקונים של הפריטים שאושרו עכשיו בלבד (לא כל פריטי ההזמנה): בוצע (משוער)
     const confirmedItemIds = pendingItems.map((item) => item.id);
