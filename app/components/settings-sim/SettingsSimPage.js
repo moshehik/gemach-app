@@ -155,6 +155,24 @@ function BranchesRow() {
   );
 }
 
+/** "הגדרות תהליכים" של הלו"ז (כמה ימים לפני / אחרי האירוע כל שלב, פעיל/כבוי, משמרת, וטווח התראת ההעברה בין סניפים): החלון נפתח בדף הלו"ז. */
+function ScheduleRow() {
+  return (
+    <div className="li st-row st-ctlrow">
+      <div className="ic-b"><Ic id="cal" /></div>
+      <div className="t">
+        <b className="st-lb">טווחי התהליכים בלו״ז</b>
+        <small>הכנה, איסוף, החזרה ותיקונים: כמה ימים לפני או אחרי האירוע, פעיל או כבוי, משמרת - וטווח ההתראה על העברת פריטים בין סניפים. נפתח כחלון בדף הלו״ז.</small>
+      </div>
+      <div className="st-ctl">
+        <Link className="btn ghost sm" href="/schedule?settings=1" aria-label="פתיחת הגדרות תהליכי הלו״ז" data-element-name="כפתור_settings_schedule">
+          <Ic id="ext" />פתיחה
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 /** סביבת עבודה = מסד הנתונים של האתר החי (GET/POST /api/admin/db-mode, כמו WebBackupModeToggle). מופעל מיד, אחרי אישור. */
 function DbModeRow({ root, onToast, dirty, onSwitched }) {
   const [mode, setMode] = useState(null);
@@ -799,6 +817,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     if (s.special === 'logo') special = <LogoBlock onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'העלאת הלוגו נכשלה', text: m })} />;
     if (s.special === 'permissions') special = <PermissionsRow />;
     if (s.special === 'branches') special = <BranchesRow />;
+    if (s.special === 'schedule') special = <ScheduleRow />;
     if (s.special === 'dbmode') special = <><DeviceDbViewRow root={portalRoot} /><DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} /></>;
     if (s.special === 'neon') special = <NeonRows />;
     if (q && special && !shownRows.length) return null;

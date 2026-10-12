@@ -126,9 +126,9 @@ t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממ�
     assert.equal(s.view, M.SETTINGS_DEVELOPER_CATEGORIES.includes(cat) ? 'site' : 'sys', k);
   }
 });
-t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / סניפים / מצב מסד / Neon תמיד מוצגים', () => {
+t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / סניפים / לו"ז / מצב מסד / Neon תמיד מוצגים', () => {
   const sys = L.buildViewModel('sys', []);
-  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['cfg', 'brand', 'disp']); // cfg: שורת הקישור לניהול הסניפים (special: 'branches')
+  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['cfg', 'brand', 'inv', 'disp']); // cfg: שורת הקישור לניהול הסניפים (special: 'branches'); inv: שורת הקישור ל"הגדרות תהליכים" של הלו"ז (special: 'schedule')
   const site = L.buildViewModel('site', []);
   assert.deepEqual(site.tabs.map((tb) => tb.id), ['db']);
 });

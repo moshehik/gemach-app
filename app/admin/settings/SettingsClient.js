@@ -817,6 +817,16 @@ export default function SettingsClient({ mode = 'general' }) {
             </div>
           )}
 
+          {activeTab === 'יומן' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <h3 style={{ fontSize: '14.5px', margin: '0 0 4px' }}>טווחי התהליכים בלו&quot;ז</h3>
+                <p className="hint" style={{ color: 'var(--text-3)', margin: 0, fontSize: '12.5px' }}>הכנה, איסוף, החזרה ותיקונים: כמה ימים לפני או אחרי האירוע, פעיל או כבוי, משמרת, וטווח ההתראה על העברת פריטים בין סניפים. נפתח כחלון בדף הלו&quot;ז.</p>
+              </div>
+              <Link href="/schedule?settings=1" className="btn btn-secondary btn-sm">פתיחת ההגדרות בלו&quot;ז</Link>
+            </div>
+          )}
+
           {activeTab === 'מסד נתונים' && (
             <>
               <DeviceBackupViewToggle />

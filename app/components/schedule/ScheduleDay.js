@@ -16,6 +16,7 @@ import { addDays, israelTodayKey, isDateToken as isToken, parseDateParam, resolv
 import { STAGE_ORDER } from './scheduleMeta';
 import { useStageMarks } from './useStageMarks';
 import { MarkToast } from './MarkDialogs';
+import ScheduleSettingsDialog from './ScheduleSettingsDialog';
 import { LzPortalRoot } from './LzPortal';
 
 // דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
@@ -160,6 +161,8 @@ export default function ScheduleDay({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tick, setTick] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false); // "הגדרות תהליכים" (גלגל השיניים; גם /schedule?settings=1 מהגדרות המערכת)
+  const settingsUrlHandled = useRef(false);
   const [ready, setReady] = useState(false);
   // "היום" לפי השרת (שעון ישראל) - נשמר גם כשהטעינה נכשלת, כדי שבורר התאריך ימשיך לעבוד;
   // localToday = גיבוי מהדפדפן (רק עד שיש תשובה ראשונה, מחושב אחרי הטעינה כדי לא ליצור הבדל ב-hydration)
@@ -256,6 +259,21 @@ export default function ScheduleDay({
   const branches = (branchesEnabled && Array.isArray(data.settings.branches)) ? data.settings.branches : [];
   // הנהלה (JDG-04): "הכל בוצע" ו-XL. ברירת המחדל מהשרת; prop מפורש גובר.
   const mgmt = !!(data && data.settings && data.settings.includeInternalNotes);
+  const canEditStages = !!(data && data.settings && data.settings.canEditStages);
+  // /schedule?settings=1 (הקישור מהגדרות המערכת): פותח את החלון פעם אחת אחרי שהדף נטען
+  useEffect(() => {
+    if (!data || settingsUrlHandled.current) return;
+    settingsUrlHandled.current = true;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('settings') === '1') {
+        setSettingsOpen(true);
+        p.delete('settings');
+        const qs = p.toString();
+        window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+      }
+    } catch { /* בלי כתובת - מדלגים */ }
+  }, [data]);
   // "הכל בוצע": ההרשאה מהשרת (marks.canMarkAll); prop מפורש יכול רק לצמצם
   const allowMarkAll = canMarkAll === undefined ? marks.canMarkAll : (canMarkAll && marks.canMarkAll);
   const allowExport = canExport === undefined ? mgmt : canExport;
@@ -309,7 +327,7 @@ export default function ScheduleDay({
             <h1 className="pg-ttl"><bdi>לוח זמנים</bdi></h1>
             {pickerDate && pickerToday ? <HebrewDayPicker date={pickerDate} today={pickerToday} tomorrow={pickerTomorrow} onChange={changeDate} /> : null}
           </div>
-          <PageTools onExport={tools.onExport} onDownload={tools.onDownload} onPrint={tools.onPrint} onSettings={onSettings} canExport={allowExport} canSettings={mgmt} />
+          <PageTools onExport={tools.onExport} onDownload={tools.onDownload} onPrint={tools.onPrint} onSettings={onSettings || (() => setSettingsOpen(true))} canExport={allowExport} canSettings={canEditStages} />
         </div>
 
         <div className="lz-layout">
@@ -385,6 +403,7 @@ export default function ScheduleDay({
       </div>
       {/* הטוסט אח של .app (#toast בעיצוב, שורה 1654) */}
       <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
+      <ScheduleSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={() => refreshDay()} />
       <ScrollTopButton />
       {/* האשף בתוך .gm-ds.gm-lz (ה-CSS שלו תחום לשם - print/PrintWizard.css); היום והסניף = מה שמוצג בדף */}
       {wiz ? (

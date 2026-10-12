@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { invalidateSettingsCache } from '@/lib/settingsCache';
+import { writeSystemSetting } from '@/lib/systemSettingWrite';
 import { loadBranchContext } from '@/lib/branchesServer';
 import {
   BANNER_SCOPES, BRANCHES_CONFIG_KEY, BRANCH_LIST_KEY, BRANCH_SETTING_KEYS, MULTI_BRANCH_KEY,
@@ -27,15 +28,7 @@ const SETTING_META = {
 
 async function writeSetting(key, value) {
   const meta = SETTING_META[key] || { name: key, type: 'text' };
-  const existing = await prisma.systemSetting.findUnique({ where: { key }, select: { id: true, value: true } });
-  if (existing) {
-    if (existing.value === value) return false;
-    // update (לא upsert): תוסף ה-audit של Prisma רושם את השינוי בהיסטוריה
-    await prisma.systemSetting.update({ where: { key }, data: { value } });
-    return true;
-  }
-  await prisma.systemSetting.create({ data: { key, value, name: meta.name, category: 'סניפים', type: meta.type } });
-  return true;
+  return writeSystemSetting(key, value, { name: meta.name, category: 'סניפים', type: meta.type });
 }
 
 export async function GET(request) {
