@@ -9,7 +9,7 @@ const proj = path.resolve(here, '..', '..');
 const files = fs.readdirSync(here).filter((f) => f.endsWith('.test.mjs')).sort();
 let failed = 0;
 for (const file of files) {
-  const r = spawnSync(process.execPath, ['--no-warnings', '--import', pathToFileURL(path.join(here, 'register.mjs')).href, '--test', path.join(here, file)], {
+  const r = spawnSync(process.execPath, ['--no-warnings', '--import', pathToFileURL(path.join(here, file.startsWith('ssr.') ? 'register-ssr.mjs' : 'register.mjs')).href, '--test', path.join(here, file)], {
     cwd: proj, encoding: 'utf8', env: { ...process.env, TZ: 'Asia/Jerusalem', PROJ: proj, SPDIR: here },
   });
   const out = (r.stdout || '') + (r.stderr || '');

@@ -97,7 +97,8 @@ function StatusChip({ kind, children }) {
   return <span className={`chip sa-chip ${kind}`}>{children}</span>;
 }
 
-export default function StationAnalyticsPage() {
+/** preload = { data, list } - נתונים מוכנים לבדיקות רינדור בלי שרת (scripts/station-analytics-tests/ssr.test.mjs); בשימוש רגיל לא מועבר. */
+export default function StationAnalyticsPage({ preload = null }) {
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   const [portalRoot, setPortalRoot] = useState(null);
@@ -113,7 +114,7 @@ export default function StationAnalyticsPage() {
   const [askRange, setAskRange] = useState(false);
   const [view, setView] = useState({ funnel: 'chart', daily: 'chart' });
 
-  const [state, setState] = useState({ status: 'loading', data: null, error: '' });
+  const [state, setState] = useState(() => (preload && preload.data ? { status: 'ok', data: preload.data, error: '' } : { status: 'loading', data: null, error: '' }));
   const [activeSec, setActiveSec] = useState('sa-sum');
 
   // ---- טעינת המדדים (שומרים את התצוגה הקודמת בזמן רענון - בלי הבהוב / קפיצת פריסה)
@@ -134,7 +135,7 @@ export default function StationAnalyticsPage() {
 
   // ---- הרישומים של יום נבחר (ברירת מחדל: היום)
   const [listDay, setListDay] = useState(todayKey);
-  const [list, setList] = useState({ status: 'loading', rows: [], error: '' });
+  const [list, setList] = useState(() => (preload && preload.list ? preload.list : { status: 'loading', rows: [], error: '' }));
   useEffect(() => {
     const ac = new AbortController();
     setList((l) => ({ ...l, status: 'loading', error: '' }));
@@ -273,7 +274,7 @@ export default function StationAnalyticsPage() {
                       <dt>נכנסו</dt><dd>כל כניסה לעמדה בקישור הכללי, פעם אחת ליום לכל מכשיר ולשונית. בלי שמות ובלי כתובות.</dd>
                       <dt>מילאו פרטים</dt><dd>לקוחות שהשלימו את הטופס, כל לקוחה פעם אחת. גם לקוחה קיימת שמילאה שוב. לקוחה שנמחקה לא נספרת.</dd>
                       <dt>אומתו</dt><dd>מי שהעובדת סימנה אצלה &quot;אומתה&quot; בכרטיס הלקוחה.</dd>
-                      <dt>סגרו הזמנה</dt><dd>למילאות פרטים יש הזמנה אמיתית שנוצרה אחרי המילוי, עד {d.range.windowDays} ימים (כולל יום המילוי). טיוטה, הזמנה מבוטלת או הזמנה שלא נשמרה לצמיתות אינן נספרות.</dd>
+                      <dt>סגרו הזמנה</dt><dd>למילאות פרטים יש הזמנה אמיתית שנוצרה אחרי המילוי, עד {d.range.windowDays} ימים (כולל יום המילוי). טיוטה, הזמנה מבוטלת, והזמנה שנשמרה בלי תשלום ובלי אישור מנהל אינן נספרות.</dd>
                     </dl>
                   </div>
                 </div>
@@ -286,8 +287,8 @@ export default function StationAnalyticsPage() {
                     <StatTile icon="eye" label="נכנסו לעמדה" value={cards.today.visits} yesterday={cards.yesterday.visits} weekAvg={cards.weekAvg && cards.weekAvg.visits} unmeasured={!topMeasured} />
                     <StatTile icon="user" label="מילאו פרטים" value={cards.today.registered} yesterday={cards.yesterday.registered} weekAvg={cards.weekAvg && cards.weekAvg.registered} />
                     <StatTile icon="cart" label="סגרו הזמנה" value={cards.today.closed} yesterday={cards.yesterday.closed} weekAvg={cards.weekAvg && cards.weekAvg.closed} />
-                    <StatTile icon="sig" label="נכנסו ומילאו פרטים" kind="rate" value={cards.today.visitToRegistered} yesterday={cards.yesterday.visitToRegistered} weekAvg={cards.weekAvg && cards.weekAvg.visitToRegistered} unmeasured={!topMeasured} />
-                    <StatTile icon="check" label="מילאו ואחר כך הזמינו" kind="rate" value={cards.today.registeredToClosed} yesterday={cards.yesterday.registeredToClosed} weekAvg={cards.weekAvg && cards.weekAvg.registeredToClosed} />
+                    <StatTile icon="sig" label="אחוז מהנכנסים שמילאו פרטים" kind="rate" value={cards.today.visitToRegistered} yesterday={cards.yesterday.visitToRegistered} weekAvg={cards.weekAvg && cards.weekAvg.visitToRegistered} unmeasured={!topMeasured} />
+                    <StatTile icon="check" label="אחוז ממילאות הפרטים שסגרו הזמנה" kind="rate" value={cards.today.registeredToClosed} yesterday={cards.yesterday.registeredToClosed} weekAvg={cards.weekAvg && cards.weekAvg.registeredToClosed} />
                   </div>
                   <p className="st-note sa-foot">
                     {!topMeasured ? 'ההשוואה לאתמול ולממוצע השבועי חלה על הערוץ שנבחר. כניסות נמדדות רק בקישור הכללי. ' : ''}
