@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
-import { checkAuth } from '../../../../lib/auth';
+import { checkAuth, getSettingsViewerTier } from '../../../../lib/auth';
+import { settingsRowsForTier } from '../../../../lib/adminOnlySettings';
 import { checkAiAccess } from '../../../../lib/permissions';
 import { verifiedCookieStore } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
@@ -108,7 +109,7 @@ export async function POST(req) {
     if (wantsSettings || wantsHowTo) {
       try {
         if (wantsSettings) {
-          const catalog = buildSettingsGuide(await getAllCachedSettings());
+          const catalog = buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier()));
           const text = await generateContent(buildGuideFollowupPrompt({ kind: 'settings', prompt, catalog, dateContext }));
           aiResponse = validateSettingTags(text, catalog);
         } else {
@@ -224,7 +225,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 
     aiResponse = await finalizeTagsAndText(aiResponse, {
       isManager,
-      loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
+      loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
       loadHowToCatalog: async () => buildHowToGuide(),
     });
     if (nameNotice) aiResponse = `${nameNotice}\n${aiResponse}`;

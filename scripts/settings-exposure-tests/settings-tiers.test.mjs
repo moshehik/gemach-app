@@ -172,3 +172,93 @@ test('static: the keys staff DO read are not hidden (the reason they were left o
     assert.match(strip(fs.readFileSync(path.join(PROJ, f), 'utf8')), new RegExp(`(^|[^A-Za-z0-9_])${k}([^A-Za-z0-9_]|$)`), `${f} reads ${k}`);
   }
 });
+
+// ---------------------------------------------------------------------------------------------------------------- guide / a5 settings / AI
+// The three other channels that return real values to branch managers (roleId 1): /api/settings/guide, /api/a5/settings?key=, and the AI assistant's catalog.
+const guideRoute = await L('app/api/settings/guide/route.js');
+const a5Route = await L('app/api/a5/settings/route.js');
+const { settingsRowsForTier } = AO;
+
+test('settingsRowsForTier: admin / open see everything, staff / guest lose the admin-only keys', () => {
+  const rows = [{ key: 'nedarim_plus_terminal', value: 'x' }, { key: 'main_email', value: 'y' }];
+  assert.equal(settingsRowsForTier(rows, 'admin'), rows);
+  assert.equal(settingsRowsForTier(rows, 'open'), rows);
+  assert.deepEqual(settingsRowsForTier(rows, 'staff').map((r) => r.key), ['main_email']);
+  assert.deepEqual(settingsRowsForTier(rows, 'guest').map((r) => r.key), ['main_email']);
+});
+
+test('/api/settings/guide: a branch manager (staff tier) gets the catalog without admin-only keys; the programmer gets all', async () => {
+  seed();
+  globalThis.__SESSION_EMPLOYEE = { id: 'e1', roleId: 1 };
+  globalThis.__TIER = 'staff';
+  const staff = await (await guideRoute.GET()).json();
+  const staffKeys = staff.settings.map((s) => s.key);
+  for (const k of ADMIN_ONLY_SETTING_KEYS) assert.ok(!staffKeys.includes(k), `${k} not in the manager's catalog`);
+  assert.ok(staffKeys.includes('main_email') && staffKeys.includes('management_messages'), 'the rest of the catalog is intact (the quick panel keeps working)');
+  assert.ok(!JSON.stringify(staff).includes('VALUE-OF-'), 'no admin-only value in the body');
+  globalThis.__TIER = 'admin';
+  const admin = await (await guideRoute.GET()).json();
+  const adminKeys = admin.settings.map((s) => s.key);
+  for (const k of ['nedarim_plus_terminal', 'email_drive_folder_id', 'device_backup_employee_ids', 'approval_tokens_required']) assert.ok(adminKeys.includes(k), `${k} in the programmer's catalog`);
+  assert.ok(adminKeys.length > staffKeys.length, 'the programmer sees more');
+  for (const k of SECRET_SETTING_KEYS) assert.equal(admin.settings.find((s) => s.key === k).currentValue, SECRET_MASK, `${k} masked`);
+});
+
+test('/api/settings/guide and /api/a5/settings: no session -> still 401 (unchanged gates)', async () => {
+  seed();
+  globalThis.__AUTH = false;
+  assert.equal((await guideRoute.GET()).status, 401);
+  assert.equal((await a5Route.GET(new Request('http://test.local/api/a5/settings?key=main_email'))).status, 401);
+  globalThis.__AUTH = true;
+});
+
+test('/api/a5/settings?key=: staff (branch manager) gets ordinary keys, an admin-only key looks like a missing one (404); head management gets it', async () => {
+  seed();
+  const req = (key) => new Request('http://test.local/api/a5/settings?key=' + encodeURIComponent(key));
+  globalThis.__SESSION_EMPLOYEE = { id: 'e1', roleId: 1 };
+  globalThis.__TIER = 'staff';
+  const ok = await a5Route.GET(req('main_email'));
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).setting.key, 'main_email');
+  for (const k of ['nedarim_plus_terminal', 'email_drive_folder_id', 'device_backup_employee_ids', 'approval_tokens_required']) {
+    const hidden = await a5Route.GET(req(k));
+    assert.equal(hidden.status, 404, `${k} -> 404 for a branch manager`);
+    assert.ok(!(await hidden.text()).includes('VALUE-OF-'));
+  }
+  globalThis.__SESSION_EMPLOYEE = { id: 'e2', roleId: 0 };
+  globalThis.__TIER = 'admin';
+  const adminRes = await a5Route.GET(req('nedarim_plus_terminal'));
+  assert.equal(adminRes.status, 200);
+  assert.equal((await adminRes.json()).setting.key, 'nedarim_plus_terminal');
+  globalThis.__SESSION_EMPLOYEE = null;
+});
+
+test('static: every route that turns SystemSetting rows into a values catalog filters them by the reader tier (guide, a5, both AI routes)', () => {
+  for (const f of ['app/api/settings/guide/route.js', 'app/api/a5/settings/route.js', 'app/api/ai/route.js', 'app/api/ai/statistics/route.js']) {
+    const src = fs.readFileSync(path.join(PROJ, f), 'utf8');
+    const uses = [...src.matchAll(/getAllCachedSettings\(\)/g)].length;
+    assert.ok(uses > 0, `${f} reads the settings`);
+    assert.equal([...src.matchAll(/settingsRowsForTier\(await getAllCachedSettings\(\),\s*await getSettingsViewerTier\(\)\)/g)].length, uses, `${f}: every getAllCachedSettings() feeding a catalog goes through settingsRowsForTier(.., getSettingsViewerTier())`);
+  }
+  // nothing else may hand raw rows to buildSettingsGuide
+  const offenders = [];
+  for (const f of [...listAll('app/api'), ...listAll('lib')]) {
+    if (f === 'lib/settingsMetadata.js') continue;
+    const code = strip(fs.readFileSync(path.join(PROJ, f), 'utf8'));
+    for (const m of code.matchAll(/buildSettingsGuide\(([^)]*)\)/g)) if (!/settingsRowsForTier|rows\b/.test(m[1]) && !/settingsRowsForTier/.test(code)) offenders.push(`${f}: ${m[0]}`);
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test('consumers of the two endpoints, mapped: the quick panel (/api/settings/guide) and the A5 options adapter (/api/a5/settings) only open one setting by key', () => {
+  const panel = fs.readFileSync(path.join(PROJ, 'app/components/SettingQuickPanel.js'), 'utf8');
+  assert.match(panel, /fetch\('\/api\/settings\/guide'\)/);
+  assert.match(panel, /\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.key\s*===\s*settingKey/, 'the panel looks up exactly the requested key');
+  const adapter = fs.readFileSync(path.join(PROJ, 'public/a5/adapters/options.js'), 'utf8');
+  assert.match(adapter, /\/api\/a5\/settings\?key=/);
+  for (const f of listAll('app').concat(listAll('components'))) {
+    if (f.startsWith('app/api/')) continue;
+    const code = strip(fs.readFileSync(path.join(PROJ, f), 'utf8'));
+    if (/\/api\/(settings\/guide|a5\/settings\?)/.test(code)) assert.ok(['app/components/SettingQuickPanel.js'].includes(f), `${f}: a new consumer of a values catalog - check which keys it needs`);
+  }
+});

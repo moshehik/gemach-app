@@ -4,7 +4,8 @@ import { generateContent } from '../../../lib/ai/gemini';
 import { generateChatTitle } from '../../../lib/ai/chatTitle';
 
 const TITLE_GRACE_MS = 1500;
-import { checkAuth } from '../../../lib/auth';
+import { checkAuth, getSettingsViewerTier } from '../../../lib/auth';
+import { settingsRowsForTier } from '../../../lib/adminOnlySettings';
 import { checkAiAccess } from '../../../lib/permissions';
 import { verifiedCookieStore } from '@/lib/authTokens';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
@@ -275,7 +276,8 @@ The system will then give you a catalog of common operational actions (title, sh
 
     if (settingsGuideMatch) {
       try {
-        const settingRows = await getAllCachedSettings();
+        // עוזר ה-AI מדבר בשם הקורא: מנהל סניף לא מקבל מפתחות "ניהול בלבד" (lib/adminOnlySettings.js)
+        const settingRows = settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier());
         const catalog = buildSettingsGuide(settingRows);
 
         const followupPrompt = `The user asked: "${prompt}".
@@ -626,7 +628,7 @@ WARNING: your previous answer claimed nothing was found, but the database DID re
 
     const finalText = await finalizeTagsAndText(aiResponse, {
       isManager,
-      loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
+      loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
       loadHowToCatalog: async () => buildHowToGuide(),
     });
     return NextResponse.json({ response: nameNotice ? `${nameNotice}\n${finalText}` : finalText, data: safeData, sqlQuery: sqlQueryToReturn });
