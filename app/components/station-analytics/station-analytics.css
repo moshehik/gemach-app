@@ -1,0 +1,128 @@
+/* station-analytics.css - מסך "המרות בעמדה הציבורית" (/admin/station-analytics). נשען על settings-sim.css (שלד הניהול: באנר, סרגל בימין, כרטיסים) ועל הפלטה;
+   כאן רק מה שאין בהם: אריחי מספר, משפך, גרפים (SVG), מקרא וטולטיפ של גרף, הערות. כל הכללים בהיקף .gm-ds.gm-st.gm-sa, כל הצבעים מטוקני הפלטה (--gm-*).
+   צבעי הסדרות: --gm-navy-500 (סדרה 1) ו---gm-gold-b (סדרה 2) - אומתו עם validate_palette (הפרדה לעיוורי צבעים: ΔE 27, תוויות ישירות + תצוגת טבלה).
+   בלי מצב כהה לגרפים: דפי A5 כולם בעור הבהיר של הפלטה (dlg-dark חל על חלונות בלבד). */
+
+.gm-ds.gm-st.gm-sa{--sa-s1:var(--gm-navy-500);--sa-s2:var(--gm-gold-b)}
+
+/* ===== סרגל הסינון: שורה אחת מעל הכול ===== */
+.gm-ds.gm-sa .sa-bar{gap:12px 16px}
+.gm-ds.gm-sa .sa-bar .seg.pill{flex:0 0 auto}
+.gm-ds.gm-sa .sa-win{display:inline-flex;align-items:center;gap:8px;color:var(--gm-ink2);font-size:14px;font-weight:500}
+.gm-ds.gm-sa .sa-win .inp{width:auto;min-width:104px;height:40px}
+.gm-ds.gm-sa .sa-range{gap:6px}
+.gm-ds.gm-sa .sa-refresh{margin-inline-start:auto}
+@media (max-width:640px){.gm-ds.gm-sa .sa-bar .seg.pill{max-width:100%}.gm-ds.gm-sa .sa-refresh{margin-inline-start:0}}
+
+/* ===== הכותרת הקטנה בתוך כותרת סעיף ===== */
+.gm-ds.gm-sa .sa-sub{font-size:15px;font-weight:500;color:var(--gm-ink3)}
+
+/* ===== אריחי מספר ===== */
+.gm-ds.gm-sa .sa-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.gm-ds.gm-sa .sa-tile{display:flex;flex-direction:column;gap:8px;padding:18px 18px 16px;min-width:0}
+.gm-ds.gm-sa .sa-tile-h{display:flex;align-items:center;gap:10px;color:var(--gm-ink2);font-size:15px;font-weight:600}
+.gm-ds.gm-sa .sa-tile-ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--gm-gold-rich-c) var(--gm-gold-rich);color:var(--gm-navy);box-shadow:inset 0 0 0 1px rgba(154,122,31,.55)}
+.gm-ds.gm-sa .sa-tile-ic .ic{width:18px;height:18px}
+.gm-ds.gm-sa .sa-tile-v{font-size:42px;line-height:1.1;font-weight:700;color:var(--gm-navy-900);font-variant-numeric:tabular-nums;text-align:end}
+.gm-ds.gm-sa .sa-tile-c{display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px dashed var(--gm-line);font-size:14px;color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-cmp{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+.gm-ds.gm-sa .sa-cmp b{color:var(--gm-ink);font-weight:600;font-variant-numeric:tabular-nums}
+.gm-ds.gm-sa .sa-cmp-l{color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-delta{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:600;color:var(--gm-ink2);margin-inline-start:auto}
+.gm-ds.gm-sa .sa-delta .sa-arr{width:12px;height:12px;flex:none}
+.gm-ds.gm-sa .sa-delta.sa-up .sa-arr{color:var(--gm-navy-500)}
+.gm-ds.gm-sa .sa-delta.sa-down .sa-arr{color:var(--gm-gold-d)}
+.gm-ds.gm-sa .sa-delta-l{display:none}
+.gm-ds.gm-sa .sa-tile.sa-off .sa-tile-v{color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-tile-n{color:var(--gm-ink3);font-size:13px;line-height:1.4}
+.gm-ds.gm-sa .sa-foot{padding-top:14px}
+
+/* ===== כרטיס גרף ===== */
+.gm-ds.gm-sa .sa-card{padding:18px 20px;min-width:0}
+.gm-ds.gm-sa .sa-card-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:14px}
+.gm-ds.gm-sa .sa-card-h b{font-size:17px;font-weight:600;color:var(--gm-navy-900)}
+.gm-ds.gm-sa .sa-card-h small{font-size:14px;color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-charts{display:flex;flex-direction:column;gap:16px}
+
+/* ===== משפך ===== */
+.gm-ds.gm-sa .sa-funnel{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:18px}
+.gm-ds.gm-sa .sa-frow{display:flex;flex-direction:column;gap:6px}
+.gm-ds.gm-sa .sa-frow-h{display:flex;align-items:center;gap:10px}
+.gm-ds.gm-sa .sa-fidx{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:13px;font-weight:700;background:var(--gm-sky-100);color:var(--gm-navy)}
+.gm-ds.gm-sa .sa-fl{flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--gm-ink)}
+.gm-ds.gm-sa .sa-fv{font-size:22px;font-weight:700;color:var(--gm-navy-900);font-variant-numeric:tabular-nums}
+.gm-ds.gm-sa .sa-ftrack{display:flex;height:14px;border-radius:7px;background:var(--gm-sky-50);overflow:hidden}
+.gm-ds.gm-sa .sa-fbar{display:block;height:100%;background:var(--sa-s1);border-radius:7px 0 0 7px;transition:width .5s var(--gm-ease)}
+.gm-ds.gm-sa .sa-frates{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:14px;color:var(--gm-ink3);padding-inline-start:34px}
+.gm-ds.gm-sa .sa-frates b{color:var(--gm-ink);font-weight:700}
+.gm-ds.gm-sa .sa-frow.sa-off .sa-fv,.gm-ds.gm-sa .sa-frow.sa-off .sa-fl{color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-notes{list-style:none;margin:18px 0 0;padding:14px 0 0;border-top:1px dashed var(--gm-line);display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--gm-ink2);line-height:1.5}
+.gm-ds.gm-sa .sa-notes li{display:flex;gap:8px;align-items:flex-start}
+.gm-ds.gm-sa .sa-notes .ic{width:16px;height:16px;flex:none;margin-top:3px;color:var(--gm-gold-d)}
+
+/* ===== גרפים ===== */
+.gm-ds.gm-sa .sa-chart{position:relative;min-width:0}
+.gm-ds.gm-sa .sa-plot{position:relative}
+.gm-ds.gm-sa .sa-svg{display:block;max-width:100%;overflow:visible}
+.gm-ds.gm-sa .sa-svg text{font-family:var(--gm-font);fill:var(--gm-ink3);font-size:12px}
+.gm-ds.gm-sa .sa-ytick{font-variant-numeric:tabular-nums}
+.gm-ds.gm-sa .sa-grid{stroke:var(--gm-line2);stroke-width:1}
+.gm-ds.gm-sa .sa-axis{stroke:var(--gm-line);stroke-width:1}
+.gm-ds.gm-sa .sa-f1{fill:var(--sa-s1)}
+.gm-ds.gm-sa .sa-f2{fill:var(--sa-s2)}
+.gm-ds.gm-sa .sa-st1{stroke:var(--sa-s1)}
+.gm-ds.gm-sa .sa-st2{stroke:var(--sa-s2)}
+.gm-ds.gm-sa .sa-line{stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.gm-ds.gm-sa .sa-dot{stroke:var(--gm-surface);stroke-width:2}
+.gm-ds.gm-sa .sa-col{transition:opacity .15s}
+.gm-ds.gm-sa .sa-band:hover .sa-col,.gm-ds.gm-sa .sa-band:focus-within .sa-col{opacity:.82}
+.gm-ds.gm-sa .sa-hit{fill:transparent;cursor:pointer;outline:0}
+.gm-ds.gm-sa .sa-hit:hover{fill:rgba(15,44,82,.05)}
+.gm-ds.gm-sa .sa-hit:focus-visible{fill:rgba(201,162,39,.12);stroke:var(--gm-gold);stroke-width:2}
+.gm-ds.gm-sa .sa-pickbg{fill:rgba(201,162,39,.16)}
+.gm-ds.gm-sa .sa-legend{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--gm-ink2)}
+.gm-ds.gm-sa .sa-legend li{display:inline-flex;align-items:center;gap:8px}
+.gm-ds.gm-sa .sa-key{display:inline-block;width:16px;height:4px;border-radius:2px;flex:none}
+.gm-ds.gm-sa .sa-key.sa-s1{background:var(--sa-s1)}
+.gm-ds.gm-sa .sa-key.sa-s2{background:var(--sa-s2)}
+.gm-ds.gm-sa .sa-tt{position:absolute;z-index:5;transform:translate(-50%,-100%);pointer-events:none;min-width:150px;padding:10px 12px;border-radius:12px;background:var(--gm-navy-900);color:#fff;box-shadow:var(--gm-sh-lg);font-size:13px;line-height:1.4}
+.gm-ds.gm-sa .sa-tt-d{font-weight:600;color:var(--gm-gold-300);margin-bottom:4px;white-space:nowrap}
+.gm-ds.gm-sa .sa-tt-r{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-sa .sa-tt-r b{font-size:16px;font-variant-numeric:tabular-nums}
+.gm-ds.gm-sa .sa-empty-over{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:var(--gm-ink3);font-size:15px;font-weight:500;text-align:center;padding:0 24px}
+
+/* ===== טבלאות ===== */
+.gm-ds.gm-sa .sa-tblw{max-height:none;overflow-x:auto}
+.gm-ds.gm-sa .sa-table th{white-space:nowrap}
+.gm-ds.gm-sa .sa-rep{color:var(--gm-ink3);font-size:13px}
+.gm-ds.gm-sa .sa-chip{font-size:13px;padding:2px 10px}
+.gm-ds.gm-sa .sa-chip .ic{width:14px;height:14px}
+.gm-ds.gm-sa .sa-card .row{margin-top:12px}
+
+/* ===== הסבר בסרגל ===== */
+.gm-ds.gm-sa .sa-defs{margin:14px -2px 2px;padding:14px 6px 4px;border-top:1px dashed rgba(224,191,90,.3);color:rgba(255,255,255,.9)}
+.gm-ds.gm-sa .sa-defs-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--gm-gold-300);font-size:15px}
+.gm-ds.gm-sa .sa-defs-h .ic{width:18px;height:18px;color:var(--gm-gold-300)}
+.gm-ds.gm-sa .sa-defs dl{margin:0;display:flex;flex-direction:column;gap:2px}
+.gm-ds.gm-sa .sa-defs dt{font-weight:600;color:#fff;margin-top:8px;font-size:14px}
+.gm-ds.gm-sa .sa-defs dd{margin:0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.78)}
+@media (max-width:1023px){.gm-ds.gm-sa .sa-defs{display:none}}
+
+/* ===== מצבים ===== */
+.gm-ds.gm-sa .sa-note{max-width:620px;margin-inline:auto}
+.gm-ds.gm-sa .sa-note b{font-size:18px;color:var(--gm-navy-900)}
+.gm-ds.gm-sa .sa-note span{color:var(--gm-ink2);line-height:1.5}
+.gm-ds.gm-sa .sa-busy .st-main{opacity:.55;transition:opacity .15s}
+
+/* ===== פריסה: הסרגל בימין (RTL), גם כשיש רק הסרגל העליון ===== */
+.gm-ds.gm-sa .sa-layout{margin-top:24px}
+.gm-ds.gm-sa .sa-layout .st-main{display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-sa .sa-layout .st-sec .adm-h{margin-top:8px}
+@media (min-width:1024px){.gm-ds.gm-st.gm-sa .st-view .layout{grid-template-columns:300px minmax(0,1fr)}}
+@media (max-width:1023px){.gm-ds.gm-sa .st-view .rail:has(.st-stabs){position:static;display:block;padding:0}}
+@media (max-width:1023px){.gm-ds.gm-st.gm-sa .st-view .st-stabs{display:flex;flex-direction:row;flex-wrap:wrap}}
+@media (max-width:1023px){.gm-ds.gm-st.gm-sa .st-view .st-sidenav{border-radius:18px;border:1px solid rgba(224,191,90,.3);border-top-width:1px}}
+@media (max-width:1023px){.gm-ds.gm-st.gm-sa .st-view .st-stab{width:auto;flex:1 1 140px;height:42px}}
+@media (max-width:1023px){.gm-ds.gm-st.gm-sa .st-view .st-stab .st-sgo{display:none}}
+@media (max-width:640px){.gm-ds.gm-sa .sa-tile-v{font-size:34px}.gm-ds.gm-sa .sa-card{padding:14px}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-sa .sa-fbar,.gm-ds.gm-sa .sa-col,.gm-ds.gm-sa .sa-busy .st-main{transition:none}}
