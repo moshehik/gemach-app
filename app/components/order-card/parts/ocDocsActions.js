@@ -11,6 +11,7 @@ import {
 } from './ocDocsLogic';
 import { loadModelPhotos } from './ocDocsImages';
 import { orderPrintPath, parseOrderIdParam } from '../../../../lib/schedule/print/orderMode';
+import { buildDeliverySection, deliverySettingsFrom } from '../../../../lib/orderDelivery';
 
 const jsonOf = async (res) => { try { return await res.json(); } catch { return {}; } };
 
@@ -177,8 +178,12 @@ export function openOrderPrintFallback({ orderId, open }) {
 /** A1: ייצוא ההזמנה ל-Excel (גיליון לכל מקטע, RTL, תאריכים עבריים) + ORDER_XLSX_EXPORTED. מקור: מצב השרת האחרון (מה שנשמר). */
 export async function exportOrderXlsx({ oc, orderId, download }) {
   const snap = oc.snapshot || {};
+  const order = snap.order || oc.order;
+  const obligations = snap.obligations || oc.obligations;
+  // delivery_as_item_row: שורת המשלוח גם בגיליון הפריטים (null כשההגדרה כבויה / אין משלוח = הקובץ זהה לקודם)
+  const deliverySection = order && order.isDelivery && oc.settings && oc.settings.raw ? buildDeliverySection(order, { settings: deliverySettingsFrom(oc.settings.raw), obligations }) : null;
   const sheets = orderExportSheets({
-    order: snap.order || oc.order, items: snap.items || oc.items, obligations: snap.obligations || oc.obligations, payments: snap.payments || oc.payments,
+    order, items: snap.items || oc.items, obligations, payments: snap.payments || oc.payments, deliveryRow: deliverySection && deliverySection.itemRow,
   });
   const fileName = docFileName('xlsx', orderId, 'xlsx');
   const save = download || (async (rows, name) => (await import('../../../../lib/schedule/print/xlsx')).downloadScheduleXlsx(rows, name));
