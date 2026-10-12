@@ -5,6 +5,7 @@ import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
 import { sizeKey, sizeSpellings } from '@/lib/searchNormalize';
+import { isWholeSizeKey, pickSizeMenu } from '@/lib/sizeSort';
 
 // הצעות לשדות הטקסט של החיפוש המתקדם ב-/a5. קריאה בלבד.
 // GET /api/a5/options?key=<first|last|name|phone|city|oid|item|model|emp|size|q>&focus=<...>&typed=<טקסט>
@@ -143,7 +144,10 @@ async function sizes(typed) {
     const g = groups.get(key);
     if (!g || n > g.count) groups.set(key, { display: raw, count: n });
   }
-  return finish([...groups.values()].map((g) => g.display));
+  // רק מידות שלמות ("36א" / "38-40" / "XL" לא מוצעות כשמקלידים "36") אלא אם הוקלד במפורש תו שאינו ספרה — נושא 12, 12.10.2026,
+  // אותו כלל כמו בבדיקת מלאי (lib/sizeSort.js pickSizeMenu). "38.0" מוצג כ-"38".
+  const wanted = pickSizeMenu([...groups.entries()].map(([key, g]) => ({ key, v: g.display, whole: isWholeSizeKey(key) })), typed);
+  return finish(wanted.map((g) => (isWholeSizeKey(g.key) && !/^\d{1,3}$/.test(g.v) ? g.key : g.v)));
 }
 
 async function settingNames(typed) {

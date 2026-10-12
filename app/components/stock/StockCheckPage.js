@@ -22,7 +22,7 @@ import { useA5Shell } from '../menu/A5ShellContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import {
   STOCK_CHECK_STORE_KEY, FLEX_TIP, isNumericSize, addSizes, toggleFlex, validateForm, buildStockCheckUrl, buildOptionsUrl,
-  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
+  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sizeOptionsQuery, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
 } from '@/lib/stockCheckUi';
 
 const OPT_TTL = 60 * 1000;
@@ -49,7 +49,7 @@ function Highlight({ text, q }) {
 
 // שדה טקסט עם רשימת הצעות גוללת (advlist / advo — אותה רשימה כמו בחיפוש המתקדם בדף הבית; Q03).
 // kind='model': ההצעות נטענות לפי מה שהוקלד (שם מכיל / קידומת); בחירה ממלאת את השדה.
-// kind='size':  כל המידות נטענות פעם אחת, מסוננות בלקוח לפי הקטע האחרון שהוקלד ובלי מידות שכבר נבחרו; בחירה מוסיפה מידה.
+// kind='size':  כל המידות השלמות נטענות פעם אחת (עשרוניות/אותיות רק כשהוקלד תו שאינו ספרה), מסוננות בלקוח לפי הקטע האחרון שהוקלד ובלי מידות שכבר נבחרו; בחירה מוסיפה מידה.
 function SuggestField({ id, kind, label, icon, placeholder, value, onChange, chosen, onPickSize, onEnter, onKeyDown, invalid, inputRef, trailing, inputMode }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(null); // null = טוען
@@ -62,7 +62,7 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
   const load = (delay, text) => {
     clearTimeout(timer.current);
     const my = ++seq.current;
-    const t = kind === 'size' ? '' : text.trim();
+    const t = kind === 'size' ? sizeOptionsQuery(text) : text.trim();
     const go = () => {
       fetchOptions(kind, t).then((list) => {
         if (my !== seq.current) return;

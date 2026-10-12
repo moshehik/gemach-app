@@ -246,6 +246,19 @@ await t('"2" מציע גם "02" (מאוחדים לכתיב הנפוץ), ולא �
   assert.deepEqual(r2.body.options, ['02', '20', '22']);
 });
 
+await t('נושא 12: רק מידות שלמות ("36א" / "38-40" / "XL" / "38.5" לא מוצעות), "38.0" = "38"; תו שאינו ספרה מבקש חריגות', async () => {
+  T.pages = new Set(['page:orders']);
+  const di = (sizeText) => ({ sizeText, isDeleted: false });
+  T.dressItems = ['38', '38', '038', '38.0', '38.5', '36', '36', '36א', '36ב', '38-40', 'XL', '06', '06.1', '00.5', '40', '40'].map(di);
+  const opts = async (typed) => (await get(optionsRoute, '/api/a5/options?key=size&typed=' + encodeURIComponent(typed))).body.options;
+  assert.deepEqual(await opts('38'), ['38'], 'typed 38 -> only the whole size (038 / 38.0 fold into it)');
+  assert.deepEqual((await opts('')).sort(), ['06', '36', '38', '40'], 'default menu = whole sizes');
+  assert.deepEqual(await opts('38.'), ['38', '38.5'], 'typed "38." -> the true decimal (+ the raw "38.0" row, which is the whole size 38)');
+  assert.deepEqual(await opts('36א'), ['36א']);
+  assert.deepEqual(await opts('xl'), ['XL']);
+  assert.deepEqual(await opts('06.'), ['06.1']);
+});
+
 // ---------------------------------------------------------------- a5/adv (מתקדם)
 console.log('חיפוש מתקדם A5');
 T.prisma.payment = { groupBy: async () => [] };

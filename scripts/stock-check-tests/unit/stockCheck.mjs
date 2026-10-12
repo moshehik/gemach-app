@@ -312,6 +312,30 @@ eq('two sizes (and), one flex: 06 exact(2), 8 flex = 06(2)+8(2)+10(0) = 4 -> min
 r = await run({ sizes: ['6', '06'] });
 eq('"6" and "06" collapse to one requested size', [r.query.sizes.length, brief(r)], [1, [[700, 2, '6:2']]]);
 
+/* ---------- נושא 12 (12.10.2026): מידה שנשמרה "גולמית" כעשרוני-עם-אפסים ("44.0") נמצאת תחת המידה השלמה ("44") ---------- */
+eq('normalizeSizeKey: zero-fraction decimals are the whole size; true decimals stay', ['38.0', '38.00', '038,0', ' 7.0 ', '0.0', '38.5', '06.1', '06.10', '38.', '.5', '1000.0', '38.0.0', '38.0א'].map(sc.normalizeSizeKey),
+  ['38', '38', '38', '7', '0', '38.5', '06.1', '06.10', '38.', '.5', '1000.0', '38.0.0', '38.0א']);
+eq('isNumericSize: "38.0" / "038" yes, "38.5" / "06.1" no', ['38.0', '038', '38.5', '06.1', '12,0'].map(sc.isNumericSize), [true, true, false, false, true]);
+eq('candidates 44.0 flex -> 42/44/46 (same as 44)', sc.candidateSizes('44.0', true), ['42', '44', '46']);
+eq('normalizeSizeRequests: "44" and "44.0" and "044" are one request', sc.normalizeSizeRequests(['44', '44.0', '044']).map((r) => [r.size, r.key]), [['44', '44']]);
+{
+  const rawItem = (id, sizeText) => ({ id, dressModelId: 'mF', sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 700 });
+  globalThis.__DB.dressItem.push(rawItem('w1', '44.0'), rawItem('w2', '044'), rawItem('w3', '44.5'), rawItem('w4', ' 44'));
+  r = await run({ sizes: ['44'] });
+  eq('size "44": items saved "44.0" / "044" / " 44" are counted under it (3), "44.5" is not', brief(r), [[700, 3, '44:3']]);
+  r = await run({ sizes: ['44.0'] });
+  eq('typing "44.0" is the same request as "44" (same 3 items)', brief(r), [[700, 3, '44.0:3']]);
+  r = await run({ sizes: ['44.5'] });
+  eq('size "44.5" (true decimal): only the 44.5 item, exact, never flexible', [brief(r), r.query.sizes[0].flexible], [[[700, 1, '44.5:1']], false]);
+  r = await run({ sizes: ['44'], flexible: true });
+  eq('size "44" flex still sees them (42/44/46 -> 44:3)', brief(r), [[700, 3, '44:3[44=3]']]);
+  r = await run({ sizes: ['44.0'], flexible: ['44.0'] });
+  eq('"44.0" is flexible-capable like 44', [r.query.sizes[0].flexible, r.query.sizes[0].candidates], [true, ['42', '44', '46']]);
+  r = await run({ models: ['700'] });
+  eq('model-only check keeps the real rows (no stock is hidden): 44 merged as "44", 44.5 listed on its own', r.results[0].sizes.filter((x) => x.size.startsWith('44')).map((x) => x.size + ':' + x.free), ['44:3', '44.5:1']);
+  globalThis.__DB.dressItem.splice(globalThis.__DB.dressItem.findIndex((i) => i.id === 'w1'), 4);
+}
+
 /* ---------- החלטות הבעלים 2.10.2026 (GQ-06b/d) + "וגם" בשלוש מידות ---------- */
 reset();
 r = await sc.checkStock({ date: '2020-01-01', models: ['549'] });
