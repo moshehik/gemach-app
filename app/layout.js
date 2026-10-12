@@ -22,6 +22,7 @@ import { brandBar } from '@/lib/loginFlow';
 import { isMainGemach } from '@/lib/orgIdentity';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
+import GuideProvider from './components/guide/GuideProvider';
 import DevEnvBanner from './components/DevEnvBanner';
 import PreviewModeBanner from './components/PreviewModeBanner';
 import BackupModeBanner from './components/BackupModeBanner';
@@ -870,6 +871,7 @@ function cpCssText(vars) {
                 {children}
               </ShellSwitch>
               <PrefetchManager />
+              <GuideProvider />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} employeeId={authToken?.value} />}
             </PopupProvider>
           </LabelsProvider>
