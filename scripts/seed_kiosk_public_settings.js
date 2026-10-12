@@ -1,6 +1,6 @@
 // kiosk_public_link_enabled / kiosk_public_show_inventory / kiosk_public_show_registration (עמדת לקוח בקישור כללי /station, 2026-10-12).
-// החלטת הבעלים: בגמ"ח נווה יעקב (org2) ברירת המחדל "כן", בגמ"ח הראשי (org1) "לא". בקוד, שורה חסרה = כבוי (lib/publicKiosk/config.js).
-//   org2: נוצר עם 'true' אם חסר; org1: נוצר עם 'false' אם חסר. ערך קיים של אף גמ"ח לעולם לא נדרס (overwrite:false) - מדווח בלבד.
+// בקוד, שורה חסרה = כבוי (lib/publicKiosk/config.js). בשני הגמ"חים השורות נוצרות עם 'false' אם חסרות (ר' הערת TARGETS למטה: החלטת הרכז 12.10.2026 - הקישור הציבורי לא נדלק בנווה).
+//   ערך קיים של אף גמ"ח לעולם לא נדרס (overwrite:false) - מדווח בלבד.
 // מבנה: scripts/lib/seed-bool-setting.js - בדיקת host (ה-DB שנבחר חייב להיות שונה מה-DB של הגמ"ח השני; נבדק לפני כל כתיבה).
 // dry-run כברירת מחדל - כתיבה רק עם --write ורק באישור הבעלים בזמן ההרצה. לא מורץ אוטומטית ע"י הבנייה. לעולם אל תריצו בלי --org מפורש:
 //   node scripts/seed_kiosk_public_settings.js --org=2 [--write]
@@ -9,7 +9,9 @@
 
 const { seedBoolSetting } = require('./lib/seed-bool-setting');
 
-const TARGETS = { 1: { value: 'false', overwrite: false }, 2: { value: 'true', overwrite: false } };
+// החלטת הרכז באינטגרציה 12.10.2026: גם בנווה (org2) הקישור הציבורי נשאר **כבוי** - ההגדרות נוצרות כ-false כדי שיופיעו במסך ההגדרות, וההדלקה
+// (kiosk_public_link_enabled=true) היא החלטה נפרדת של הבעלים במסך ההגדרות / סקריפט נפרד. (לפני כן org2 נוצר כ-'true'.)
+const TARGETS = { 1: { value: 'false', overwrite: false }, 2: { value: 'false', overwrite: false } };
 
 const DEFS = [
   {

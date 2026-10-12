@@ -1067,7 +1067,7 @@ const PVT_CSS = read('../app/components/variant/pageVariantToggle.css');
 const pvtRules = parseCss(PVT_CSS);
 t('pageVariantToggle.css: כל כלל בהיקף .gm-pvt, בלי הפלטה (.gm-ds), בלי data-ui-*, בלי */ בתוך הערה', () => {
   const bad = [];
-  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s) && s !== '.gm-pvt-spacer') bad.push(s); // + המרווח בסוף דף ישן
+  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s) && s !== '.gm-pvt-spacer' && s !== '.topbar:has(.gm-pvt-return-topbar)') bad.push(s); // + המרווח בסוף דף ישן; + הכותרת הישנה במובייל שעוטפת שורה כשבתוכה לחצן "חזרה לממשק החדש" (feature/neve-new-ui-default)
   assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
   const code = PVT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/\.gm-ds|gm-home|data-ui-|!important(?![^{}]*display:none)/.test(code.replace(/@media print\{[^}]*\}\}?/, '')), 'תלות בפלטה / data-ui / !important');
