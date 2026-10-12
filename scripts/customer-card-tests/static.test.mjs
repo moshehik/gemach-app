@@ -88,8 +88,11 @@ t('שדות החובה מההגדרות נאכפים בכל שמירה (עריכ
   for (const r of ['app/api/customers/[id]/route.js', 'app/api/customers/route.js']) {
     const s = read(r);
     assert.match(s, /body\.cardVariant === 'a5'/, r);
-    assert.match(s, /requiredFieldErrors\(body, requiredFieldsFromSettings\(sMap\)\)/, r);
+    // POST /api/customers: ה-requiredFieldErrors יושב ב-lib/customerCreateValidation.js (collectNewCustomerErrors, משותף עם הרישום בעמדה - feature/kiosk-public-backend)
+    if (r === 'app/api/customers/route.js') assert.match(s, /collectNewCustomerErrors\(body, sMap, \{ a5Required: body\.cardVariant === 'a5' \}\)/, r);
+    else assert.match(s, /requiredFieldErrors\(body, requiredFieldsFromSettings\(sMap\)\)/, r);
   }
+  assert.match(read('lib/customerCreateValidation.js'), /if \(a5Required\) \{[\s\S]*requiredFieldErrors\(body, requiredFieldsFromSettings\(sMap\)\)/);
   assert.match(read('lib/settingsMetadata.js'), /customer_required_fields: 'שדות חובה בכרטיס לקוח'/);
   assert.match(read('app/admin/settings/SettingsClient.js'), /isCustomerRequiredSetting/);
 });

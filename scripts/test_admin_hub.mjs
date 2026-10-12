@@ -43,6 +43,7 @@ const YES = {
 // אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
 const ADDED_LATER = {
   '/non-working-days': 'head', // "ימי אי-פעילות" - החלטות-non-working-days.json NWD-Q01 "פריט בניהול" (1.10.2026), נבנה 4.10.2026
+  '/station-analytics': 'head', // "המרות בעמדה הציבורית" - feature/station-analytics-2026-10-12 (נושא 13); הדף מאחורי page:station_analytics (app/station-analytics/layout.js), האריח מוצג לפי אותה הרשאה
 };
 // דפים שהשער שלהם אינו checkPageAccess(הנהלה) בכוונה, והשער שהם כן אוכפים
 const OWN_PAGE_GATE = {

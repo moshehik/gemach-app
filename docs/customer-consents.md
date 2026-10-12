@@ -68,7 +68,7 @@
 ## חוזה לעמדת הלקוח (kiosk)
 **צפייה ציבורית (ללא התחברות):** `GET /api/public-consent-info` (גרסאות, קישורים, נוסחים, מה חובה), `GET /api/public-terms` (הקובץ inline; `?download=1` להורדה), עמודים `/terms` ו-`/privacy`.
 
-**רישום:** `POST /api/public-kiosk/register` (סוכן kiosk-backend) יוצר את הלקוחה ואז קורא - במקום ה-stub `lib/publicKiosk/recordConsents.js` - ל:
+**רישום:** `POST /api/public-kiosk/register` (סוכן kiosk-backend) יוצר את הלקוחה ואז קורא (מחובר באינטגרציה 12.10.2026: `lib/publicKiosk/recordConsents.js` הוא עכשיו re-export של הפונקציה הזו, והטופס `KioskRegistration` משתמש ב-`useEnterNavigation` המשותף) ל:
 ```js
 import { recordConsentsForCustomer } from '@/lib/customerConsentServer';   // אותה חתימה בדיוק כמו ה-stub
 const r = await recordConsentsForCustomer({ customerId, channel: 'kiosk' /* או 'public' */, consents: { acceptedTerms, marketingConsent, acceptedPrivacy, termsVersion, privacyVersion }, now });
