@@ -31,6 +31,8 @@
 .gm-ds.gm-rr .bd-scan .inpw>.ic,.gm-ds.gm-rr .bd-rinb>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;width:20px;height:20px;color:var(--navy-500);pointer-events:none;z-index:1}
 .gm-ds.gm-rr .bd-scan input.inp{width:100%;min-height:50px;padding-inline:48px 16px;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.55);box-shadow:none;color:var(--navy-900);font-size:17px}
 .gm-ds.gm-rr .bd-scan input.inp:focus{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
+.gm-ds.gm-rr .bd-sn{min-height:30px;margin-top:8px}
+.gm-ds.gm-rr .bd-sn .chip{white-space:normal;height:auto;line-height:1.5;padding-block:3px}
 .gm-ds.gm-rr .lz-banner.bd-note,.gm-ds.gm-rr .lz-banner.bd-pend{flex-wrap:wrap}
 .gm-ds.gm-rr .lz-banner.bd-pend .btn{margin-inline-start:auto}
 .gm-ds.gm-rr .bd-rst{padding:14px 18px}

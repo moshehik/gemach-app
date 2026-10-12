@@ -42,16 +42,20 @@ export function PopupProvider({ children }) {
 
   // Global Rental Modal state
   const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
+  const [globalRentalModalBarcode, setGlobalRentalModalBarcode] = useState('');
 
   // המעטפת בעיצוב החדש (shell='a5'): החזרה מהירה / היסטוריית החיפוש פותחות את חלון "השכרה והחזרה" בעיצוב החדש
   // (components של הלוח החודשי המאושר, app/components/rental-return) במקום החלון הישן. מעטפת ישנה - החלון הקיים כמו קודם.
   const shellVariant = useUiVariant('shell');
-  const openRentalModal = useCallback((orderId) => {
+  // opts.barcode: ברקוד שהוקש בחיפוש המהיר - החלון מעבד אותו (החזרה / השכרה) אחרי שההזמנה נטענה (זרימת הברקוד ברצף)
+  const openRentalModal = useCallback((orderId, opts) => {
+    setGlobalRentalModalBarcode((opts && opts.barcode) || '');
     setGlobalRentalModalOrderId(orderId);
   }, []);
 
   const closeRentalModal = useCallback(() => {
     setGlobalRentalModalOrderId(null);
+    setGlobalRentalModalBarcode('');
   }, []);
 
 
@@ -434,12 +438,14 @@ export function PopupProvider({ children }) {
         shellVariant === 'a5' ? (
           <RentalReturnA5
             orderId={globalRentalModalOrderId}
+            initialBarcode={globalRentalModalBarcode}
             onClose={closeRentalModal}
             onUpdate={() => {}}
           />
         ) : (
           <RentalReturnModal
             orderId={globalRentalModalOrderId}
+            initialBarcode={globalRentalModalBarcode}
             onClose={closeRentalModal}
             onUpdate={() => {}}
           />

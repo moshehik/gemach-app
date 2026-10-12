@@ -40,11 +40,11 @@ function statusChip(status) {
 
 const fmtTime = (d) => new Date(d).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 
-function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
+function RentalReturnInner({ orderId, initialBarcode = '', onSwitchOrder = null, onItemReturned = null, onClose, onUpdate, ui }) {
   const { getLabel } = useLabels();
-  const r = useRentalReturn({ orderId, onClose, onUpdate, ui });
+  const r = useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode, onSwitchOrder, onItemReturned });
   const {
-    selectedOrder, setSelectedOrder, loading, enableAlterations, modalBarcode, setModalBarcode, modalBarcodeRef,
+    selectedOrder, setSelectedOrder, scanNotice, loading, enableAlterations, modalBarcode, setModalBarcode, modalBarcodeRef,
     isProcessing, isConfirming, isBusy, duplicates, setDuplicates, itemDetails, setItemDetails, rentingItemId, setRentingItemId,
     inlineBarcode, setInlineBarcode, manualEntryItemId, setManualEntryItemId, manualBarcode1, setManualBarcode1, manualBarcode2,
     setManualBarcode2, manualSigned, setManualSigned, activeItems, pendingCount, preppedCount, overallStatus, confirmManualEntry, cancelManualEntry,
@@ -62,6 +62,8 @@ function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
   useEffect(() => {
     const key = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // התראת סריקת החזרה (BranchReturnAlertHost, סניף אחר / רזרבה) פתוחה: Escape סוגר רק אותה, לא את החלון
+      if (typeof document !== 'undefined' && document.querySelector('[data-br-alert]')) return;
       e.preventDefault();
       if (subRef.current) { setItemDetails(null); setDuplicates(null); return; }
       attemptRef.current();
@@ -136,6 +138,10 @@ function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
                   />
                 </div>
                 <button type="submit" hidden>סרוק</button>
+                {/* תוצאת הברקוד האחרון (זרימת הברקוד ברצף: הוחזר / עובר להזמנה אחרת / שגיאה) - השדה נשאר בפוקוס לסריקה הבאה */}
+                <div className="bd-sn" id="rrmScanNotice" role="status" aria-live="polite">
+                  {scanNotice ? <span className={'chip ' + (scanNotice.kind === 'ok' ? 'green' : scanNotice.kind === 'err' ? 'red' : 'gray')}>{scanNotice.text}</span> : null}
+                </div>
               </form>
 
               {(o.orderNotes || o.notes) ? (
@@ -374,7 +380,18 @@ function HistoryChanges({ changesJson }) {
 // עטיפה: שורש הפלטה (בלי רקע עמוד) שאליו החלונות מועברים (LzPortalRoot), טוסט הודעות במקום alert, וחלון "בטוח?" / הערה הכהה.
 // משמש את PopupProvider כשהמעטפת בעיצוב החדש - החזרה מהירה בחיפוש והיסטוריית חיפוש פותחים אותו במקום החלון הישן.
 const TOAST_MS = 3200;
-export default function RentalReturnA5({ orderId, onClose, onUpdate }) {
+// זרימת הברקוד ברצף (12.10.2026): initialBarcode = ברקוד שהוקש בחיפוש המהיר; ברקוד של פריט שמושכר בהזמנה אחרת מעביר את החלון להזמנה ההיא
+// (הפנימי מורכב מחדש עליה עם הברקוד כ-initialBarcode, כמו RentalReturnModal); onItemReturned(item, order) - נקודת חיבור אחרי כל החזרה.
+export default function RentalReturnA5({ orderId, initialBarcode = '', onClose, onUpdate, onItemReturned }) {
+  const [cur, setCur] = useState({ orderId, barcode: initialBarcode, seq: 0 });
+  const [seen, setSeen] = useState({ orderId, initialBarcode });
+  if (seen.orderId !== orderId || seen.initialBarcode !== initialBarcode) { // ההורה פתח הזמנה/ברקוד אחרים
+    setSeen({ orderId, initialBarcode });
+    setCur((c) => ({ orderId, barcode: initialBarcode, seq: c.seq + 1 }));
+  }
+  const switchOrder = useCallback((nextOrderId, barcode) => {
+    setCur((c) => ({ orderId: nextOrderId, barcode: barcode || '', seq: c.seq + 1 }));
+  }, []);
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   usePageTooltip(rootRef, ttRef, false);
@@ -398,7 +415,7 @@ export default function RentalReturnA5({ orderId, onClose, onUpdate }) {
     <LzPortalRoot.Provider value={portalRoot}>
       <div className="gm-ds gm-lz gm-rr dlg-dark" ref={rootRef} dir="rtl">
         <LocalSprite />
-        {portalRoot ? <RentalReturnInner orderId={orderId} onClose={onClose} onUpdate={onUpdate} ui={ui} /> : null}
+        {portalRoot ? <RentalReturnInner key={`${cur.orderId}:${cur.seq}`} orderId={cur.orderId} initialBarcode={cur.barcode} onSwitchOrder={switchOrder} onItemReturned={onItemReturned} onClose={onClose} onUpdate={onUpdate} ui={ui} /> : null}
         {dialogs.node}
         <MarkToast toast={toast} onClose={() => setToast(null)} />
         <div className="pl-tt" role="tooltip" id="rr-tt" ref={ttRef} />
