@@ -65,7 +65,8 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
   // מאומת בסוף, handleRentalScan עדיין ממשיך וכותב לשרת/למצב React על קומפוננטה
   // שכבר לא קיימת, בלי שום אישור גלוי למי שהיה אמור לראות את זה.
   const isMountedRef = useRef(true);
-  useEffect(() => () => { isMountedRef.current = false; }, []);
+  // מגדירים true גם בעלייה: ב-StrictMode של הפיתוח ה-cleanup רץ פעם אחת מיד אחרי העלייה (mount -> unmount -> mount) ובלי זה הדגל נשאר false לתמיד
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
   async function loadOrder(id) {
     setLoading(true);
@@ -335,7 +336,7 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
 
   // ---- זרימת הברקוד ברצף (12.10.2026) ----
   const notify = (kind, text) => setScanNotice({ kind, text, at: Date.now() });
-  const itemLabel = (item) => (item && item.description ? `"${item.description}"` : 'הפריט');
+  const itemLabel = (item) => (item && item.description ? `"${item.description}"${item.barcode ? ` (${item.barcode})` : ''}` : item && item.barcode ? `הפריט ${item.barcode}` : 'הפריט');
 
   // האם יש בהזמנה שורה שמחכה לברקוד כזה - אותו כלל כמו POST /api/rentals/scan (שורה בלי ברקוד, אותה קידומת ואותה מידה).
   // כשלא ניתן לקבוע קידומת/מידה לשורה - נחשב "כן" (ההתנהגות הקודמת: ניסיון השכרה והשרת מחליט).
@@ -360,7 +361,7 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
       if (handledAsLate) return;
       const r = await handleReturnScan(cleanBarcode);
       const who = selectedOrder.customer ? ` · ${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}`.trimEnd() : '';
-      if (r && r.ok) notify('ok', `הוחזר: ${itemLabel(r.item || awaitingReturnItem)} · הזמנה #${selectedOrder.orderId}${who}`);
+      if (r && r.ok) notify('ok', `הוחזר: ${itemLabel(awaitingReturnItem)} · הזמנה #${selectedOrder.orderId}${who}`);
       else if (r && r.cancelled) notify('info', 'ההחזרה בוטלה');
       else notify('err', (r && r.error) || 'שגיאה בהחזרה');
       return;
