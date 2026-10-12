@@ -925,3 +925,18 @@ model DeliveryJoin {
 
   @@index([joinedToOrderId])
 }
+
+// הגבלת ניסיונות סיסמה בצד השרת (POST /api/auth/verify-pin): מונה כשלונות + נעילה מדורגת לכל מפתח
+// ("ip:<כתובת>" / "pe:<עובד או *>:<כתובת>"). נגיש רק דרך raw SQL (lib/authThrottle.js) - בכוונה לא דרך תוסף היומן.
+// אפוקה במילישניות ולא DateTime (בלי שגיאות אזור-זמן). SQL ידני: prisma/migrations-pending/2026-10-11-auth-throttle.sql;
+// כשהטבלה חסרה הקוד "נכשל פתוח" (אין הגבלה, אין 500). לוגיקה: lib/authThrottleLogic.js, docs/verify-pin-rate-limit.md.
+model AuthThrottle {
+  key           String  @id
+  count         Int     @default(0)
+  level         Int     @default(0)
+  lockedUntilMs BigInt?
+  updatedAtMs   BigInt
+  version       Int     @default(0)
+
+  @@index([updatedAtMs])
+}

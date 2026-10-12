@@ -29,7 +29,8 @@ const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map((
 // + (fix-reports/neve-order-card-save-flow-2026-10-07, דיווחים 7681043a/c43a2b84): הגדרות order_card_save_in_footer + order_edit_fewer_confirmations (כבויות = אפס שינוי): כפתור שמירה בפס תחתון, שאלת ההדפסה בתוך חלון הסיכום, שמירה בלי שינויים = שאלת הדפסה בלבד.
 // + (fix-reports/neve-order-card-payment-bank-prompts-2026-10-07, דיווחים 96bcbf45/b45fd22e/5cf81871): הגדרות order_card_defer_payment_prompt (חלון תשלום בסיום הוספת פריטים: handleTabChange/openDeferredPayment/הודעה בטאב הפריטים) + order_card_save_after_item_delete (מחיקת פריט שמורה → handleSave הרגיל → חלון בנק) - כבויות = אפס שינוי.
 // כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
-const LEGACY_SHA256_LF = '761eb0dfdc7c0070d346cd1b7871d030816a33a87e6d6ddd3aea662c9f3d94a9';
+// + (feature/credit-bank-prompt-settings, 2026-10-12): הגדרות credit_bank_prompt_auto (ברירת מחדל דולק = כמו קודם) + credit_bank_details_required (כבוי = אופציונלי) על חלון פרטי הבנק האוטומטי - ברירות המחדל = אפס שינוי.
+const LEGACY_SHA256_LF = '70c3a88176bc48c7de94d4b348220e932ccbd4344a3fc5fd8e1ed552d4f00f3e';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);
