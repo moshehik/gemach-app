@@ -64,7 +64,10 @@ export default async function RootLayout({ children }) {
   const docPath = requestPathname.endsWith('/') ? requestPathname.slice(0, -1) : requestPathname;
   const isPublicDoc = docPath === '/privacy' || docPath === '/terms';
   const printBare = requestPathname === '/schedule/print' || requestPathname.startsWith('/schedule/print/') || isPublicDoc;
-  const isPublicKiosk = requestPathname.startsWith('/customer-interface');
+  // /station = עמדת הלקוח הציבורית (קישור כללי, בלי התחברות; ר' lib/publicKiosk/*): פטורה מקיר ההתחברות ומוצגת ב-"בלי מעטפת" (stationBare) -
+  // בלי תפריט העובדים / סרגלים / עוזר AI - כדי שאורחת לא תראה שום דבר של הצוות. תוכן הדף נשלט ע"י דגל הגדרה (kiosk_public_link_enabled).
+  const stationBare = requestPathname === '/station' || requestPathname.startsWith('/station/');
+  const isPublicKiosk = requestPathname.startsWith('/customer-interface') || stationBare;
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
   // in, otherwise an employee can never punch in at all when require_login is on and no
@@ -325,7 +328,7 @@ export default async function RootLayout({ children }) {
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
   // שכבר נטענו למעלה (בלי שאילתה נוספת). BRAND_LOGO: העץ מכיל רק האם קיים (hasLogoSetting), לא את ה-base64.
   // שמות העובד / המחלקה / המשמרת מגיעים בלקוח מ-/api/me (כמו UserMenu), כדי לא להוסיף שאילתת DB לכל בקשה.
-  const menuTree = uiVariants.shell === 'a5' && !showLogin && !printBare
+  const menuTree = uiVariants.shell === 'a5' && !showLogin && !printBare && !stationBare
     ? buildMenuTree({
       user: isAuthenticated ? { id: authToken.value, roleId: emp ? emp.roleId : null } : null,
       roleId: emp ? emp.roleId : null,
@@ -830,12 +833,12 @@ function cpCssText(vars) {
         <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
-          {!printBare && <ClipboardDebugger data-element-name="רכיב_layout_2" />}
-          {!printBare && <DevEnvBanner data-element-name="רכיב_layout_3" />}
-          {!printBare && <PreviewModeBanner />}
-          {!printBare && <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />}
+          {!printBare && !stationBare && <ClipboardDebugger data-element-name="רכיב_layout_2" />}
+          {!printBare && !stationBare && <DevEnvBanner data-element-name="רכיב_layout_3" />}
+          {!printBare && !stationBare && <PreviewModeBanner />}
+          {!printBare && !stationBare && <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />}
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
-        {!printBare && (
+        {!printBare && !stationBare && (
           <Suspense data-element-name="רכיב_layout_5" fallback={null}>
             <PageTracker data-element-name="רכיב_layout_6" />
           </Suspense>
@@ -851,7 +854,7 @@ function cpCssText(vars) {
         {!showLogin && !printBare && isAuthenticated && <DesignPrefsSync />}
         {showLogin ? (
           <LoginGate data-element-name="רכיב_layout_7" />
-        ) : (punchBare || printBare) ? (
+        ) : (punchBare || printBare || stationBare) ? (
           <LabelsProvider>
             <PopupProvider>
               {children}

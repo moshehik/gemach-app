@@ -135,7 +135,7 @@ test('fields=kiosk: grouped items, same totals/availability as the old per-item 
   const kiosk = (await get('?limit=500&filterStatus=active&fields=kiosk')).json.data;
   assert.ok(!globalThis.__CALLS[0].args.select.items.select._count);
   assert.equal(kiosk.length, full.length);
-  // the kiosk's own algorithm (customer-interface/page.js getModelSizeInfo), run on both shapes
+  // the kiosk's own algorithm (customer-interface/LegacyKioskPage.js and components/kiosk/kioskLogic.js getModelSizeInfo), run on both shapes
   const info = (model) => {
     const sizeMap = new Map();
     model.items?.forEach((item) => {
@@ -177,7 +177,8 @@ test('fields=kiosk: warehouse/reserve items stay unusable under the default sett
 
 test('static: the catalog page and the kiosk request the slim variants; prefetch key carries the same fields param', () => {
   const read = (p) => fs.readFileSync(process.env.PROJ + '/' + p, 'utf8');
-  assert.match(read('app/customer-interface/page.js'), /api\/dresses\$\{dateQuery\}&filterStatus=active&fields=kiosk/);
+  assert.match(read('app/customer-interface/LegacyKioskPage.js'), /api\/dresses\$\{dateQuery\}&filterStatus=active&fields=kiosk/);
+  assert.match(read('app/components/kiosk/KioskA5.js'), /api\/dresses\$\{dateQuery\}&filterStatus=active&fields=kiosk/);
   assert.match(read('app/lib/prefetchRoutes.js'), /advItemDeleted: advancedFilters\.itemDeleted,[\s\S]{0,300}fields: 'summary'/);
   const page = read('app/dashboard/dresses/page.js');
   assert.match(page, /buildDressesListParams\(/);
@@ -189,6 +190,6 @@ test('static: every file that fetches the /api/dresses LIST is accounted for (a 
   const files = out.split('\n').filter(Boolean).filter((f) => /.(js|jsx|mjs|html)$/.test(f) && !f.startsWith('app/api/')).sort();
   // list consumers: dashboard/dresses (summary), customer-interface (kiosk), prefetchRoutes (summary key); the rest only mention the URL
   // in comments or call item/id/rentals/next-code routes
-  const known = ['app/customer-interface/page.js', 'app/dashboard/dresses/[id]/page.js', 'app/dashboard/dresses/[id]/print/page.js', 'app/dashboard/dresses/page.js', 'app/lib/prefetchRoutes.js', 'components/ClipboardDebugger.js', 'components/dresses/modern/ModernDressRentalsTab.js', 'components/dresses/modern/ModernNewDressWizard.js', 'components/dresses/modern/ModernDressItemsTab.js', 'components/dresses/modern/ModernDressItemModal.js', 'lib/apiCache.js', 'lib/inventory.js'];
+  const known = ['app/components/kiosk/KioskA5.js', 'app/customer-interface/LegacyKioskPage.js', 'app/dashboard/dresses/[id]/page.js', 'app/dashboard/dresses/[id]/print/page.js', 'app/dashboard/dresses/page.js', 'app/lib/prefetchRoutes.js', 'components/ClipboardDebugger.js', 'components/dresses/modern/ModernDressRentalsTab.js', 'components/dresses/modern/ModernNewDressWizard.js', 'components/dresses/modern/ModernDressItemsTab.js', 'components/dresses/modern/ModernDressItemModal.js', 'lib/apiCache.js', 'lib/inventory.js'];
   for (const f of files) assert.ok(known.includes(f), `unexpected /api/dresses consumer: ${f} - decide whether it needs fields=summary/kiosk`);
 });
