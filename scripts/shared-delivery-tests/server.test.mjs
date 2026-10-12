@@ -607,3 +607,27 @@ test('סעיף 16 - סטטוס תשלום שמור: ששולמה והחיוב ע
   assert.equal(SD.storedStatusFor('שולם', 340, 380), 'שולם', 'ממתין לזיכוי נשאר "שולם"');
   assert.equal(SD.storedStatusFor('שולם', 0, 0), 'חדש');
 });
+
+// שילוב עם תיקון #274 (applyDeliveryCharge מוסיף את חיוב המשלוח ל-Order.totalAmount ומסנכרן את הזיכוי האוטומטי): ההזמנה שמשלמת מחיר מוזל
+// מקבלת את הסכום המוזל בסכום השמור, ושמירה חוזרת (עריכת/הוספת שמלה) לא יוצרת "יתרת זכות" מדומה בגובה דמי המשלוח.
+test('#274 + משלוח משותף: סכום שמור = פריטים + משלוח (מוזל לצד שמוזל), בלי זיכוי מדומה אחרי שמירה (הוספת שמלה)', async () => {
+  const a = addOrder({ totalAmount: 300 }); // totalAmount כפי שהשאיר recalculateOrderObligations: פריטים בלבד, בלי משלוח
+  const b = addOrder({ totalAmount: 300 });
+  await saveOrder(a.orderId, { dropExisting: false });
+  await saveOrder(b.orderId, { dropExisting: false });
+  assert.equal(charge(a.orderId).amount, 80);
+  assert.equal(charge(b.orderId).amount, 40);
+  const stored = (o) => db().order.find((x) => x.orderId === o.orderId).totalAmount;
+  assert.equal(stored(a), 380);
+  assert.equal(stored(b), 340);
+  // שולם במלואו => אין שום זיכוי
+  db().paymentObligation.push({ id: 'item-a', orderId: a.orderId, amount: 300, quantity: 1, description: 'שמלה', isManual: false, isDeleted: false });
+  db().paymentObligation.push({ id: 'item-b', orderId: b.orderId, amount: 300, quantity: 1, description: 'שמלה', isManual: false, isDeleted: false });
+  pay(a.orderId, 380); pay(b.orderId, 340);
+  // "הוספת שמלה": recalc מאפס את הסכום השמור לפריטים בלבד ומוחק את חיוב המשלוח, ואז applyDeliveryCharge מחזיר אותו
+  for (const o of [a, b]) setOrder(o.orderId, { totalAmount: 300 });
+  await saveOrder(a.orderId); await saveOrder(b.orderId);
+  assert.equal(charge(b.orderId).amount, 40);
+  assert.equal(stored(b), 340);
+  assert.equal(refunds(a.orderId).length + refunds(b.orderId).length, 0, 'אין זיכוי אוטומטי מדומה');
+});

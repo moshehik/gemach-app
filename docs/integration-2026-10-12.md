@@ -116,3 +116,18 @@
 4. שני מגבילי קצב ציבוריים נפרדים (`lib/publicKiosk/rateLimit.js` ו-`lib/publicRateLimit.js`) — לא מתנגשים, אך כפולים.
 5. `KioskSwitch` קורא `ui_variant_kiosk` דרך `/api/settings`: מחשב עמדה בלי התחברות לא יוכל לקרוא אותו ויקבל תמיד את העיצוב החדש (a5); בעמדה מחוברת — כרגיל.
 6. DDL/seed שממתינים (לא הורצו): `prisma/migrations-pending/2026-10-12-customer-consent.sql` (+ `scripts/apply_customer_consent_table.js`), `scripts/station_event_table.sql`, `scripts/seed_customer_consent_settings.js`, `scripts/seed_kiosk_public_settings.js`, `scripts/seed_new_order_customer_list_filter_setting.js`; וכן `AuthThrottle` מ-#273 (`prisma/migrations-pending/2026-10-11-auth-throttle.sql`).
+
+---
+
+# שלב ב' (מיזוגי הענפים 1-8 + טלאים 01/02/04)
+
+כללי הריצה בשלב ב': אותם כללים. לכל מיזוג הורצה כל סוויטת הבדיקות שאינה תלויה ב-DB (133 משימות; אותו מארג כמו בשלב א') והושוותה לריצת הבסיס (זהה לטבלת "כשלים קיימים" שלמעלה). כל כשל חדש תוקן לפני המשך.
+
+## 11. feature/shared-delivery-discount-2026-10-12
+- קונפליקטים:
+  - `lib/pricingEngine.js` `applyDeliveryCharge`: נשמר תיקון #274 (הוספת חיוב המשלוח ל-`Order.totalAmount` + `syncPendingCreditRefund`) והוחזר גם `sharedDiscountedLegs` של המשלוח המשותף. חיוב המשלוח מחושב ב-`computeDeliveryObligationPreview` (כולל ההנחה) ולכן #274 מוסיף לסכום השמור את הסכום **המוזל**. חישוב המחיר-מחדש של המשלוח המשותף (`computeStoredTotalAfterDeliveryChange`) כבר מזהה סכום שמור "כולל משלוח" ו"בלי משלוח", ולכן תואם את #274 בשני המצבים. נוספה בדיקה (`server.test.mjs`, "#274 + משלוח משותף") שמוכיחה: סכום שמור = פריטים + משלוח (מוזל לצד שמוזל) ואין זיכוי אוטומטי מדומה אחרי "הוספת שמלה".
+  - `app/api/customers/[id]/route.js` (PUT): נשמרו גם יומן ההסכמות (consent: `consentWarning`) וגם התראות המשלוח המשותף (`sharedDelivery`) - תשובה אחת: `{ ...updatedCustomer, sharedDelivery?, consentWarning? }`. הייבואים: `getActingEmployeeId` (consent) + `reconcileAfterCustomerAddressChange`.
+  - `components/orders/modern/ModernGeneralDetails.js`: שני הייבואים (`useNoFill`, `SharedDeliveryPanel`).
+  - `app/version.json`, `package.json`: צד integrate.
+- #275 (בקשת פרטי בנק בזיכוי) ב-`settingsMetadata.js`/כרטיס ההזמנה: נמזג אוטומטית, נבדק שהמפתחות `credit_bank_*` קיימים לצד `shared_delivery_*`.
+- תיקון: משתנה `body` כפול ב-PUT של הלקוח (שם התשובה שונה ל-`respBody`).
