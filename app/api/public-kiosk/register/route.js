@@ -4,6 +4,8 @@
 import { loadPublicKioskConfig } from '@/lib/publicKiosk/config';
 import { publicJson, rateLimited, readJsonBody } from '@/lib/publicKiosk/http';
 import { loadSettingsMap, performRegistration, validateRegistration } from '@/lib/publicKiosk/registration';
+import prisma from '@/app/lib/prisma';
+import { recordRegistrationEvent } from '@/lib/stationAnalytics/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,8 @@ export async function POST(request) {
     const r = await performRegistration(v.input);
     // לא חושפים outcome - הלוג בצד השרת בלבד
     console.info('public-kiosk register outcome:', r.outcome, 'channel:', v.input.channel);
+    // מדדי המרה (/admin/station-analytics): אירוע "הרישום הושלם" עם מזהה הלקוחה הפנימי בלבד. best-effort - כשל / טבלה חסרה לא משפיעים על התשובה ללקוחה
+    if (r.customerId) await recordRegistrationEvent(prisma, { customerId: r.customerId, channel: v.input.channel, outcome: r.outcome });
     return publicJson({ ok: true });
   } catch (e) {
     console.error('public-kiosk register failed:', e && e.message ? e.message : e);

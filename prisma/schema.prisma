@@ -925,3 +925,21 @@ model DeliveryJoin {
 
   @@index([joinedToOrderId])
 }
+
+// אירועי העמדה הציבורית (/station) למדדי ההמרה של /admin/station-analytics. הטבלה נוצרת ידנית (scripts/station_event_table.sql) - לעולם לא db push.
+// הקוד ניגש אליה ב-SQL גולמי בלבד (lib/stationAnalytics/*), ולכן אין שימוש במודל Prisma הזה בזמן ריצה; ההצהרה כאן לתיעוד ולמניעת סחף סכמה.
+// type: visit | availability | form_start (אנונימיים, sidHash בלבד) | register (customerId פנימי, נכתב בשרת). dayKey = יום בישראל YYYY-MM-DD.
+model StationEvent {
+  id         String   @id @default(uuid())
+  type       String
+  channel    String // public | kiosk
+  dayKey     String
+  at         DateTime @default(now())
+  sidHash    String?
+  customerId String?
+  outcome    String?
+
+  @@unique([dayKey, type, channel, sidHash])
+  @@index([dayKey, type])
+  @@index([customerId])
+}
