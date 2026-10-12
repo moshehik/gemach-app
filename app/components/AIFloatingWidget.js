@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { isKioskBarePath } from '@/lib/shellBare';
 import SettingQuickPanel from './SettingQuickPanel';
 import GuideChips from './guide/GuideChips';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
@@ -584,7 +585,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     setShowHistory(false);
   };
 
-  if (pathname === '/customer-interface' || hideAIFeatures) {
+  if (isKioskBarePath(pathname) || hideAIFeatures) {
     return null;
   }
 

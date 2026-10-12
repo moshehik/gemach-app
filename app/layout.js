@@ -9,6 +9,7 @@ import { resolvePageAccess } from '@/lib/permissions';
 import { resolveBranchNoticeSettings } from '@/lib/branches';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings, hasBrandLogo } from '@/lib/settingsCache';
+import { isKioskBarePath } from '@/lib/shellBare';
 
 export const metadata = {
   title: 'גמ"ח שמלות - קטלוג וניהול',
@@ -37,6 +38,7 @@ import DesignPrefsSync from './components/DesignPrefsSync';
 import SharedDeliveryNoticeHost from '../components/SharedDeliveryNoticeHost';
 import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
+import HideOnKioskBare from './components/HideOnKioskBare';
 import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { readSignedDesignPrefs } from './lib/designPrefsCookie';
@@ -71,6 +73,11 @@ export default async function RootLayout({ children }) {
   // בלי תפריט העובדים / סרגלים / עוזר AI - כדי שאורחת לא תראה שום דבר של הצוות. תוכן הדף נשלט ע"י דגל הגדרה (kiosk_public_link_enabled).
   const stationBare = requestPathname === '/station' || requestPathname.startsWith('/station/');
   const isPublicKiosk = requestPathname.startsWith('/customer-interface') || stationBare;
+  // /customer-interface = עמדת הלקוח של החנות (A5 וגם הישנה): "ללא שלד האתר" כמו /station - בלי סרגל צד / תפריט עליון / באנרים / כפתורי צף של הצוות
+  // (דיווח הבעלים 12.10.2026: "קופץ התפריט הישן בצד ולמעלה"; עד אז השלד הוסתר רק אחרי נעילה, דרך body.hide-global-nav). ההחלטה בשרת, מ-x-pathname, ולכן
+  // השלד אינו נכלל כלל ב-HTML הראשוני (אין הבהוב). זה רק רינדור: העמדה נשארת פטורה מקיר ההתחברות כמו קודם (isPublicKiosk), וההרשאות נאכפות ב-API.
+  // ניווט רך אל העמדה (ה-layout לא מרונדר מחדש): ShellSwitch / HideOnKioskBare בודקים את אותו נתיב בלקוח (lib/shellBare.js); ויציאה ממנה - ניווט מלא.
+  const kioskBare = isKioskBarePath(requestPathname);
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
   // in, otherwise an employee can never punch in at all when require_login is on and no
@@ -345,7 +352,7 @@ export default async function RootLayout({ children }) {
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
   // שכבר נטענו למעלה (בלי שאילתה נוספת). BRAND_LOGO: העץ מכיל רק האם קיים (hasLogoSetting), לא את ה-base64.
   // שמות העובד / המחלקה / המשמרת מגיעים בלקוח מ-/api/me (כמו UserMenu), כדי לא להוסיף שאילתת DB לכל בקשה.
-  const menuTree = uiVariants.shell === 'a5' && !showLogin && !printBare && !stationBare
+  const menuTree = uiVariants.shell === 'a5' && !showLogin && !printBare && !stationBare && !kioskBare
     ? buildMenuTree({
       user: isAuthenticated ? { id: authToken.value, roleId: emp ? emp.roleId : null } : null,
       roleId: emp ? emp.roleId : null,
@@ -387,7 +394,8 @@ export default async function RootLayout({ children }) {
   // התאמה מדויקת לנתיב (לא תחילית גולמית): רק /punch-clock ותת-נתיביו. isPunchClock (פטור הכניסה למעלה) נשאר כמו שהיה.
   const isPunchClockPage = requestPathname === '/punch-clock' || requestPathname.startsWith('/punch-clock/');
   const punchBare = isPunchClockPage && loginVariant.useNew;
-  const lightChrome = showLogin || punchBare || printBare;
+  // העמדה תמיד בהיר (העיצוב שלה עצמאי; ערכת הנושא של עובד שהשאיר כהה / פלטה אישית לא חלים על מסך שהלקוחה רואה)
+  const lightChrome = showLogin || punchBare || printBare || kioskBare;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -850,10 +858,10 @@ function cpCssText(vars) {
         <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
-          {!printBare && !stationBare && <ClipboardDebugger data-element-name="רכיב_layout_2" />}
-          {!printBare && !stationBare && <DevEnvBanner data-element-name="רכיב_layout_3" />}
-          {!printBare && !stationBare && <PreviewModeBanner />}
-          {!printBare && !stationBare && <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />}
+          {!printBare && !stationBare && !kioskBare && <HideOnKioskBare><ClipboardDebugger data-element-name="רכיב_layout_2" /></HideOnKioskBare>}
+          {!printBare && !stationBare && !kioskBare && <HideOnKioskBare><DevEnvBanner data-element-name="רכיב_layout_3" /></HideOnKioskBare>}
+          {!printBare && !stationBare && !kioskBare && <HideOnKioskBare><PreviewModeBanner /></HideOnKioskBare>}
+          {!printBare && !stationBare && !kioskBare && <HideOnKioskBare><BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} /></HideOnKioskBare>}
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         {!printBare && !stationBare && (
           <Suspense data-element-name="רכיב_layout_5" fallback={null}>
@@ -870,10 +878,10 @@ function cpCssText(vars) {
             on load (and migrates legacy local-only prefs into the DB once). */}
         {!showLogin && !printBare && isAuthenticated && <DesignPrefsSync />}
         {/* משלוח משותף: חלון התראה גלובלי (רק כשמשלוחים פעילים; גמ"ח בלי משלוחים לא מקבל אותו) */}
-        {!showLogin && !printBare && isAuthenticated && showDeliveries && <SharedDeliveryNoticeHost />}
+        {!showLogin && !printBare && isAuthenticated && showDeliveries && <HideOnKioskBare><SharedDeliveryNoticeHost /></HideOnKioskBare>}
         {showLogin ? (
           <LoginGate data-element-name="רכיב_layout_7" />
-        ) : (punchBare || printBare || stationBare) ? (
+        ) : (punchBare || printBare || stationBare || kioskBare) ? (
           <LabelsProvider>
             <PopupProvider>
               {children}

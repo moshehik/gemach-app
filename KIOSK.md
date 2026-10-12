@@ -134,3 +134,12 @@ Tests (no DB / server): `node scripts/kiosk-public-tests/run.mjs`.
 
 הקישור הציבורי שולח שלוש ספירות אנונימיות (`POST /api/public-kiosk/event`: `visit` / `availability` / `form_start`, מזהה סשן אקראי ב-`sessionStorage`, בלי IP / User-Agent / PII), והרישום (`/register`) כותב אירוע `register` עם `customerId` פנימי.
 הכול נשמר בטבלה `StationEvent` (SQL ידני: `scripts/station_event_table.sql`, **לא הורץ בפרודקשן**; בלעדיה האיסוף מדלג והמסך מסביר). מסך הניהול, ההגדרות המדויקות של "מילאו פרטים" / "סגרו הזמנה", הפרטיות והבדיקות: [docs/station-analytics.md](docs/station-analytics.md).
+
+## No site shell (12.10.2026)
+
+`/customer-interface` (both the A5 kiosk and the frozen legacy one - same path) renders **without the site shell**: no sidebar, top bar, banners, AI / error-report floating buttons, bell or shared-delivery popup.
+- Server: `app/layout.js` derives `kioskBare` from `x-pathname` (`lib/shellBare.js`, `isKioskBarePath`) and renders only `LabelsProvider` + `PopupProvider` + page (the same branch as `/station`, `/schedule/print`), always light. Because the shell is absent from the first HTML there is no flash. The login-wall exemption (`isPublicKiosk`) is unchanged - this is rendering only, authorization stays per API route.
+- Client: the root layout is not re-rendered on a soft navigation, so `ShellSwitch` and `HideOnKioskBare` check `usePathname()` too (soft navigation from the staff menu into the kiosk).
+- Exit: "back to the system" is a **full** navigation (`window.location.assign('/')`), never `router.push` - a kiosk that was loaded bare cannot soft-navigate into a page with a shell (the layout already decided). Locked: the button opens the employee-approval dialog first.
+- `body.hide-global-nav` on lock is kept as a second layer; fullscreen / unlock / print-approval are unchanged.
+- Test: `node scripts/test_kiosk_bare.mjs`.
