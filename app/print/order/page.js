@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
+import { Shirt, Scissors, Ruler, Check, Truck } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '../../../lib/hebrewDate';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
@@ -10,6 +10,7 @@ import { printPageEventBodies } from '../../../lib/history/orderEvents';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
+import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -58,6 +59,8 @@ export default function PrintOrderPage() {
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
+  // נושא 9 (דוחות): enable_deliveries + delivery_as_item_row + ימי משלוח - המשלוח כשורת פריט עם מחיר ומועדי הלוך/חזור. null עד שההגדרות נטענו.
+  const [deliveryCfg, setDeliveryCfg] = useState(null);
   // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
   // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
   const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
@@ -109,6 +112,7 @@ export default function PrintOrderPage() {
           setEnableAlterations(false);
         }
         // 15 + 20 + 21 - הגדרות הדפסה למשלוח, מיון וסימון חסרה (כבוי = מוסתר/לא פעיל)
+        setDeliveryCfg(deliverySettingsFrom(settingsData));
         const delSetting = settingsData.find(s => s.key === 'delivery_show_in_order');
         if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
         const sortSetting = settingsData.find(s => s.key === 'print_sort_deliveries_first');
@@ -320,6 +324,8 @@ export default function PrintOrderPage() {
     // 27f278c7: מצב "נקי" רק להדפסת הזמנה בודדת (גיליונות ההכנה המרוכזים נשארים כמו שהם)
     const clean = cleanLayoutSetting && !isBatch;
     const prepCustomerNotes = prepCustomerNotesSetting && isBatch ? manualCustomerNotes(ord?.customer?.notes) : '';
+    // null להזמנה שאינה משלוח / כשהמשלוחים כבויים (הגמ"ח הראשי) - אז כל ההדפסה זהה לקודמת
+    const deliverySection = deliveryCfg ? buildDeliverySection(ord, { settings: deliveryCfg }) : null;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -403,6 +409,10 @@ export default function PrintOrderPage() {
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
+                  {/* נושא 9: מועדי המשלוח (הלוך/חזור) והעלות - העלות רק כשהמשלוח אינו מוצג כשורת פריט (שם המחיר מופיע) */}
+                  {showDeliveryInPrint && deliverySection && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back' || r.key === 'cost').map(r => (
+                    <Fragment key={r.key}>{r.label}: {r.value}<br /></Fragment>
+                  ))}
                   {!ord.isAbroad ? (
                     <>תאריך אירוע: {ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין')}</>
                   ) : (
@@ -491,6 +501,18 @@ export default function PrintOrderPage() {
                 </Fragment>
               );
             })
+          )}
+          {/* נושא 9 (delivery_as_item_row): המשלוח כשורה בטבלת הפריטים - לא פריט מלאי (בלי ברקוד/מידה), המחיר הוא חיוב המשלוח שכבר בסה"כ לחיוב */}
+          {deliverySection && deliverySection.itemRow && (
+            <tr className="delivery-item-row" style={{ background: '#f4f4f4' }}>
+              <td style={{ fontWeight: '600', color: '#333' }}>
+                <Truck size={13} style={{ verticalAlign: '-2px' }} /> {deliverySection.itemRow.label}
+                {deliverySection.itemRow.detail && <div style={{ fontWeight: 400, fontSize: '0.85em', color: '#777', marginTop: 2 }}>{deliverySection.itemRow.detail}</div>}
+              </td>
+              <td colSpan={colCount - 1} style={{ fontWeight: '700', whiteSpace: 'nowrap' }}>
+                {deliverySection.itemRow.amount !== null && deliverySection.itemRow.amount !== undefined ? `₪${deliverySection.itemRow.amount}` : '-'}
+              </td>
+            </tr>
           )}
         </tbody>
         <tbody>
