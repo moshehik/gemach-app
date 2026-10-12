@@ -96,7 +96,10 @@
 | X ימים לפני האירוע | `pickupReminder` (כמה תזכורות); ה-cron היומי |
 | X ימים אחרי האירוע/ההחזרה | `lateReturnReminder` (אחרי תאריך ההחזרה הצפוי) |
 | שעה ביום / X דקות אחרי | **לא נתמך**: Vercel מריץ cron אחד ביום (~08:30 שעון ישראל) + שני cronים של סוכן הענפים (~17:30, ~00:30). לא הוספנו תשתית תורים. ההגדרות הישנות `pickup_reminder_hour` / `daily_manager_report_hour` **אינן נקראות בקוד** (הן היו כך גם לפני) |
-| דיוור מתוזמן | נשמר כמסמך; נשלח בהרצה הקרובה אחרי המועד (3 ריצות ביום: מה-cron היומי ומ-cron סוכן הענפים). לדיוק של דקות: לקרוא ל-`/api/cron/email-campaigns` מ-GitHub Actions כל 15 דקות (לא הוגדר; החלטה פתוחה) |
+| דיוור מתוזמן (תאריך עברי + שעה) | **שעה מדויקת בדפוס הצינתוקים של print-center**: מתזמן Google Apps Script ([docs/gas-campaign-scheduler.gs](gas-campaign-scheduler.gs)) - בעת התזמון האתר רושם אצלו טריגר חד-פעמי, ובדקה שנבחרה הוא קורא פעם אחת ל-`/api/cron/email-campaigns` (Bearer `EMAIL_SCHEDULER_SECRET`); המשך אוטומטי בעוד דקה לדיוור גדול; ניסיונות חוזרים בכשל. claim אטומי (compare-and-swap) מונע שליחה כפולה. **דורש הפעלה חד-פעמית** (סקריפט + `EMAIL_SCHEDULER_URL/SECRET` ב-Vercel, ר' [email-center-followups.md](email-center-followups.md)); בלעדיה - נשלח בהרצת ה-cron הקרובה (~08:30 / ~17:30 / ~00:30) |
+
+### איך מתוזמנים הצינתוקים היום (ממצא, ועליו הדפוס)
+במערכת print-center (`C:\wt\wt-tts-voice`, `lib/scheduledBroadcast.js`; פרויקט Apps Script נפרד `apps-script-scheduler`, מחוץ לריפו): הרב קובע בטלפון שידור מתוזמן -> נשמרת שורה `ScheduledBroadcast` + האתר שולח למתזמן `{secret, action:'schedule', id, runAt}` -> Apps Script יוצר טריגר חד-פעמי לאותה שעה (נמדד: איחור של ~16 שניות) -> בשעה הזו קורא פעם אחת ל-`/api/cron/scheduled-broadcasts` (Bearer `CRON_SECRET`/`SCHEDULER_SECRET`) -> `runDueScheduledBroadcasts` תופס שורה ב-`updateMany` אטומי ומריץ. רשתות ביטחון: כל בקשת webhook טלפונית וה-cron היומי של Vercel. אין GitHub Actions ואין שירות cron חיצוני אחר. שיפורים שהוספנו אצלנו: הסוד ורשימת האתרים המותרים ב-Script Properties (בטבלת המקור הסוד כתוב בקוד), סקריפט אחד לשני הגמ"חים, והמשך אוטומטי לדיוור גדול.
 
 ## 4. דיוורים - בטיחות ומגבלות
 

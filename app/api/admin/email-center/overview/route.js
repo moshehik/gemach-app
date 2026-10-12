@@ -3,7 +3,7 @@ import { gateEmailAdmin } from '@/lib/emailCenterAuth';
 import { loadAdminOverview } from '@/lib/emailConfig';
 import { listEmailCatalog, EMAIL_CATEGORIES } from '@/lib/emailCatalog';
 import { EXTRA_EMAILS, FIXED_FIELDS, SCHEDULE_MODE_LABELS } from '@/lib/emailRegistry';
-import { CAMPAIGN_VARS } from '@/lib/emailCampaign';
+import { CAMPAIGN_VARS, schedulerConfigured } from '@/lib/emailCampaign';
 import { isDryRun } from '@/lib/mailer';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +20,7 @@ export async function GET() {
     }));
     return NextResponse.json({
       dryRun: isDryRun(),
+      schedulerConfigured: schedulerConfigured(),
       categories: EMAIL_CATEGORIES,
       catalog,
       emails: overview.emails,

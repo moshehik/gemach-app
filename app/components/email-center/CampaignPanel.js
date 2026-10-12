@@ -29,7 +29,7 @@ const todayIso = () => {
 const hebrewOf = (iso) => { try { return iso ? getHebrewDateString(new Date(`${iso}T12:00:00`)) : ''; } catch { return ''; } };
 const kb = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
 
-export default function CampaignPanel({ campaignVars, dryRun, cronNote, root, toast, setError }) {
+export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedulerConfigured, root, toast, setError }) {
   // --- תוכן ---
   const [subject, setSubject] = useState('');
   const [heading, setHeading] = useState('');
@@ -171,7 +171,9 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, root, to
     const { id, total, status } = created.data;
     if (status === 'scheduled') {
       setBusy(false);
-      toast('הדיוור תוזמן', `${total} נמענים · ${scheduleInfo()}`);
+      const exact = created.data.scheduler && created.data.scheduler.exact;
+      toast('הדיוור תוזמן', `${total} נמענים · ${scheduleInfo()}${exact ? ' · שליחה מדויקת' : ' · יישלח בהרצה הקרובה אחרי המועד'}`);
+      if (created.data.scheduler && created.data.scheduler.error) setError({ title: 'הרישום במתזמן המדויק נכשל', text: `${created.data.scheduler.error}. הדיוור נשמר ויישלח בהרצה הקרובה אחרי המועד (cron).` });
       loadHistory();
       return;
     }
@@ -365,7 +367,12 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, root, to
                     <span>:</span>
                     <select className="inp" style={{ width: 90 }} value={schedMin} aria-label="דקות" onChange={(e) => setSchedMin(e.target.value)}>{MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}</select>
                   </div>
-                  <small className="ec-hint">מועד השליחה: {scheduleInfo()} (שעון ישראל). {cronNote}</small>
+                  <small className="ec-hint">
+                    מועד השליחה: {scheduleInfo()} (שעון ישראל).{' '}
+                    {schedulerConfigured
+                      ? 'הדיוור יישלח בדקה שנבחרה (מתזמן Apps Script, טריגר חד-פעמי לכל דיוור).'
+                      : `המתזמן המדויק עדיין לא הופעל באתר הזה, ולכן הדיוור יישלח בהרצה הקרובה אחרי המועד. ${cronNote}`}
+                  </small>
                 </div>
               ) : null}
               <div className="ec-actions">
@@ -392,7 +399,7 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, root, to
                     {history.campaigns.map((c) => (
                       <tr key={c.id}>
                         <td>{c.subject}</td>
-                        <td><span className="chip">{STATUS_LABEL[c.status] || c.status}</span></td>
+                        <td><span className="chip">{STATUS_LABEL[c.status] || c.status}</span>{c.status === 'scheduled' ? <small className="faint"> {c.exact ? 'שעה מדויקת' : 'בהרצת cron'}</small> : null}</td>
                         <td>{c.total}</td>
                         <td>{c.sent}{c.failed ? ` (נכשלו ${c.failed})` : ''}{c.skipped ? ` (דולגו ${c.skipped})` : ''}</td>
                         <td>{c.scheduledAt ? `${hebrewOf(c.scheduledAt.slice(0, 10))} ${new Date(c.scheduledAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : hebrewOf(String(c.createdAt).slice(0, 10))}</td>

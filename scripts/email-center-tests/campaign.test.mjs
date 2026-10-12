@@ -36,6 +36,7 @@ globalThis.__db = {
       findUnique: async ({ where }) => store.get(where.key) || null,
       findMany: async ({ where }) => [...store.values()].filter((r) => !where?.key?.startsWith || r.key.startsWith(where.key.startsWith)),
       deleteMany: async ({ where }) => { store.delete(where.key); return { count: 1 }; },
+      updateMany: async ({ where, data }) => { const r = store.get(where.key); if (!r || (where.value !== undefined && r.value !== where.value)) return { count: 0 }; store.set(where.key, { ...r, ...data }); return { count: 1 }; },
       update: async ({ where, data }) => { const r = { ...store.get(where.key), ...data }; store.set(where.key, r); return r; },
     },
     customer: {
@@ -286,6 +287,62 @@ await t('buildDraftCfg: טיוטה מאומתת כמו שמירה', async () => 
   assert.equal(ok.ok, true); assert.equal(ok.cfg.texts.closing, 'היי {{customerName}}');
   const bad = await CFG.buildDraftCfg('pickupReminder', { texts: { closing: '{{nope}}' } });
   assert.equal(bad.ok, false); assert.equal(bad.key, 'closing');
+});
+
+// ---------- מתזמן Apps Script (שעה מדויקת) ----------
+await t('מתזמן: בלי env מדלגים (המסמך נשאר מתוזמן, exact=false)', async () => {
+  delete process.env.EMAIL_SCHEDULER_URL; delete process.env.EMAIL_SCHEDULER_SECRET;
+  assert.equal(C.schedulerConfigured(), false);
+  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() + 3600e3) });
+  assert.equal(r.status, 'scheduled'); assert.equal(r.scheduler.exact, false);
+  assert.equal((await C.listCampaigns()).find((c) => c.id === r.id).exact, false);
+});
+
+await t('מתזמן: עם env נרשם טריגר {schedule,id,runAt,site}; ביטול שולח cancel; כשל רישום לא מכשיל את התזמון', async () => {
+  process.env.EMAIL_SCHEDULER_URL = 'https://script.google.com/macros/s/TEST/exec'; process.env.EMAIL_SCHEDULER_SECRET = 'sched-secret-test';
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { const body = JSON.parse(init.body); calls.push({ url, body }); return { status: 200, text: async () => JSON.stringify(body.action === 'schedule' ? { ok: true, triggerId: 'trig-1' } : { ok: true, cancelled: true }) }; };
+  try {
+    assert.equal(C.schedulerConfigured(), true);
+    const at = new Date(Date.now() + 2 * 3600e3);
+    const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    assert.equal(r.scheduler.exact, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://script.google.com/macros/s/TEST/exec');
+    assert.deepEqual({ ...calls[0].body, secret: undefined }, { secret: undefined, action: 'schedule', id: r.id, runAt: at.toISOString(), site: ORIGIN });
+    assert.equal(calls[0].body.secret, 'sched-secret-test');
+    assert.equal((await C.loadCampaign(r.id)).scheduler.triggerId, 'trig-1');
+    await C.cancelCampaign(r.id);
+    assert.equal(calls[1].body.action, 'cancel'); assert.equal(calls[1].body.id, r.id);
+    // כשל רישום (תשובה לא תקינה) - התזמון נשמר, exact=false + שגיאה
+    globalThis.fetch = async () => ({ status: 500, text: async () => '<html>error</html>' });
+    const bad = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    assert.equal(bad.status, 'scheduled'); assert.equal(bad.scheduler.exact, false); assert.match(bad.scheduler.error, /תשובה לא תקינה/);
+    // רשת נפלה
+    globalThis.fetch = async () => { throw new Error('network down'); };
+    const down = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    assert.equal(down.status, 'scheduled'); assert.equal(down.scheduler.exact, false);
+  } finally { globalThis.fetch = realFetch; delete process.env.EMAIL_SCHEDULER_URL; delete process.env.EMAIL_SCHEDULER_SECRET; }
+});
+
+await t('claim אטומי: שתי ריצות במקביל על אותו דיוור - כל נמען מקבל פעם אחת', async () => {
+  customers.get(U(2)).marketingConsent = true;
+  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
+  M.clearDryRunOutbox();
+  const [a, b] = await Promise.all([C.sendCampaignChunk(r.id, { limit: 5 }), C.sendCampaignChunk(r.id, { limit: 5 })]);
+  const out = M.getDryRunOutbox();
+  const to = out.map((x) => x.to).sort();
+  assert.deepEqual(to, [...new Set(to)], 'כפילות נמען');
+  assert.equal(a.sent + b.sent, 2);
+  assert.ok(a.busy || b.busy, 'אחת הריצות חייבת להיות busy');
+});
+
+await t('שער הסוד של /api/cron/email-campaigns מקבל CRON_SECRET וגם EMAIL_SCHEDULER_SECRET (בדיקה סטטית)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../../app/api/cron/email-campaigns/route.js', import.meta.url), 'utf8');
+  assert.ok(src.includes('process.env.CRON_SECRET') && src.includes('process.env.EMAIL_SCHEDULER_SECRET') && src.includes('allowed.includes(secret)'));
+  assert.ok(src.includes('more') );
 });
 
 // ---------- rate limit ----------

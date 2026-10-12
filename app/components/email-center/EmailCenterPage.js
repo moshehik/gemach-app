@@ -305,7 +305,7 @@ export default function EmailCenterPage() {
                   <FixedFieldsPanel key={ver} fixed={data.fixed} onReload={load} askResetAll={() => setAskResetFixed(true)} toast={showToast} setError={setErrorBanner} />
                 ) : null}
                 {tab === 'campaigns' ? (
-                  <CampaignPanel campaignVars={data.campaignVars} dryRun={data.dryRun} cronNote={data.cronSlotsNote} root={portalRoot} toast={showToast} setError={setErrorBanner} />
+                  <CampaignPanel campaignVars={data.campaignVars} dryRun={data.dryRun} cronNote={data.cronSlotsNote} schedulerConfigured={data.schedulerConfigured} root={portalRoot} toast={showToast} setError={setErrorBanner} />
                 ) : null}
                 {tab === 'tools' ? renderToolsTab() : null}
               </section>

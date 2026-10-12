@@ -44,7 +44,7 @@ export async function POST(request) {
       input: body && body.input, filters: (body && body.filters) || {}, origin: requestOrigin(request),
       employeeId: gate.employee.id, mode, scheduledAt,
     });
-    return r.ok ? NextResponse.json({ success: true, id: r.id, total: r.total, status: r.status }) : NextResponse.json({ error: r.error }, { status: 400 });
+    return r.ok ? NextResponse.json({ success: true, id: r.id, total: r.total, status: r.status, scheduler: r.scheduler || null }) : NextResponse.json({ error: r.error }, { status: 400 });
   } catch (e) {
     console.error('email-center campaign create failed', e);
     return NextResponse.json({ error: e.message && /AUTH_SECRET/.test(e.message) ? e.message : 'שגיאה ביצירת הדיוור' }, { status: 500 });
