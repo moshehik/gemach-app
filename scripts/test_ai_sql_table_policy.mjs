@@ -138,7 +138,7 @@ const common = read('lib/ai/aiCommon.js');
 t('chat + statistics run the table guard right after assertReadOnlySelect, with the caller tier', () => {
   for (const [name, src] of [['chat', chat], ['statistics', stats]]) {
     assert.match(src, /assertSqlTables\([a-z]+, tablesForTier\(aiTierForRole\(aiRoleId\)\)\)/, `${name}: guard missing`);
-    assert.match(src, /roleId: aiRoleId \} = await loadEmployeeAccess/, `${name}: role not read from loadEmployeeAccess`);
+    assert.match(src, /roleId: aiRoleId(, employeeId: aiEmployeeId)? \} = await loadEmployeeAccess/, `${name}: role not read from loadEmployeeAccess`);
     const guards = (src.match(/assertSqlTables\(/g) || []).length;
     const reads = (src.match(/assertReadOnlySelect\(/g) || []).length;
     assert.equal(guards, reads, `${name}: every assertReadOnlySelect needs its table guard`);
