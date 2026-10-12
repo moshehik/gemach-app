@@ -61,7 +61,7 @@ function Phone({ value }) {
 
 // הרחבת השורה (היסטוריה 26, hdet - המיקום שאושר ב-B05/B06/B07): פירוט הפריטים (דגם / מידה / מיקום / בתיקון),
 // טלפונים, כתובת, הערות. נבנית רק כשהשורה פתוחה.
-function RowDetails({ stage, row }) {
+function RowDetails({ stage, row, onBarcodes }) {
   const items = row.items || [];
   const phones = [row.customer?.phone1, row.customer?.phone2].filter(Boolean);
   const addr = formatAddress(row.address);
@@ -91,6 +91,11 @@ function RowDetails({ stage, row }) {
         ) : null}
         {stage.showAddress ? <DetailRow label="כתובת">{addr || 'חסרה כתובת'}</DetailRow> : null}
         {row.branch ? <DetailRow label="סניף">{row.branch}{row.pickupBranch && row.pickupBranch !== row.branch ? ' · איסוף: ' + row.pickupBranch : ''}</DetailRow> : null}
+        {row.barcodeInfo && onBarcodes ? (
+          <DetailRow label="ברקודים">
+            <button type="button" className="btn ghost" onClick={() => onBarcodes(stage, row)}><ScheduleIcon name="scan" />ניהול ברקודים / שחרור</button>
+          </DetailRow>
+        ) : null}
         {row.notes ? <DetailRow label="הערות">{row.notes}</DetailRow> : null}
         {row.internalNotes ? (
           <DetailRow label="הערה פנימית">
@@ -154,7 +159,7 @@ function StageRow({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
         </div>
         <GoLink orderId={row.orderId} />
       </div>
-      {open ? <RowDetails stage={stage} row={row} /> : null}
+      {open ? <RowDetails stage={stage} row={row} onBarcodes={onBarcodes} /> : null}
     </article>
   );
 }

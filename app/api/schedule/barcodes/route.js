@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
-import { registerBarcode, releaseBarcode, getBarcodeState, BarcodeError } from '@/lib/schedule/barcodeScan';
+import { registerBarcode, releaseBarcode, releaseAllBarcodes, getBarcodeState, BarcodeError } from '@/lib/schedule/barcodeScan';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
@@ -19,7 +19,10 @@ const SOURCES = ['schedule_dialog', 'schedule_scan'];
 //            -> { status:'registered'|'taken'|'already'|'ambiguous', item, items, summary, handover? }
 //            שגיאות: 400 invalid_format, 404 order_not_found / unknown_barcode / not_in_order, 409 order_closed / feature_off / stage_mismatch / mode_changed /
 //            dress_unavailable / reserved_location / taken_elsewhere / prepped_elsewhere / race / invalid_choice (תמיד { error, code, ...extra })
+//          הקלדה ידנית (שמלה בלי תווית): manualSecond (הברקוד בהקלדה שנייה) + manualSigned:true; אישור מנהלת (דגם/מידה שונים, או ברקוד רשום בהכנה בהזמנה אחרת):
+//          overridePin (+overrideEmployeeId). תשובת סירוב עם { needsApproval:'mismatch'|'elsewhere' } / { canManual:true } אומרת לחלונית איזו הצעה להציג.
 //   DELETE ?orderId=&itemId=                   -> ביטול רישום של פריט שעוד לא נלקח
+//   DELETE ?orderId=&all=1                     -> שחרור כל הרישומים של ההזמנה (אי-הגעה), רק פריטים שלא נלקחו
 // שער: אותו דפוס כמו /api/schedule/marks (checkAuth + page:schedule + עובדת מחוברת).
 async function gate() {
   if (!(await checkAuth())) return { res: NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE }) };
@@ -76,6 +79,8 @@ export async function POST(request) {
       dayKey: typeof b.dayKey === 'string' ? b.dayKey : null,
       itemId: typeof b.itemId === 'string' && b.itemId ? b.itemId.slice(0, 64) : null,
       intent,
+      manual: typeof b.manualSecond === 'string' ? { second: b.manualSecond.slice(0, 40), signed: b.manualSigned === true } : null,
+      override: typeof b.overridePin === 'string' && b.overridePin ? { pin: b.overridePin.slice(0, 64), employeeId: typeof b.overrideEmployeeId === 'string' && b.overrideEmployeeId ? b.overrideEmployeeId.slice(0, 64) : undefined } : null,
       user: g.user,
       source: SOURCES.includes(b.source) ? b.source : 'schedule_dialog',
     });
@@ -100,6 +105,9 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     const orderId = toOrderId(searchParams.get('orderId'));
     const itemId = String(searchParams.get('itemId') || '').slice(0, 64);
+    if (orderId && searchParams.get('all') === '1') {
+      return NextResponse.json({ ok: true, ...(await releaseAllBarcodes({ orderId, user: g.user })) }, { headers: NO_STORE });
+    }
     if (!orderId || !itemId) return NextResponse.json({ error: 'נתונים חסרים' }, { status: 400, headers: NO_STORE });
     return NextResponse.json({ ok: true, ...(await releaseBarcode({ orderId, itemId, user: g.user })) }, { headers: NO_STORE });
   } catch (error) {

@@ -49,6 +49,12 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
   const [status, setStatus] = useState(null); // { kind:'ok'|'error', text }
   const [options, setOptions] = useState(null); // ambiguous: { barcode, items:[...] }
   const [done, setDone] = useState(false);
+  // חריגים (החלטות הבעלים 12.10.2026): panel = { kind:'manual', barcode } הקלדה ידנית של שמלה בלי תווית | { kind:'approve', barcode, reason, options } אישור מנהלת בסיסמה
+  const [panel, setPanel] = useState(null);
+  const [manualSecond, setManualSecond] = useState('');
+  const [manualSigned, setManualSigned] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pickItem, setPickItem] = useState('');
   const inputRef = useRef(null);
   const yesRef = useRef(null);
   const changed = useRef(false);
@@ -83,6 +89,7 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
     busyRef.current = false;
     setBusy(false);
     setState(null); setStatus(null); setOptions(null); setCode(''); setDone(false); setLoadError('');
+    setPanel(null); setManualSecond(''); setManualSigned(false); setPin(''); setPickItem('');
     changed.current = false;
     returnTo.current = typeof document !== 'undefined' ? document.activeElement : null;
     load().then(focusInput);
@@ -102,7 +109,7 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
     return () => window.removeEventListener('keydown', onKey, true);
   }, [open, close]);
 
-  const submit = useCallback(async (raw, itemId = null) => {
+  const submit = useCallback(async (raw, itemId = null, extra = null) => {
     const barcode = String(raw || '').trim();
     if (!barcode || !target || busyRef.current) return;
     busyRef.current = true;
@@ -113,15 +120,20 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
       const st = stateRef.current;
       const r = await api('POST', '/api/schedule/barcodes', {
         orderId: target.orderId, stageKey: target.stageKey, barcode, dayKey: target.dayKey, itemId: itemId || undefined,
-        intent: st && st.intent ? st.intent : undefined, source: 'schedule_dialog',
+        intent: st && st.intent ? st.intent : undefined, source: 'schedule_dialog', ...(extra || {}),
       });
       if (g !== gen.current) return; // החלונית עברה להזמנה אחרת בזמן הבקשה - התשובה לא נוגעת בה
       if (!r.ok) {
         const j = r.json;
         setStatus({ kind: 'error', text: j.error || ERROR_FALLBACK });
         if (j.code === 'mode_changed' || j.code === 'race') await load();
+        // ברקוד שלא קיים במאגר: הצעת הקלדה ידנית; דגם/מידה שונים או ברקוד רשום בהכנה בהזמנה אחרת: בקשת אישור מנהלת בסיסמה
+        if (j.needsApproval) { setPanel({ kind: 'approve', barcode, reason: j.needsApproval, options: j.options || [] }); setPickItem((j.options && j.options.length === 1) ? j.options[0].orderItemId : ''); }
+        else if (j.canManual) setPanel({ kind: 'manual', barcode });
+        else if (j.code !== 'override_rejected' && j.code !== 'manual_mismatch' && j.code !== 'manual_unsigned') setPanel(null);
         return;
       }
+      setPanel(null); setManualSecond(''); setManualSigned(false);
       const j = r.json;
       if (j.status === 'ambiguous') {
         setOptions({ barcode, items: j.options || [] });
@@ -146,6 +158,7 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
     } catch {
       if (g === gen.current) setStatus({ kind: 'error', text: 'אין חיבור לשרת - הברקוד לא נשמר. נסו שוב.' });
     } finally {
+      setPin(''); // הסיסמה לא נשארת בזיכרון הרכיב אחרי שימוש
       if (g === gen.current) {
         busyRef.current = false;
         setBusy(false);
@@ -154,6 +167,27 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
       }
     }
   }, [target, load, onProgress, onClose, focusInput]);
+
+  // אי-הגעה: שחרור כל הרישומים של ההזמנה בלחיצה אחת (רק פריטים שלא נלקחו)
+  const releaseAll = useCallback(async () => {
+    if (!target || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    const g = gen.current;
+    try {
+      const r = await api('DELETE', `/api/schedule/barcodes?orderId=${encodeURIComponent(target.orderId)}&all=1`);
+      if (g !== gen.current) return;
+      if (!r.ok) { setStatus({ kind: 'error', text: r.json.error || 'השחרור נכשל' }); return; }
+      changed.current = true;
+      setState((prev) => ({ ...(prev || {}), items: r.json.items, summary: r.json.summary }));
+      setStatus({ kind: 'ok', text: r.json.releasedCount ? 'שוחררו ' + r.json.releasedCount + ' רישומים - השמלות פנויות להזמנות אחרות' : 'אין רישומים לשחרר' });
+      if (onProgress) onProgress({ orderId: target.orderId, stageKey: target.stageKey, summary: r.json.summary, gate: (stateRef.current || {}).gate, when: (stateRef.current || {}).when });
+    } catch {
+      if (g === gen.current) setStatus({ kind: 'error', text: 'אין חיבור לשרת - לא שוחרר' });
+    } finally {
+      if (g === gen.current) { busyRef.current = false; setBusy(false); focusInput(); }
+    }
+  }, [target, onProgress, focusInput]);
 
   // קודים שנסרקו בשורת הסריקה בציר בזמן שהחלון פתוח
   useEffect(() => {
@@ -248,6 +282,41 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
             {!loadError && !status && !state ? <span className="lz-bc-hint">טוען...</span> : null}
           </div>
 
+          {panel && panel.kind === 'manual' ? (
+            <div className="lz-bc-panel" role="group" aria-label="הקלדה ידנית של ברקוד">
+              <b>שמלה בלי תווית?</b>
+              <small>הברקוד {panel.barcode} לא קיים במאגר. אפשר להקליד אותו ידנית (פעמיים) - המנהלות יקבלו התראה.</small>
+              <input className="inp" dir="ltr" inputMode="numeric" autoComplete="off" aria-label="הקלדה חוזרת של הברקוד" placeholder="הקלידו שוב את הברקוד" value={manualSecond} onChange={(e) => setManualSecond(e.target.value)} />
+              <label className="lz-bc-chk"><input type="checkbox" checked={manualSigned} onChange={(e) => setManualSigned(e.target.checked)} /> השמלה אכן ברשותי</label>
+              <div className="lz-bc-btns">
+                <button type="button" className="btn primary" disabled={busy || !manualSecond.trim() || !manualSigned} onClick={() => submit(panel.barcode, null, { manualSecond, manualSigned })}>שמור ידנית</button>
+                <button type="button" className="btn ghost" onClick={() => { setPanel(null); focusInput(); }}>ביטול</button>
+              </div>
+            </div>
+          ) : null}
+
+          {panel && panel.kind === 'approve' ? (
+            <div className="lz-bc-panel" role="group" aria-label="אישור מנהלת">
+              <b>{panel.reason === 'elsewhere' ? 'הברקוד כבר רשום בהכנה להזמנה אחרת' : 'הדגם או המידה שונים ממה שהוזמן'}</b>
+              <small>ההמשך דורש אישור מנהלת בסיסמה. המנהלות יקבלו התראה.</small>
+              {panel.reason === 'mismatch' ? (
+                <div className="lz-det">
+                  {panel.options.map((o) => (
+                    <label className="li" key={o.orderItemId}>
+                      <input type="radio" name="lz-bc-pick" checked={pickItem === o.orderItemId} onChange={() => setPickItem(o.orderItemId)} />
+                      <div className="t"><b>{itemLabel(o)}</b><small>שייך את הברקוד לפריט הזה</small></div>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+              <input className="inp" type="password" autoComplete="new-password" data-lpignore="true" aria-label="סיסמת מנהלת" placeholder="סיסמת מנהלת" value={pin} onChange={(e) => setPin(e.target.value)} />
+              <div className="lz-bc-btns">
+                <button type="button" className="btn primary" disabled={busy || !pin || (panel.reason === 'mismatch' && !pickItem)} onClick={() => submit(panel.barcode, panel.reason === 'mismatch' ? pickItem : null, { overridePin: pin })}>אשר והמשך</button>
+                <button type="button" className="btn ghost" onClick={() => { setPanel(null); setPin(''); focusInput(); }}>ביטול</button>
+              </div>
+            </div>
+          ) : null}
+
           {options ? (
             <div className="lz-det" aria-label="בחירת פריט">
               {options.items.map((o) => (
@@ -280,6 +349,12 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
             ))}
             {state && !items.length ? <div className="lz-more">אין פריטים פעילים בהזמנה</div> : null}
           </div>
+
+          {items.some((it) => it.registered && !it.taken) ? (
+            <button type="button" className="btn ghost lz-bc-relall" disabled={busy || done} onClick={releaseAll} data-tip="לשחרר את כל הרישומים של ההזמנה (למשל כשהלקוחה לא הגיעה)">
+              <ScheduleIcon name="undo" />שחרור כל הרישומים (אי-הגעה)
+            </button>
+          ) : null}
 
           <div className="dbtns">
             <button ref={yesRef} type="button" className="btn primary lg block" disabled={!complete || busy || done || !onMarkReady} onClick={markReady}>

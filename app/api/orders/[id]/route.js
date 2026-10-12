@@ -80,7 +80,7 @@ import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
 import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
-import { registeredByScheduleIds } from '@/lib/schedule/barcodeData';
+import { registeredByScheduleIds, releaseUntakenBarcodes } from '@/lib/schedule/barcodeData';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -800,7 +800,8 @@ async function putOrder(request, { params }, claims) {
               // בהגדרה פעילה הברקוד נקבע רק במסלולי הרישום/הלקיחה (בדיקות כפילות, יומן): שמירת הזמנה לא משנה ברקוד רשום ולא מקצה ברקוד חדש מעותק ישן של הכרטיס
               const hadRegistered = !!(stored.barcode && String(stored.barcode).trim() !== '');
               normalizedBarcode = undefined;
-              if (hadRegistered && !stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted))) normalizedBarcode = null;
+              // רישום שלא נלקח מתבטל גם כשהפריט עצמו מבוטל (שחרור אוטומטי, כמו בביטול הזמנה)
+              if (hadRegistered && !stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted) || (nowDeleted && !stored.isDeleted))) normalizedBarcode = null;
             }
             // Prisma's @updatedAt stamps this row's updatedAt on *any* update() call, even one
             // that changes nothing - and orderItemEditWindow.js's 15-minute full-edit lock reads
@@ -1308,6 +1309,16 @@ export async function DELETE(request, { params }) {
         ]
       });
     });
+
+    // ברקוד בלו״ז: ביטול הזמנה משחרר אוטומטית את הברקודים שנרשמו (בהכנה) ועוד לא נלקחו - השמלות חוזרות להיות פנויות להזמנה אחרת, וביומן נרשם מי/למה.
+    // רק כשההגדרה פעילה להזמנה; כשל כאן לא מפיל את הביטול (הפריטים ממילא מחוקים ולכן לא נחשבים מחזיקים בברקוד).
+    try {
+      if (await barcodeFeatureFor(parsedOrderId)) {
+        await releaseUntakenBarcodes({ orderId: parsedOrderId, note: `שוחרר אוטומטית בביטול הזמנה #${parsedOrderId}`, includeDeleted: true });
+      }
+    } catch (releaseFailure) {
+      console.error(`Order ${parsedOrderId}: releasing registered barcodes on cancel failed:`, releaseFailure);
+    }
 
     // R49 (W2b, סקירה סעיף 4): הזמנה שבוטלה יוצאת מהמשלוח - שורת ההצטרפות שלה נמחקת, ואם היא שורש עם מצטרפים הם משוחררים וחיוב
     // המשלוח שלהם מחושב מחדש (מחיר מלא). כשל כאן לא מפיל את הביטול. טבלה חסרה (DDL-1) = no-op.

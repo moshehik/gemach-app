@@ -217,12 +217,13 @@ export function useStageMarks({ data, setData, refresh = null, onNeedBarcodes = 
       const n = (res.counts && res.counts.marked) || 0;
       const skippedList = res.skipped || [];
       const needBarcode = skippedList.filter((s) => s.reason === 'needs_barcode').length; // חסר ברקוד: לא סומנו (ברקוד בלו״ז)
-      const skipped = skippedList.length - needBarcode;
+      const needReturn = skippedList.filter((s) => s.reason === 'needs_return_scan').length; // שמלות שטרם נסרקו בהחזרה
+      const skipped = skippedList.length - needBarcode - needReturn;
       const remaining = res.remaining || 0; // תקרת "הכל בוצע" לשלב (60 בהחזרה ידנית) - לחיצה נוספת ממשיכה
       say(
-        n && !remaining && !needBarcode ? 'כל "' + stage.label + '" סומנו כבוצעו' : n ? 'חלק מ"' + stage.label + '" סומנו' : 'לא סומן דבר',
-        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : '') + (needBarcode ? ' · ' + needBarcode + ' לא סומנו (חסר ברקוד)' : '') + (remaining ? ' · ' + remaining + ' נותרו - לחצו שוב על "הכל בוצע"' : ''),
-        n && !remaining && !needBarcode ? 'ok' : 'warn',
+        n && !remaining && !needBarcode && !needReturn ? 'כל "' + stage.label + '" סומנו כבוצעו' : n ? 'חלק מ"' + stage.label + '" סומנו' : 'לא סומן דבר',
+        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : '') + (needBarcode ? ' · ' + needBarcode + ' לא סומנו (חסר ברקוד)' : '') + (needReturn ? ' · ' + needReturn + ' לא סומנו (שמלות שטרם נסרקו בהחזרה)' : '') + (remaining ? ' · ' + remaining + ' נותרו - לחצו שוב על "הכל בוצע"' : ''),
+        n && !remaining && !needBarcode && !needReturn ? 'ok' : 'warn',
       );
       return true;
     } catch (e) {

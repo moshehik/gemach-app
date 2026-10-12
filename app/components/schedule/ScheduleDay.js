@@ -215,6 +215,8 @@ export default function ScheduleDay({
     const c = classifyScan(raw);
     if (c.kind === 'none') { say('הקוד לא מזוהה', c.reason === 'empty' ? 'לא נסרק קוד' : 'סרקו קוד הזמנה מהדף (למשל PRP-40113) או ברקוד שמלה', 'warn'); return; }
     if (c.kind === 'dress') {
+      // ברקוד שמלה דורש שהזנת ברקוד בלו״ז מופעלת בהגדרות (settings.barcodeEntry נשלח רק אז); אחרת הודעה ברורה ולא רישום
+      if (!(d && d.settings && d.settings.barcodeEntry)) { say('הזנת ברקוד אינה מופעלת בהגדרות', 'בגמ"ח הזה אפשר לסרוק כאן רק קודי שלב מהדף המודפס (למשל PRP-40113)', 'warn'); return; }
       if (bcTargetRef.current) { setScanQueue((q) => [...q, c.barcode]); return; }
       const last = lastScanOrder.current;
       const stage = last && d && d.stages.find((s) => s.key === last.stageKey);
@@ -235,11 +237,12 @@ export default function ScheduleDay({
     const decided = decideStageScan(d, c.stageKey, c.orderId);
     if (decided.action === 'not-shown') { say('ההזמנה לא נמצאה', 'הזמנה #' + c.orderId + ' לא מופיעה בשלב הזה ביום המוצג', 'warn'); return; }
     if (decided.action === 'info-only') { say('שלב לידיעה בלבד', 'אין "בוצע" בשלב הזה', 'warn'); return; }
+    if (!marks.canMark) { say('אין הרשאה לסמן', 'אין הרשאה לסמן "בוצע" - פנו להנהלה', 'warn'); return; }
     lastScanOrder.current = { orderId: c.orderId, stageKey: c.stageKey };
     if (decided.action === 'already') { say('כבר בוצע', decided.stage.label + ' · #' + c.orderId, 'warn'); return; }
     if (decided.action === 'barcodes') { openBarcodes(decided.stage, decided.row); return; }
     setScanAsk({ stage: decided.stage, row: decided.row });
-  }, [say, marks.canMarkAll, openBarcodes]);
+  }, [say, marks.canMarkAll, marks.canMark, openBarcodes]);
 
   // ?scan=<קוד> (למשל מהחיפוש המהיר): אותה פעולה כמו סריקה בשורת הברקוד, אחרי שהיום נטען; הפרמטר מוסר מהכתובת
   const pendingScan = useRef(null);
@@ -255,7 +258,7 @@ export default function ScheduleDay({
       p.delete('scan');
       window.history.replaceState(null, '', window.location.pathname + (p.toString() ? '?' + p.toString() : ''));
     } catch { /* לא קריטי */ }
-    if (data.settings && data.settings.barcodeEntry) handleScan(code); // בלי הגדרת ברקוד פעילה הפרמטר מוסר והדף כמו היום
+    handleScan(code); // החלטת הבעלים 12.10.2026 (O11): קודי השלב פעילים בכל גמ"ח, גם בלי הגדרת ברקוד
   }, [data, loading, handleScan]);
   // שורש הדף לחלונות "בטוח?" (LzPortal.js) - כמו L.modal בעיצוב: scrim אח של .app ולא בתוך השורה
   const [portalRoot, setPortalRoot] = useState(null);
@@ -394,7 +397,7 @@ export default function ScheduleDay({
         </div>
 
         <div className="lz-layout">
-          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || (data && data.settings && data.settings.barcodeEntry ? handleScan : undefined)} updatedCount={updatedCount} />
+          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || handleScan} updatedCount={updatedCount} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
               <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">

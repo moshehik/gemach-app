@@ -75,6 +75,11 @@ export async function POST(request) {
         skipped.push({ orderId: r.orderId, reason: 'needs_barcode', missing: r.needs && r.needs.missing ? r.needs.missing.length : 0 });
         continue;
       }
+      if (r.status === 'needs_return_scan') {
+        counts.needsReturnScan = (counts.needsReturnScan || 0) + 1;
+        skipped.push({ orderId: r.orderId, reason: 'needs_return_scan', unreturned: r.needs && r.needs.unreturned ? r.needs.unreturned.length : 0 });
+        continue;
+      }
       if (r.status === 'blocked') {
         counts.blocked++;
         skipped.push({ orderId: r.orderId, reason: 'early_return' });

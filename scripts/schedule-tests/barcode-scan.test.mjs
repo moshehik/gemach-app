@@ -56,8 +56,10 @@ test('decideStageScan: not shown / info only / already done / barcodes needed / 
 
 test('UI wiring (source): the page installs a default onScan, rows pass onBarcodes, the dialog sends the intent and never invents the effect', () => {
   const day = src('app/components/schedule/ScheduleDay.js');
-  assert.match(day, /onScan=\{onScan \|\| \(data && data\.settings && data\.settings\.barcodeEntry \? handleScan : undefined\)\}/, 'the scan field stays disabled (as today) unless the barcode setting is on');
-  assert.match(day, /if \(data\.settings && data\.settings\.barcodeEntry\) handleScan\(code\)/, '?scan= is a no-op without the setting');
+  assert.match(day, /onScan=\{onScan \|\| handleScan\}/, 'the scan field is enabled in every gemach (owner decision O11, 12.10.2026)');
+  assert.match(day, /handleScan\(code\); \/\/ החלטת הבעלים/, '?scan= runs in every gemach');
+  assert.match(day, /הזנת ברקוד אינה מופעלת בהגדרות/, 'a dress barcode without the setting gets a clear message, never a registration');
+  assert.match(day, /if \(!marks\.canMark\)/, 'stage codes respect the existing mark permission');
   assert.match(day, /classifyScan\(raw\)/);
   assert.match(day, /marks=\{marksUi\}/);
   assert.match(day, /<BarcodeDialog /);

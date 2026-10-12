@@ -91,7 +91,7 @@ test('default (no barcode settings): rows carry no barcodeInfo, "done" works wit
   const res = await getScheduleDay({ date: DAY, user: head, now: NOW, settings: st });
   const json = JSON.stringify(res);
   assert.ok(!json.includes('barcodeInfo'), 'no new field in the payload');
-  assert.ok(!('barcodeEntry' in res.settings), 'no new settings key either: the page (scan field, ?scan=) behaves exactly as today');
+  assert.ok(!('barcodeEntry' in res.settings), 'no new settings key when the barcode setting is off (the page uses its absence to refuse dress barcodes with a clear message)');
   const r1 = await mark(st, 'prep', 5101);
   assert.equal(r1.results[0].status, 'marked');
   const r2 = await mark(st, 'pick', 5102);

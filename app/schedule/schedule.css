@@ -316,3 +316,9 @@
 .gm-ds.gm-lz .lz-bc-it.miss{box-shadow:inset -3px 0 0 #fa9e84}
 .gm-ds.gm-lz .lz-bc-it .t{flex:1 1 auto}
 .gm-ds.gm-lz .lz-bc-it .ibtn{flex:none}
+.gm-ds.gm-lz .lz-bc-panel{display:flex;flex-direction:column;gap:8px;margin:8px 0;padding:12px;border-radius:12px;background:rgba(255,255,255,.08);text-align:start}
+.gm-ds.gm-lz .lz-bc-panel small{color:var(--k-faint)}
+.gm-ds.gm-lz .lz-bc-panel .li{cursor:pointer}
+.gm-ds.gm-lz .lz-bc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-lz .lz-bc-chk{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-lz .lz-bc-relall{margin:6px 0 2px;align-self:flex-start}
