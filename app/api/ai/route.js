@@ -227,9 +227,10 @@ The system will then give you the full, up-to-date catalog of every configurable
     // החדש בלבד (lib/aiGuide + lib/ai/siteGuide.js), מותאם להרשאות ולארגון של המשתמשת, כולל הצבעה על אלמנטים. זמין לכל עובדת (לא רק מנהלות).
     // (נקרא בעבר HOWTO_GUIDE ונענה מקטלוג ידני של הממשק הישן; השם הישן עדיין מתקבל.)
     const howToGuideInstructions = `
-21. CRITICAL RULE FOR QUESTIONS ABOUT THE SITE ITSELF: If the user asks how to perform an action in the system ("איך מוסיפים...", "איך מבטלים...", "איך מדפיסים...", "איך שולחים...", "איך עושים..."), WHERE something is (a page, button, tab, menu item, screen, icon, report, setting group - "איפה...", "מאיפה...", "איפה הכפתור...", "איפה רואים..."), how to open/reach/find something, whether the system has a certain option, page or feature ("האם יש אפשרות...", "אפשר ל...", "יש באתר...", "קיים...?"), or asks you to show/point at something on the screen ("תראי לי איפה...") - and it is NOT a request for data from the database (counts, names, dates, orders, customers, dresses, availability) and, for managers, NOT about a specific SystemSetting (rule 20) - you MUST NOT answer from your own knowledge and MUST NOT generate SQL. Instead, output EXACTLY this on its own line and nothing else:
+21. CRITICAL RULE FOR QUESTIONS ABOUT THE SITE ITSELF: If the user asks how to perform an action in the system ("איך מוסיפים...", "איך מבטלים...", "איך מדפיסים...", "איך שולחים...", "איך עושים..."), WHERE something is (a page, button, tab, menu item, screen, icon, report, setting group - "איפה...", "מאיפה...", "איפה הכפתור...", "איפה רואים..."), how to open/reach/find something, whether the system has a certain option, page or feature ("האם יש אפשרות...", "אפשר ל...", "יש באתר...", "קיים...?"), or asks you to show/point at something on the screen ("תראי לי איפה...") - and it is NOT a request for data from the database (counts, names, dates, orders, customers, dresses, availability) - you MUST NOT answer from your own knowledge and MUST NOT generate SQL. Instead, output EXACTLY this on its own line and nothing else:
 ACTION: SITE_GUIDE()
-The system will then give you the verified map of the new interface for this user, and you must answer from it alone.`;
+Also treat as site questions: statements of intent about doing something in the system without asking for data (e.g. "אני רוצה לשלוח מייל לכל הלקוחות שיש להם אירוע...", "אני רוצה להדפיס...", "איך אני נותנת גישה..."), and questions about whether something can be done from a UI element even when they mention a model, size or date (e.g. "אפשר לבדוק זמינות מידה 4 בדגם 511 ישר מהחיפוש?"). A request for the actual availability/count/list itself (e.g. "האם דגם 511 פנוי ב-20 חשוון") is a data question, not a site question.
+The system will then give you the verified map of the new interface for this user (and, for managers, the system settings), and you must answer from it alone.`;
 
     const schemaText = getSchemaContext();
     // עוגן "עכשיו" בזמן ישראל (תאריך+שעה+יום בשבוע, עברי ולועזי) - מחושב בשרת ולא ע"י המודל
@@ -272,47 +273,7 @@ The system will then give you the verified map of the new interface for this use
     const actionRegex = /ACTION:\s*CHECK_AVAILABILITY\(([\s\S]+?)\)/i;
     const actionMatch = actionRegex.exec(aiResponse);
 
-    if (settingsGuideMatch) {
-      try {
-        const settingRows = await getAllCachedSettings();
-        const catalog = buildSettingsGuideForNewUi(settingRows);
-
-        const followupPrompt = `The user asked: "${prompt}".
-You determined this question is about a system setting and requested the full settings catalog.
-Here is the complete, up-to-date catalog of every configurable system setting in the admin panel ("הגדרות מערכת") - key, Hebrew name, category, location (the screen/tab/section in the NEW settings screen, or null when the setting is not shown on the screen), description, field type, and current value:
-${JSON.stringify(catalog)}
-
-Answer the user in Hebrew:
-1. Refer to the relevant setting by its Hebrew name. Do NOT write where it is located and do not mention tabs or categories: the system appends the exact location line after your answer. If the setting's "location" is null, say plainly that this setting is not available on the settings screen.
-2. Briefly explain in plain Hebrew what the setting does and its current value.
-3. Do NOT invent a setting key that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
-4. Keep the answer short and conversational. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
-CRITICAL: If you identified one or more specific setting keys that answer the question (at most 3), end your response with each one on its own new line in this EXACT format: [OPEN_SETTING:the_exact_key]. Use the exact "key" field from the catalog above, never the Hebrew name, and never a key that is not in the catalog. Omit this tag entirely if no specific setting genuinely matches the question.`;
-
-        try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');
-        } catch (e) {}
-
-        const finalResponse = await generateContent(followupPrompt);
-
-        try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
-        } catch (e) {}
-
-        // אימות בקוד מול הקטלוג: תגית עם מפתח שלא קיים מוסרת, ומיקום ("הגדרות מערכת ← X") מתוקן לקטגוריה האמיתית
-        const validated = validateSettingTags(finalResponse, catalog);
-        const settingKeys = [...validated.matchAll(/\[OPEN_SETTING:([^\]]+)\]/g)].map((m) => m[1]);
-        const withLocation = appendSettingLocations(validated, catalog);
-        let pointing = { guide: [], guideHref: null };
-        try {
-          pointing = await pointAtSettings({ keys: settingKeys, who: { employeeId: aiEmployeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' } });
-        } catch (pointErr) { console.error('pointAtSettings failed:', pointErr); }
-        return NextResponse.json({ response: finalizeAiText(withLocation, new Date()), data: null, sqlQuery: null, guide: pointing.guide, guideHref: pointing.guideHref });
-      } catch (err) {
-        console.error('Settings guide action error:', err);
-        aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
-      }
-    } else if (howToGuideMatch) {
+    if (settingsGuideMatch || howToGuideMatch) {
       // שאלה על האתר עצמו: מענה מהרישום המובנה של הממשק החדש בלבד (lib/ai/siteGuide.js), מותאם להרשאות ולארגון, עם הצבעה על אלמנטים.
       try {
         const guideOut = await answerSiteQuestion({
@@ -321,6 +282,7 @@ CRITICAL: If you identified one or more specific setting keys that answer the qu
           who: { employeeId: aiEmployeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' },
           generate: (p) => generateContent(p),
           dateContext,
+          settingsRows: isManager ? await getAllCachedSettings() : null, // מנהלות: גם קטלוג ההגדרות (מיקום במסך ההגדרות החדש), באותה קריאה
         });
         try {
           fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SITE GUIDE RESPONSE ====\n' + guideOut.response + '\n' + JSON.stringify(guideOut.meta) + '\n\n');

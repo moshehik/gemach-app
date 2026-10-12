@@ -20,8 +20,6 @@ import {
   normalizeAiSql,
   extractSqlQueries,
   finalizeAiText,
-  validateSettingTags,
-  buildGuideFollowupPrompt,
   buildUserDateHints,
   rowCountFacts,
   resultsHaveData,
@@ -107,21 +105,16 @@ export async function POST(req) {
     const wantsHowTo = /ACTION:\s*(?:SITE_GUIDE|HOWTO_GUIDE)\(\)/i.test(aiResponse) || (!isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse));
     if (wantsSettings || wantsHowTo) {
       try {
-        if (wantsSettings) {
-          const catalog = buildSettingsGuide(await getAllCachedSettings());
-          const text = await generateContent(buildGuideFollowupPrompt({ kind: 'settings', prompt, catalog, dateContext }));
-          aiResponse = validateSettingTags(text, catalog);
-        } else {
-          const guideOut = await answerSiteQuestion({
-            prompt,
-            historyText,
-            who: { employeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' },
-            generate: (p) => generateContent(p),
-            dateContext,
-          });
-          aiResponse = guideOut.response;
-          siteGuide = { guide: guideOut.guide, guideHref: guideOut.guideHref };
-        }
+        const guideOut = await answerSiteQuestion({
+          prompt,
+          historyText,
+          who: { employeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' },
+          generate: (p) => generateContent(p),
+          dateContext,
+          settingsRows: isManager ? await getAllCachedSettings() : null,
+        });
+        aiResponse = guideOut.response;
+        siteGuide = { guide: guideOut.guide, guideHref: guideOut.guideHref };
       } catch (guideErr) {
         console.error('Statistics guide error:', guideErr);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';

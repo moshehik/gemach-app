@@ -313,6 +313,16 @@ check('הידע שנבנה לכל סוג משתמשת: בלי ביטויי ממ�
   return errs;
 });
 
+check('פריטים מוסתרים: עובדת רגילה רואה ברשימת "קיים אך מוסתר" את לוח חודשי, ולא כלי ניהול', null, () => {
+  const errs = [];
+  const b = buildGuideBlock(CTXS.employee, { question: 'אין לי לוח חודשי' });
+  const m = b.text.match(/HIDDEN FROM THIS USER[^\n]*\n([^\n]*)/);
+  if (!m) return ['אין בלוק HIDDEN'];
+  if (!m[1].includes('לוח חודשי')) errs.push('"לוח חודשי" לא ברשימת המוסתרים לעובדת בלי הרשאת לוח');
+  if (/הרשאות|הגדרות מערכת|סטטיסטיקה|נדרים/.test(m[1])) errs.push('רשימת המוסתרים חושפת כלי ניהול: ' + m[1].slice(0, 120));
+  return errs;
+});
+
 check('finalizeGuideTags: מזהה לא מוכר נזרק, כפילות מצטמצמת, URL/סלקטור חופשי לא עובר, הטקסט מנוקה', null, () => {
   const errs = [];
   const ctx = CTXS.head;
@@ -374,6 +384,24 @@ check('טקסט הרישום (about/can/steps/where) לא מכיל ביטויי 
   for (const t of TARGETS) for (const f of [t.where, t.hint, t.label, ...(t.aliases || [])]) if (bad(f)) errs.push(`יעד ${t.id}: "${String(f).slice(0, 60)}"`);
   return errs;
 });
+
+const __locErrs = await (async () => {
+  const errs = [];
+  const { locateSetting } = await import('../lib/aiGuide/settingsLocation.js');
+  const { appendSettingLocations } = await import('../lib/aiGuide/settingsLocationText.js');
+  const { describeUserVariant } = await import('../lib/aiGuide/knowledge.js');
+  const loc = locateSetting({ key: 'hok_enabled', category: 'הוראת קבע' });
+  if (!loc || !/לשונית "תשלומים"/.test(loc.text) || loc.path !== '/admin/settings') errs.push('מיקום hok_enabled שגוי: ' + JSON.stringify(loc));
+  const catalog = [{ key: 'hok_enabled', name: 'הפעל הוראת קבע', location: loc && loc.text }];
+  const out = appendSettingLocations('טקסט\n[OPEN_SETTING:hok_enabled]', catalog);
+  if (!/מיקום "הפעל הוראת קבע": הגדרות מערכת/.test(out) || !/\[OPEN_SETTING:hok_enabled\]/.test(out)) errs.push('שורת מיקום לא נוספה: ' + out);
+  const v = describeUserVariant({ variants: { shell: 'legacy', new_order: 'legacy' }, currentPath: '/' }, ['/orders/new']);
+  if (!v.shellOld || !v.oldScreens.some((s) => s.id === 'new_order')) errs.push('תצוגה ישנה לא זוהתה: ' + JSON.stringify(v));
+  const v2 = describeUserVariant({ variants: { shell: 'a5', home: 'a5', new_order: 'a5' }, currentPath: '/' }, ['/orders/new']);
+  if (v2.shellOld || v2.oldScreens.length) errs.push('תצוגה חדשה סומנה כישנה');
+  return errs;
+})();
+check('מיקום הגדרה במסך ההגדרות החדש נגזר מהמיפוי; שורת מיקום נוספת בקוד; תצוגה ישנה מזוהה', null, () => __locErrs);
 
 check('tokenize: קידומות עבריות ומילות עצירה', null, () => {
   const t = tokenize('איך מדפיסים את התווית בהזמנה');
