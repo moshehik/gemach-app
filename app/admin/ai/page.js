@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import SettingQuickPanel from '../../components/SettingQuickPanel';
+import GuideChips from '../../components/guide/GuideChips';
 import { renderCopyable } from '../../components/CopyableText';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
@@ -112,6 +113,7 @@ export default function AIPage() {
         body: JSON.stringify({
           prompt: userMessageContent,
           history: historyContext,
+          currentPath: '/admin/ai',
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. אתה נמצא בממשק המנהל, ענה על כל שאלה סטטיסטית, פיננסית או ניהולית שהמנהל מבקש, כולל נתונים מדויקים מהמסד.`
         }),
       });
@@ -119,7 +121,7 @@ export default function AIPage() {
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.data }
+        ? { role: 'assistant', content: data.response, tableData: data.data, ...(Array.isArray(data.guide) && data.guide.length ? { guide: data.guide, guideHref: data.guideHref || null } : {}) }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       // Append strictly to the thread that initiated the request
@@ -183,7 +185,7 @@ export default function AIPage() {
         {/* Threads sidebar */}
         <div style={{ width: '260px', flex: '0 0 auto', borderInlineStart: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '14px', borderBottom: '1px solid var(--border)' }}>
-            <button data-element-name="כפתור_page_2"
+            <button data-element-name="כפתור_page_2" data-guide-id="aiadm.new-chat"
               type="button"
               className="btn btn-primary"
               style={{ width: '100%' }}
@@ -193,7 +195,7 @@ export default function AIPage() {
               שיחה חדשה
             </button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+          <div data-guide-id="aiadm.threads" style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {threads.map(t => (
               <div data-element-name="לחיץ_page_3"
                 key={t.id}
@@ -229,6 +231,7 @@ export default function AIPage() {
                 <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{renderCopyable(displayText)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
+                  {Array.isArray(msg.guide) && msg.guide.length > 0 && <GuideChips guide={msg.guide} guideHref={msg.guideHref} />}
                   {openSettingKeys.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                       {openSettingKeys.map(key => (
@@ -257,7 +260,7 @@ export default function AIPage() {
 
           <form onSubmit={sendMessage} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface-alt)' }}>
             <label htmlFor="admin-ai-message" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>שאלה ל-AI</label>
-            <input data-element-name="שדה_page_6"
+            <input data-element-name="שדה_page_6" data-guide-id="aiadm.input"
               id="admin-ai-message"
               type="text"
               autoFocus
@@ -268,7 +271,7 @@ export default function AIPage() {
               placeholder="שאל אותי על סטטיסטיקות או מידע מהמערכת (לדוגמה: כמה הזמנות יש בשנת 2024?)..."
               disabled={!activeThreadId}
             />
-            <button data-element-name="כפתור_page_5"
+            <button data-element-name="כפתור_page_5" data-guide-id="aiadm.send"
               type="submit"
               className="btn btn-primary btn-icon-only"
               title="שלח"

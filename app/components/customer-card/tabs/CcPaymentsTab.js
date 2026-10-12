@@ -24,7 +24,7 @@ export default function CcPaymentsTab({ cc }) {
   return (
     <>
       <div className="card">
-        <div className="card-h"><div className="ico green"><CcIcon name="wallet" size="lg" /></div><h2>מצב חשבון</h2></div>
+        <div className="card-h" data-guide-id="cc.pay-balance"><div className="ico green"><CcIcon name="wallet" size="lg" /></div><h2>מצב חשבון</h2></div>
         <div className="bal">
           <div><div className="faint sm">{bal < 0 ? 'זיכוי זמין' : 'נשאר לתשלום'}</div><div className="n"><bdi dir="ltr">{money(bal)}</bdi></div></div>
           <div className="cc-balbar">
@@ -39,7 +39,7 @@ export default function CcPaymentsTab({ cc }) {
           <Tip text="יתרה = חיובים − (תשלומים − זיכויים)" />
         </div>
         {bal > 0 && charges.length && !cc.readOnly ? (
-          <button type="button" className="btn primary cc-mt24" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />{payLabel} <bdi dir="ltr">{money(bal)}</bdi></button>
+          <button type="button" className="btn primary cc-mt24" data-act="pay-now" data-guide-id="cc.pay-btn" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />{payLabel} <bdi dir="ltr">{money(bal)}</bdi></button>
         ) : null}
         {cc.bankEnabled ? (
           <div className="cc-bankline faint sm">
@@ -51,7 +51,7 @@ export default function CcPaymentsTab({ cc }) {
       </div>
 
       <div className="card">
-        <div className="card-h"><div className="ico rose"><CcIcon name="file" size="lg" /></div><h2>חיובים פתוחים <Tip text="הזמנות שטרם שולמו במלואן" /></h2></div>
+        <div className="card-h" data-guide-id="cc.pay-charges"><div className="ico rose"><CcIcon name="file" size="lg" /></div><h2>חיובים פתוחים <Tip text="הזמנות שטרם שולמו במלואן" /></h2></div>
         <div className="list">
           {charges.length ? charges.map((c) => (
             <div className="li" key={c.order.orderId}>
@@ -63,7 +63,7 @@ export default function CcPaymentsTab({ cc }) {
       </div>
 
       <div className="card">
-        <div className="card-h">
+        <div className="card-h" data-guide-id="cc.pay-received">
           <div className="ico blue"><CcIcon name="card" size="lg" /></div><h2>תשלומים שהתקבלו</h2>
           {bal > 0 && charges.length && !cc.readOnly ? <button type="button" className="btn navy" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="plus" />{cc.paymentsEnabled ? 'הוסף תשלום' : 'תשלום בהזמנה'}</button> : null}
         </div>

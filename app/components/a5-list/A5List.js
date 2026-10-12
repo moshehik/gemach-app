@@ -1,5 +1,6 @@
 'use client';
 
+// מדריך האתר (lib/aiGuide/areas/ops.targets.js): כשהדף מעביר guide="ol" / guide="cl" מוצמדים data-guide-id (ol.* = רשימת ההזמנות, cl.* = רשימת הלקוחות). בלי guide - שום תכונה לא מתווספת.
 // A5List - מנוע הרשימות החדש (פורט React של createList() ב-scratch/emp-models-build/list-core.js, העיצוב המאושר):
 // שדה חיפוש (חיפוש חכם AI + שאלות סטטיסטיקה + ניקוי), לחצן "סינון" אחד עם קבוצות (ספירות, אפשרות בלי תוצאות מוסתרת אלא אם נבחרה,
 // "נקה סינון"), מיון עם כיוון, מתג שורות / טבלה, סרגל תוצאות דביק (נצבע אפרסק כשהוא נדבק), עימוד 50 בקפסולה, שורות עם חץ הרחבה
@@ -29,9 +30,10 @@ function A5ListInner(props, ref) {
     rowMain, rowClass, detail, columns = [], onOpen, loading = false, error = null, onRetry,
     searchSlot = null, localSearch = true, onQueryChange, ai = null, onStats = null, exportSpec = null,
     total = null, page: pageProp = 1, onPage, pageSize = PAGE_SIZE,
-    barExtra = null, emptyExtra = null, notices = null, onStateChange, onFilterOpen = null, className = '',
+    barExtra = null, emptyExtra = null, notices = null, onStateChange, onFilterOpen = null, className = '', guide = null,
   } = props;
   const server = total != null;
+  const gid = (name) => (guide ? `${guide}.${name}` : undefined); // data-guide-id (מדריך האתר)
 
   const rootRef = useRef(null);
   const barRef = useRef(null);
@@ -241,14 +243,14 @@ function A5ListInner(props, ref) {
 
   const filterEl = (
     <div className={`hf-sel${pop === 'filter' ? ' on' : ''}`} data-fk="filter" onKeyDown={onPopKey}>
-      <button type="button" className="hf-t" aria-haspopup="listbox" aria-expanded={pop === 'filter'} onClick={() => (pop === 'filter' ? setPop(null) : openPop('filter', false))}>
+      <button type="button" className="hf-t" data-guide-id={gid('filter')} aria-haspopup="listbox" aria-expanded={pop === 'filter'} onClick={() => (pop === 'filter' ? setPop(null) : openPop('filter', false))}>
         <Ic id="sliders" /><span className="hf-lbl">סינון</span><span key={totalSel} className={`hf-bdg${totalSel ? ' has' : ''}${popBdg ? ' pop' : ''}`}>{totalSel || ''}</span><Ic id="chev" className="hf-chv" />
       </button>
       <div className="hf-scrim" onClick={() => setPop(null)} />
       <div className="hf-p">
         <div className="hf-all"><button type="button" className="hf-allb" onClick={clearFilters}>נקה סינון</button></div>
         <div className="hf-l" role="listbox" aria-multiselectable="true" aria-label="סינון">
-          {filters.map((f, fi) => <FilterGroup key={f.key} f={f} sel={sel[f.key] || []} counts={counts} startIdx={offsets[fi]} onPick={pickFilter} />)}
+          {filters.map((f, fi) => <FilterGroup key={f.key} f={f} sel={sel[f.key] || []} counts={counts} startIdx={offsets[fi]} onPick={pickFilter} guide={guide} />)}
         </div>
       </div>
     </div>
@@ -257,17 +259,17 @@ function A5ListInner(props, ref) {
   const searchEl = (
     <div className="hf-s">
       {ai && ai.loading ? <span className="spinner a5l-sp" aria-hidden="true" /> : <Ic id={aiOn ? 'sparkle' : 'search'} />}
-      <input type="search" autoComplete="off" placeholder={placeholder} aria-label="חיפוש" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); bump(false); }} onKeyDown={onSearchKey} />
+      <input type="search" data-guide-id={gid('search')} autoComplete="off" placeholder={placeholder} aria-label="חיפוש" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); bump(false); }} onKeyDown={onSearchKey} />
       <button type="button" className={`hf-cl${q ? ' on' : ''}`} aria-label="ניקוי חיפוש" onClick={() => clearQuery(true)}><Ic id="x" /></button>
-      {ai ? <button type="button" className={`hf-ib${aiOn ? ' on' : ''}`} aria-pressed={aiOn} aria-label="חיפוש חכם (AI)" data-tip="חיפוש חכם (AI)" onClick={toggleAi}><Ic id="sparkle" /></button> : null}
-      {onStats ? <button type="button" className="hf-ib" aria-label="שאלות סטטיסטיקה" data-tip="שאלות סטטיסטיקה" onClick={onStats}><Ic id="sn-chart" /></button> : null}
+      {ai ? <button type="button" className={`hf-ib${aiOn ? ' on' : ''}`} data-guide-id={gid('ai')} aria-pressed={aiOn} aria-label="חיפוש חכם (AI)" data-tip="חיפוש חכם (AI)" onClick={toggleAi}><Ic id="sparkle" /></button> : null}
+      {onStats ? <button type="button" className="hf-ib" data-guide-id={gid('stats')} aria-label="שאלות סטטיסטיקה" data-tip="שאלות סטטיסטיקה" onClick={onStats}><Ic id="sn-chart" /></button> : null}
       {filters.length ? filterEl : null}
     </div>
   );
 
   const sortEl = sorts.length ? (
     <div className={`hf-sel hf-sort${pop === 'sort' ? ' on' : ''}`} data-fk="sort" onKeyDown={onPopKey}>
-      <button type="button" className="hf-t" aria-haspopup="listbox" aria-expanded={pop === 'sort'} data-tip={sort.dir > 0 ? 'מיון עולה' : 'מיון יורד'} onClick={() => (pop === 'sort' ? setPop(null) : openPop('sort', false))}>
+      <button type="button" className="hf-t" data-guide-id={gid('sort')} aria-haspopup="listbox" aria-expanded={pop === 'sort'} data-tip={sort.dir > 0 ? 'מיון עולה' : 'מיון יורד'} onClick={() => (pop === 'sort' ? setPop(null) : openPop('sort', false))}>
         <Ic id="sortv" className={sort.dir > 0 ? '' : 'flip'} /><span className="hf-lbl">מיון: <b>{sorter ? sorter.l : ''}</b></span><Ic id="chev" className="hf-chv" />
       </button>
       <div className="hf-scrim" onClick={() => setPop(null)} />
@@ -372,11 +374,11 @@ function A5ListInner(props, ref) {
       ) : null}
       <div className={`hres-bar${stuck ? ' stuck' : ''}`} ref={barRef}>
         <span className="hres-n">{texts.countLabel}{' '}<b>{n}{texts.countSuffix || ''}</b></span>
-        {columns.length ? <ViewSwitch value={view} onChange={setView2} /> : null}
+        {columns.length ? <ViewSwitch value={view} onChange={setView2} guide={guide} /> : null}
         {sortEl}
         {barExtra}
         <div className="pg-slot"><Pager n={n} page={curPage} pages={pages} pageSize={pageSize} onPage={(p) => gotoPage(p)} /></div>
-        {exportSpec ? <span className="hres-x"><ExportTrio what={exportSpec.what} kinds={exportKinds} onPick={doExport} /></span> : null}
+        {exportSpec ? <span className="hres-x"><ExportTrio what={exportSpec.what} kinds={exportKinds} onPick={doExport} guide={guide} /></span> : null}
       </div>
       <div className={`hfeed hres${fx.on ? ' animate' : ''}`}>{feed}</div>
     </div>
@@ -384,10 +386,10 @@ function A5ListInner(props, ref) {
 }
 
 // קבוצת סינון: כותרת + אפשרויות. startIdx = האינדקס הרץ של האנימציה (--k) - נשמר ברצף על פני כל הקבוצות
-function FilterGroup({ f, sel, counts, startIdx, onPick }) {
+function FilterGroup({ f, sel, counts, startIdx, onPick, guide }) {
   return (
     <>
-      <div className="hf-gh" data-gh={f.key}><Ic id={f.icon} size="sm" />{f.label}</div>
+      <div className="hf-gh" data-gh={f.key} data-guide-id={guide ? `${guide}.filter-${f.key}` : undefined}><Ic id={f.icon} size="sm" />{f.label}</div>
       {f.options.map((o, i) => {
         const c = counts[`${f.key}\u0000${o.k}`];
         const on = sel.includes(o.k);

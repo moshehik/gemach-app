@@ -133,15 +133,15 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   const pills = effSel.length && effSel.length <= 3 ? effSel : [];
 
   return (
-    <div className="card hist">
+    <div className="card hist" data-guide-id="oc.history-feed">
       <div className="card-h"><div className="ico gold"><OcIcon name="clock" size="lg" /></div><h2>פעולות ושינויים</h2></div>
       <div className="hf-bar" id="hfBar">
-        <div className="hf-s">
+        <div className="hf-s" data-guide-id="oc.history-search">
           <OcIcon name="search" />
           <input id="hfQ" type="search" autoComplete="off" data-lpignore="true" data-1p-ignore placeholder="חיפוש בהיסטוריה" aria-label="חיפוש בהיסטוריה" value={q} onChange={(e) => setQ(e.target.value)} />
           <button type="button" className={`hf-cl${q ? ' on' : ''}`} aria-label="ניקוי חיפוש" onClick={() => setQ('')}><OcIcon name="x" /></button>
           <div className={`hf-sel${menuOpen ? ' on' : ''}`} ref={selRef}>
-            <button type="button" className="hf-t" ref={trigRef} aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls="hfList" onClick={() => setMenuOpen((v) => !v)}>
+            <button type="button" className="hf-t" data-guide-id="oc.history-filter" ref={trigRef} aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls="hfList" onClick={() => setMenuOpen((v) => !v)}>
               <OcIcon name="sliders" /><span className="hf-lbl">סינון</span><span className={`hf-bdg${effSel.length ? ' has' : ''}`}>{effSel.length || ''}</span><OcIcon name="chev" className="hf-chv" />
             </button>
             <div className="hf-scrim" onClick={() => setMenuOpen(false)} />
@@ -172,9 +172,9 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
         <span className="hres-n">תוצאות <b id="hfN">{list.length}</b></span>
         <OcViewSwitch value={view} onChange={setView} />
         <span className="hres-x">
-          <button type="button" className="xlbtn xlg" data-hx="excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההיסטוריה לקובץ Excel" disabled={!!busy} onClick={() => exportAs('excel')}><XlGlyph kind="excel" /></button>
-          <button type="button" className="xlbtn xld" data-hx="download" aria-label="הורדה" data-tip="הורדת ההיסטוריה כקובץ" disabled={!!busy} onClick={() => exportAs('download')}><XlGlyph kind="download" /></button>
-          <button type="button" className="xlbtn xlp" data-hx="print" aria-label="הדפסה" data-tip="הדפסת ההיסטוריה" disabled={!!busy} onClick={() => exportAs('print')}><XlGlyph kind="print" /></button>
+          <button type="button" className="xlbtn xlg" data-hx="excel" data-guide-id="oc.history-excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההיסטוריה לקובץ Excel" disabled={!!busy} onClick={() => exportAs('excel')}><XlGlyph kind="excel" /></button>
+          <button type="button" className="xlbtn xld" data-hx="download" data-guide-id="oc.history-download" aria-label="הורדה" data-tip="הורדת ההיסטוריה כקובץ" disabled={!!busy} onClick={() => exportAs('download')}><XlGlyph kind="download" /></button>
+          <button type="button" className="xlbtn xlp" data-hx="print" data-guide-id="oc.history-print" aria-label="הדפסה" data-tip="הדפסת ההיסטוריה" disabled={!!busy} onClick={() => exportAs('print')}><XlGlyph kind="print" /></button>
         </span>
       </div>
       {truncated ? <div className="faint sm" role="note">מוצגים 2000 הרישומים האחרונים</div> : null}

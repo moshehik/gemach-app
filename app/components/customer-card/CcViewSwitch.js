@@ -3,10 +3,10 @@
 // מתג רשימה / טבלה (העיצוב: .vsw + .vknob + .vopt) ומיון בכותרות הטבלה (.thw + .tsort/.tsb) - משותף להזמנות ולהיסטוריה.
 import CcIcon from './CcIcon';
 
-export function ViewSwitch({ value, onChange }) {
+export function ViewSwitch({ value, onChange, 'data-guide-id': gid }) {
   const tbl = value === 'table';
   return (
-    <div className={`vsw${tbl ? ' t' : ''}`} role="group" aria-label="מצב תצוגה">
+    <div className={`vsw${tbl ? ' t' : ''}`} role="group" aria-label="מצב תצוגה" {...(gid ? { 'data-guide-id': gid } : null)}>
       <span className="vknob" aria-hidden="true" />
       <button type="button" className={`vopt${tbl ? '' : ' on'}`} aria-label="תצוגת רשימה" aria-pressed={!tbl} data-tip="רשימה" onClick={() => onChange('list')}><CcIcon name="rows" /></button>
       <button type="button" className={`vopt${tbl ? ' on' : ''}`} aria-label="תצוגת טבלה" aria-pressed={tbl} data-tip="טבלה" onClick={() => onChange('table')}><CcIcon name="table" /></button>

@@ -182,6 +182,7 @@ export default function PricelistManagement() {
           value={editForm.description || ''}
           onChange={e => setEditForm({ ...editForm, description: e.target.value })}
           className="input"
+          data-guide-id="price.er-desc"
           placeholder={isNewRow ? 'תיאור' : undefined}
           autoFocus={isNewRow}
         />
@@ -194,6 +195,7 @@ export default function PricelistManagement() {
             onChange={e => setEditForm({ ...editForm, fromSize: e.target.value })}
             className="input"
             style={{ width: '64px' }}
+            data-guide-id="price.er-sizes"
             placeholder="מ-"
           />
           <span>-</span>
@@ -214,6 +216,7 @@ export default function PricelistManagement() {
           onChange={e => setEditForm({ ...editForm, price: e.target.value })}
           className="input"
           style={{ width: '90px' }}
+          data-guide-id="price.er-price"
           placeholder={isNewRow ? 'מחיר' : undefined}
         />
       </td>
@@ -224,12 +227,13 @@ export default function PricelistManagement() {
           onChange={e => setEditForm({ ...editForm, deposit: e.target.value })}
           className="input"
           style={{ width: '90px' }}
+          data-guide-id="price.er-deposit"
           placeholder={isNewRow ? 'פיקדון' : undefined}
         />
       </td>
       <td style={{ textAlign: 'center' }}>
         <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} onClick={() => handleSave(isNewRow ? null : editingId)} title="שמור">
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} onClick={() => handleSave(isNewRow ? null : editingId)} data-guide-id="price.er-save" title="שמור">
             <svg className="icon"><use href="#i-check" /></svg>
           </button>
           <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} onClick={cancelEdit} title="בטל">
@@ -253,12 +257,13 @@ export default function PricelistManagement() {
             className={isLocked ? 'btn btn-danger-ghost' : 'btn btn-secondary'}
             style={isLocked ? undefined : { background: 'var(--success-tint)', color: 'var(--success)' }}
             onClick={handleLockToggle}
+            data-guide-id="price.lock"
             title={isLocked ? 'נעול - לחץ כדי לפתוח' : 'פתוח - לחץ כדי לנעול'}
           >
             <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-check-circle'} /></svg>
             {isLocked ? 'מחיקה נעולה' : 'מחיקה פתוחה'}
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => handleAddNew('', true)}>
+          <button type="button" className="btn btn-primary" data-guide-id="price.new" onClick={() => handleAddNew('', true)}>
             <svg className="icon"><use href="#i-plus" /></svg>
             מחירון חדש
           </button>
@@ -327,7 +332,7 @@ export default function PricelistManagement() {
               <div className="form-grid cols-3">
                 <div className="field">
                   <label htmlFor="pricelist-newCategory">קטגוריה</label>
-                  <input id="pricelist-newCategory" type="text" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="input" placeholder="לדוגמה: נשים" />
+                  <input id="pricelist-newCategory" data-guide-id="price.nf-category" type="text" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="input" placeholder="לדוגמה: נשים" />
                 </div>
                 <div className="field">
                   <label htmlFor="pricelist-newDescription">תיאור</label>
@@ -351,7 +356,7 @@ export default function PricelistManagement() {
                 </div>
               </div>
               <div className="row-actions" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button type="button" className="btn btn-primary" onClick={() => handleSave(null)}>
+                <button type="button" className="btn btn-primary" data-guide-id="price.nf-save" onClick={() => handleSave(null)}>
                   <svg className="icon"><use href="#i-check" /></svg>
                   שמור
                 </button>
@@ -367,7 +372,7 @@ export default function PricelistManagement() {
             <div key={categoryName} style={{ marginBottom: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' }}>
                 <h2 className="section-title" style={{ margin: 0 }}>{categoryName}</h2>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>
+                <button type="button" className="btn btn-secondary btn-sm" data-guide-id={categoryName === Object.keys(categoriesMap)[0] ? 'price.add-row' : undefined} onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>
                   <svg className="icon"><use href="#i-plus" /></svg>
                   הוסף שורה לקטגוריה
                 </button>
@@ -407,13 +412,14 @@ export default function PricelistManagement() {
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => handleEditClick(item)} title="ערוך">
+                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => handleEditClick(item)} data-guide-id={item === categoriesMap[Object.keys(categoriesMap)[0]][0] ? 'price.row-edit' : undefined} title="ערוך">
                                   <svg className="icon"><use href="#i-edit" /></svg>
                                 </button>
                                 <button
                                   type="button"
                                   className="btn btn-ghost btn-icon-only btn-sm"
                                   onClick={() => handleDelete(item.id)}
+                                  data-guide-id={item === categoriesMap[Object.keys(categoriesMap)[0]][0] ? 'price.row-delete' : undefined}
                                   title="מחק"
                                   disabled={isLocked}
                                   style={{ opacity: isLocked ? 0.45 : 1 }}

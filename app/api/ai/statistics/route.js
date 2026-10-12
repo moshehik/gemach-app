@@ -12,7 +12,7 @@ import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGua
 import { assertSqlTables, tablesForTier, aiTierForRole } from '../../../../lib/ai/sqlTablePolicy';
 import { getAllCachedSettings } from '../../../../lib/settingsCache';
 import { buildSettingsGuide } from '../../../../lib/settingsMetadata';
-import { buildHowToGuide } from '../../../../lib/howToGuide';
+import { answerSiteQuestion } from '../../../../lib/ai/siteGuide';
 import {
   buildDateContext,
   buildSharedSqlRules,
@@ -21,9 +21,6 @@ import {
   normalizeAiSql,
   extractSqlQueries,
   finalizeAiText,
-  validateSettingTags,
-  validateLinkTags,
-  buildGuideFollowupPrompt,
   buildUserDateHints,
   rowCountFacts,
   resultsHaveData,
@@ -60,14 +57,14 @@ Rules for SQL query generation:
 9. IMPORTANT UI FEATURE: for rows the user may want to open, include two hidden columns "_actionUrl" and "_actionLabel". Orders: use the short orderId: '/orders/' || "orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel". Customers: '/customers/' || "id" AS "_actionUrl", 'תיק לקוח' AS "_actionLabel". Never display long UUIDs to the user - show "orderId" for orders, "legacyId" for customers, "barcodePrefix" for models.
 10. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: "Order"."status" can hold two internal placeholders that are NOT real orders: '${DRAFT_ORDER_STATUS}' (unfinished draft) and '${RESERVED_ORDER_STATUS}' (temporary number reservation). Never count/list them unless asked. Whenever you query or join through "Order" add COALESCE("status", '') NOT IN ('${DRAFT_ORDER_STATUS}', '${RESERVED_ORDER_STATUS}') (see rule S1 below - never a bare NOT IN).
 11. You cannot compute dress availability for a date via SQL. For statistics about past/future bookings use "OrderItem"/"Order" data only.
-12. QUESTIONS ABOUT WHERE/HOW (not data): if the user asks where a system setting is or how to change it (e.g. "איפה מגדירים...", "איך משנים...") output exactly one line: ACTION: SETTINGS_GUIDE() . If the user asks how to perform an operational action in the system (e.g. "איך מוסיפים...", "איך עורכים עובדים") output exactly one line: ACTION: HOWTO_GUIDE() . The system then gives you the catalog to answer from. Never guess menu names yourself.`;
+12. QUESTIONS ABOUT WHERE/HOW (not data): if the user asks where a system setting is or how to change it (e.g. "איפה מגדירים...", "איך משנים...") output exactly one line: ACTION: SETTINGS_GUIDE() . If the user asks about the site itself - how to perform an action (e.g. "איך מוסיפים...", "איך עורכים עובדים"), where a page/button/tab/screen is, or whether an option/feature exists ("האם יש אפשרות...") - output exactly one line: ACTION: SITE_GUIDE() . The system then gives you the verified map of the new interface to answer from. Never guess menu names yourself.`;
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
 
   try {
-    const { prompt, history = [], contextQuery = '' } = await req.json();
+    const { prompt, history = [], contextQuery = '', currentPath: rawCurrentPath = '/' } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -102,21 +99,23 @@ export async function POST(req) {
     let aiResponse = await generateContent(initialPrompt);
     let tableRows = null;
     let nameNotice = ''; // שורת איות חכם שהשרת כותב בראש התשובה (lib/ai/smartNames.js)
+    let siteGuide = null; // תשובת מדריך האתר: { guide, guideHref } (lib/ai/siteGuide.js)
 
     // --- הדרכות: "איפה ההגדרה" / "איך עושים" (בשימוש אמיתי נשאלו כאן שאלות כאלה והתשובה הייתה ניחוש)
     const wantsSettings = isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse);
-    const wantsHowTo = /ACTION:\s*HOWTO_GUIDE\(\)/i.test(aiResponse) || (!isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse));
+    const wantsHowTo = /ACTION:\s*(?:SITE_GUIDE|HOWTO_GUIDE)\(\)/i.test(aiResponse) || (!isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse));
     if (wantsSettings || wantsHowTo) {
       try {
-        if (wantsSettings) {
-          const catalog = buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier()));
-          const text = await generateContent(buildGuideFollowupPrompt({ kind: 'settings', prompt, catalog, dateContext }));
-          aiResponse = validateSettingTags(text, catalog);
-        } else {
-          const catalog = buildHowToGuide();
-          const text = await generateContent(buildGuideFollowupPrompt({ kind: 'howto', prompt, catalog, dateContext }));
-          aiResponse = validateLinkTags(text, catalog);
-        }
+        const guideOut = await answerSiteQuestion({
+          prompt,
+          historyText,
+          who: { employeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' },
+          generate: (p) => generateContent(p),
+          dateContext,
+          settingsRows: isManager ? settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier()) : null,
+        });
+        aiResponse = guideOut.response;
+        siteGuide = { guide: guideOut.guide, guideHref: guideOut.guideHref };
       } catch (guideErr) {
         console.error('Statistics guide error:', guideErr);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';
@@ -226,7 +225,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
     aiResponse = await finalizeTagsAndText(aiResponse, {
       isManager,
       loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
-      loadHowToCatalog: async () => buildHowToGuide(),
+      loadHowToCatalog: async () => [],
     });
     if (nameNotice) aiResponse = `${nameNotice}\n${aiResponse}`;
 
@@ -245,7 +244,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
       }
     } catch (e) { console.error('Failed to save AI session', e); }
 
-    return NextResponse.json({ response: aiResponse, data: tableRows });
+    return NextResponse.json({ response: aiResponse, data: tableRows, ...(siteGuide || {}) });
   } catch (error) {
     console.error('API Statistics Route Error:', error);
     return NextResponse.json({ error: 'Failed to generate statistics' }, { status: 500 });

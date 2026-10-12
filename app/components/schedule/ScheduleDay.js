@@ -418,7 +418,7 @@ export default function ScheduleDay({
           <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || handleScan} updatedCount={updatedCount} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
-              <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">
+              <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" data-guide-id="sched.view-switch" role="group" aria-label="מצב תצוגה">
                 <span className="vknob" aria-hidden="true" />
                 <button type="button" className={'vopt' + (view === 'rows' ? ' on' : '')} aria-label="תצוגת שורות" aria-pressed={view === 'rows'} data-tip="שורות" onClick={() => changeView('rows')}>
                   <ScheduleIcon name="rows" />
@@ -430,7 +430,7 @@ export default function ScheduleDay({
               {/* שבב "יום לא עובד" (החלטת הבעלים 4.10.2026, SCH-CHIP-NWD = א'): ליד המתג, תגית 14 (chip gray) כמו
                   בתצוגה שאושרה. הקביעה מהשרת בלבד - data.nonWorkingDay מהכלל האחיד ב-lib/businessDays.js (שישי, שבת, חג,
                   ערב חג, ימים שהבעלים סימן; יום שהבעלים פתח - לא). הדף לא מחשב ימים בעצמו. */}
-              {!loading && data && data.nonWorkingDay ? <span className="chip gray lz-offday">יום לא עובד</span> : null}
+              {!loading && data && data.nonWorkingDay ? <span className="chip gray lz-offday" data-guide-id="sched.offday-chip">יום לא עובד</span> : null}
               {branchesEnabled && branches.length ? (
                 <div className="lz-dtools">
                   <BranchSeg branches={branches} value={branch} onChange={changeBranch} />
@@ -445,7 +445,7 @@ export default function ScheduleDay({
               </div>
             ) : null}
 
-            <div id="stages">
+            <div id="stages" data-guide-id="sched.stages">
               {error ? (
                 <div className="empty" role="alert">
                   <ScheduleIcon name={error.status === 403 || error.status === 401 ? 'shield' : 'alert'} className="lg" />
@@ -542,7 +542,7 @@ function BranchSeg({ branches, value, onChange }) {
   const opts = [{ v: '', label: 'כל הסניפים' }, ...branches.map((b) => ({ v: b, label: b }))];
   const idx = Math.max(0, opts.findIndex((o) => o.v === value));
   return (
-    <div className="seg pill lz-branches" role="radiogroup" aria-label="סינון לפי סניף" style={{ '--n': opts.length, '--i': idx }}>
+    <div className="seg pill lz-branches" data-guide-id="sched.branches" role="radiogroup" aria-label="סינון לפי סניף" style={{ '--n': opts.length, '--i': idx }}>
       <span className="pth" aria-hidden="true" />
       {opts.map((o) => (
         <button key={o.v || 'all'} type="button" role="radio" aria-checked={o.v === value} className={o.v === value ? 'on' : ''} onClick={() => onChange(o.v)}>

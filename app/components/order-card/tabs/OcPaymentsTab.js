@@ -84,7 +84,7 @@ export default function OcPaymentsTab({ oc, ui }) {
   return (
     <>
       {/* A12 מצב תשלום */}
-      <div className="card" data-oc-pay="status">
+      <div className="card" data-oc-pay="status" data-guide-id="oc.pay-status">
         <div className="card-h"><div className="ico green"><OcIcon name="wallet" size="lg" /></div><h2>מצב תשלום</h2></div>
         <div className="bal">
           <div>
@@ -96,13 +96,13 @@ export default function OcPaymentsTab({ oc, ui }) {
             <div className="pbar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`שולם ${pct}%`}><i style={{ width: `${pct}%` }} /></div>
           </div>
         </div>
-        {bal > 0 ? <button type="button" className="btn lg block oc-pay-main" data-act="pay-now" disabled={oc.saving} onClick={pay.payNow}><OcIcon name="card" />תשלום <Money n={bal} /></button> : null}
-        {bal < 0 ? <button type="button" className="btn primary lg block oc-pay-main" data-act="credit-now" disabled={oc.saving} onClick={pay.creditNow}><OcIcon name="undo" />זכה <Money n={bal} /></button> : null}
+        {bal > 0 ? <button type="button" className="btn lg block oc-pay-main" data-act="pay-now" data-guide-id="oc.pay-now" disabled={oc.saving} onClick={pay.payNow}><OcIcon name="card" />תשלום <Money n={bal} /></button> : null}
+        {bal < 0 ? <button type="button" className="btn primary lg block oc-pay-main" data-act="credit-now" data-guide-id="oc.credit-now" disabled={oc.saving} onClick={pay.creditNow}><OcIcon name="undo" />זכה <Money n={bal} /></button> : null}
       </div>
 
       {/* R38 זיכויים ממתינים */}
       {pending.length ? (
-        <div className="card" id="oc-pending-refunds" data-oc-pay="refunds">
+        <div className="card" id="oc-pending-refunds" data-oc-pay="refunds" data-guide-id="oc.pending-refunds">
           <div className="card-h"><div className="ico rose"><OcIcon name="undo" size="lg" /></div><h2>זיכויים ממתינים</h2></div>
           <div className="list">
             {pending.map(r => {
@@ -124,7 +124,7 @@ export default function OcPaymentsTab({ oc, ui }) {
       ) : null}
 
       {/* חיובים (A13 + R39; R34/R35: בלי לחצני הוספה/מחיקה) */}
-      <div className="card" data-oc-pay="charges">
+      <div className="card" data-oc-pay="charges" data-guide-id="oc.charges">
         <div className="card-h"><div className="ico rose"><OcIcon name="file" size="lg" /></div><h2>חיובים <Tip text="מתעדכן אוטומטית" /></h2>{oc.preview.isPreviewing ? <span className="faint oc-calc" role="status"><span className="spinner" aria-hidden="true" />מחשב מחדש ברקע…</span> : null}
         </div>
         <div className="list">
@@ -135,10 +135,10 @@ export default function OcPaymentsTab({ oc, ui }) {
       </div>
 
       {/* תשלומים שהתקבלו (R37) */}
-      <div className="card" data-oc-pay="payments">
+      <div className="card" data-oc-pay="payments" data-guide-id="oc.payments-list">
         <div className="card-h">
           <div className="ico blue"><OcIcon name="card" size="lg" /></div><h2>תשלומים שהתקבלו</h2>
-          {bal > 0 && !oc.dirty ? <button type="button" className="btn navy" data-act="pay-now" disabled={oc.saving} onClick={pay.payNow}><OcIcon name="plus" />הוסף תשלום</button> : null}
+          {bal > 0 && !oc.dirty ? <button type="button" className="btn navy" data-act="pay-now" data-guide-id="oc.add-payment" disabled={oc.saving} onClick={pay.payNow}><OcIcon name="plus" />הוסף תשלום</button> : null}
         </div>
         <div className="list">
           {payments.length ? payments.map((p, i) => {
@@ -152,17 +152,17 @@ export default function OcPaymentsTab({ oc, ui }) {
                   <small>{fresh ? 'ממתין לשמירה' : when(p.paymentDate)}</small>
                   <div className={`a${amt < 0 ? ' cr' : ''}`}><bdi dir="ltr">{amt < 0 ? `−${fmtMoney(amt)}` : fmtMoney(amt)}</bdi></div>
                 </div>
-                <button type="button" className="ibtn oc-ib" aria-label="פרטים נוספים" data-tip="פרטים נוספים" onClick={() => pay.openPaymentDetails(p)}><OcIcon name="info" size="sm" /></button>
+                <button type="button" className="ibtn oc-ib" data-guide-id="oc.payment-info" aria-label="פרטים נוספים" data-tip="פרטים נוספים" onClick={() => pay.openPaymentDetails(p)}><OcIcon name="info" size="sm" /></button>
                 {/* שורה שעוד לא נשמרה (חיוב אשראי שלא נשמר בשרת / מעקף) לא נמחקת מכאן - כסף שכבר זז לא נעלם בלחיצה; ביטול השינוי ברייל */}
-                {fresh ? null : <button type="button" className="ibtn oc-ib" aria-label="מחק תשלום" data-tip="מחק תשלום" onClick={() => pay.deletePayment(p)}><OcIcon name="trash" size="sm" /></button>}
+                {fresh ? null : <button type="button" className="ibtn oc-ib" data-guide-id="oc.payment-delete" aria-label="מחק תשלום" data-tip="מחק תשלום" onClick={() => pay.deletePayment(p)}><OcIcon name="trash" size="sm" /></button>}
               </div>
             );
           }) : <div className="empty oc-empty"><OcIcon name="cash" size="lg" /><span>לא בוצעו תשלומים</span></div>}
         </div>
         {unified ? null : (
           <div className="row wrap oc-mgr" data-oc-pay="manual-legacy">
-            {oc.settings.allowAdditionalPayment ? <button type="button" className="btn sm" data-act="extra-payment" disabled={oc.saving} onClick={pay.openManualPayment}><OcIcon name="cash" size="sm" />תשלום נוסף</button> : null}
-            <button type="button" className="btn sm" data-act="refund-request" disabled={oc.saving} onClick={pay.openManualRefund}><OcIcon name="undo" size="sm" />בקשת זיכוי ללקוח</button>
+            {oc.settings.allowAdditionalPayment ? <button type="button" className="btn sm" data-act="extra-payment" data-guide-id="oc.extra-payment" disabled={oc.saving} onClick={pay.openManualPayment}><OcIcon name="cash" size="sm" />תשלום נוסף</button> : null}
+            <button type="button" className="btn sm" data-act="refund-request" data-guide-id="oc.refund-request" disabled={oc.saving} onClick={pay.openManualRefund}><OcIcon name="undo" size="sm" />בקשת זיכוי ללקוח</button>
           </div>
         )}
       </div>
@@ -170,12 +170,12 @@ export default function OcPaymentsTab({ oc, ui }) {
       {/* אפשרויות מנהל: R22 (לחצן אחד, נווה בלבד - AMB-17) + R33 (הנהלה ראשית בלבד) */}
       {unified || pay.canRecalc ? (
         <details className="coll" data-oc-pay="manager">
-          <summary><OcIcon name="lock" />אפשרויות מנהל<OcIcon name="chev" className="chev" /></summary>
+          <summary data-guide-id="oc.manager-options"><OcIcon name="lock" />אפשרויות מנהל<OcIcon name="chev" className="chev" /></summary>
           <div className="in">
             <div className="row wrap oc-mgr">
-              {unified ? <button type="button" className="btn" data-act="manual-money" onClick={pay.openManual}><OcIcon name="cash" size="sm" />חיוב / זיכוי ידני</button> : null}
+              {unified ? <button type="button" className="btn" data-act="manual-money" data-guide-id="oc.manual-money" onClick={pay.openManual}><OcIcon name="cash" size="sm" />חיוב / זיכוי ידני</button> : null}
               {pay.canRecalc ? (
-                <button type="button" className="btn" data-act="recalc" disabled={pay.busy === 'recalc' || oc.saving} onClick={pay.runRecalc}>
+                <button type="button" className="btn" data-act="recalc" data-guide-id="oc.recalc" disabled={pay.busy === 'recalc' || oc.saving} onClick={pay.runRecalc}>
                   {pay.busy === 'recalc' ? <span className="spinner" aria-hidden="true" /> : <OcIcon name="refresh" size="sm" />}חישוב מחדש
                 </button>
               ) : null}

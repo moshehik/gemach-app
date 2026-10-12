@@ -76,7 +76,7 @@ export default function OcPrintMenu({ oc, ui }) {
 
   return (
     <>
-      <button ref={btnRef} type="button" className="xlbtn xlp" data-act="menu" aria-label="הדפסה ומייל" data-tip="הדפסה / מייל" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+      <button ref={btnRef} type="button" className="xlbtn xlp" data-act="menu" data-guide-id="oc.print-menu" aria-label="הדפסה ומייל" data-tip="הדפסה / מייל" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
         <XlGlyph kind="print" />
       </button>
       <div ref={menuRef} className={`menu${open ? ' open' : ''}`} id="pmenu" role="menu" aria-label="הדפסה ומייל" onKeyDown={onMenuKey}>

@@ -145,7 +145,7 @@ export default function InventoryAlertsPage() {
           <div className="page-desc">דגמים שהביקוש בהם חורג מהמלאי הפנוי</div>
         </div>
         <div className="page-actions">
-          <Link href="/admin/site" className="btn btn-secondary">
+          <Link href="/admin" className="btn btn-secondary">
             <svg className="icon"><use href="#i-chevron-end" /></svg>
             חזרה לניהול
           </Link>
@@ -164,7 +164,7 @@ export default function InventoryAlertsPage() {
           <p>לא נמצאו חריגות בהזמנות העתידיות.</p>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" data-guide-id="invalert.table">
           <div className="table-scroll">
             <table className="data">
               <thead>

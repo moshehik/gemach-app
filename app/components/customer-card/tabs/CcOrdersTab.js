@@ -80,9 +80,9 @@ export default function CcOrdersTab({ cc }) {
     body = <div className="hgrp">{list.map((o) => <OrderRow key={o.id} o={o} cc={cc} showDelivery={showDelivery} open={!!open[o.orderId]} onToggle={() => setOpen((s) => ({ ...s, [o.orderId]: !s[o.orderId] }))} />)}</div>;
   }
   return (
-    <div className="card items-card">
+    <div className="card items-card" data-guide-id="cc.orders-card">
       <div className="card-h"><div className="ico teal"><CcIcon name="file" size="lg" /></div><h2>הזמנות</h2></div>
-      <div className="hres-bar"><span className="hres-n">הזמנות <b>{list.length}</b></span><ViewSwitch value={view} onChange={setView} /></div>
+      <div className="hres-bar"><span className="hres-n">הזמנות <b>{list.length}</b></span><ViewSwitch value={view} onChange={setView} data-guide-id="cc.orders-view" /></div>
       <div className="hres">{body}</div>
     </div>
   );

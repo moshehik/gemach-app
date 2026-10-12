@@ -211,10 +211,10 @@ export default function BoardPage() {
             {/* החלטת הבעלים 5.10.2026: "החודש הנוכחי" מופיע רק כשמוצג חודש אחר; בחודש הנוכחי הוא מוסתר */}
             {!isCurrentMonth && (
               <div className="lz-quick">
-                <button type="button" className="btn tgl" id="mToday" onClick={() => setSelectedDate(getIsraelTodayDate())}>החודש הנוכחי</button>
+                <button type="button" className="btn tgl" id="mToday" data-guide-id="board.today" onClick={() => setSelectedDate(getIsraelTodayDate())}>החודש הנוכחי</button>
               </div>
             )}
-            <div className={'vsw' + (view === 'list' ? ' t' : '')} id="mvsw" role="group" aria-label="מצב תצוגה">
+            <div className={'vsw' + (view === 'list' ? ' t' : '')} id="mvsw" data-guide-id="board.view-switch" role="group" aria-label="מצב תצוגה">
               <span className="vknob" aria-hidden="true" />
               <button type="button" className={'vopt' + (view === 'grid' ? ' on' : '')} aria-label="תצוגת לוח" aria-pressed={view === 'grid'} data-tip="לוח חודשי" onClick={() => setView('grid')}><Ic name="cal" /></button>
               <button type="button" className={'vopt' + (view === 'list' ? ' on' : '')} aria-label="תצוגת רשימה" aria-pressed={view === 'list'} data-tip="רשימת ימים" onClick={() => setView('list')}><Ic name="rows" /></button>

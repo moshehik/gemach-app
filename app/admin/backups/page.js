@@ -181,7 +181,7 @@ export default function BackupsPage() {
           <p className="page-desc">גיבוי ענני אוטומטי של כל נתוני הגמ&quot;ח ל-Google Drive, בנוסף ל-PITR של Neon (7 ימים)</p>
         </div>
         <div className="page-actions">
-          <Link href="/admin/site" className="btn btn-secondary">
+          <Link href="/admin" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה לניהול
           </Link>
@@ -203,6 +203,7 @@ export default function BackupsPage() {
           </span>
           <button
             type="button"
+            data-guide-id="bak.auto-switch"
             className={settings.backup_enabled ? 'switch on' : 'switch'}
             onClick={() => setSettings({ ...settings, backup_enabled: !settings.backup_enabled })}
           />
@@ -211,7 +212,7 @@ export default function BackupsPage() {
         <div className="field">
           <label>תדירות גיבוי</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div className="toggle-btn-group">
+            <div className="toggle-btn-group" data-guide-id="bak.interval">
               {PRESET_HOURS.map((h) => (
                 <button
                   key={h}
@@ -241,6 +242,7 @@ export default function BackupsPage() {
           <label>שם תיקיית דרייב לגיבויים (רשות)</label>
           <input
             type="text"
+            data-guide-id="bak.drive-folder"
             className="input"
             value={settings.backup_drive_folder_id}
             onChange={(e) => setSettings({ ...settings, backup_drive_folder_id: e.target.value })}
@@ -254,6 +256,7 @@ export default function BackupsPage() {
             type="text"
             inputMode="email"
             {...nf('backup_owner_email')}
+            data-guide-id="bak.owner-email"
             className="input"
             value={settings.backup_owner_email}
             onChange={(e) => setSettings({ ...settings, backup_owner_email: e.target.value })}
@@ -264,7 +267,7 @@ export default function BackupsPage() {
           </p>
         </div>
 
-        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        <button type="button" className="btn btn-primary" data-guide-id="bak.save" onClick={handleSave} disabled={saving}>
           <svg className="icon"><use href="#i-check-circle" /></svg>
           {saving ? 'שומר...' : 'שמור הגדרות'}
         </button>
@@ -284,7 +287,7 @@ export default function BackupsPage() {
         <p style={{ color: 'var(--text-3)', margin: '0 0 16px', fontSize: '12.5px', maxWidth: '640px' }}>
           מריץ גיבוי מלא עכשיו, בלי לחכות לגיבוי האוטומטי הבא. עשוי לקחת כמה דקות עד שהריצה תופיע ברשימה למטה.
         </p>
-        <button type="button" className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={handleTrigger} disabled={triggering}>
+        <button type="button" className="btn btn-primary btn-lg" data-guide-id="bak.now" style={{ width: '100%' }} onClick={handleTrigger} disabled={triggering}>
           <svg className="icon"><use href="#i-play" /></svg>
           {triggering ? 'שולח בקשה...' : 'גבה עכשיו'}
         </button>
@@ -296,7 +299,7 @@ export default function BackupsPage() {
         )}
       </div>
 
-      <div className="card card-pad">
+      <div className="card card-pad" data-guide-id="bak.history">
         <div className="card-title-row" style={{ marginBottom: '4px' }}>
           <svg className="icon"><use href="#i-history" /></svg>
           <h2 style={{ fontSize: '15px', margin: 0 }}>היסטוריית גיבויים ולוג תקלות</h2>

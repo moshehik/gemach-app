@@ -10,6 +10,7 @@
 // (אחרי חיפוש + סינון + מיון), בלי נתונים כפולים ובלי נתונים לא רלוונטיים; ה-PDF נוצר בשרת מאותם גיליונות.
 
 import '@/design-system/components.css';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="emp" ל-A5List / A5ListPage מוסיף data-guide-id emp.search, emp.filter, emp.sort, emp.ai, emp.stats, emp.view, emp.export-excel, emp.export-print, emp.back (נבנים בתוך a5-list).
 import './employees-list.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -195,10 +196,11 @@ function EmployeesList() {
   return (
     <>
       <A5ListPage
+        guide="emp"
         title="עובדים ונוכחות" backId="empBack" onBack={() => router.push('/admin')}
         tools={<PageVariantToggle screen="employees_list" placement="header" systemTip />}
         slotId={SLOT_ID} cardIcon="users" cardTitle="רשימת עובדים"
-        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/employees/new')}><Ic id="plus" />עובד חדש</button>}
+        cardAction={<button type="button" className="btn navy" id="btnNew" data-guide-id="emp.new" onClick={() => router.push('/employees/new')}><Ic id="plus" />עובד חדש</button>}
         tabs={<A5Tabs label="עובדים" items={[
           { key: 'list', label: 'רשימת עובדים', icon: 'users', on: true },
           { key: 'att', label: 'נוכחות', icon: 'clock', onClick: () => router.push('/employees/attendance') },
@@ -206,6 +208,7 @@ function EmployeesList() {
         tabpanel
       >
         <A5List
+          guide="emp"
           ref={listRef}
           items={rows}
           getId={(r) => r.id}

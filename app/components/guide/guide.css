@@ -1,0 +1,72 @@
+/* guide.css - הדגשת "הצבעה" של עוזר ה-AI (GuideProvider). טוקנים של פלטת הרכיבים (--gm-*) בלבד; ברירות מחדל זהות לערכי הפלטה
+   כדי שיעבוד גם בדף שבו tokens.css עדיין לא נטען. הכול fixed מעל כל שכבות האתר (חלונות קופצים 1000-1030). */
+.gm-guide { position: fixed; inset: 0; z-index: 1040; pointer-events: none; direction: rtl; font-family: inherit; }
+
+.gm-guide-ring {
+  position: fixed;
+  box-sizing: border-box;
+  border-radius: var(--gm-r-sm, 12px);
+  border: 2px solid var(--gm-gold, #c9a227);
+  background: rgba(201, 162, 39, 0.10);
+  box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.28), 0 0 0 9999px rgba(10, 34, 66, 0.38);
+  transition: top .18s var(--gm-ease, cubic-bezier(.22,1,.36,1)), left .18s var(--gm-ease, cubic-bezier(.22,1,.36,1)), width .18s var(--gm-ease, cubic-bezier(.22,1,.36,1)), height .18s var(--gm-ease, cubic-bezier(.22,1,.36,1));
+  animation: gm-guide-pulse 1.6s ease-in-out infinite;
+}
+.gm-guide-ring.is-still { animation: none; transition: none; }
+@keyframes gm-guide-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.28), 0 0 0 9999px rgba(10, 34, 66, 0.38); }
+  50% { box-shadow: 0 0 0 10px rgba(201, 162, 39, 0.12), 0 0 0 9999px rgba(10, 34, 66, 0.38); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-guide-ring { animation: none; transition: none; }
+  .gm-guide-bubble { transition: none; }
+}
+
+.gm-guide-bubble {
+  position: fixed;
+  box-sizing: border-box;
+  max-width: min(340px, calc(100vw - 16px));
+  min-width: 190px;
+  padding: 12px 14px;
+  border-radius: var(--gm-r-sm, 12px);
+  background: var(--gm-navy, #0f2c52);
+  color: #fff;
+  box-shadow: var(--gm-sh-lg, 0 20px 60px -15px rgba(10, 34, 66, .5));
+  border: 1.5px solid var(--gm-gold, #c9a227);
+  pointer-events: auto;
+  line-height: 1.45;
+  font-size: 14px;
+  text-align: right;
+}
+.gm-guide-bubble::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: auto;
+  left: var(--gm-guide-arrow, 24px);
+  width: 12px; height: 12px;
+  background: var(--gm-navy, #0f2c52);
+  border: 1.5px solid var(--gm-gold, #c9a227);
+  transform: translateX(-50%) rotate(45deg);
+}
+.gm-guide-bubble[data-place="below"]::after { top: -7px; border-right: 0; border-bottom: 0; }
+.gm-guide-bubble[data-place="above"]::after { bottom: -7px; border-left: 0; border-top: 0; }
+.gm-guide-bubble[data-place="center"]::after { display: none; }
+.gm-guide-bubble.is-missing { border-color: var(--gm-rose-500, #e8785a); }
+
+.gm-guide-step { font-size: 12px; color: var(--gm-gold-300, #e0c56e); margin-bottom: 4px; font-weight: 600; }
+.gm-guide-text { font-size: 14px; }
+.gm-guide-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-start; }
+.gm-guide-btn {
+  appearance: none;
+  border: 1.5px solid rgba(255, 255, 255, .55);
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gm-guide-btn:hover { background: rgba(255, 255, 255, .12); }
+.gm-guide-btn:focus-visible { outline: 2px solid var(--gm-gold-300, #e0c56e); outline-offset: 2px; }
+.gm-guide-btn.is-primary { background: var(--gm-gbtn, linear-gradient(135deg, #d9b84a 0%, #b8912f 100%)); border-color: var(--gm-gold-d, #9a7a1f); color: var(--gm-navy-900, #0a2242); font-weight: 600; }

@@ -160,7 +160,7 @@ export default function FullViewPage() {
         </div>
         <div className="page-actions">
           <span className="badge badge-primary">סה"כ רשומות: {data.length}</span>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא לאקסל" onClick={downloadExcel}>
+          <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא לאקסל" onClick={downloadExcel} data-guide-id="dx.full-export">
             <svg className="icon"><use href="#i-download" /></svg>
           </button>
         </div>

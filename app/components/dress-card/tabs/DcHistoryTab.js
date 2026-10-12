@@ -4,6 +4,7 @@
 // renderInfo / lifeCard / histCfg ב-model-card.js. הנתונים: AuditLog אמיתי (/api/audit לדגם ולפריטים - כמו הלשונית "מידע" הישנה), מנורמל לשורות
 // בעיצוב המאושר ב-lib/dressCardLogic.buildDressHistoryRows (לפני/אחרי מחושבים מהרישומים הקודמים - ר' תיעוד הפונקציה).
 import { useMemo } from 'react';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="dch" ל-A5List מוסיף data-guide-id dch.search, dch.filter, dch.export-excel (נבנים בתוך a5-list).
 import { A5List } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
 import { modelDisplayName } from '@/lib/modelDisplay';
@@ -81,6 +82,7 @@ export default function DcHistoryTab({ dc, ui }) {
       <div className="card hist">
         <div className="card-h"><div className="ico gold"><OcIcon name="clock" size="lg" /></div><h2>פעולות ושינויים</h2></div>
         <A5List
+          guide="dch"
           items={aiS.narrow(rows, (l, f) => !!l.bc && f.bcs.has(l.bc))}
           getId={(l) => l.id}
           loading={logs.status === 'loading' || logs.status === 'idle'}

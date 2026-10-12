@@ -34,17 +34,17 @@ export function DcAddItemDialog({ items, prefix, locations, defaultLoc, close })
       <div className="dc-itm-dlg">
         <div className="dc-dlg-row dc2">
           <div className="field"><label className="lbl" htmlFor="dcNSize">מידה</label>
-            <input className="inp" id="dcNSize" type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={size} autoComplete="off" data-autofocus="true" onKeyDown={onEnter} onChange={(e) => { setSize(e.target.value); setErr(''); }} /></div>
+            <input className="inp" id="dcNSize" data-guide-id="dc.add-size" type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={size} autoComplete="off" data-autofocus="true" onKeyDown={onEnter} onChange={(e) => { setSize(e.target.value); setErr(''); }} /></div>
           <div className="field"><label className="lbl" htmlFor="dcNSer">מס׳ סידורי</label>
-            <input className="inp" id="dcNSer" type="number" min="0" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial} autoComplete="off" onKeyDown={onEnter} onChange={(e) => { setSerial(e.target.value); setErr(''); }} /></div>
+            <input className="inp" id="dcNSer" data-guide-id="dc.add-serial" type="number" min="0" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial} autoComplete="off" onKeyDown={onEnter} onChange={(e) => { setSerial(e.target.value); setErr(''); }} /></div>
         </div>
-        <div className="field"><label className="lbl">מיקום</label><DcPill id="dcNLoc" value={loc} options={locOptions(locations, loc)} onChange={setLoc} label="מיקום" /></div>
+        <div className="field"><label className="lbl">מיקום</label><DcPill id="dcNLoc" data-guide-id="dc.add-loc" value={loc} options={locOptions(locations, loc)} onChange={setLoc} label="מיקום" /></div>
         <div className="field"><label className="lbl">ברקוד <Tip text="אוטומטי — נבנה מקוד הדגם + מידה + מס׳ סידורי" /></label>
           <div className="dc-barc"><OcIcon name="scan" /><bdi id="dcNBc">{size !== '' ? bcOf(prefix, size, effSerial) : `${prefix}____`}</bdi></div></div>
         <div className="dc-err" id="dcNErr" style={{ minHeight: 24 }} role="alert">{err ? <><OcIcon name="alert" size="sm" />{err}</> : null}</div>
       </div>
       <DlgButtons style={{ marginTop: 12 }}>
-        <DlgBtn kind="primary" icon="plus" autoFocus={false} onClick={go}>הוסף לדגם</DlgBtn>
+        <DlgBtn kind="primary" icon="plus" autoFocus={false} onClick={go} data-guide-id="dc.add-ok">הוסף לדגם</DlgBtn>
         <DlgBtn kind="ghost" icon="back" onClick={() => close(null)}>ביטול</DlgBtn>
       </DlgButtons>
     </>

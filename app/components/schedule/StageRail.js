@@ -29,7 +29,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
     if (onScan) onScan(v);
   }
   return (
-    <aside className="rail lz-rail" aria-label="שלבי התהליך">
+    <aside className="rail lz-rail" data-guide-id="sched.rail" aria-label="שלבי התהליך">
       <div className={'st-sidenav lz-snav' + (loading ? ' lz-loading' : '')}>
         <div className="lz-rh">שלבי היום</div>
         <div className="sbar" id="sbar">
@@ -56,6 +56,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
           <button
             type="button"
             className={'st-stab lz-stab' + (!filter ? ' on' : '')}
+            data-guide-id="sched.rail-all"
             aria-pressed={!filter}
             onClick={() => onFilter(null)}
             data-tip={data ? 'הצגת כל השלבים · ' + allTotal + ' פריטים' : 'הצגת כל השלבים'}
@@ -93,6 +94,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
                 type="button"
                 className={'st-stab lz-stab' + (s && !total ? ' fut' : '') + (filter === k ? ' on' : '')}
                 style={{ '--pc': 'var(' + meta.color + ')' }}
+                data-guide-id={`sched.rail-${k}`}
                 aria-pressed={filter === k}
                 onClick={() => onFilter(k)}
                 data-tip={tip}
@@ -120,6 +122,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
               type="button"
               className={'st-stab lz-stab' + (updatedCount === 0 ? ' fut' : '') + (filter === 'updated' ? ' on' : '')}
               style={{ '--pc': 'var(' + UPDATED_META.color + ')' }}
+              data-guide-id="sched.rail-updated"
               aria-pressed={filter === 'updated'}
               onClick={() => onFilter('updated')}
               data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount + ' הזמנות') + ' · לחיצה לסינון'}

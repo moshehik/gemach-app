@@ -124,8 +124,8 @@ export default function AttendanceEdit({ employee, period, isMgr, shifts, loadin
         <td data-l="" className="act"><div className="rowact">
           {!s.isDeleted ? (
             <>
-              <button type="button" className="ibtn" aria-label="ערוך רק כניסה ויציאה" data-tip="ערוך רק כניסה ויציאה" onClick={() => startEdit(s)}><Ic id="pencil" size="sm" /></button>
-              <button type="button" className="ibtn danger" aria-label="מחק" data-tip="מחק" onClick={() => del(s)}><Ic id="trash" size="sm" /></button>
+              <button type="button" className="ibtn" data-guide-id={s === rows[0] ? 'att.edit-pencil' : undefined} aria-label="ערוך רק כניסה ויציאה" data-tip="ערוך רק כניסה ויציאה" onClick={() => startEdit(s)}><Ic id="pencil" size="sm" /></button>
+              <button type="button" className="ibtn danger" data-guide-id={s === rows[0] ? 'att.edit-delete' : undefined} aria-label="מחק" data-tip="מחק" onClick={() => del(s)}><Ic id="trash" size="sm" /></button>
             </>
           ) : (
             <button type="button" className="ibtn" aria-label="שחזר" data-tip="שחזר" onClick={() => restore(s)}><Ic id="refresh" size="sm" /></button>
@@ -148,16 +148,16 @@ export default function AttendanceEdit({ employee, period, isMgr, shifts, loadin
   }
 
   return (
-    <section className="card dfields at-card" aria-labelledby="h-att">
+    <section className="card dfields at-card" aria-labelledby="h-att" data-guide-id="att.edit-card">
       <div className="card-h"><div className="ico rose"><Ic id="clock" size="lg" /></div><h2 id="h-att">דוח נוכחות וסיכום - {employee.name}</h2></div>
       <div className="ec-tool">
         <div className="trow">
-          <label className="sw"><input type="checkbox" id="showDel" checked={showDel} onChange={(e) => onShowDel(e.target.checked)} /><i /></label>
+          <label className="sw"><input type="checkbox" id="showDel" data-guide-id="att.edit-showdel" checked={showDel} onChange={(e) => onShowDel(e.target.checked)} /><i /></label>
           <label htmlFor="showDel" className="pf-pl">הצג מחוקות</label>
         </div>
         <span className="sp" />
-        <button type="button" className="btn" onClick={() => onHistory(null)}><Ic id="sn-history" size="sm" />היסטוריית שינויים</button>
-        <button type="button" className="btn primary" disabled={adding || editId !== null} onClick={startAdd}><Ic id="plus" size="sm" />הוסף משמרת</button>
+        <button type="button" className="btn" data-guide-id="att.edit-history" onClick={() => onHistory(null)}><Ic id="sn-history" size="sm" />היסטוריית שינויים</button>
+        <button type="button" className="btn primary" data-guide-id="att.edit-add" disabled={adding || editId !== null} onClick={startAdd}><Ic id="plus" size="sm" />הוסף משמרת</button>
       </div>
 
       {adding ? (
@@ -171,13 +171,13 @@ export default function AttendanceEdit({ employee, period, isMgr, shifts, loadin
               </button>
               <div className="ec-gr">תאריך לועזי: {addDate ? gregDots(addDate) : ''}</div>
             </div>
-            <div className="field"><label className="lbl" htmlFor="aEn">שעת כניסה</label><input className="inp" type="time" id="aEn" value={add.entry} onChange={(e) => setAdd((o) => ({ ...o, entry: e.target.value }))} /></div>
-            <div className="field"><label className="lbl" htmlFor="aEx">שעת יציאה</label><input className="inp" type="time" id="aEx" value={add.exit} onChange={(e) => setAdd((o) => ({ ...o, exit: e.target.value }))} /></div>
+            <div className="field"><label className="lbl" htmlFor="aEn">שעת כניסה</label><input className="inp" type="time" id="aEn" data-guide-id="att.add-entry" value={add.entry} onChange={(e) => setAdd((o) => ({ ...o, entry: e.target.value }))} /></div>
+            <div className="field"><label className="lbl" htmlFor="aEx">שעת יציאה</label><input className="inp" type="time" id="aEx" data-guide-id="att.add-exit" value={add.exit} onChange={(e) => setAdd((o) => ({ ...o, exit: e.target.value }))} /></div>
             <div className="field"><label className="lbl" htmlFor="aTm">סה&quot;כ דקות</label><input className="inp" type="number" id="aTm" disabled placeholder="מחושב אוטומטית" /></div>
             {isMgr ? (
               <div className="field"><label className="lbl" htmlFor="aTc">לתשלום (₪)</label><div className="inpw money"><span className="aff" aria-hidden="true">₪</span><input className="inp" type="number" id="aTc" disabled placeholder="מחושב אוטומטית" /></div></div>
             ) : null}
-            <div className="field"><label className="lbl" htmlFor="aNt">הערות</label><input className="inp" type="text" id="aNt" autoComplete="off" value={add.notes} onChange={(e) => setAdd((o) => ({ ...o, notes: e.target.value }))} {...NO_FILL} /></div>
+            <div className="field"><label className="lbl" htmlFor="aNt">הערות</label><input className="inp" type="text" id="aNt" data-guide-id="att.add-notes" autoComplete="off" value={add.notes} onChange={(e) => setAdd((o) => ({ ...o, notes: e.target.value }))} {...NO_FILL} /></div>
             {calOpen ? (
               <div className="ec-hcw">
                 <HebCalendar value={addDate} today={todayKey} onPick={(k) => { setAddDate(k); setCalOpen(false); if (dtbRef.current) dtbRef.current.focus(); }} />
@@ -185,7 +185,7 @@ export default function AttendanceEdit({ employee, period, isMgr, shifts, loadin
             ) : null}
           </div>
           <div className="acts">
-            <button type="button" className="btn primary" onClick={saveAdd}><Ic id="check" size="sm" />שמור</button>
+            <button type="button" className="btn primary" data-guide-id="att.add-save" onClick={saveAdd}><Ic id="check" size="sm" />שמור</button>
             <button type="button" className="btn" onClick={closeEdit}>בטל</button>
           </div>
         </section>

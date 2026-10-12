@@ -15,9 +15,9 @@ import ConsentFields from '@/app/components/shared/ConsentFields';
 import { invalidConsentFields } from '@/lib/consentForm';
 
 const TABS = [
-  { v: 'phone', label: 'לפי טלפון', icon: 'phone' },
-  { v: 'name', label: 'מהרשימה', icon: 'users' },
-  { v: 'new', label: 'לקוח חדש', icon: 'plus' },
+  { v: 'phone', label: 'לפי טלפון', icon: 'phone', guide: 'no.cust-mode-phone' },
+  { v: 'name', label: 'מהרשימה', icon: 'users', guide: 'no.cust-mode-list' },
+  { v: 'new', label: 'לקוח חדש', icon: 'plus', guide: 'no.cust-mode-new' },
 ];
 
 function custSub(c) {
@@ -85,7 +85,7 @@ function PhoneTab({ ctl }) {
         <ClearX show={!!ctl.phoneSearchInput} onClear={() => { ctl.setPhoneSearchInput(''); ctl.setFoundCustomersFromPhone([]); }} />
       </Field>
       <div className="row wrap" style={{ marginTop: 24, gap: 16, alignItems: 'center' }}>
-        <button type="button" className="btn navy" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
+        <button type="button" className="btn navy" data-guide-id="no.cust-phone-check" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
       </div>
       <div id="phoneRes" style={{ marginTop: 16 }}>
         {res.length ? (
@@ -95,7 +95,7 @@ function PhoneTab({ ctl }) {
             {sel ? <MissLine c={sel} ctl={ctl} /> : null}
             {one && ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
             <div className="row wrap" style={{ marginTop: 14, gap: 10 }}>
-              <button type="button" className="btn primary" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
+              <button type="button" className="btn primary" data-guide-id="no.cust-use" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
               {anyMissing && (sel || one) ? (ctl.inlineCustomerEdit
                 ? <button type="button" className="btn" onClick={() => ctl.editCustomerInline(sel || one, 'use')}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
                 : <a className="btn" href={`/customers/${(sel || one).id}`} target="_blank" rel="noreferrer"><Ic n="pencil" c="sm" />עריכת פרטי לקוח</a>) : null}
@@ -226,7 +226,7 @@ function NewTab({ ctl }) {
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
       {err && (!err.field || err.field === 'consent') ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
       <div className="row" style={{ marginTop: 24 }}>
-        <button type="button" className="btn primary" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
+        <button type="button" className="btn primary" data-guide-id="no.cust-save" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
       </div>
     </div>
   );
@@ -237,7 +237,7 @@ export default function StepCustomer({ ctl }) {
     <OneCard>
       <Blk>
         <SubH icon="search" tone="rose" title="בחירת לקוח" />
-        <SegPill id="custSeg" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
+        <SegPill id="custSeg" guide="no.cust-modes" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
           onChange={(v) => { ctl.setSearchMode(v); if (v === 'phone') ctl.setFoundCustomersFromPhone([]); }} />
         <div style={{ marginTop: 18 }}>
           {ctl.searchMode === 'phone' ? <PhoneTab ctl={ctl} /> : ctl.searchMode === 'name' ? <ListTab ctl={ctl} /> : <NewTab ctl={ctl} />}

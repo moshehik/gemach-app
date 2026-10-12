@@ -119,6 +119,7 @@ export function GoLink({ orderId }) {
   return (
     <a
       className="go lz-go"
+      data-guide-id="sched.row-card"
       href={'/orders/' + orderId}
       target="_blank"
       rel="noopener noreferrer"
@@ -145,7 +146,7 @@ function StageRow({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
       <div className="li lrow">
         <div className="ic-b"><ScheduleIcon name={meta.icon} /></div>
         <div className="t">
-          <button type="button" className="lz-tbtn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <button type="button" className="lz-tbtn" data-guide-id="sched.row-open" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             <b>{name} <bdi>#{row.orderId}</bdi></b>
             <span className="ln">
               {subItems(stage.key, row).map((part, i) => (

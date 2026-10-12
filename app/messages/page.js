@@ -579,40 +579,40 @@ export default function MessagesPage() {
       </div>
 
       <div className="tabs">
-        <button type="button" className={activeTab === 'incoming' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('incoming')} title="דואר נכנס">
+        <button type="button" className={activeTab === 'incoming' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('incoming')} data-guide-id="msg.tab-incoming" title="דואר נכנס">
           <svg className="icon"><use href="#i-mail" /></svg>
           נכנסות
           {unreadCount > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{unreadCount}</span>}
         </button>
-        <button type="button" className={activeTab === 'outgoing' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('outgoing')} title="דואר יוצא">
+        <button type="button" className={activeTab === 'outgoing' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('outgoing')} data-guide-id="msg.tab-outgoing" title="דואר יוצא">
           <svg className="icon"><use href="#i-message" /></svg>
           יוצאות
           {outgoing.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{outgoing.length}</span>}
         </button>
-        <button type="button" className={activeTab === 'archived' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('archived')} title="ארכיון הודעות">
+        <button type="button" className={activeTab === 'archived' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('archived')} data-guide-id="msg.tab-archived" title="ארכיון הודעות">
           <svg className="icon"><use href="#i-folder" /></svg>
           ארכיון
           {archived.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{archived.length}</span>}
         </button>
         {shiftHandoverEnabled && (
-          <button type="button" className={activeTab === 'shift' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('shift')} title="הודעות בין משמרות">
+          <button type="button" className={activeTab === 'shift' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('shift')} data-guide-id="msg.tab-shift" title="הודעות בין משמרות">
             <svg className="icon"><use href="#i-refresh" /></svg>
             בין משמרות
             {shiftHandoverNotes.filter(n => !n.isRead).length > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{shiftHandoverNotes.filter(n => !n.isRead).length}</span>}
           </button>
         )}
         {managementMessagesEnabled && (
-          <button type="button" className={activeTab === 'management' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('management')} title="הודעות להנהלה">
+          <button type="button" className={activeTab === 'management' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('management')} data-guide-id="msg.tab-management" title="הודעות להנהלה">
             <svg className="icon"><use href="#i-alert-circle" /></svg>
             להנהלה
             {managementNotes.filter(n => !n.handledAt).length > 0 && <span className="badge badge-warning" style={{ marginInlineStart: '4px' }}>{managementNotes.filter(n => !n.handledAt).length}</span>}
           </button>
         )}
-        <button type="button" className={activeTab === 'settings' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('settings')} title="הגדרות התראות">
+        <button type="button" className={activeTab === 'settings' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('settings')} data-guide-id="msg.tab-settings" title="הגדרות התראות">
           <svg className="icon"><use href="#i-settings" /></svg>
           הגדרות
         </button>
-        <button type="button" className={activeTab === 'compose' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('compose')} title="הודעה חדשה">
+        <button type="button" className={activeTab === 'compose' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('compose')} data-guide-id="msg.tab-compose" title="הודעה חדשה">
           <svg className="icon"><use href="#i-plus" /></svg>
           הודעה חדשה
         </button>
@@ -680,7 +680,7 @@ export default function MessagesPage() {
             <div className="field">
               <label htmlFor="shift-note-content">הודעה חדשה למשמרת הבאה:</label>
               <textarea
-                id="shift-note-content"
+                id="shift-note-content" data-guide-id="msg.shift-text"
                 className="textarea"
                 value={shiftNoteText}
                 onChange={e => setShiftNoteText(e.target.value)}
@@ -716,7 +716,7 @@ export default function MessagesPage() {
             <div className="field">
               <label htmlFor="management-note-content">הודעה/שאלה חדשה להנהלה:</label>
               <textarea
-                id="management-note-content"
+                id="management-note-content" data-guide-id="msg.mgmt-text"
                 className="textarea"
                 value={managementNoteText}
                 onChange={e => setManagementNoteText(e.target.value)}
@@ -794,7 +794,7 @@ export default function MessagesPage() {
             <div className="field">
               <label htmlFor="messages-receiver">שלח אל:</label>
               <select
-                id="messages-receiver"
+                id="messages-receiver" data-guide-id="msg.compose-to"
                 className="select"
                 value={receiverId}
                 onChange={e => setReceiverId(e.target.value)}
@@ -811,7 +811,7 @@ export default function MessagesPage() {
             <div className="field">
               <label htmlFor="messages-content">תוכן ההודעה:</label>
               <textarea
-                id="messages-content"
+                id="messages-content" data-guide-id="msg.compose-text"
                 className="textarea"
                 value={content}
                 onChange={e => setContent(e.target.value)}
@@ -823,7 +823,7 @@ export default function MessagesPage() {
             <div className="checkbox-row" style={{ marginBottom: '20px' }}>
               <input
                 type="checkbox"
-                id="messages-send-email"
+                id="messages-send-email" data-guide-id="msg.compose-email"
                 checked={sendEmail}
                 onChange={e => setSendEmail(e.target.checked)}
                 style={{ width: '16px', height: '16px', accentColor: 'var(--primary-solid)' }}
@@ -837,7 +837,7 @@ export default function MessagesPage() {
                 className="btn btn-primary"
                 onClick={handleSend}
                 disabled={isSending}
-                title="שלח הודעה"
+                title="שלח הודעה" data-guide-id="msg.send"
               >
                 {isSending ? 'שולח...' : (<><svg className="icon"><use href="#i-mail" /></svg>שלח הודעה</>)}
               </button>
@@ -873,7 +873,7 @@ export default function MessagesPage() {
                 <div className="checkbox-row">
                   <input
                     type="checkbox"
-                    id="messages-receive-alerts"
+                    id="messages-receive-alerts" data-guide-id="msg.email-alerts"
                     checked={currentUser.receiveEmailAlerts || false}
                     onChange={(e) => handleSaveSettings(e.target.checked)}
                     disabled={isSavingSettings || !currentUser.email}

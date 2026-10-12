@@ -146,7 +146,7 @@ export default function NoticeBarArea({ items, api }) {
   }, [live.length, all]);
 
   return (
-    <div className={`nb-area${multi ? ' multi' : ''}${col ? ' col' : ''}`} id="nbArea" aria-label="התראות">
+    <div className={`nb-area${multi ? ' multi' : ''}${col ? ' col' : ''}`} id="nbArea" data-guide-id="bell.notice-bar" aria-label="התראות">
       {items.map((n) => (
         <Notice
           key={n.id}

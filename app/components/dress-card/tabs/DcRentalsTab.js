@@ -3,6 +3,7 @@
 // DcRentalsTab - לשונית "השכרות" של כרטיס הדגם: כרטיס "סיכום" (4 אריחים) + רשימת ההשכרות על ערכת הרשימות (a5-list). rentCfg / renderRentSum ב-model-card.js.
 // הנתונים: /api/dresses/[id]/rentals (כמו הדף הישן) - סה"כ / שנה אחרונה / מושכר כרגע / ממתין להחזרה (עבר תאריך האירוע) לפי stats של השרת.
 import { useMemo } from 'react';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="dcr" ל-A5List / A5ListPage מוסיף data-guide-id dcr.search, dcr.filter, dcr.sort, dcr.ai, dcr.stats, dcr.view, dcr.export-excel, dcr.export-print (נבנים בתוך a5-list).
 import { A5List } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
 import { modelDisplayName } from '@/lib/modelDisplay';
@@ -51,7 +52,7 @@ export default function DcRentalsTab({ dc, ui }) {
     <>
       <div className="card">
         <div className="card-h"><div className="ico teal"><OcIcon name="refresh" size="lg" /></div><h2>סיכום</h2></div>
-        <div id="dcRentSum"><div className="dc-stats">
+        <div id="dcRentSum" data-guide-id="dc.rentals-summary"><div className="dc-stats">
           <StatTile icon="refresh" n={st.total || 0} label="סה״כ" tip="סה״כ השכרות לדגם" />
           <StatTile icon="cal" n={st.lastYear || 0} label="שנה אחרונה" tip="השכרות בשנה האחרונה" />
           <StatTile icon="bag" n={st.outNow || 0} label="מושכר" tip="מושכר כרגע" />
@@ -61,6 +62,7 @@ export default function DcRentalsTab({ dc, ui }) {
       <div className="card hist">
         <div className="card-h"><div className="ico teal"><OcIcon name="bag" size="lg" /></div><h2>השכרות</h2></div>
         <A5List
+          guide="dcr"
           items={shown}
           getId={(r) => r.id}
           loading={rentals.status === 'loading' || rentals.status === 'idle'}

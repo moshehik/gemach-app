@@ -21,6 +21,7 @@ export function UserButton({ info, open, onClick, tip }) {
     <button
       type="button"
       className="sn-user"
+      data-guide-id="rail.user"
       aria-haspopup="true"
       aria-expanded={open ? 'true' : 'false'}
       aria-label={info.name ? `תפריט משתמש - ${info.name}` : 'תפריט משתמש'}

@@ -509,13 +509,13 @@ export default function OrdersPage() {
           <div className="page-desc">סה&quot;כ רשומות: {totalCount}</div>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="olist.adv-search" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
             <svg className="icon"><use href="#i-list" /></svg>
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש תפוסה" onClick={() => setShowCapacitySearch(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="olist.capacity" title="חיפוש תפוסה" onClick={() => setShowCapacitySearch(true)}>
             <svg className="icon"><use href="#i-calendar" /></svg>
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת דוחות" onClick={() => setShowPrintWizard(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="olist.print" title="הדפסת דוחות" onClick={() => setShowPrintWizard(true)}>
             <svg className="icon"><use href="#i-printer" /></svg>
           </button>
           <ExportButtons
@@ -540,7 +540,7 @@ export default function OrdersPage() {
             iconOnly={true}
             onFetchData={fetchOrdersForExport}
           />
-          <Link href="/orders/new" className="btn btn-primary">
+          <Link href="/orders/new" className="btn btn-primary" data-guide-id="olist.new-order">
             <svg className="icon"><use href="#i-plus" /></svg>
             הזמנה חדשה
           </Link>
@@ -549,7 +549,7 @@ export default function OrdersPage() {
 
       {/* סרגל חיפוש: חיפוש טקסטואלי (Enter או כפתור) + שאלות סטטיסטיקה */}
       <div className="toolbar">
-        <form onSubmit={handleSearch} className="search-toolbar">
+        <form onSubmit={handleSearch} className="search-toolbar" data-guide-id="olist.search">
           <svg className="icon"><use href="#i-search" /></svg>
           <input
             type="text"
@@ -583,7 +583,7 @@ export default function OrdersPage() {
       )}
 
       {/* סינון סטטוס: הכפתור הפעיל קובע אילו הזמנות מוצגות בטבלה */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+      <div className="pill-tabs" data-guide-id="olist.filters" style={{ marginBottom: '20px' }}>
         <button type="button" onClick={() => { setFilterStatus('soon'); setPage(1); }} className={filterStatus === 'soon' ? 'pill-tab active' : 'pill-tab'} title="בקרוב (החל מהיום ואילך)">
           <svg className="icon"><use href="#i-calendar" /></svg>
           בקרוב
@@ -786,7 +786,7 @@ export default function OrdersPage() {
         document.body
       )}
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-guide-id="olist.table">
         <div className="table-scroll">
         {loading && orders.length === 0 ? (
           <div className="page-loading">

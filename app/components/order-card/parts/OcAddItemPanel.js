@@ -258,28 +258,28 @@ export default function OcAddItemPanel({ oc, ui, actions, open, onClose, altEnab
     }
   };
   return (
-    <div className={`addpanel${open ? ' open' : ''}`} aria-hidden={!open} hidden={!open}>
+    <div className={`addpanel${open ? ' open' : ''}`} data-guide-id="oc.add-panel" aria-hidden={!open} hidden={!open}>
       <div className="row spread">
         <b className="big oc-addt">הוספת שמלה</b>
         <button type="button" className="ibtn oc-addx" data-act="addtoggle" aria-label="סגירה" data-tip="סגירה" onClick={onClose}><OcIcon name="x" size="sm" /></button>
       </div>
       <div className="grid2">
-        <div className="field">
+        <div className="field" data-guide-id="oc.add-model">
           <label className="lbl" htmlFor="addModel">מספר דגם</label>
           <ModelInput id="addModel" value={model} ui={ui} onChange={(m) => { setModel(m); patch({ sizeText: '' }); }} />
         </div>
-        <div className="field">
+        <div className="field" data-guide-id="oc.add-size">
           <label className="lbl" id="addSizeL">מידה</label>
           {model ? <SizeButtons rows={rows} order={oc.order} value={draft.sizeText} loading={loading} labelledBy="addSizeL" onChange={(s) => patch({ sizeText: s })} /> : <div className="faint oc-sizes-msg">יש לבחור דגם</div>}
         </div>
       </div>
       {altEnabled ? <AltFields value={draft} idPrefix="add" onChange={patch} /> : null}
       <div className="row spread wrap">
-        <span className="muted oc-addprice">
+        <span className="muted oc-addprice" data-guide-id="oc.add-price">
           מחיר השכרה: <b><bdi dir="ltr">{price !== null ? fmtMoney(price) : '—'}</bdi></b>
           {fee !== null ? <> · דמי ביטול <b><bdi dir="ltr">{fmtMoney(fee)}</bdi></b></> : null}
         </span>
-        <button type="button" className="btn navy" data-act="additem" disabled={!canAdd} onClick={add}>
+        <button type="button" className="btn navy" data-act="additem" data-guide-id="oc.add-confirm" disabled={!canAdd} onClick={add}>
           <OcIcon name="plus" />{busy ? 'מוסיף...' : 'הוסף להזמנה'}
         </button>
       </div>

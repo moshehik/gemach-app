@@ -25,11 +25,11 @@ export function StepIdentity({ ctl }) {
             <Tip t={`קידומת הברקוד של הפריטים (${codeLen} ספרות). הקוד מרכיב את ברקודי הפריטים ולא ניתן לשינוי לאחר היצירה`} /></label>
           <div className="mn-line">
             <div className="inpw">
-              <input className="inp" id="mnCode" {...nf('code')} inputMode="numeric" dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={d.code}
+              <input className="inp" id="mnCode" data-guide-id="mn.code" {...nf('code')} inputMode="numeric" dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={d.code}
                 placeholder={ctl.codeLoading ? 'טוען קוד פנוי...' : '0'.repeat(codeLen)}
                 onChange={(e) => ctl.onCode(e.target.value)} onBlur={() => ctl.touch('code')} />
             </div>
-            <button type="button" className="btn sm" data-act="auto-code" data-tip="הקוד הפנוי הבא במאגר" onClick={ctl.autoCode}><Ic n="refresh" c="sm" />קוד פנוי</button>
+            <button type="button" className="btn sm" data-guide-id="mn.code-auto" data-act="auto-code" data-tip="הקוד הפנוי הבא במאגר" onClick={ctl.autoCode}><Ic n="refresh" c="sm" />קוד פנוי</button>
           </div>
           <div className="mn-e" id="mnCodeE">{showCe ? <Bad>{ctl.codeErr}</Bad> : autoNameErr ? <Bad>{autoNameErr}</Bad> : null}</div>
         </div>
@@ -37,7 +37,7 @@ export function StepIdentity({ ctl }) {
           <div className={`field${showNe ? ' bad' : ''}`} id="mnNameF">
             <label className="lbl with-ic" htmlFor="mnName"><Ic n="tag" c="sm" />שם דגם<span className="req">*</span></label>
             <div className="inpw">
-              <input className="inp" id="mnName" {...nf('name')} value={d.name} placeholder="לדוגמה: רומנטיקה"
+              <input className="inp" id="mnName" data-guide-id="mn.name" {...nf('name')} value={d.name} placeholder="לדוגמה: רומנטיקה"
                 onChange={(e) => ctl.setField({ name: e.target.value })} onBlur={() => ctl.touch('name')} />
               <button type="button" className="inpx" aria-label="ניקוי" data-tip="ניקוי" hidden={!d.name}
                 onClick={() => { ctl.setField({ name: '' }); const i = document.getElementById('mnName'); if (i) i.focus(); }}><Ic n="x" c="sm" /></button>
@@ -45,14 +45,14 @@ export function StepIdentity({ ctl }) {
             <div className="mn-e" id="mnNameE" role={S.nameErr ? 'alert' : undefined}>{showNe ? <Bad>{S.nameErr || 'חובה להזין שם דגם'}</Bad> : null}</div>
           </div>
         ) : null}
-        <MnCatCombo id="mnCatT" value={d.cat} options={ctl.catOptions} open={S.catOpen} bad={S.touched.cat && !ctl.catOk}
+        <MnCatCombo id="mnCatT" data-guide-id="mn.cat" value={d.cat} options={ctl.catOptions} open={S.catOpen} bad={S.touched.cat && !ctl.catOk}
           disabled={ctl.categories !== null && ctl.categories.length === 0} emptyText="אין קטגוריות מחיר"
           onToggle={ctl.toggleCat} onClose={ctl.closeCat} onPick={ctl.pickCat} />
         <div className="field">
           <label className="lbl with-ic" htmlFor="mnEntry"><Ic n="cal" c="sm" />תאריך כניסה למאגר</label>
           <div className="mn-date">
             <div className="inpw"><input className="inp" id="mnEntry" readOnly value={hDateFull(d.entry)} aria-label="תאריך כניסה למאגר (לוח עברי)" /></div>
-            <button type="button" className="btn sm" data-act="date-entry" onClick={ctl.pickDate}><Ic n="pencil" c="sm" />שינוי תאריך</button>
+            <button type="button" className="btn sm" data-guide-id="mn.entry-btn" data-act="date-entry" onClick={ctl.pickDate}><Ic n="pencil" c="sm" />שינוי תאריך</button>
           </div>
         </div>
       </div>
@@ -79,8 +79,8 @@ export function StepMedia({ ctl, onPickFile }) {
             {has && d.imgLabel ? <small><bdi dir="ltr">{d.imgLabel}</bdi></small> : null}
           </div>
           <div className="mn-acts">
-            <button type="button" className="btn sm" data-act="img-up" data-tip="העלאת קובץ תמונה" disabled={ctl.uploading} onClick={onPickFile}><Ic n="plus" c="sm" />{has ? 'החלפה' : 'העלאה'}</button>
-            <button type="button" className="btn sm" data-act="img-url" data-tip="הזנת כתובת תמונה" disabled={ctl.uploading} onClick={ctl.imgFromUrl}><Ic n="clip" c="sm" />כתובת</button>
+            <button type="button" className="btn sm" data-guide-id="mn.img-up" data-act="img-up" data-tip="העלאת קובץ תמונה" disabled={ctl.uploading} onClick={onPickFile}><Ic n="plus" c="sm" />{has ? 'החלפה' : 'העלאה'}</button>
+            <button type="button" className="btn sm" data-guide-id="mn.img-url" data-act="img-url" data-tip="הזנת כתובת תמונה" disabled={ctl.uploading} onClick={ctl.imgFromUrl}><Ic n="clip" c="sm" />כתובת</button>
             {has ? <button type="button" className="btn sm" data-act="img-rm" data-tip="הסרת התמונה" onClick={ctl.removeImage}><Ic n="trash" c="sm" />הסרה</button> : null}
           </div>
         </div>
@@ -88,11 +88,11 @@ export function StepMedia({ ctl, onPickFile }) {
       <div className="card blk">
         <SubH icon="note" tone="gold" title={<>הערות לדגם <Tip t="מידע שיוצג לעובד בעת בחירת הדגם" /></>} />
         <div className="field">
-          <textarea className="inp" id="mnNotes" rows={4} aria-label="הערות לדגם" placeholder="לדוגמה: רכיסה אחורית — לשים לב בהחזרה" value={d.notes} onChange={(e) => ctl.setField({ notes: e.target.value })} />
+          <textarea className="inp" id="mnNotes" data-guide-id="mn.notes" rows={4} aria-label="הערות לדגם" placeholder="לדוגמה: רכיסה אחורית — לשים לב בהחזרה" value={d.notes} onChange={(e) => ctl.setField({ notes: e.target.value })} />
         </div>
       </div>
       <div className="card blk">
-        <div className="mn-swrow">
+        <div className="mn-swrow" data-guide-id="mn.inspect">
           <b><Ic n="eye" c="sm" />הצג בבדיקה <Tip t="כשמופעל — הדגם יופיע בהתראות המלאי ובבחירת פריט תוצג אזהרה לעובד" /></b>
           <SegPill id="mnInsp" label="הצג בבדיקה" value={!!d.inspect} onChange={(v) => ctl.setField({ inspect: v })}
             options={[{ v: true, label: 'כן', icon: 'check' }, { v: false, label: 'לא', icon: 'x' }]} />
@@ -148,23 +148,23 @@ export function StepStock({ ctl }) {
         <div className="mn-g2" style={{ gridTemplateColumns: 'repeat(2,minmax(0,210px))', gap: '16px 20px' }}>
           <div className="field">
             <label className="lbl with-ic" htmlFor="mnSize"><Ic n="dress" c="sm" />מידה<span className="req">*</span></label>
-            <div className="inpw"><input className="inp" id="mnSize" {...nf('size')} type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={A.size}
+            <div className="inpw"><input className="inp" id="mnSize" data-guide-id="mn.size" {...nf('size')} type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={A.size}
               onChange={(e) => ctl.onSize(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
           </div>
           <div className="field">
             <label className="lbl with-ic" htmlFor="mnSer"><Ic n="hash" c="sm" />מס׳ סידורי</label>
-            <div className="inpw"><input className="inp" id="mnSer" {...nf('serial')} type="number" min="1" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial}
+            <div className="inpw"><input className="inp" id="mnSer" data-guide-id="mn.serial" {...nf('serial')} type="number" min="1" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial}
               onChange={(e) => ctl.setAdd({ serial: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
           </div>
         </div>
-        <div className="field" style={{ marginTop: 18 }}>
+        <div className="field" style={{ marginTop: 18 }} data-guide-id="mn.loc">
           <label className="lbl with-ic"><Ic n="pin" c="sm" />מיקום</label>
           <SegPill id="mnLoc" label="מיקום" value={A.loc} onChange={(v) => ctl.setAdd({ loc: v })}
             options={locs.map((l) => ({ v: l, label: l, icon: locIcon(l) }))} />
         </div>
         <div className="mn-addrow">
           <div className="mn-barc" data-tip="ברקוד פריט — נבנה אוטומטית"><Ic n="scan" /><bdi id="mnBc">{ctl.bcPrev}</bdi></div>
-          <button type="button" className="btn navy" data-act="add-item" onClick={add}><Ic n="plus" />הוסף פריט</button>
+          <button type="button" className="btn navy" data-guide-id="mn.add-item" data-act="add-item" onClick={add}><Ic n="plus" />הוסף פריט</button>
         </div>
         <div className="mn-e" id="mnAddE">{S.addErr ? <Bad>{S.addErr}</Bad> : null}</div>
       </div>

@@ -87,11 +87,11 @@ export default function EcMail({ employeeId, defaultTo, name, onClose }) {
         <button type="button" className="ibtn mx" data-ec="m-x" aria-label="סגירה" data-tip="סגור" onClick={close} disabled={state === 'sending'}><Ic id="x" size="sm" /></button>
       </div>
       <div className="ec-mrow">
-        <div className="mfld"><label className="lbl" htmlFor="m-to">אל (To)</label><input className="inp" id="m-to" type="email" dir="ltr" value={form.to} onChange={set('to')} disabled={dis} {...NO_FILL} {...nf('to')} /></div>
+        <div className="mfld"><label className="lbl" htmlFor="m-to">אל (To)</label><input className="inp" id="m-to" data-guide-id="ec.mail-to" type="email" dir="ltr" value={form.to} onChange={set('to')} disabled={dis} {...NO_FILL} {...nf('to')} /></div>
         <div className="mfld"><label className="lbl" htmlFor="m-cc">עותק (CC)</label><input className="inp" id="m-cc" type="email" dir="ltr" value={form.cc} onChange={set('cc')} disabled={dis} {...NO_FILL} {...nf('cc')} /></div>
       </div>
-      <div className="mfld"><label className="lbl" htmlFor="m-sub">נושא</label><input className="inp" id="m-sub" type="text" value={form.subject} onChange={set('subject')} disabled={dis} {...NO_FILL} /></div>
-      <div className="mfld"><label className="lbl" htmlFor="m-body">תוכן</label><textarea className="inp" id="m-body" rows={6} value={form.body} onChange={set('body')} disabled={dis} /></div>
+      <div className="mfld"><label className="lbl" htmlFor="m-sub">נושא</label><input className="inp" id="m-sub" data-guide-id="ec.mail-subject" type="text" value={form.subject} onChange={set('subject')} disabled={dis} {...NO_FILL} /></div>
+      <div className="mfld"><label className="lbl" htmlFor="m-body">תוכן</label><textarea className="inp" id="m-body" data-guide-id="ec.mail-body" rows={6} value={form.body} onChange={set('body')} disabled={dis} /></div>
       <div className="mfld">
         <span className="lbl"><Ic id="clip" size="sm" />קבצים מצורפים (ניתן לבחור כמה)</span>
         {files.length ? (
@@ -124,7 +124,7 @@ export default function EcMail({ employeeId, defaultTo, name, onClose }) {
         ) : null}
       </div>
       <div className="dbtns mact">
-        <button type="button" className="btn primary lg" data-ec="m-send" id="m-send" disabled={!valid || state !== 'idle'} onClick={send}>
+        <button type="button" className="btn primary lg" data-ec="m-send" id="m-send" data-guide-id="ec.mail-send" disabled={!valid || state !== 'idle'} onClick={send}>
           {state === 'sending' ? <><span className="mspin" />שולח...</> : <><Ic id="mail" />שלח מייל</>}
         </button>
         <button type="button" className="btn ghost" data-ec="m-cancel" disabled={dis} onClick={close}><Ic id="x" size="sm" />ביטול</button>

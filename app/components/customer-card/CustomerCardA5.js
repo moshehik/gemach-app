@@ -67,7 +67,7 @@ function BlockedBanner({ cc }) {
               <span className="nb-ic" aria-hidden="true"><CcIcon name="alert" /></span>
               <div className="nb-msg"><b id="cc-blk-t">לקוח חסום מהזמנות חדשות</b><span>{cc.saved.blockedReason || 'לא צוינה סיבה'}</span></div>
             </div>
-            {cc.isHeadManagement ? <button type="button" className="nb-go" onClick={cc.unblock}>ביטול חסימה</button> : null}
+            {cc.isHeadManagement ? <button type="button" className="nb-go" data-guide-id="cc.unblock" onClick={cc.unblock}>ביטול חסימה</button> : null}
           </div>
         </section>
       </div>
@@ -117,7 +117,7 @@ function Tabs({ cc, ui }) {
           const m = cc.markers[t.id];
           const on = cc.tab === t.id;
           return (
-            <button key={t.id} type="button" id={`cc-tab-${t.id}`} className={`tab${on ? ' on' : ''}`} role="tab" aria-selected={on} aria-controls={`p-${t.id}`} tabIndex={on ? 0 : -1} data-tab={t.id} onClick={() => cc.setTab(t.id)}>
+            <button key={t.id} type="button" id={`cc-tab-${t.id}`} className={`tab${on ? ' on' : ''}`} role="tab" aria-selected={on} aria-controls={`p-${t.id}`} tabIndex={on ? 0 : -1} data-tab={t.id} data-guide-id={`cc.tab-${t.id}`} onClick={() => cc.setTab(t.id)}>
               <span className="tico">
                 <CcIcon name={t.icon} />
                 {t.id === 'orders' ? <span className="cnt">{(cc.cur.orders || []).length}</span> : null}
@@ -227,7 +227,7 @@ function CardBody({ customerId, rootRef }) {
           <main className="main" ref={mainRef}>
             <Tabs cc={cc} ui={ui} />
           </main>
-          <aside className={`rail${cartOpen ? ' open' : ''}`} id="rail" aria-label="סיכום כרטיס הלקוח" ref={railRef}>
+          <aside className={`rail${cartOpen ? ' open' : ''}`} id="rail" aria-label="סיכום כרטיס הלקוח" ref={railRef} data-guide-id="cc.rail">
             <CcRail cc={cc} open={cartOpen} setOpen={setCartOpen} />
           </aside>
         </div>

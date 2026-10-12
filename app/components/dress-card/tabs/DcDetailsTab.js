@@ -13,7 +13,7 @@ export const CODE_TIP = 'קידומת הברקוד. הקוד ננעל לאחר �
 export const catLabel = (c) => (/^[A-Za-z0-9]{1,3}$/.test(String(c || '')) ? `קטגוריה ${c}` : String(c || ''));
 
 function PriceBtn() {
-  return <a href="/dashboard/pricelist" target="_blank" rel="noopener noreferrer" className="btn sm" data-tip="מעבר למחירון הקטגוריה"><OcIcon name="ext" size="sm" />מחירון</a>;
+  return <a href="/dashboard/pricelist" target="_blank" rel="noopener noreferrer" className="btn sm" data-guide-id="dc.price-link" data-tip="מעבר למחירון הקטגוריה"><OcIcon name="ext" size="sm" />מחירון</a>;
 }
 
 function CatField({ dc }) {
@@ -31,7 +31,7 @@ function CatField({ dc }) {
   }, [open]);
   const pick = (c) => { dc.patchModel({ cat: c }); setOpen(false); };
   return (
-    <div className="field">
+    <div className="field" data-guide-id="dc.f-cat">
       <label className="lbl" htmlFor="dcCatT">קטגוריית מחיר</label>
       <div className={`cb${open ? ' open' : ''}`} id="dcCat" ref={ref}>
         <button type="button" className="cb-t" id="dcCatT" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -72,7 +72,7 @@ function ActivityCard({ dc, ui }) {
       <div className="card-h"><div className="ico gold"><OcIcon name="sliders" size="lg" /></div><h2>מצב הדגם</h2></div>
       <div className="dc-swrow">
         <b>סטטוס <Tip text={act ? 'הדגם זמין להשכרה ומופיע בבחירת דגמים בהזמנה חדשה. סימון "לא פעיל" מוציא אותו מהמאגר' : 'הדגם הוצא מהמאגר — לא ניתן לבחור אותו בהזמנה חדשה. סימון "פעיל" מחזיר אותו לפעילות'} /></b>
-        <DcPill id="dcAct" value={act ? 'on' : 'off'} options={[{ key: 'on', label: 'פעיל', icon: 'check' }, { key: 'off', label: 'לא פעיל', icon: 'ban' }]} onChange={onActive} label="סטטוס הדגם" />
+        <DcPill id="dcAct" data-guide-id="dc.status-pill" value={act ? 'on' : 'off'} options={[{ key: 'on', label: 'פעיל', icon: 'check' }, { key: 'off', label: 'לא פעיל', icon: 'ban' }]} onChange={onActive} label="סטטוס הדגם" />
       </div>
       {act ? null : (
         <div className="dc-why">
@@ -85,12 +85,12 @@ function ActivityCard({ dc, ui }) {
       )}
       <div className="dc-swrow">
         <b>הצג בבדיקה <Tip text="סימון עצמי בלבד — הדגם מסומן כ&quot;בבדיקה&quot; בהדפסת הכרטיס, כדי שיהיה ברור שהוא דורש תשומת לב מיוחדת. לא חוסם השכרה ולא מופיע ברשימת התראות המלאי" /></b>
-        <DcPill id="dcInsp" value={m.inspect ? '1' : '0'} options={[{ key: '1', label: 'כן', icon: 'check' }, { key: '0', label: 'לא', icon: 'x' }]} onChange={(k) => dc.patchModel({ inspect: k === '1' })} label="הצג בבדיקה" />
+        <DcPill id="dcInsp" data-guide-id="dc.inspect" value={m.inspect ? '1' : '0'} options={[{ key: '1', label: 'כן', icon: 'check' }, { key: '0', label: 'לא', icon: 'x' }]} onChange={(k) => dc.patchModel({ inspect: k === '1' })} label="הצג בבדיקה" />
       </div>
       {dc.flags.premiumEnabled ? (
         <div className="dc-swrow">
           <b>שמלת פרימיום <Tip text="פרימיום: המחיר נקבע לפי קטגוריית הפרימיום (כשהאפשרות פעילה בהגדרות)" /></b>
-          <DcPill id="dcPrem" value={m.premium ? '1' : '0'} options={[{ key: '1', label: 'כן', icon: 'check' }, { key: '0', label: 'לא', icon: 'x' }]} onChange={(k) => dc.patchModel({ premium: k === '1' })} label="שמלת פרימיום" />
+          <DcPill id="dcPrem" data-guide-id="dc.premium" value={m.premium ? '1' : '0'} options={[{ key: '1', label: 'כן', icon: 'check' }, { key: '0', label: 'לא', icon: 'x' }]} onChange={(k) => dc.patchModel({ premium: k === '1' })} label="שמלת פרימיום" />
         </div>
       ) : null}
     </div>
@@ -128,8 +128,8 @@ function ImageCard({ dc, edit }) {
         {has ? <small><bdi dir="ltr">{m.img}</bdi></small> : null}
       </div>
       <div className="dc-acts">
-        <button type="button" className="btn sm" data-tip="העלאת קובץ תמונה" disabled={dc.uploading} onClick={() => fileRef.current && fileRef.current.click()}><OcIcon name="plus" size="sm" />{dc.uploading ? 'מעלה...' : has ? 'החלפה' : 'העלאה'}</button>
-        <button type="button" className="btn sm" data-tip="הזנת כתובת תמונה" onClick={focusUrl}><OcIcon name="clip" size="sm" />כתובת</button>
+        <button type="button" className="btn sm" data-guide-id="dc.img-upload" data-tip="העלאת קובץ תמונה" disabled={dc.uploading} onClick={() => fileRef.current && fileRef.current.click()}><OcIcon name="plus" size="sm" />{dc.uploading ? 'מעלה...' : has ? 'החלפה' : 'העלאה'}</button>
+        <button type="button" className="btn sm" data-guide-id="dc.img-url" data-tip="הזנת כתובת תמונה" onClick={focusUrl}><OcIcon name="clip" size="sm" />כתובת</button>
         {has ? <button type="button" className="btn sm" data-tip="הסרת התמונה" onClick={() => dc.patchModel({ img: '', thumb: '' })}><OcIcon name="trash" size="sm" />הסרה</button> : null}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) dc.uploadImage(f); e.target.value = ''; }} />
       </div>
@@ -146,7 +146,7 @@ function NotesCard({ dc }) {
   return (
     <div className="card">
       <div className="card-h"><div className="ico plum"><OcIcon name="note" size="lg" /></div><h2>הערות לדגם <Tip text="הערות כלליות לגבי הדגם. מוצג לצוות בלבד" /></h2></div>
-      <textarea className="inp" id="dcNotes" placeholder="הערה…" value={dc.cur.model.notes} onChange={(e) => dc.patchModel({ notes: e.target.value })} />
+      <textarea className="inp" id="dcNotes" data-guide-id="dc.notes" placeholder="הערה…" value={dc.cur.model.notes} onChange={(e) => dc.patchModel({ notes: e.target.value })} />
     </div>
   );
 }
@@ -155,7 +155,7 @@ export default function DcDetailsTab({ dc, ui }) {
   const m = dc.cur.model;
   const ed = dc.editDet;
   const editBtn = (
-    <button type="button" className="ibtn" data-act="editdet" aria-label={ed ? 'סיום עריכה' : 'עריכת פרטי דגם'} data-tip={ed ? 'סיום עריכה' : 'עריכת פרטי דגם'} aria-pressed={ed} onClick={() => dc.setEditDet(!ed)}>
+    <button type="button" className="ibtn" data-guide-id="dc.edit-details" data-act="editdet" aria-label={ed ? 'סיום עריכה' : 'עריכת פרטי דגם'} data-tip={ed ? 'סיום עריכה' : 'עריכת פרטי דגם'} aria-pressed={ed} onClick={() => dc.setEditDet(!ed)}>
       <OcIcon key={ed ? 'check' : 'pencil'} name={ed ? 'check' : 'pencil'} />
     </button>
   );
@@ -169,10 +169,10 @@ export default function DcDetailsTab({ dc, ui }) {
         <div className="card dfields">
           <div className="card-h"><div className="ico rose"><OcIcon name="tag" size="lg" /></div><h2>זיהוי הדגם</h2>{editBtn}</div>
           <div className="grid2">
-            <Fld id="dcCode" label="קוד דגם" icon="hash" value={m.code} lock dir="ltr" tip={CODE_TIP} />
-            {dc.flags.useModelNames ? <Fld id="dcName" label="שם דגם" icon="tag" value={m.name} placeholder="שם הדגם..." onChange={(v) => dc.patchModel({ name: v })} error={dc.nameError} /> : null}
+            <Fld id="dcCode" data-guide-id="dc.f-code" label="קוד דגם" icon="hash" value={m.code} lock dir="ltr" tip={CODE_TIP} />
+            {dc.flags.useModelNames ? <Fld id="dcName" data-guide-id="dc.f-name" label="שם דגם" icon="tag" value={m.name} placeholder="שם הדגם..." onChange={(v) => dc.patchModel({ name: v })} error={dc.nameError} /> : null}
             <CatField dc={dc} />
-            <div className="field">
+            <div className="field" data-guide-id="dc.f-entry">
               <label className="lbl" htmlFor="dcEntry">תאריך כניסה למאגר</label>
               <div className="dc-dateline">
                 <div className="inpw"><OcIcon name="cal" size="sm" /><input className="inp" id="dcEntry" readOnly value={hFull(m.entry)} aria-label="תאריך כניסה למאגר (לוח עברי)" /></div>
@@ -186,10 +186,10 @@ export default function DcDetailsTab({ dc, ui }) {
         <div className="card cust">
           <div className="card-h"><div className="ico rose"><OcIcon name="tag" size="lg" /></div><h2>זיהוי הדגם</h2>{editBtn}</div>
           <div className="kv">
-            <Vf icon="hash" label="קוד דגם" value={m.code} bdi tipx={CODE_TIP} />
-            {dc.flags.useModelNames ? <Vf icon="tag" label="שם דגם" value={m.name} /> : null}
-            <Vf icon="card" label="קטגוריית מחיר" value={m.cat ? catLabel(m.cat) : ''} extra={<div style={{ marginTop: 10 }}><PriceBtn /></div>} />
-            <Vf icon="cal" label="תאריך כניסה למאגר" value={hFull(m.entry)} />
+            <Vf icon="hash" label="קוד דגם" data-guide-id="dc.f-code" value={m.code} bdi tipx={CODE_TIP} />
+            {dc.flags.useModelNames ? <Vf icon="tag" label="שם דגם" data-guide-id="dc.f-name" value={m.name} /> : null}
+            <Vf icon="card" label="קטגוריית מחיר" data-guide-id="dc.f-cat" value={m.cat ? catLabel(m.cat) : ''} extra={<div style={{ marginTop: 10 }}><PriceBtn /></div>} />
+            <Vf icon="cal" label="תאריך כניסה למאגר" data-guide-id="dc.f-entry" value={hFull(m.entry)} />
           </div>
         </div>
       )}

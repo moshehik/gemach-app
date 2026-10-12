@@ -249,7 +249,7 @@ export async function openMailSheet({ oc, ui, mode, type = 'order' }) {
 export default function OcQuickMailButton({ oc, ui }) {
   if (!oc.settings || !oc.settings.orderQuickMailEnabled) return null;
   return (
-    <button type="button" className="btn sm" data-act="mail-open" onClick={() => openMailSheet({ oc, ui, mode: 'quick' })}>
+    <button type="button" className="btn sm" data-act="mail-open" data-guide-id="oc.quick-mail" onClick={() => openMailSheet({ oc, ui, mode: 'quick' })}>
       <OcIcon name="mail" size="sm" />מייל מהיר
     </button>
   );

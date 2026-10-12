@@ -512,6 +512,7 @@ export default function MenuA5Shell({
           }}>
             <Link
               className="sn-brand"
+              data-guide-id="rail.brand"
               href={brand.href || '/'}
               aria-label={`${brand.name || ''} - לדף הבית`}
               data-tip={brand.tooltip || undefined}
@@ -556,6 +557,7 @@ export default function MenuA5Shell({
                   <button
                     type="button"
                     className="sn-ib"
+                    data-guide-id="rail.search"
                     data-sn-trigger
                     aria-haspopup="true"
                     aria-expanded={ui.id === 'search' ? 'true' : 'false'}
@@ -583,7 +585,7 @@ export default function MenuA5Shell({
               {rail.errorReport && rail.errorReport.show && (
                 <ErrorReportButton
                   trigger={({ onOpen, unreadCount }) => (
-                    <button type="button" className="sn-ib" id="snErr" data-sn-err aria-haspopup="dialog" aria-label="דיווח על שגיאה" data-tip="דיווח על שגיאה בעמוד" onClick={onOpen}>
+                    <button type="button" className="sn-ib" id="snErr" data-sn-err data-guide-id="rail.error-report" aria-haspopup="dialog" aria-label="דיווח על שגיאה" data-tip="דיווח על שגיאה בעמוד" onClick={onOpen}>
                       <Ic n="sn-bug" />
                       {unreadCount > 0 && <span className="sn-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </button>
@@ -600,6 +602,7 @@ export default function MenuA5Shell({
                   type="button"
                   className="sn-ib"
                   id="snOld"
+                  data-guide-id="rail.old-site"
                   disabled={busy}
                   aria-label="האתר הישן (קישור זמני)"
                   data-tip="האתר הישן (זמני) · קישור זמני, עד שכל המסכים יעברו לאתר החדש"
@@ -620,6 +623,7 @@ export default function MenuA5Shell({
                   <button
                     type="button"
                     className={`sn-ib${nf.ring ? ' nf-ring' : ''}`}
+                    data-guide-id="rail.bell"
                     data-sn-trigger
                     aria-haspopup="true"
                     aria-expanded={ui.id === 'bell' ? 'true' : 'false'}
@@ -638,11 +642,11 @@ export default function MenuA5Shell({
 
               {tree.user && tree.user.logged && shiftInfo && rail.shiftClock && rail.shiftClock.show && (
                 shiftInfo.kind === 'stale' ? (
-                  <span className="sn-clock warn" data-tip={shiftInfo.tip}>
+                  <span className="sn-clock warn" data-tip={shiftInfo.tip} data-guide-id="rail.shift-clock">
                     <i />{shiftInfo.text}
                   </span>
                 ) : (
-                  <span className="sn-clock" data-tip="מצב עבודה · שעות מתחילת המשמרת">
+                  <span className="sn-clock" data-guide-id="rail.shift-clock" data-tip="מצב עבודה · שעות מתחילת המשמרת">
                     <i />במשמרת <bdi>{shiftInfo.text}</bdi>
                   </span>
                 )
@@ -671,6 +675,7 @@ export default function MenuA5Shell({
               type="button"
               className="sn-burger"
               id="snBurger"
+              data-guide-id="rail.burger"
               aria-expanded={drawerOpen ? 'true' : 'false'}
               aria-controls="snDrawer"
               aria-label={drawerOpen ? 'סגירת התפריט' : 'פתיחת התפריט'}
@@ -699,7 +704,7 @@ export default function MenuA5Shell({
               <div style={q ? { display: 'none' } : undefined}>
                 {bellOn && (
                   <>
-                    <button type="button" className="sn-acc" id="ntAcc" aria-expanded={acc === 'bell' ? 'true' : 'false'} onClick={() => toggleAcc('bell')}>
+                    <button type="button" className="sn-acc" id="ntAcc" data-guide-acc="bell" aria-expanded={acc === 'bell' ? 'true' : 'false'} onClick={() => toggleAcc('bell')}>
                       <SnLi n="bell" />
                       התראות
                       {nf.unread > 0 && <span className="nf-chip">{burgerCount}</span>}
@@ -713,14 +718,14 @@ export default function MenuA5Shell({
                   const isAct = act.tabId === tab.id;
                   if (tab.soon) {
                     return (
-                      <span key={tab.id} className="sn-acc is-miss" aria-disabled="true" data-tip={tab.tip || undefined}>
+                      <span key={tab.id} className="sn-acc is-miss" aria-disabled="true" data-tip={tab.tip || undefined} data-guide-id={`menu.tab-${tab.id}`}>
                         <SnLi n={tab.icon} />{tab.label}<span className="sn-k">{SOON_LABEL}</span>
                       </span>
                     );
                   }
                   if (!hasMenu) {
                     return (
-                      <Link key={tab.id} className={`sn-acc${isAct ? ' active' : ''}`} href={tab.href || '/'} onClick={(e) => onNavigate(e, tab.href || '/')}>
+                      <Link key={tab.id} className={`sn-acc${isAct ? ' active' : ''}`} data-guide-id={`menu.tab-${tab.id}`} href={tab.href || '/'} onClick={(e) => onNavigate(e, tab.href || '/')}>
                         <SnLi n={tab.icon} />{tab.label}
                       </Link>
                     );
@@ -729,15 +734,15 @@ export default function MenuA5Shell({
                     <div key={tab.id}>
                       <div className={`sn-accrow${acc === tab.id ? ' open' : ''}`}>
                         {tab.href ? (
-                          <Link className={`sn-acc${isAct ? ' active' : ''}`} href={tab.href} onClick={(e) => onNavigate(e, tab.href)}>
+                          <Link className={`sn-acc${isAct ? ' active' : ''}`} data-guide-id={`menu.tab-${tab.id}`} href={tab.href} onClick={(e) => onNavigate(e, tab.href)}>
                             <SnLi n={tab.icon} />{tab.label}
                           </Link>
                         ) : (
-                          <button type="button" className={`sn-acc${isAct ? ' active' : ''}`} onClick={() => toggleAcc(tab.id)}>
+                          <button type="button" className={`sn-acc${isAct ? ' active' : ''}`} data-guide-id={`menu.tab-${tab.id}`} onClick={() => toggleAcc(tab.id)}>
                             <SnLi n={tab.icon} />{tab.label}
                           </button>
                         )}
-                        <button type="button" className="sn-accx" aria-expanded={acc === tab.id ? 'true' : 'false'} aria-label={`תפריט ${tab.label}`} onClick={() => toggleAcc(tab.id)}>
+                        <button type="button" className="sn-accx" data-guide-acc={tab.id} data-guide-id={`menu.tab-${tab.id}-more`} aria-expanded={acc === tab.id ? 'true' : 'false'} aria-label={`תפריט ${tab.label}`} onClick={() => toggleAcc(tab.id)}>
                           <Ic n="chev" />
                         </button>
                       </div>
@@ -751,7 +756,7 @@ export default function MenuA5Shell({
                       <SnLi n="user" />
                       <span>{info.logged ? info.name : 'אורח'}</span>
                     </span>
-                    <button type="button" className="sn-accx" aria-expanded={acc === 'user' ? 'true' : 'false'} aria-label="תפריט משתמש" onClick={() => toggleAcc('user')}>
+                    <button type="button" className="sn-accx" data-guide-acc="user" aria-expanded={acc === 'user' ? 'true' : 'false'} aria-label="תפריט משתמש" onClick={() => toggleAcc('user')}>
                       <Ic n="chev" />
                     </button>
                   </div>

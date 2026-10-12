@@ -671,6 +671,7 @@ export default function HomeA5() {
         <button
           type="button"
           className="cmode-b"
+          data-guide-id="srch.scope-chip"
           aria-pressed="true"
           aria-label={`סינון פעיל: חיפוש רק ${scopeDef.only}. לחיצה מסירה את הסינון`}
           data-tip="הסרת הסינון"
@@ -680,12 +681,12 @@ export default function HomeA5() {
         </button>
       )}
       {canAi && (
-        <button type="button" className="cmode-b" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
+        <button type="button" className="cmode-b" data-guide-id="srch.mode-ai" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
           {ai ? <><Ic id="search" />לחיפוש רגיל</> : <><Ic id="sparkle" />לחיפוש חכם</>}
         </button>
       )}
       {advAvailable && (
-        <button type="button" className="cmode-b" aria-pressed={view === 'adv'} aria-expanded={view === 'adv'} onClick={advToggle}>
+        <button type="button" className="cmode-b" data-guide-id="srch.mode-adv" aria-pressed={view === 'adv'} aria-expanded={view === 'adv'} onClick={advToggle}>
           <Ic id="sliders" />לחיפוש מתקדם
         </button>
       )}
@@ -727,6 +728,7 @@ export default function HomeA5() {
                 <input
                   ref={inputRef}
                   id="sq"
+                  data-guide-id="srch.input"
                   aria-label={ai ? 'שאלה לחיפוש החכם' : scopeDef ? `חיפוש רק ${scopeDef.only}` : 'חיפוש לקוח, הזמנה או פריט'}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -752,11 +754,11 @@ export default function HomeA5() {
                   onBlur={qp.onBlur}
                 />
                 {q && !loading && (
-                  <button type="button" className="ibtn" aria-label="ניקוי החיפוש" data-tip="ניקוי הכול" onClick={() => { resetAll(); if (inputRef.current) inputRef.current.focus(); }}><Ic id="x" size="sm" /></button>
+                  <button type="button" className="ibtn" data-guide-id="srch.clear" aria-label="ניקוי החיפוש" data-tip="ניקוי הכול" onClick={() => { resetAll(); if (inputRef.current) inputRef.current.focus(); }}><Ic id="x" size="sm" /></button>
                 )}
                 {!loading && <SaveIconButton text={q} saved={saved} ibtn />}
                 {joined && modeButtons}
-                <button type="submit" className="btn primary" aria-label={loading ? (ai ? 'חושבים' : 'מחפשים') : label} data-tip={label} disabled={loading}>
+                <button type="submit" className="btn primary" data-guide-id="srch.submit" aria-label={loading ? (ai ? 'חושבים' : 'מחפשים') : label} data-tip={label} disabled={loading}>
                   {loading ? <span className="mspin" aria-hidden="true" /> : <Ic id={ai ? 'send' : 'search'} />}
                 </button>
                 <QuickPrefixList qp={qp} />
@@ -858,7 +860,7 @@ export default function HomeA5() {
 
       {/* שורת "למצגת הסבר" (9.10.2026): קישור לדף הנחיתה /landing (נפתח בלשונית חדשה, כמו הקישור שבתחתית הדף); רק בדף הבית הריק, לא בתוצאות / בחיפוש מתקדם */}
       {!noBar && view === 'start' && showGuide && (
-        <a className="tour-line" href="/landing" target="_blank" rel="noopener">
+        <a className="tour-line" data-guide-id="home.tour-line" href="/landing" target="_blank" rel="noopener">
           <span className="tour-ic"><Ic id="sparkle" size="sm" /></span>
           <span className="tour-t">למצגת הסבר על האתר <b>לחצי כאן</b></span>
         </a>

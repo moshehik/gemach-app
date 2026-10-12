@@ -61,18 +61,18 @@ export default function AiHistoryPage() {
           <div className="page-desc">סה&quot;כ שיחות: {total}</div>
         </div>
         <div className="page-actions">
-          <Link href="/admin/site" className="btn btn-secondary">
+          <Link href="/admin" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה
           </Link>
-          <button type="button" onClick={fetchSessions} className="btn btn-secondary" title="רענן">
+          <button type="button" onClick={fetchSessions} className="btn btn-secondary" title="רענן" data-guide-id="aiadm.hist-refresh">
             <svg className="icon"><use href="#i-refresh" /></svg>
             רענן
           </button>
         </div>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-guide-id="aiadm.hist-table">
         <div className="table-scroll">
           <table className="data">
             <thead>

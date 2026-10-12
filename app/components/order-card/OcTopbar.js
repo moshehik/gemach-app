@@ -41,7 +41,7 @@ export default function OcTopbar({ oc, ui, slots }) {
   const delTail = delBlock && eventLockShown ? ` · מחיקה חסומה: ${delBlock.text}` : '';
   return (
     <div className="topbar">
-      <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" disabled={oc.saving} onClick={() => oc.exit()}>
+      <button type="button" className="back" data-act="exit" data-guide-id="oc.back" aria-label="חזרה" data-tip="חזרה" disabled={oc.saving} onClick={() => oc.exit()}>
         <OcIcon name="back" />
       </button>
       <div className="ttl">
@@ -51,12 +51,12 @@ export default function OcTopbar({ oc, ui, slots }) {
       {oc.status === 'ready' ? <ScanBar oc={oc} ui={ui} /> : null}
       <div className="tools">
         {oc.status === 'ready' && oc.flags.isLocked ? (
-          <button type="button" className="xlbtn xld" data-act="lockbtn" aria-label={`הזמנה נעולה${delTail}`} data-tip={`הזמנה נעולה — תאריך האירוע עבר. לחצו לשחרור באישור מנהל${delTail}`} onClick={openLocked}>
+          <button type="button" className="xlbtn xld" data-act="lockbtn" data-guide-id="oc.lock" aria-label={`הזמנה נעולה${delTail}`} data-tip={`הזמנה נעולה — תאריך האירוע עבר. לחצו לשחרור באישור מנהל${delTail}`} onClick={openLocked}>
             <OcIcon name="lock" />
           </button>
         ) : null}
         {oc.status === 'ready' && oc.flags.isPastEvent && oc.flags.isUnlocked ? (
-          <button type="button" className="xlbtn xld" data-act="relockbtn" aria-label={`ההזמנה שוחררה לעריכה - נעילה מחדש${delTail}`} data-tip={`ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש${delTail}`} onClick={relock}>
+          <button type="button" className="xlbtn xld" data-act="relockbtn" data-guide-id="oc.lock" aria-label={`ההזמנה שוחררה לעריכה - נעילה מחדש${delTail}`} data-tip={`ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש${delTail}`} onClick={relock}>
             <OcIcon name="lock" />
           </button>
         ) : null}
@@ -65,11 +65,11 @@ export default function OcTopbar({ oc, ui, slots }) {
             <Exports oc={oc} ui={ui} />
             <PrintMenu oc={oc} ui={ui} />
             {delBlock && eventLockShown ? null : delBlock ? (
-              <button type="button" className="xlbtn xld oc-nodel" data-act="delete-locked" aria-disabled="true" aria-label={`מחיקה חסומה: ${delBlock.text}`} data-tip={`אי אפשר למחוק: ${delBlock.text}`} onClick={(e) => e.preventDefault()}>
+              <button type="button" className="xlbtn xld oc-nodel" data-act="delete-locked" data-guide-id="oc.delete-order" aria-disabled="true" aria-label={`מחיקה חסומה: ${delBlock.text}`} data-tip={`אי אפשר למחוק: ${delBlock.text}`} onClick={(e) => e.preventDefault()}>
                 <OcIcon name="lock" />
               </button>
             ) : (
-              <button type="button" className="xlbtn xld" data-act="delete" aria-label="מחיקת הזמנה" data-tip="מחיקת הזמנה" onClick={() => oc.deleteOrder()}>
+              <button type="button" className="xlbtn xld" data-act="delete" data-guide-id="oc.delete-order" aria-label="מחיקת הזמנה" data-tip="מחיקת הזמנה" onClick={() => oc.deleteOrder()}>
                 <XlGlyph kind="delete" />
               </button>
             )}
