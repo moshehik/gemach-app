@@ -84,19 +84,39 @@ test('funnel bars carry the real totals and conversion rates', () => {
   const t = textOf(html);
   assert.ok(t.includes(`${data.totals.visits}`));
   assert.ok(t.includes('נכנסו לעמדה') && t.includes('מילאו פרטים') && t.includes('נפתחה להן הזמנה') && t.includes('הזמנה אושרה או שולמה') && t.includes('אומתו על ידי עובדת'));
-  assert.ok(/מתוך מי שפתחו את הטופס/.test(t));
-  const bars = [...html.matchAll(/class="sa-fbar" style="width:([\d.]+)%"/g)].map((m) => parseFloat(m[1]));
-  assert.equal(bars.length, 7);
-  assert.equal(bars[0], 100); // הגדול ביותר = נכנסו
-  assert.ok(bars.every((b) => b >= 0 && b <= 100));
-  assert.ok(bars[3] > 0 && bars[3] < bars[0]);
-  assert.ok(bars[5] >= bars[6]); // נפתחה >= אושרה
+  // משפך "סרט": שבעה פסים (rect בגובה 46), הרחב ביותר ראשון, כל פס צר או שווה לקודם בקבוצה העוקבת; תגית המרה על כל צומת (6)
+  const bands = [...html.matchAll(/<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)" height="46"/g)].map((m) => parseFloat(m[2]));
+  assert.equal(bands.length, 7);
+  assert.equal(Math.max(...bands), bands[0]); // הגדול ביותר = נכנסו
+  assert.ok(bands[3] > 0 && bands[3] < bands[0]);
+  assert.ok(bands[5] >= bands[6]); // נפתחה >= אושרה
+  const tags = [...html.matchAll(/class="sa-f-tag-t num"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  assert.equal(tags.length, 6);
+  assert.ok(tags.every((x) => /\d%/.test(x)));
+  assert.ok(tags.some((x) => /מהנכנסים/.test(x)), 'שלב שהוריו אינו השלב הקודם מציג מי הורהו');
+  const colors = new Set([...html.matchAll(/style="fill:var\((--sa-c-[a-z]+)\)/g)].map((m) => m[1]));
+  assert.ok(colors.has('--sa-c-top') && colors.has('--sa-c-mid') && colors.has('--sa-c-open') && colors.has('--sa-c-appr'), 'הצבע מבדיל בין כניסות, רישום והזמנות');
+});
+
+test('funnel in a channel where the top stages are not measured: ribbon draws only measured stages and names the skipped ones', () => {
+  const html = render({ data: sample({ channel: 'kiosk' }), list: LIST });
+  const bands = [...html.matchAll(/height="46"/g)].length;
+  assert.equal(bands, 4); // רישום, אומתו, נפתחה, אושרה
+  assert.ok(textOf(html).includes('לא נמדד בערוץ הזה: נכנסו לעמדה'));
+});
+
+test('summary tiles carry a gauge (double half ring) for the main conversion and comparison bars for today / yesterday / weekly average', () => {
+  const html = render({ data: sample(), list: LIST });
+  assert.equal((html.match(/class="sa-gauge"/g) || []).length, 1);
+  assert.equal((html.match(/sa-g-fill/g) || []).length >= 2, true);
+  assert.ok((html.match(/class="sa-cmp-bar"/g) || []).length >= 15);
+  assert.ok(/aria-label="[^"]*בהגדרה המחמירה/.test(html));
 });
 
 test('summary tiles: today / yesterday / weekly average with comparison arrows', () => {
   const html = render({ data: sample(), list: LIST });
   assert.ok(html.includes('אתמול') && html.includes('ממוצע שבועי'));
-  assert.ok(/sa-delta sa-(up|down|same)/.test(html));
+  assert.ok(/sa-chip sa-(up|down|same)/.test(html));
 });
 
 test('daily columns chart: one hit band per day, 7 bands, RTL order (first day at the right edge), tooltips accessible via aria-label', () => {
@@ -119,14 +139,14 @@ test('daily columns chart with all zeros: shows the empty message, not a flat ch
   assert.ok(!html.includes('sa-legend'));
   assert.ok(!/NaN|Infinity/.test(html));
   const one = renderToStaticMarkup(h(Charts.DayColumns, { days: [{ day: '2026-10-12', label: 'ב', title: 'ב' }], ariaLabel: 'x', emptyText: 'e', series: [{ key: 'v', label: 'נכנסו', slot: 1, values: [5] }] }));
-  assert.ok(/<path class="sa-col sa-f1"/.test(one));
+  assert.ok(/<path d="[^"]+" fill="url\(#[^)]+\)" class="sa-gcol sa-glow-b"/.test(one));
 });
 
 test('rate line: gaps for days without visits (null) break the line; nothing to draw -> empty message', () => {
   const days = Array.from({ length: 5 }, (_, i) => ({ day: `2026-10-0${i + 1}`, label: `${i}`, title: `י${i}` }));
   const html = renderToStaticMarkup(h(Charts.RateLine, { days, label: 'אחוז', ariaLabel: 'x', emptyText: 'אין עדיין מספיק נתונים', values: [0.1, 0.2, null, 0.3, 0.25] }));
-  assert.equal((html.match(/<polyline/g) || []).length, 2); // קטע לפני הרווח וקטע אחריו
-  assert.equal((html.match(/<circle/g) || []).length, 4);
+  assert.equal((html.match(/class="sa-draw sa-glow"/g) || []).length, 2); // קטע לפני הרווח וקטע אחריו (עקומה חלקה לכל קטע)
+  assert.ok(/<circle class="sa-enddot"/.test(html)); // נקודת הסיום ביום האחרון
   const empty = renderToStaticMarkup(h(Charts.RateLine, { days, label: 'אחוז', ariaLabel: 'x', emptyText: 'אין עדיין מספיק נתונים', values: [null, null, null, null, null] }));
   assert.ok(empty.includes('אין עדיין מספיק נתונים'));
   assert.ok(!/NaN/.test(html + empty));

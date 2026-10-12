@@ -77,7 +77,7 @@ function ViewToggle({ value, onChange, label }) {
 
 function ChartCard({ title, sub, children }) {
   return (
-    <div className="card sa-card">
+    <div className="card sa-card sa-panel">
       <div className="sa-card-h"><b>{title}</b>{sub ? <small>{sub}</small> : null}</div>
       {children}
     </div>
@@ -94,7 +94,7 @@ function Section({ id, icon, title, extra, children }) {
 }
 
 function StatusChip({ kind, children }) {
-  return <span className={`chip sa-chip ${kind}`}>{children}</span>;
+  return <span className={`chip sa-chip-tbl ${kind}`}>{children}</span>;
 }
 
 /** preload = { data, list } - נתונים מוכנים לבדיקות רינדור בלי שרת (scripts/station-analytics-tests/ssr.test.mjs); בשימוש רגיל לא מועבר. */
@@ -287,13 +287,13 @@ export default function StationAnalyticsPage({ preload = null }) {
                 {/* ------------------------------------------------ סיכום להיום */}
                 <Section id="sa-sum" icon="sig" title="היום" extra={<small className="sa-sub">{dayTitle(todayKey)}</small>}>
                   <div className="sa-tiles" data-agy-id="sa_tiles">
-                    <StatTile icon="eye" label="נכנסו לעמדה" value={cards.today.visits} yesterday={cards.yesterday.visits} weekAvg={cards.weekAvg && cards.weekAvg.visits} unmeasured={!topMeasured} />
-                    <StatTile icon="user" label="מילאו פרטים" value={cards.today.registered} yesterday={cards.yesterday.registered} weekAvg={cards.weekAvg && cards.weekAvg.registered} />
-                    <StatTile icon="cart" label="נפתחה הזמנה" value={cards.today.opened} yesterday={cards.yesterday.opened} weekAvg={cards.weekAvg && cards.weekAvg.opened} />
-                    <StatTile icon="check" label="הזמנה אושרה או שולמה" value={cards.today.approved} yesterday={cards.yesterday.approved} weekAvg={cards.weekAvg && cards.weekAvg.approved} />
-                    <StatTile icon="sig" label="אחוז מהנכנסים שמילאו פרטים" kind="rate" value={cards.today.visitToRegistered} yesterday={cards.yesterday.visitToRegistered} weekAvg={cards.weekAvg && cards.weekAvg.visitToRegistered} unmeasured={!topMeasured} />
-                    <StatTile icon="sparkle" label="אחוז ממילאות הפרטים שנפתחה להן הזמנה" kind="rate" value={cards.today.registeredToOpened} yesterday={cards.yesterday.registeredToOpened} weekAvg={cards.weekAvg && cards.weekAvg.registeredToOpened}
-                      extra={`בהגדרה המחמירה (אושרה או שולמה): ${fmtPct(cards.today.registeredToApproved)}`} />
+                    <StatTile index={0} icon="eye" label="נכנסו לעמדה" value={cards.today.visits} yesterday={cards.yesterday.visits} weekAvg={cards.weekAvg && cards.weekAvg.visits} unmeasured={!topMeasured} />
+                    <StatTile index={1} icon="user" label="מילאו פרטים" value={cards.today.registered} yesterday={cards.yesterday.registered} weekAvg={cards.weekAvg && cards.weekAvg.registered} />
+                    <StatTile index={2} icon="cart" label="נפתחה הזמנה" value={cards.today.opened} yesterday={cards.yesterday.opened} weekAvg={cards.weekAvg && cards.weekAvg.opened} />
+                    <StatTile index={3} icon="check" label="הזמנה אושרה או שולמה" value={cards.today.approved} yesterday={cards.yesterday.approved} weekAvg={cards.weekAvg && cards.weekAvg.approved} />
+                    <StatTile index={4} icon="sig" label="אחוז מהנכנסים שמילאו פרטים" kind="rate" value={cards.today.visitToRegistered} yesterday={cards.yesterday.visitToRegistered} weekAvg={cards.weekAvg && cards.weekAvg.visitToRegistered} unmeasured={!topMeasured} />
+                    <StatTile index={5} icon="sparkle" label="אחוז ממילאות הפרטים שנפתחה להן הזמנה" kind="rate" value={cards.today.registeredToOpened} yesterday={cards.yesterday.registeredToOpened} weekAvg={cards.weekAvg && cards.weekAvg.registeredToOpened}
+                      gauge={{ strict: cards.today.registeredToApproved, strictLabel: 'בהגדרה המחמירה (אושרה או שולמה)' }} />
                   </div>
                   <p className="st-note sa-foot">
                     {!topMeasured ? 'ההשוואה לאתמול ולממוצע השבועי חלה על הערוץ שנבחר. כניסות נמדדות רק בקישור הכללי. ' : ''}
@@ -340,7 +340,7 @@ export default function StationAnalyticsPage({ preload = null }) {
                       </ChartCard>
                       {topMeasured ? (
                         <ChartCard title="אחוז מהנכנסים שמילאו פרטים" sub="ימים בלי כניסות נשארים ריקים">
-                          <RateLine days={dayItems} label="נכנסו ומילאו פרטים" slot={2} ariaLabel="אחוז מהנכנסים שמילאו פרטים, בכל יום" emptyText="אין עדיין מספיק נתונים"
+                          <RateLine days={dayItems} label="נכנסו ומילאו פרטים" ariaLabel="אחוז מהנכנסים שמילאו פרטים, בכל יום" emptyText="אין עדיין מספיק נתונים"
                             values={d.daily.map((r) => (r.visits > 0 ? r.registered / r.visits : null))} />
                         </ChartCard>
                       ) : null}

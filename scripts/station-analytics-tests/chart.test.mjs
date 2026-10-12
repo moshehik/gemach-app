@@ -97,7 +97,7 @@ test('static: no Gregorian dates rendered - dates go through the Hebrew helpers 
 });
 
 test('static: CSS rules are all scoped under .gm-ds and use palette tokens (no raw hex besides white)', () => {
-  const css = read('app/components/station-analytics/station-analytics.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = read('app/components/station-analytics/station-analytics.css').replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
   const selectors = [];
   const re = /([^{}]+)\{[^{}]*\}/g;
   let m;
@@ -108,13 +108,16 @@ test('static: CSS rules are all scoped under .gm-ds and use palette tokens (no r
   }
   const unscoped = selectors.filter((s) => s && s.split(',').some((p) => !/\.gm-ds/.test(p) && !/^@/.test(p.trim())));
   assert.deepEqual(unscoped, []);
-  const hex = css.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+  // צבעים גולמיים מותרים רק בהגדרת משתני --sa-* (בלוק הטוקנים בראש הקובץ) - כל שאר הכללים משתמשים במשתנים
+  const hex = css.replace(/--sa-[\w-]+:[^;}]+/g, '').match(/#[0-9a-fA-F]{3,8}\b/g) || [];
   assert.ok(hex.every((h) => ['#fff', '#ffffff'].includes(h.toLowerCase())), `hex לא מטוקן: ${hex.join(',')}`);
 });
 
 test('static: charts use only the two validated series tokens; every chart has a table view; RTL root', () => {
   const css = read('app/components/station-analytics/station-analytics.css');
-  assert.ok(/--sa-s1:var\(--gm-navy-500\)/.test(css) && /--sa-s2:var\(--gm-gold-b\)/.test(css));
+  // שני צבעי הסדרות בלבד (כחול וזהב), כפי שאומתו ב-validate_palette על משטח הנייבי
+  assert.ok(/--sa-blue:#5190cf/.test(css) && /--sa-gold:#b38c2a/.test(css));
+  assert.equal((css.match(/--sa-(blue|gold):/g) || []).length, 2);
   const page = read('app/components/station-analytics/StationAnalyticsPage.js');
   assert.ok(/dir="rtl"/.test(page));
   assert.ok(/ViewToggle/.test(page) && /DataTable/.test(page));
@@ -136,4 +139,62 @@ test('static: KioskPublic reports events only through trackStationEvent (visit /
 test('static: the admin hub registers the screen and the page label exists', () => {
   assert.ok(/station-analytics/.test(read('lib/adminHubCatalog.js')));
   assert.ok(/'\/station-analytics'/.test(read('lib/menu/pageLabels.js')));
+});
+
+test('splinePath: passes through every point, stays monotone (no overshoot) and handles 0 / 1 / 2 points', () => {
+  assert.equal(C.splinePath([]), '');
+  assert.equal(C.splinePath([{ x: 0, y: 0 }]), '');
+  const two = C.splinePath([{ x: 0, y: 10 }, { x: 10, y: 20 }]);
+  assert.match(two, /^M0,10 C/);
+  const pts = [{ x: 0, y: 5 }, { x: 10, y: 5 }, { x: 20, y: 40 }, { x: 30, y: 38 }];
+  const d = C.splinePath(pts);
+  assert.equal((d.match(/C/g) || []).length, 3);
+  for (const p of pts) assert.ok(d.includes(`${p.x},${p.y}`));
+  const ys = [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => parseFloat(m[2]));
+  assert.ok(Math.min(...ys) >= 5 - 1e-9 && Math.max(...ys) <= 40 + 1e-9, 'העקומה חורגת מעבר לנקודות');
+  assert.ok(!/NaN/.test(d));
+});
+
+test('splitSegments: gaps (null) split the line into consecutive runs', () => {
+  const a = { x: 1, y: 1 };
+  assert.deepEqual(C.splitSegments([a, a, null, a, null, null, a, a, a]).map((s) => s.length), [2, 1, 3]);
+  assert.deepEqual(C.splitSegments([null, null]), []);
+});
+
+test('funnelGeometry: bands never exceed the ribbon, widths follow counts (17%..100%), joints carry the conversion tag and name a non-adjacent parent', () => {
+  const stages = [
+    { key: 'visits', count: 420 },
+    { key: 'availability', count: 168, parent: 'visits', rateFromParent: 0.4 },
+    { key: 'formStart', count: 74, parent: 'visits', rateFromParent: 74 / 420 },
+    { key: 'registered', count: 41, parent: 'formStart', rateFromParent: 41 / 74 },
+    { key: 'opened', count: 29, parent: 'registered', rateFromParent: 29 / 41 },
+  ];
+  const g = C.funnelGeometry(stages, { width: 600, labelWidth: 150, parentLabels: { visits: 'הנכנסים', registered: 'מי שמילאו פרטים' } });
+  assert.equal(g.bands.length, 5);
+  assert.ok(g.bands.every((b) => b.x >= 0 && b.x + b.w <= g.ribW + 1e-9));
+  assert.ok(g.bands.every((b, i) => i === 0 || b.w <= g.bands[i - 1].w + 1e-9));
+  assert.equal(g.bands[0].w, g.ribW * 0.47 * 2);
+  assert.ok(g.bands[4].half >= g.ribW * 0.47 * 0.17 - 1e-9);
+  assert.equal(g.joints.length, 4);
+  assert.equal(g.joints[0].tag, '40%'); // availability: ההורה visits הוא גם השלב הקודם - בלי תווית הורה
+  assert.equal(g.joints[1].tag, '18% מהנכנסים'); // formStart: ההורה visits אינו הקודם (availability) - התווית מציינת אותו
+  assert.equal(g.joints[2].tag, '55%'); // registered מ-formStart הקודם
+  assert.equal(g.joints[3].tag, '71%'); // opened מ-registered שהוא גם הקודם
+  assert.ok(g.height > 0 && !/NaN/.test(JSON.stringify(g)));
+  assert.deepEqual(C.funnelGeometry([], { width: 600, labelWidth: 150 }).bands, []);
+});
+
+test('gaugeDash / compareRows: clamp, null-safe, widths relative to the largest', () => {
+  const full = C.gaugeDash(88, 1);
+  assert.equal(full.offset, 0);
+  assert.ok(Math.abs(full.length - Math.PI * 88) < 1e-9);
+  assert.equal(C.gaugeDash(88, 0).offset, C.gaugeDash(88, 0).length);
+  assert.equal(C.gaugeDash(88, 7).offset, 0);
+  assert.equal(C.gaugeDash(88, null).offset, C.gaugeDash(88, null).length);
+  const rows = C.compareRows(5, 10, null);
+  assert.deepEqual(rows.map((r) => r.key), ['today', 'yesterday', 'avg']);
+  assert.equal(rows[1].pct, 100);
+  assert.equal(rows[0].pct, 50);
+  assert.equal(rows[2].value, null);
+  assert.equal(C.compareRows(0, 0, 0).every((r) => r.pct === 0), true);
 });

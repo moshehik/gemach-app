@@ -96,3 +96,89 @@ export function dayBands(count, plotLeft, plotWidth) {
 export function bandAriaLabel(dayLabel, parts) {
   return `${dayLabel}: ${parts.map((p) => `${p.label} ${fmtInt(p.value)}`).join(', ')}`;
 }
+
+/* ===================== כיוון B ("זרימה"): חישובי גיאומטריה טהורים ===================== */
+
+/** עקומה חלקה מונוטונית (Fritsch-Carlson) דרך נקודות עם x עולה. מחזירה מחרוזת path ('' כשיש פחות משתי נקודות). */
+export function splinePath(pts) {
+  const n = pts.length;
+  if (n < 2) return '';
+  const dx = [];
+  const m = [];
+  const t = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = pts[i + 1].x - pts[i].x; m[i] = (pts[i + 1].y - pts[i].y) / dx[i]; }
+  t[0] = m[0];
+  t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i];
+    const b = t[i + 1] / m[i];
+    const s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const w = dx[i];
+    d += ` C${pts[i].x + w / 3},${pts[i].y + (t[i] * w) / 3} ${pts[i + 1].x - w / 3},${pts[i + 1].y - (t[i + 1] * w) / 3} ${pts[i + 1].x},${pts[i + 1].y}`;
+  }
+  return d;
+}
+
+/** מפרק מערך נקודות עם חורים (null) לקטעים רצופים. */
+export function splitSegments(pts) {
+  const out = [];
+  let cur = [];
+  for (const p of pts) { if (p) cur.push(p); else { if (cur.length) out.push(cur); cur = []; } }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
+/** צבע סרט המשפך לפי קבוצת השלב: כניסות (תכלת), רישום (כחול), הזמנות (זהב). */
+export const STAGE_COLOR_VARS = Object.freeze({
+  visits: '--sa-c-top', availability: '--sa-c-top', formStart: '--sa-c-top', registered: '--sa-c-mid', verified: '--sa-c-mid', opened: '--sa-c-open', approved: '--sa-c-appr',
+});
+
+/**
+ * גיאומטריית משפך "סרט" ממורכז. stages = השלבים הנמדדים בלבד [{key, count, parent, rateFromParent}] (count מספר).
+ * רוחב הסרט ליניארי בין 17% ל-100% מהרוחב המרבי (המספרים והאחוזים מדויקים; הרוחב רק מקרב כך ששלב קטן נשאר קריא).
+ * @returns {{height:number, bands:Array<{key,count,x,y,w,half}>, joints:Array<{from:number,to:number,y1:number,y2:number,tag:string|null}>, cx:number}}
+ */
+export function funnelGeometry(stages, { width, labelWidth, rowH = 46, gap = 28, parentLabels = {} }) {
+  const ribW = Math.max(60, width - labelWidth - 8);
+  const cx = ribW / 2;
+  const maxHalf = ribW * 0.47;
+  const top = Math.max(1, ...stages.map((s) => s.count));
+  const bands = stages.map((s, i) => {
+    const half = maxHalf * (0.17 + 0.83 * (s.count / top));
+    const y = 4 + i * (rowH + gap);
+    return { key: s.key, count: s.count, half, x: cx - half, y, w: half * 2 };
+  });
+  const joints = [];
+  for (let i = 1; i < stages.length; i++) {
+    const s = stages[i];
+    const prevKey = stages[i - 1].key;
+    let tag = null;
+    if (typeof s.rateFromParent === 'number') {
+      const adjacent = s.parent === prevKey;
+      tag = `${fmtPct(s.rateFromParent)}${adjacent || !s.parent || !parentLabels[s.parent] ? '' : ` מ${parentLabels[s.parent]}`}`;
+    }
+    joints.push({ from: i - 1, to: i, y1: bands[i - 1].y + rowH, y2: bands[i].y, tag });
+  }
+  return { height: stages.length ? 4 + stages.length * rowH + (stages.length - 1) * gap + 4 : 0, bands, joints, cx, ribW };
+}
+
+/** מד חצי עיגול: אורך קשת וקיזוז מילוי לשבר 0..1 (נחתך לטווח). */
+export function gaugeDash(radius, fraction) {
+  const len = Math.PI * radius;
+  const f = typeof fraction === 'number' && isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0;
+  return { length: len, offset: len * (1 - f) };
+}
+
+/** שורות פסי ההשוואה באריח: היום / אתמול / ממוצע, כשהרוחב יחסי לגדול שבהם (null מדולג). */
+export function compareRows(today, yesterday, weekAvg) {
+  const vals = [today, yesterday, weekAvg].filter((v) => typeof v === 'number' && isFinite(v));
+  const mx = Math.max(1e-9, ...vals);
+  const row = (key, label, v) => (typeof v === 'number' && isFinite(v) ? { key, label, value: v, pct: (v / mx) * 100 } : { key, label, value: null, pct: 0 });
+  return [row('today', 'היום', today), row('yesterday', 'אתמול', yesterday), row('avg', 'ממוצע שבועי', weekAvg)];
+}
