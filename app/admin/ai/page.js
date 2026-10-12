@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import SettingQuickPanel from '../../components/SettingQuickPanel';
+import GuideChips from '../../components/guide/GuideChips';
 import { renderCopyable } from '../../components/CopyableText';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
@@ -112,6 +113,7 @@ export default function AIPage() {
         body: JSON.stringify({
           prompt: userMessageContent,
           history: historyContext,
+          currentPath: '/admin/ai',
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. אתה נמצא בממשק המנהל, ענה על כל שאלה סטטיסטית, פיננסית או ניהולית שהמנהל מבקש, כולל נתונים מדויקים מהמסד.`
         }),
       });
@@ -119,7 +121,7 @@ export default function AIPage() {
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.data }
+        ? { role: 'assistant', content: data.response, tableData: data.data, ...(Array.isArray(data.guide) && data.guide.length ? { guide: data.guide, guideHref: data.guideHref || null } : {}) }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       // Append strictly to the thread that initiated the request
@@ -229,6 +231,7 @@ export default function AIPage() {
                 <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{renderCopyable(displayText)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
+                  {Array.isArray(msg.guide) && msg.guide.length > 0 && <GuideChips guide={msg.guide} guideHref={msg.guideHref} />}
                   {openSettingKeys.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                       {openSettingKeys.map(key => (

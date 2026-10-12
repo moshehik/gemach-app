@@ -440,6 +440,8 @@ export function botMessageFromResponse(response) {
     setting: tags.settingKeys[0] || '',
     link: link ? link.label : '',
     linkRoute: link ? safeInternalRoute(link.route) : '',
+    // "הצג לי" (מדריך האתר, lib/ai/siteGuide.js): מזהי יעדים מאומתים בשרת; ההדגשה עצמה ב-GuideProvider
+    ...(Array.isArray(r.guide) && r.guide.length ? { guide: r.guide.filter((g) => g && typeof g.id === 'string').map((g) => ({ id: g.id, label: str(g.label) })) } : {}),
   };
 }
 export function botErrorMessage(status) {
