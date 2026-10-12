@@ -128,7 +128,7 @@ t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממ�
 });
 t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / מצב מסד / Neon תמיד מוצגים', () => {
   const sys = L.buildViewModel('sys', []);
-  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'disp']);
+  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'msg', 'disp']); // msg: שורת הקישור למרכז המיילים (special: emailcenter) תמיד מוצגת
   const site = L.buildViewModel('site', []);
   assert.deepEqual(site.tabs.map((tb) => tb.id), ['db']);
 });

@@ -31,6 +31,7 @@ import {
 import SettingRow from './SettingRow';
 import DeviceBackupAccessEditor from '../DeviceBackupAccessEditor';
 import { Ic, ConfirmDialog, UnsavedDialog, AuthDialog, Toast } from './SettingsDialogs';
+import EmailCenterLinkRow from '../email-center/EmailCenterLinkRow';
 
 const TITLES = { sys: 'הגדרות מערכת', site: 'הגדרות אתר', names: 'שינוי שמות' };
 const SEARCH_PH = { sys: 'חיפוש הגדרה', site: 'חיפוש הגדרה', names: 'חיפוש כיתוב' };
@@ -782,6 +783,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     if (s.special === 'permissions') special = <PermissionsRow />;
     if (s.special === 'dbmode') special = <><DeviceDbViewRow root={portalRoot} /><DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} /></>;
     if (s.special === 'neon') special = <NeonRows />;
+    if (s.special === 'emailcenter') special = <EmailCenterLinkRow />;
     if (q && special && !shownRows.length) return null;
     return (
       <Section sec={s} key={s.id}>
