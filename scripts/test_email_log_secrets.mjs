@@ -29,7 +29,7 @@ export async function resolve(spec, ctx, next) {
 }
 export async function load(url, ctx, next) {
   if (url === 'stub:prisma') return { format: 'module', shortCircuit: true, source: 'export default globalThis.__stub.prisma;' };
-  if (url === 'stub:settings') return { format: 'module', shortCircuit: true, source: 'export const getAllCachedSettings = async () => []; export const getCachedSetting = async () => "";' };
+  if (url === 'stub:settings') return { format: 'module', shortCircuit: true, source: 'export const getAllCachedSettings = async () => []; export const getCachedSetting = async () => ""; export const invalidateSettingsCache = () => {};' };
   if (url === 'stub:auth') return { format: 'module', shortCircuit: true, source: 'export const checkAuth = async (role) => globalThis.__stub.authOk;' };
   if (url === 'stub:nextserver') return { format: 'module', shortCircuit: true, source: 'export const NextResponse = { json: (data, init) => ({ json: async () => data, status: (init && init.status) || 200 }) };' };
   return next(url, ctx);

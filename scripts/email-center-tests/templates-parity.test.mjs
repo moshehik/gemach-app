@@ -119,4 +119,27 @@ t('שורה לא מוכרת בתבנית זורקת שגיאה (לא טקסט ר
   assert.throws(() => makeTx('nope', {})('x'), /מייל לא מוכר/);
 });
 
+// ---- הדוח היומי (נבנה בעבר inline ב-cron/daily): אותו פלט, חוץ מ-escape של < > & בשמות ----
+t('renderDailyManagerReport זהה ל-HTML הישן של ה-cron (נתונים רגילים)', () => {
+  const dateLabel = 'כז אלול תשפ"ו';
+  const openedLines = '#1 - רחל כהן - כז אלול - 2 פריטים\n#2 - שרה לוי - ל אלול - 1 פריטים';
+  const reservedLines = '';
+  const body = `דוח יומי - ${dateLabel}\n\nהזמנות חדשות שנפתחו אתמול: 2\n${openedLines || 'אין'}\n\nהזמנות עם אירוע היום: 0\n${reservedLines || 'אין'}`;
+  const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${dateLabel}</h2>` +
+    `<p><strong>הזמנות חדשות שנפתחו אתמול:</strong> 2</p>` +
+    `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${openedLines || 'אין'}</pre>` +
+    `<p><strong>הזמנות עם אירוע היום:</strong> 0</p>` +
+    `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${reservedLines || 'אין'}</pre></div>`;
+  const out = NEW.renderDailyManagerReport({ dateLabel, openedCount: 2, eventTodayCount: 0, openedLines, reservedLines });
+  assert.equal(out.body, body);
+  assert.equal(out.html, html);
+});
+
+t('renderDailyManagerReport: שם לקוח עם תגית עובר escape; כותרות ניתנות לעריכה', () => {
+  const out = NEW.renderDailyManagerReport({ dateLabel: 'x', openedCount: 1, eventTodayCount: 0, openedLines: '#1 - <script>alert(1)</script> & co', reservedLines: '', cfg: { texts: { heading: 'סיכום {{hebrewDate}}', none: 'ריק' } } });
+  assert.ok(!out.html.includes('<script>'));
+  assert.ok(out.html.includes('&lt;script&gt;') && out.html.includes('&amp; co'));
+  assert.ok(out.html.includes('<h2>סיכום x</h2>') && out.html.includes('>ריק</pre>'));
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (עם כשלונות)' : ''}`);

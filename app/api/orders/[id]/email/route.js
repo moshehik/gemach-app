@@ -12,6 +12,7 @@ import { parseQuickMail, isSafeRecipient, quickDriveFolderId, sanitizeQuickAttac
 import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
 import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig } from '@/lib/emailConfig';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { hasPermission, canOpenAnyPage } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
@@ -539,6 +540,8 @@ export async function POST(request, { params }) {
     }] : [];
     const extraNormalized = normalizeAttachments({ attachments: quick ? quickAttachments : orderMailAttachments, sendMode });
     const allFiles = [...pdfEntry, ...extraNormalized];
+    // מרכז המיילים (/admin/email-center): נושא / שורות / שדות קבועים של "כרטיס הזמנה". המייל המהיר (quick) משתמש רק בשדות הקבועים. בלי עריכה - כמו תמיד.
+    const orderMailCfg = await getEmailConfig('orderCard');
     const accompanyingHtml = renderOrderCardEmailHtml({
       orderId: order.orderId,
       printType,
@@ -546,7 +549,8 @@ export async function POST(request, { params }) {
       eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : ''),
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
-      gmachPhone: printSettings.gmachPhone
+      gmachPhone: printSettings.gmachPhone,
+      cfg: orderMailCfg
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
@@ -554,7 +558,7 @@ export async function POST(request, { params }) {
     const driveFolderId = quickDriveFolderId(driveFolderDefault, driveFolderIdRaw);
 
     // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
-    const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });
+    const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId }, orderMailCfg);
 
     // Use the generic email script OR our new PDF generator action
     const googlePayload = quick ? buildGasPayload({
@@ -563,7 +567,7 @@ export async function POST(request, { params }) {
       body: quick.bodyText,
       htmlBody: renderGenericEmailHtml({
         title: quick.subject, bodyText: quick.bodyText, gmachName: printSettings.gmachName, subtitle: `הזמנה #${order.orderId}`,
-        gmachAddress: printSettings.gmachAddress, gmachPhone: printSettings.gmachPhone
+        gmachAddress: printSettings.gmachAddress, gmachPhone: printSettings.gmachPhone, cfg: { fixed: orderMailCfg.fixed }
       }),
       attachments: allFiles,
       sendMode,
