@@ -8,6 +8,7 @@ import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle, { DeviceBackupViewToggle } from './WebBackupModeToggle';
+import BranchesManager from '@/app/components/branches/BranchesManager';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
@@ -809,6 +810,12 @@ export default function SettingsClient({ mode = 'general' }) {
               <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0', fontSize: '12.5px' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
             </div>
           </div>
+
+          {activeTab === 'סניפים' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <BranchesManager compact />
+            </div>
+          )}
 
           {activeTab === 'מסד נתונים' && (
             <>

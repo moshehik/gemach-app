@@ -30,6 +30,7 @@ const categories = [
       { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/refund-planner', icon: 'i-coin', label: 'מתכנן זיכויים', subLabel: 'ציר זמן חזותי וסימולציה' },
       { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
+      { href: '/admin/branches', icon: 'i-pin', label: 'סניפים', subLabel: 'ראשי ויכולות: מדידה, איסוף, החזרה' },
       { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
       { href: '/admin/audit-system', icon: 'i-check-circle', label: 'מערכת ביקורת (11 סוכנים)', subLabel: 'תיעוד סוכני הבדיקה האוטומטיים' },
     ]

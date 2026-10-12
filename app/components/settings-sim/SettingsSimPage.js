@@ -137,6 +137,24 @@ function PermissionsRow() {
   );
 }
 
+/** ניהול הסניפים (docs/branches-plan.md): עמוד נפרד /admin/branches - רשימה, ראשי, מדידה / איסוף / החזרה והתראות העברה. */
+function BranchesRow() {
+  return (
+    <div className="li st-row st-ctlrow">
+      <div className="ic-b"><Ic id="pin" /></div>
+      <div className="t">
+        <b className="st-lb">ניהול סניפים ויכולות</b>
+        <small>הוספת סניפים, סניף ראשי, ולכל סניף: מדידה / איסוף / החזרה, וההגדרות של ריבוי סניפים. נפתח בעמוד נפרד.</small>
+      </div>
+      <div className="st-ctl">
+        <Link className="btn ghost sm" href="/admin/branches" aria-label="פתיחת ניהול הסניפים (עמוד נפרד)" data-element-name="כפתור_settings_branches">
+          <Ic id="ext" />פתיחה
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 /** סביבת עבודה = מסד הנתונים של האתר החי (GET/POST /api/admin/db-mode, כמו WebBackupModeToggle). מופעל מיד, אחרי אישור. */
 function DbModeRow({ root, onToast, dirty, onSwitched }) {
   const [mode, setMode] = useState(null);
@@ -780,6 +798,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     let special = null;
     if (s.special === 'logo') special = <LogoBlock onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'העלאת הלוגו נכשלה', text: m })} />;
     if (s.special === 'permissions') special = <PermissionsRow />;
+    if (s.special === 'branches') special = <BranchesRow />;
     if (s.special === 'dbmode') special = <><DeviceDbViewRow root={portalRoot} /><DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} /></>;
     if (s.special === 'neon') special = <NeonRows />;
     if (q && special && !shownRows.length) return null;

@@ -333,6 +333,7 @@ model DressItem {
   deletedAt       DateTime? // תאריך_מחיקה
   orderItems      OrderItem[]
   updatedAt       DateTime    @updatedAt
+  branch          String? // סניף נוכחי של הפריט הפיזי (multi_branch_enabled; ריק = לא שויך, ר' docs/branches-plan.md)
 
   @@index([dressModelId])
   @@index([dressBarcode])
@@ -340,6 +341,7 @@ model DressItem {
   @@index([isDeleted])
   @@index([notInUse])
   @@index([inRepair])
+  @@index([branch])
 }
 
 model Order {
