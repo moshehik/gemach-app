@@ -64,18 +64,22 @@ test('response is identical to the old handler: filtering, sorting (category asc
   assert.deepEqual(keys, ['ui_labels_mapping', 'alpha', 'beta', 'zeta', NON_WORKING_DAYS_SETTING_KEY, 'nedarim_plus_token', 'yemot_api_token', 'no_category']);
 });
 
-test('non_working_days_extra notes: stripped for an anonymous reader, kept for a signed-in one - same as the old handler, and the cache never leaks the full value', async () => {
+test('non_working_days_extra: a signed-in reader gets exactly the value of the old handler (notes included); an anonymous reader gets no such row at all (allow-list, lib/publicSettings.js) - and the cache never leaks it', async () => {
   seed();
   for (const auth of [true, false, true, false]) { // alternating on the SAME warm cache
     globalThis.__AUTH = auth;
-    const oldR = await body(await oldGet());
     const newR = await body(await route.GET());
-    assert.deepEqual(newR.json, oldR.json, `auth=${auth}`);
-    const v = newR.json.find((s) => s.key === NON_WORKING_DAYS_SETTING_KEY).value;
-    assert.equal(/"note"/.test(v), auth, `auth=${auth}: notes ${auth ? 'present' : 'stripped'}`);
+    if (auth) {
+      const oldR = await body(await oldGet());
+      assert.deepEqual(newR.json, oldR.json, 'auth=true: identical to the old handler');
+      assert.equal(/"note"/.test(newR.json.find((s) => s.key === NON_WORKING_DAYS_SETTING_KEY).value), true, 'auth=true: notes present');
+    } else {
+      assert.equal(newR.json.some((s) => s.key === NON_WORKING_DAYS_SETTING_KEY), false, 'auth=false: no non_working_days_extra row');
+      assert.equal(JSON.stringify(newR.json).includes('פרט פנימי'), false, 'auth=false: the note text is nowhere in the body');
+    }
   }
-  assert.equal(findManyCalls() >= 4 + 1, true);
-  // after the anonymous reads, the cached rows still hold the original (un-stripped) value
+  assert.equal(findManyCalls() >= 2 + 1, true); // two oldGet() reads + at least one cached read by the route
+  // after the anonymous reads, the cached rows still hold the original value
   const cached = await SC.getCachedSettingsList();
   assert.equal(cached.find((s) => s.key === NON_WORKING_DAYS_SETTING_KEY).value, NWD);
   assert.equal(cached.find((s) => s.key === 'nedarim_plus_token').value, 'real-secret-token', 'masking is applied per response, the cache itself is never mutated');

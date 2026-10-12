@@ -81,7 +81,7 @@ test('GET /api/settings: body unchanged, private cache headers; ?fresh=1 -> no-s
   assert.equal((await settingsRoute.GET(req('/api/settings', { 'if-none-match': etag }))).status, 304);
 });
 
-test('GET /api/settings: the anonymous answer (notes stripped) and the logged-in answer have DIFFERENT ETags and both vary on Cookie - never shared across users', async () => {
+test('GET /api/settings: the anonymous answer (allow-list only) and the logged-in answer have DIFFERENT ETags and both vary on Cookie - never shared across users', async () => {
   SC.invalidateSettingsCache();
   globalThis.__AUTH = true;
   const logged = await settingsRoute.GET(req('/api/settings'));
@@ -90,8 +90,9 @@ test('GET /api/settings: the anonymous answer (notes stripped) and the logged-in
   assert.notEqual(headersOf(anon).etag, headersOf(logged).etag);
   assert.match(headersOf(anon)['cache-control'], /^private,/);
   assert.equal(headersOf(anon).vary, 'Cookie');
-  const anonNwd = (await anon.json()).find((s) => s.key === 'non_working_days_extra');
-  assert.ok(!anonNwd.value.includes('פרט פנימי'), 'internal note still stripped for anonymous');
+  const anonBody = await anon.json();
+  assert.equal(anonBody.some((s) => s.key === 'non_working_days_extra'), false, 'anonymous gets no non_working_days_extra row (not on the allow-list)');
+  assert.ok(!JSON.stringify(anonBody).includes('פרט פנימי'), 'internal note never reaches an anonymous reader');
   // the logged-in ETag must NOT validate the anonymous body
   assert.equal((await settingsRoute.GET(req('/api/settings', { 'if-none-match': headersOf(logged).etag }))).status, 200);
   globalThis.__AUTH = true;

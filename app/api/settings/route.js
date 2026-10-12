@@ -8,18 +8,22 @@ import { validateNumericSetting, validateSelectSetting } from '../../lib/setting
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
 import { SECRET_SETTING_KEYS, SECRET_MASK, secretWriteAction } from '../../lib/secretSettingKeys';
-import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue, pastClosedDayChanges, stripNonWorkingDaysNotes, hebrewDateOfKey } from '@/lib/businessDays';
+import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue, pastClosedDayChanges, hebrewDateOfKey } from '@/lib/businessDays';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { hasPermission } from '@/lib/permissions';
 import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
 import { cachedJson, REFERENCE_CACHE_CONTROL, NO_STORE } from '@/lib/httpCache';
+import { toPublicSettings } from '@/lib/publicSettings';
 
 export const dynamic = 'force-dynamic';
 
-// GET is intentionally left public: settings (e.g. UI/branding config) are
-// read by pages that render before/without login, such as the public
-// customer-interface kiosk page and the labels fetched on initial layout
-// mount. Writing settings is admin-only (see POST below).
+// GET is reachable without login, but an anonymous reader (checkAuth() false: no valid session while require_login is on) only
+// gets the short allow-list in lib/publicSettings.js (PUBLIC_SETTING_KEYS - display flags read by the screens that render with the
+// login wall lifted: the kiosk, the punch clock, global widgets) and only { key, value } of each row. Everything else - contact
+// details, payment/merchant identifiers, drive folder ids, refund/pricing policy, hardening flags, management messages, ... - needs
+// a session (2026-10-12; before this the whole table except three masked secrets was public). Signed-in readers, and every reader
+// while require_login is OFF (open mode: the whole site is open), get exactly what they always got. The auth check fails CLOSED.
+// Writing settings is admin-only (see POST below).
 //
 // CPU 5.10.2026: the rows come from a 30s per-instance server cache (lib/settingsCache.js getCachedSettingsList - the SAME
 // findMany: BRAND_LOGO / backup_requested_at excluded, category asc + id asc) instead of a full findMany + 66KB serialize on every
@@ -31,18 +35,15 @@ async function GET(request) {
     let fresh = false;
     try { fresh = !!request && new URL(request.url).searchParams.get('fresh') === '1'; } catch { /* no url (direct call) */ }
     const settings = await getCachedSettingsList({ fresh });
-    let masked = settings.map(s =>
-      SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s
-    );
-    // ההערות החופשיות של ימי אי-הפעילות (non_working_days_extra) יכולות להכיל פרטים פנימיים, וה-GET הזה ציבורי (דפי הדפסה/הזמנה/החזרות
-    // צריכים רק את הימים). בלי session תקף מסירים את שדה ה-note מהערך; הדף עצמו (/non-working-days) קורא את הערך המלא מ-/api/non-working-days.
-    const nwd = masked.find(s => s.key === NON_WORKING_DAYS_SETTING_KEY);
-    if (nwd && typeof nwd.value === 'string' && nwd.value.includes('"note"') && !(await checkAuth())) {
-      masked = masked.map(s => (s === nwd ? { ...s, value: stripNonWorkingDaysNotes(s.value) } : s));
-    }
+    // מחובר = checkAuth() (עוגייה תקפה, או מצב פתוח); נכשל סגור. אורח מקבל רק את הרשימה הלבנה, לפני כל עיבוד אחר - הסודות והערות
+    // ימי האי-פעילות (non_working_days_extra) אינם ברשימה ולכן לא יוצאים אליו בכלל; הדף עצמו (/non-working-days) קורא את הערך המלא מ-/api/non-working-days.
+    const signedIn = await checkAuth(undefined, { failClosed: true });
+    const visible = signedIn
+      ? settings.map(s => (SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s))
+      : toPublicSettings(settings);
     // CPU phase 1B: דפדפן - private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js); ?fresh=1 (מסכי עריכה) = no-store. private + Vary: Cookie כי התשובה
-    // תלויה בהתחברות (הערות ימי אי-הפעילות מוסרות מאורח) - לעולם לא מטמון משותף בין משתמשים.
-    return cachedJson(request, masked, { cacheControl: fresh ? NO_STORE : REFERENCE_CACHE_CONTROL });
+    // תלויה בהתחברות (אורח מקבל רשימה מצומצמת) - לעולם לא מטמון משותף בין משתמשים.
+    return cachedJson(request, visible, { cacheControl: fresh ? NO_STORE : REFERENCE_CACHE_CONTROL });
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
