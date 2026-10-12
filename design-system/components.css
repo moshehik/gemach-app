@@ -4204,7 +4204,7 @@
 .gm-ds.gm-home .res-one .card-h h2{color:var(--gm-navy)}
 .gm-ds.gm-home .res-one .card-h h2 .faint,.gm-ds.gm-home .res-one .card-h h2 .tip{color:var(--gm-ink3)}
 .gm-ds.gm-home .res-one .list{padding-inline:4px}
-.gm-ds.gm-home .hero-in.jshell{position:relative;background:rgba(255,255,255,.6);border:2px solid var(--gm-navy);border-radius:32px;gap:0;box-shadow:0 18px 36px -16px rgba(15,44,82,.4)}
+.gm-ds.gm-home .hero-in.jshell{position:relative;background:var(--gm-milk);border:2px solid var(--gm-navy);border-radius:32px;gap:0;box-shadow:0 18px 36px -16px rgba(15,44,82,.4)}
 .gm-ds.gm-home .jshell .srch{gap:0}
 .gm-ds.gm-home .hero .hero-in.jshell .scan,.gm-ds.gm-home .hero .hero-in.jshell .scan:hover,.gm-ds.gm-home .hero .hero-in.jshell .scan:focus-within{position:relative;z-index:3;margin:10px 10px 0;background:#fff;border:1.5px solid var(--gm-sky-300);border-radius:999px;box-shadow:0 4px 12px -6px rgba(15,44,82,.32)}
 .gm-ds.gm-home .hero .hero-in.jshell .scan:focus-within{border-color:var(--gm-gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3),0 4px 12px -6px rgba(15,44,82,.32)}
