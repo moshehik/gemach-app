@@ -52,7 +52,7 @@ function ModelTile({ model, inventory, hideImages }) {
       {inventory ? (
         <div className={`ks-avail ${model.inStock ? 'ok' : 'bad'}`}>
           <KIcon id={model.inStock ? 'check' : 'alert'} size="sm" />
-          {model.inStock ? 'יש זמינות בתאריך שבחרת' : 'אין זמינות בתאריך שבחרת'}
+          {model.inStock ? 'זמינה בתאריך שבחרת' : 'לא זמינה בתאריך'}
         </div>
       ) : null}
       <div className="msizes">
@@ -60,7 +60,7 @@ function ModelTile({ model, inventory, hideImages }) {
           const has = inventory ? s.available : true;
           return (
             <span key={s.size} className={`msz ${has ? 'ok' : 'none'}`} title={inventory ? (has ? `מידה ${s.size}: זמינה` : `מידה ${s.size}: לא זמינה`) : `מידה ${s.size}`}>
-              {s.size}{inventory && has ? ` · ${s.qty >= QTY_CAP ? `${QTY_CAP}+` : s.qty}` : ''}
+              {s.size}{inventory && has ? <> · <bdi>{s.qty >= QTY_CAP ? `${QTY_CAP}+` : s.qty}</bdi></> : null}
             </span>
           );
         })}
@@ -77,6 +77,7 @@ function Catalog({ config, date, onChangeDate, onBack }) {
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [tick, setTick] = useState(0);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -132,27 +133,32 @@ function Catalog({ config, date, onChangeDate, onBack }) {
             value={q} onChange={(e) => setQ(e.target.value)} />
           {q ? <button type="button" className="ibtn" aria-label="ניקוי" onClick={() => setQ('')}><KIcon id="x" size="sm" /></button> : null}
         </div>
-        {state.sizes.length > 0 ? (
-          <div className="kp-chips">
-            <span className="lbl"><KIcon id="tag" size="sm" />מידה</span>
-            <div className="sizes">
-              {state.sizes.map((z) => {
-                const on = sizes.includes(z);
-                return <button type="button" key={z} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setSizes((p) => (on ? p.filter((x) => x !== z) : [...p, z]))}>{z}</button>;
-              })}
-            </div>
-          </div>
-        ) : null}
-        {state.categories.length > 1 ? (
-          <div className="kp-chips">
-            <span className="lbl"><KIcon id="box" size="sm" />קטגוריה</span>
-            <div className="sizes">
-              <button type="button" className={!category ? 'on' : ''} aria-pressed={!category} onClick={() => setCategory('')}>הכול</button>
-              {state.categories.map((c) => (
-                <button type="button" key={c} className={category === c ? 'on' : ''} aria-pressed={category === c} onClick={() => setCategory(category === c ? '' : c)}>{c}</button>
-              ))}
-            </div>
-          </div>
+        {state.sizes.length > 0 || state.categories.length > 1 ? (
+          <details className="kp-more" open={moreOpen} onToggle={(e) => setMoreOpen(e.currentTarget.open)}>
+            <summary data-agy-id="station_filters_toggle"><KIcon id="sliders" size="sm" />סינון לפי מידה{state.categories.length > 1 ? ' וקטגוריה' : ''}{sizes.length || category ? <span className="ks-dot" aria-label="יש סינון פעיל" /> : null}</summary>
+            {state.sizes.length > 0 ? (
+              <div className="kp-chips">
+                <span className="lbl"><KIcon id="tag" size="sm" />מידה</span>
+                <div className="kp-pills">
+                  {state.sizes.map((z) => {
+                    const on = sizes.includes(z);
+                    return <button type="button" key={z} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setSizes((p) => (on ? p.filter((x) => x !== z) : [...p, z]))}>{z}</button>;
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {state.categories.length > 1 ? (
+              <div className="kp-chips">
+                <span className="lbl"><KIcon id="box" size="sm" />קטגוריה</span>
+                <div className="kp-pills">
+                  <button type="button" className={!category ? 'on' : ''} aria-pressed={!category} onClick={() => setCategory('')}>הכול</button>
+                  {state.categories.map((c) => (
+                    <button type="button" key={c} className={category === c ? 'on' : ''} aria-pressed={category === c} onClick={() => setCategory(category === c ? '' : c)}>{c}</button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </details>
         ) : null}
       </div>
 
