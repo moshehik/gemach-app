@@ -19,7 +19,7 @@ export async function POST(request) {
     const draft = await buildDraftCfg(id, (body && body.draft) || {}, { origin: requestOrigin(request) });
     if (!draft.ok) return NextResponse.json({ error: draft.error, key: draft.key || null }, { status: 400 });
     const days = Number(body && body.daysBefore);
-    const sample = buildSampleEmail(id, { cfg: draft.cfg, ...(Number.isInteger(days) && days >= 0 && days <= 30 ? { daysBefore: days } : {}) });
+    const sample = buildSampleEmail(id, { cfg: draft.cfg, withDelivery: !!(body && body.withDelivery), ...(Number.isInteger(days) && days >= 0 && days <= 30 ? { daysBefore: days } : {}) });
     return NextResponse.json({ subject: sample.subject.replace(/^\[דוגמה\] /, ''), html: sample.html });
   } catch (e) {
     console.error('email-center preview failed', e);
