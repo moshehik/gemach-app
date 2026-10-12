@@ -5,7 +5,7 @@
 // "חיוב אשראי" רק כש-nedarim_plus_enabled לא 'false', חיוב שבוצע לא ניתן להסרה. R27/R31/R28 - ב-controller.
 // פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
-import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
+import { Blk, Ic, OneCard, SubH, Switch, Tip, money } from './NoUi';
 import { CalcErrorNote } from './NoDeliveryBits';
 import { MANAGER_EXIT_METHOD, isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
 
@@ -42,6 +42,12 @@ export default function StepPayment({ ctl }) {
     <OneCard>
       <div className={`pay-split${hasPays ? ' has-side' : ''}`}>
         <div className="pay-main">
+          {/* חתימה על התקנון חובה בכל הזמנה; לקוח חדש סימן אותה בכרטיס הלקוח, ללקוח קיים זו הנקודה לסמן. מוצג רק כשעוד לא נחתם. */}
+          {!ctl.order.hasSignedRegulations ? (
+            <Blk>
+              <div className="trow"><Switch id="noPaySign" checked={false} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} label="חתימה על התקנון" /><span>הלקוח חתם על התקנון *</span></div>
+            </Blk>
+          ) : null}
           <Blk>
             <SubH icon="wallet" tone="green" title="מצב תשלום" />
             <div className="bal">

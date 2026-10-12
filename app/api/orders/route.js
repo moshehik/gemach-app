@@ -861,6 +861,7 @@ async function POST(request) {
       ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
       ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
       ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
+      ...(data.hasSignedRegulations !== undefined ? { hasSignedRegulations: !!data.hasSignedRegulations } : {}),
       ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
       items: {
         create: reconciledItems?.map(item => ({
@@ -1126,12 +1127,12 @@ async function POST(request) {
           const { sendSystemEmail } = await import('@/lib/mailer');
           const { renderOrderConfirmationEmailHtml } = await import('@/lib/emailTemplates');
           const { emailSubject } = await import('@/lib/emailCatalog');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\n${updatedOrder.hasSignedRegulations ? 'חתם/ה על תקנון ההשכרה ✓\n' : ''}כתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
           const html = renderOrderConfirmationEmailHtml({
             customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
             orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
             items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
-            totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone,
+            totalCharge: totalObligations, totalPaid: totalPayments, balance, hasSignedRegulations: !!updatedOrder.hasSignedRegulations, gmachName, gmachAddress, gmachPhone,
           });
           sendSystemEmail({ to: email, subject: emailSubject('orderCreatedAuto', { orderId: updatedOrder.orderId, gmachName }), body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
       }

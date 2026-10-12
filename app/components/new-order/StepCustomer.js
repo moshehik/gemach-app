@@ -142,9 +142,19 @@ function NewTab({ ctl }) {
     e.preventDefault();
     const box = e.target.closest('.blk');
     if (!box) return;
-    const all = Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
+    const all = Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && (el.type !== 'checkbox' || el.id === 'noNcSign') && el.offsetParent !== null);
     const next = all[all.indexOf(e.target) + 1];
     if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed();
+  };
+  // חתימה על התקנון (חובה): Enter עליה מסמן אותה וממשיך לשדה הבא / שומר, כמו בשאר השדות
+  const onSignEnter = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
+    const box = e.target.closest('.blk');
+    const all = box ? Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null) : [];
+    const next = all.find(el => (el.compareDocumentPosition(e.target) & Node.DOCUMENT_POSITION_PRECEDING) !== 0);
+    if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed(false, true);
   };
   const star = (on) => (on ? ' *' : '');
   const err = ctl.newCustomerError;
@@ -191,6 +201,7 @@ function NewTab({ ctl }) {
         {s.hide_marketing_consent_field !== 'true' ? (
           <div className="trow"><Switch checked={n.marketingConsent} onChange={set('marketingConsent')} label="אישור דיוור" /><span>מאשר/ת קבלת דיוורים{star(s.require_marketing_consent === 'true')}</span></div>
         ) : null}
+        <div className="trow"><Switch id="noNcSign" checked={ctl.order.hasSignedRegulations} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} onKeyDown={onSignEnter} label="חתימה על התקנון" /><span>חתם/ה על התקנון *</span></div>
       </div>
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
       {err && !err.field ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}

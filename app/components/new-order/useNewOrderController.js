@@ -281,16 +281,23 @@ export default function useNewOrderController({ router }) {
   };
 
   // כפל לחיצה / Enter על "שמור לקוח והמשך" לא יוצר שני לקוחות: בקשה אחת בכל רגע (גם בזמן חלון אישור מנהל)
-  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
+  // signedNow: Enter על מתג החתימה מסמן אותה ושומר באותה לחיצה - ה-state עוד לא התעדכן בסגירה הזו
+  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false, signedNow = false) => {
     if (savingCustomerRef.current) return;
     savingCustomerRef.current = true;
     setSavingCustomer(true);
-    try { await saveNewCustomerInner(skipDuplicateCheck); } finally { savingCustomerRef.current = false; setSavingCustomer(false); }
+    try { await saveNewCustomerInner(skipDuplicateCheck, signedNow); } finally { savingCustomerRef.current = false; setSavingCustomer(false); }
   };
-  const saveNewCustomerInner = async (skipDuplicateCheck = false) => {
+  const saveNewCustomerInner = async (skipDuplicateCheck = false, signedNow = false) => {
     setNewCustomerError(null);
     const missingFields = missingOf(newCustomer);
     if (missingFields.length > 0) { say('info', `יש למלא: ${missingFields.map(k => NL.CUSTOMER_FIELD_LABELS[k]).join(', ')}`); return; }
+    if (!signedNow && !order.hasSignedRegulations) {
+      say('info', 'יש לסמן שהלקוח חתם על התקנון');
+      const el = typeof document !== 'undefined' ? document.getElementById('noNcSign') : null;
+      if (el) el.focus();
+      return;
+    }
     // Q7: ת"ז חובה רק בגמ"ח שבו require_customer_id_number דולק (נווה יעקב)
     if (settings.require_customer_id_number === 'true' && !String(newCustomer.zeout || '').trim()) { say('info', 'יש למלא: תעודת זהות'); return; }
     const newCustomerGroupErrors = unsatisfiedFieldGroupErrors(newCustomer, fieldGroups);
@@ -642,6 +649,7 @@ export default function useNewOrderController({ router }) {
   // אישור PAYMENT_APPROVAL_LEVEL כמו הרישום הסופי. ההכרעה: NL.paymentAddDecision.
   const handleAddPaymentClick = async () => {
     if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
+    if (!order.hasSignedRegulations) { say('info', 'יש לסמן שהלקוח חתם על התקנון', 'המתג נמצא בראש שלב התשלום.'); return; }
     const decision = NL.paymentAddDecision(settings, payment.method, payment.amount);
     if (decision.action === 'reject') {
       if (decision.reason === 'manager-exit') say('info', '"יציאה באישור מנהל" אינה תשלום', 'כדי לסיים בלי תשלום מלא בחר בה וסיים בלחיצה על "סיום ויצירת ההזמנה" (תתבקש לאשר). לרישום תשלום בחר אמצעי אחר.');
@@ -755,6 +763,7 @@ export default function useNewOrderController({ router }) {
   const saveOrderInner = async () => {
     setSaveError(null);
     if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
+    if (!order.hasSignedRegulations) { say('info', 'יש לסמן שהלקוח חתם על התקנון', 'המתג נמצא בראש שלב התשלום.'); return; }
     if (!order.customerId) { say('info', 'יש לבחור לקוח'); return; }
     if (!String((order.selectedCustomer && order.selectedCustomer.phone1) || '').trim() && !String((order.selectedCustomer && order.selectedCustomer.phone2) || '').trim()) {
       say('info', 'לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון.', 'יש להשלים מספר טלפון בכרטיס הלקוח.'); return;

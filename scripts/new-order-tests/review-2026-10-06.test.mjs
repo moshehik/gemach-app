@@ -59,7 +59,7 @@ test('2: עריכת פריט מנקה פירוט אוטומטי (repairsForEdit)
 });
 
 test('3: כפל לחיצה - שמירת לקוח חדש, "סיום" ושמירה בפועל מוגנים ב-ref', () => {
-  assert.match(CTL, /const handleSaveNewCustomerAndProceed = async \(skipDuplicateCheck = false\) => \{\s*if \(savingCustomerRef\.current\) return;\s*savingCustomerRef\.current = true;/);
+  assert.match(CTL, /const handleSaveNewCustomerAndProceed = async \(skipDuplicateCheck = false, signedNow = false\) => \{\s*if \(savingCustomerRef\.current\) return;\s*savingCustomerRef\.current = true;/);
   assert.match(CTL, /finally \{ savingCustomerRef\.current = false; setSavingCustomer\(false\); \}/);
   assert.match(CTL, /const saveOrder = async \(\) => \{\s*if \(saveOrderBusyRef\.current\) return;\s*saveOrderBusyRef\.current = true;\s*try \{ await saveOrderInner\(\); \} finally \{ saveOrderBusyRef\.current = false; \}/);
   assert.match(CTL, /await executeSaveOrderForList\(NL\.buildFinalPayments\(paymentsList, payment\)\)/);
