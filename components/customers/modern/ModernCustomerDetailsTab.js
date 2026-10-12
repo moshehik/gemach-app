@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { useNoFill } from '../../../lib/autofillGuard';
+import useEnterNavigation from '../../../app/components/shared/useEnterNavigation';
+import ConsentFields from '../../../app/components/shared/ConsentFields';
+import { consentAnswersOfDraft } from '../../../app/components/customer-card/customerCardLogic';
 
 const renderCustomerNotes = (notes) => {
   if (!notes) return null;
@@ -43,7 +46,7 @@ const renderCustomerNotes = (notes) => {
   });
 };
 
-export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {} }) {
+export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {}, explicitConsent = false, consentInfo = null }) {
   const nf = useNoFill();
   const [isEditing, setIsEditing] = useState(false);
   const [customerLocations, setCustomerLocations] = useState({ cities: [], streets: [] });
@@ -96,6 +99,9 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
     await attemptSave(e);
   };
 
+  // Enter עובר לשדה הבא (גם דרך תיבות סימון / בחירות כן-לא; Enter עליהן רק מקדם) ובשדה האחרון שומר - lib/enterNavigation.js
+  const onFormKeyDown = useEnterNavigation(() => attemptSave({ preventDefault() {} }));
+
   const customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'לקוח ללא שם';
   const address = [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ');
 
@@ -140,7 +146,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
         )}
 
         {isEditing && (
-          <form onSubmit={handleSubmit} autoComplete="off">
+          <form onSubmit={handleSubmit} onKeyDown={onFormKeyDown} autoComplete="off">
             <div className="form-grid">
               <div className="field">
                 <label>שם פרטי *</label>
@@ -217,7 +223,19 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 <label>תעודת זהות (לעריכה/ביטול)</label>
                 <input type="text" className="input" style={{ direction: 'ltr' }} {...nf('zeout')} value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
               </div>
-              {settings.hide_marketing_consent_field !== 'true' && (
+              {explicitConsent ? (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ConsentFields
+                    idPrefix="mcCn" settings={settings} info={consentInfo} privacyLocked={customer.consentPrivacy === true && !!(customer.consents && customer.consents.privacy)}
+                    value={consentAnswersOfDraft(customer)}
+                    onChange={(patch) => {
+                      if ('acceptedTerms' in patch) onChange({ target: { name: 'consentTerms', value: patch.acceptedTerms } });
+                      if ('marketingConsent' in patch) { onChange({ target: { name: 'consentMarketing', value: patch.marketingConsent } }); onChange({ target: { name: 'marketingConsent', value: patch.marketingConsent === true } }); }
+                      if ('acceptedPrivacy' in patch) onChange({ target: { name: 'consentPrivacy', value: patch.acceptedPrivacy ? true : null } });
+                    }}
+                  />
+                </div>
+              ) : settings.hide_marketing_consent_field !== 'true' && (
                 <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
                   <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
                   <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>

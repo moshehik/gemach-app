@@ -12,7 +12,17 @@ import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import CcIcon from '../CcIcon';
 import { CcEmailInput, CcInput, Tip, ViewRow } from '../CcFields';
-import { isStarred, joinNotes, signatureOrderText, signatureState, splitNotes } from '../customerCardLogic';
+import { isStarred, joinNotes, sameValue, signatureOrderText, signatureState, splitNotes } from '../customerCardLogic';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import ConsentFields from '@/app/components/shared/ConsentFields';
+
+const CONSENT_CHANNEL_TEXT = { staff: 'נרשם בידי עובד/ת', kiosk: 'אושר בעמדת הלקוח', public: 'אושר בקישור' };
+// שורת מצב להסכמה מיומן ההסכמות (רק כשהטיוטה זהה לשמור; אחרת אין מה לטעון על מצב שעוד לא נרשם)
+function consentStatusText(entry) {
+  if (!entry) return '';
+  const when = entry.at ? getHebrewDateString(new Date(entry.at)) : '';
+  return `${entry.granted ? 'אושר' : 'סורב'} · ${CONSENT_CHANNEL_TEXT[entry.channel] || 'נרשם'}${when ? ` · ${when}` : ''}`;
+}
 
 function EditBtn({ on, onClick, hidden }) {
   if (hidden) return null;
@@ -26,6 +36,8 @@ function EditBtn({ on, onClick, hidden }) {
 
 export default function CcDetailsTab({ cc, ui }) {
   const { cur, editCust, setEditCust, setField, requiredKeys, settings } = cc;
+  // Enter עובר לשדה הבא בכל הסדר (גם דרך מתגים ובחירות כן/לא) ובשדה האחרון מעביר את הפוקוס ל"שמור" במסילה (השמירה עצמה רק בלחיצה - ר' notesedit)
+  const onNavKeyDown = useEnterNavigation(() => { const b = document.querySelector('.gm-cc [data-act="save"]'); if (b && !b.disabled) b.focus(); });
   const [loc, setLoc] = useState({ cities: [], streets: [] });
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
@@ -82,7 +94,23 @@ export default function CcDetailsTab({ cc, ui }) {
     if (sigLocked) { ui.toast('info', cc.readOnly ? 'הכרטיס לצפייה בלבד' : 'החתימה נרשמה בהזמנה', cc.readOnly ? '' : 'עדיין לא נשמרה ברמת הלקוחה'); return; }
     setField('hasSignedRegulations', !cur.hasSignedRegulations);
   };
-  const termsCard = (
+  const consents = cur.consents || {};
+  const consentStatus = (key, kind) => (cc.saved && sameValue(key, cc.saved[key], cur[key]) ? consentStatusText(consents[kind]) : '');
+  const termsCard = cc.explicitConsent ? (
+    <div className="card">
+      <div className="card-h"><div className="ico gold"><CcIcon name="note" size="lg" /></div><h2>תקנון, דיוורים ופרטיות</h2></div>
+      <ConsentFields
+        idPrefix="cCn" settings={settings} info={cc.consentInfo} disabled={cc.readOnly} privacyLocked={cc.saved && cc.saved.consentPrivacy === true}
+        value={{ acceptedTerms: cur.consentTerms ?? null, marketingConsent: cur.consentMarketing ?? null, acceptedPrivacy: cur.consentPrivacy === true }}
+        status={{ terms: consentStatus('consentTerms', 'terms') || (sig.derived && sig.signed ? sigText : ''), marketing: consentStatus('consentMarketing', 'marketing'), privacy: consentStatus('consentPrivacy', 'privacy') }}
+        onChange={(patch) => {
+          if ('acceptedTerms' in patch) setField('consentTerms', patch.acceptedTerms);
+          if ('marketingConsent' in patch) setField('consentMarketing', patch.marketingConsent);
+          if ('acceptedPrivacy' in patch) setField('consentPrivacy', patch.acceptedPrivacy ? true : null);
+        }}
+      />
+    </div>
+  ) : (
     <div className="card">
       <div className="card-h"><div className="ico gold"><CcIcon name="note" size="lg" /></div><h2>תקנון ועדכונים</h2></div>
       <div className="row wrap cc-gap14">
@@ -143,11 +171,11 @@ export default function CcDetailsTab({ cc, ui }) {
   );
 
   return (
-    <>
+    <div style={{ display: 'contents' }} onKeyDown={onNavKeyDown}>
       {custCard}
       {termsCard}
       {notesCard}
       {bankCard}
-    </>
+    </div>
   );
 }

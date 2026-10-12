@@ -27,6 +27,7 @@ const customer = {
   async update(args) { S().updated.push(args); return { id: args.where.id, ...args.data }; },
 };
 export default { customer };
+export async function getActingEmployeeId() { return null; }
 export function auditAs(action, args, changes) { return { ...args, __audit: { action, changes } }; }
 `;
 const authShim = 'export async function checkAuth() { return true; }';

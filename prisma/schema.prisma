@@ -60,6 +60,7 @@ model Customer {
   orders    Order[]
   payments  Payment[]
   refunds   Refund[]
+  consents  CustomerConsent[] // יומן הסכמות (תקנון / דיוור / פרטיות) - ר' CustomerConsent ו-docs/customer-consents.md
   updatedAt DateTime  @updatedAt
 
   @@index([phone1])
@@ -841,6 +842,31 @@ model Attachment {
   data        Bytes
   contentType String
   createdAt   DateTime @default(now())
+}
+
+// יומן הסכמות של לקוחות (תקנון / דיוור שיווקי / מדיניות פרטיות) - ראיה משפטית, append-only: שינוי דעה = שורה חדשה, לא עדכון.
+// הטבלה לא קיימת עדיין באף DB: ה-SQL הידני ב-prisma/migrations-pending/2026-10-12-customer-consent.sql, להרצה ידנית בשני הגמ"חים
+// אחרי אישור (לעולם לא db push). עד אז הקוד ממשיך לעבוד (lib/customerConsent.js: כשל כתיבה ליומן נרשם בקונסול ולא מכשיל שמירת לקוח).
+// כל השדות מחושבים בשרת בלבד (createdAt / recordedByEmployeeId מהעוגייה המאומתת / documentVersion / wording) - אף אחד מהם לא נלקח מגוף הבקשה.
+// לא עוברת בתוסף ה-AuditLog (נכתבת ב-createMany) - היא עצמה יומן.
+model CustomerConsent {
+  id                   String   @id @default(uuid())
+  customerId           String
+  customer             Customer @relation(fields: [customerId], references: [id])
+  kind                 String // 'terms' | 'marketing' | 'privacy'
+  granted              Boolean // true = אישרה / חתמה; false = סירבה / ביטלה
+  channel              String // 'staff' (עובד/ת במערכת) | 'kiosk' (עמדת לקוח בחנות) | 'public' (קישור ציבורי, עתידי)
+  method               String // 'staff_recorded' (עובד/ת רשמה בשם הלקוחה) | 'customer_self' (הלקוחה עצמה, בעמדה / בקישור)
+  surface              String? // המסך שבו נרשם: 'new-order' | 'new-customer' | 'customer-card' | 'kiosk-register' ...
+  recordedByEmployeeId String? // עובד/ת מחובר/ת (עוגייה מאומתת); בעמדה / קישור ציבורי - ריק
+  documentVersion      String? // תקנון: sha256 של הקובץ שהיה בתוקף; פרטיות: sha256 (12 תווים) של הטקסט שהוצג; דיוור: מזהה גרסת הנוסח
+  documentRef          String? // תקנון: מזהה ה-Attachment של הקובץ (כדי לשחזר בדיוק מה הוצג)
+  wording              String? // דיוור: הנוסח המלא שהוצג ללקוחה בעת ההסכמה
+  meta                 String? // JSON חופשי לראיה (למשל מזהה עמדה)
+  createdAt            DateTime @default(now())
+
+  @@index([customerId, kind, createdAt])
+  @@index([kind, granted, createdAt])
 }
 
 // הוק (הוראת קבע) בנדרים פלוס - לא קשור ל-Customer.hokBank*/Order.hokDetails

@@ -13,6 +13,8 @@ import { isInlineCustomerEditOn } from '@/lib/customerInlineEdit';
 import { resolveOrderRedirectHref, ORDER_REDIRECT_SCREENS } from '@/lib/orderRedirectScreens';
 import { resolveNewOrderLayout } from '@/lib/newOrderLayout';
 import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
+import { explicitConsentOn, missingConsentLabels, withConsentBody } from '@/lib/consentForm';
+import { useConsentInfo } from '@/app/components/shared/ConsentFields';
 import * as NL from './newOrderLogic';
 import { scrollToSection } from './layoutLogic';
 
@@ -61,6 +63,9 @@ export default function useNewOrderController({ router }) {
   const [paymentsList, setPaymentsList] = useState([]);
   const [payment, setPayment] = useState({ amount: '', method: 'אשראי', notes: '' });
   const [settings, setSettings] = useState({});
+  // הסכמות מפורשות בלקוח חדש (תקנון כן/לא, דיוור כן/לא, אישור פרטיות; docs/customer-consents.md): כבוי = הטופס והגוף בדיוק כמו קודם
+  const explicitConsent = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicitConsent);
   // צורת הטופס (new_order_layout; חסר / לא מוכר = אשף, בדיוק ההתנהגות הקיימת). בטופס הרציף כל השלבים בעמוד אחד: go() / goStep() גוללים לגוש השלב
   // במקום להחליף שלב, ו-step הוא "השלב האחרון שנוּוט אליו". confirmedCustomerId: הלקוח שעבר את "המשך" (חסימה / חריגה) - ר' NL.stepGate
   const layout = resolveNewOrderLayout(settings.new_order_layout);
@@ -293,7 +298,8 @@ export default function useNewOrderController({ router }) {
     setNewCustomerError(null);
     const missingFields = missingOf(newCustomer);
     if (missingFields.length > 0) { say('info', `יש למלא: ${missingFields.map(k => NL.CUSTOMER_FIELD_LABELS[k]).join(', ')}`); return; }
-    if (!signedNow && !order.hasSignedRegulations) {
+    // הסכמות מפורשות דולקות: התשובה כן/לא על התקנון נאספת בטופס עצמו (ConsentFields) ונבדקת למטה; "לא" נשמר כראיה, וההזמנה עצמה עדיין נחסמת בלי חתימה (שלב התשלום)
+    if (!explicitConsent && !signedNow && !order.hasSignedRegulations) {
       say('info', 'יש לסמן שהלקוח חתם על התקנון');
       const el = typeof document !== 'undefined' ? document.getElementById('noNcSign') : null;
       if (el) el.focus();
@@ -301,6 +307,10 @@ export default function useNewOrderController({ router }) {
     }
     // Q7: ת"ז חובה רק בגמ"ח שבו require_customer_id_number דולק (נווה יעקב)
     if (settings.require_customer_id_number === 'true' && !String(newCustomer.zeout || '').trim()) { say('info', 'יש למלא: תעודת זהות'); return; }
+    if (explicitConsent) {
+      const missingConsents = missingConsentLabels({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true });
+      if (missingConsents.length > 0) { setNewCustomerError({ field: 'consent', text: `יש למלא: ${missingConsents.join(', ')}` }); say('info', `יש למלא: ${missingConsents.join(', ')}`); return; }
+    }
     const newCustomerGroupErrors = unsatisfiedFieldGroupErrors(newCustomer, fieldGroups);
     if (newCustomerGroupErrors.length > 0) {
       const auth = await verifyPin(`${newCustomerGroupErrors.join('. ')} - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.`, 'feature:missing_contact_approval');
@@ -317,9 +327,15 @@ export default function useNewOrderController({ router }) {
       } catch { /* ממשיכים כמו בישן */ }
     }
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newCustomer) });
+      // שדות העזר של טופס ההסכמות (marketingAnswer / acceptedTerms / acceptedPrivacy) לא נשלחים כמו שהם: כבוי = הגוף כמו קודם, דלוק = withConsentBody
+      const { marketingAnswer, acceptedTerms, acceptedPrivacy, ...customerFields } = newCustomer;
+      const postBody = explicitConsent
+        ? withConsentBody({ ...customerFields, marketingConsent: marketingAnswer === true }, { acceptedTerms, marketingConsent: marketingAnswer, acceptedPrivacy }, consentInfo, 'new-order')
+        : customerFields;
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(postBody) });
       const data = await res.json();
       if (res.ok) {
+        if (data.consentWarning) say('info', 'ההסכמות לא נרשמו ביומן', data.consentWarning);
         closeDupCustomer();
         setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
         setConfirmedCustomerId(data.id);
@@ -973,7 +989,7 @@ export default function useNewOrderController({ router }) {
     step, stepKey, setStep, go, goStep, openInfo, settings, todayKey, allowAbroad, layout, gate,
     searchMode, setSearchMode, phoneSearchInput, setPhoneSearchInput, isCheckingPhone, foundCustomersFromPhone, setFoundCustomersFromPhone, pickedFound, setPickedFound,
     listQuery, setListQuery, listResults, listLoading, pickFromList,
-    order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,
+    order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf, explicitConsent, consentInfo,
     newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, calcError, retryCalc, savingCustomer, totalAmount, activeItems, datesFilled, rangePending, setRangePending,

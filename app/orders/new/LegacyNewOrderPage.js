@@ -23,6 +23,9 @@ import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
 import { isCardNumberComplete, isExpiryComplete, isMobilePhoneComplete, justCompleted, isDatalistPick, focusField } from '../../../lib/autoAdvance';
+import { handleEnterKey } from '../../../lib/enterNavigation';
+import { explicitConsentOn, invalidConsentFields, missingConsentLabels, withConsentBody } from '../../../lib/consentForm';
+import ConsentFields, { useConsentInfo } from '../../components/shared/ConsentFields';
 import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
@@ -151,6 +154,10 @@ export default function NewOrderPage() {
   });
 
   const [settings, setSettings] = useState({});
+  // הסכמות מפורשות בלקוח חדש (תקנון כן/לא, דיוור כן/לא, אישור פרטיות; docs/customer-consents.md). כבוי = הטופס והגוף כמו קודם
+  const explicitConsent = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicitConsent);
+  const [consentTried, setConsentTried] = useState(false);
 
   // דיווחים 1cbaf995 / fdce699f: נווה יעקב לא מזמינים חו"ל / תפוסה ארוכה. ברירת מחדל (חסר/כל ערך שאינו 'false') = מוצג כמו תמיד.
   const allowAbroad = settings.allow_abroad_long_stay_orders !== 'false';
@@ -453,28 +460,13 @@ export default function NewOrderPage() {
   const paymentMethodOptions = computePaymentMethodOptions(settings);
 
   const newCustomerFormRef = useRef(null);
-  // Enter עובר לשדה הבא בטופס לקוח חדש, ובשדה האחרון שולח בפועל - במקום לנסות לשלוח
-  // מכל שדה בנפרד (מה שנכשל כשעדיין חסרים שדות אחרים, אותה בעיה שתוקנה במודל
-  // האשראי למעלה). לא נוגע בתיבות סימון, כדי לא לשנות את הסימון שלהן בטעות (ר' דיווח e8ff9855) -
-  // למעט תיבת "חתימה על התקנון": היא חלק מרצף ה-Enter, ו-Enter עליה מסמן אותה וממשיך הלאה.
+  // Enter עובר לשדה הבא בטופס לקוח חדש - גם דרך מתגים / בחירות כן-לא (Enter עליהם רק מקדם ולא משנה בחירה; רווח משנה) - ובשדה האחרון שולח בפועל
+  // (lib/enterNavigation.js, משותף לכל טפסי הלקוח). שדות מוסתרים ("פרטים נוספים" סגור) מדולגים. דיווח e8ff9855: לא משנים תיבות סימון בטעות -
+  // למעט תיבת "חתימה על התקנון" של ההזמנה (origin/main): Enter עליה מסמן אותה וממשיך הלאה.
   const SIGNATURE_CHECKBOX_ID = 'cust-signed-regulations';
   const handleNewCustomerFieldEnter = (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    const container = newCustomerFormRef.current;
-    if (!container) return;
-    if (e.target.id === SIGNATURE_CHECKBOX_ID) {
-      setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
-    }
-    const focusable = Array.from(container.querySelectorAll('input, select, textarea, button'))
-      .filter(el => !el.disabled && (el.type !== 'checkbox' || el.id === SIGNATURE_CHECKBOX_ID) && el.offsetParent !== null);
-    const next = focusable[focusable.indexOf(e.target) + 1];
-    if (next) {
-      next.focus();
-      if (typeof next.select === 'function') next.select();
-    } else {
-      handleSaveNewCustomerAndProceed();
-    }
+    if (e.key === 'Enter' && e.target && e.target.id === SIGNATURE_CHECKBOX_ID && !e.defaultPrevented) setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
+    handleEnterKey(e, { container: newCustomerFormRef.current, onSubmit: () => handleSaveNewCustomerAndProceed() });
   };
 
   const handleCheckPhone = async () => {
@@ -558,7 +550,15 @@ export default function NewOrderPage() {
        return;
     }
 
-    if (!order.hasSignedRegulations) {
+    if (explicitConsent) {
+      // הסכמות מפורשות: התשובה כן/לא על התקנון נאספת בטופס עצמו; "לא" נשמר כראיה וההזמנה נחסמת בלי חתימה בשלב התשלום
+      const missingConsents = missingConsentLabels({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true });
+      if (missingConsents.length > 0) {
+        setConsentTried(true);
+        alert(`יש למלא: ${missingConsents.join(', ')}`);
+        return;
+      }
+    } else if (!order.hasSignedRegulations) {
        alert('יש לסמן שהלקוח חתם על התקנון');
        document.getElementById(SIGNATURE_CHECKBOX_ID)?.focus();
        return;
@@ -595,13 +595,19 @@ export default function NewOrderPage() {
     }
 
     try {
+      // שדות העזר של טופס ההסכמות לא נשלחים כמו שהם: כבוי = הגוף כמו קודם, דלוק = withConsentBody (החוזה מול השרת)
+      const { marketingAnswer, acceptedTerms, acceptedPrivacy, ...customerFields } = newCustomer;
+      const postBody = explicitConsent
+        ? withConsentBody({ ...customerFields, marketingConsent: marketingAnswer === true }, { acceptedTerms, marketingConsent: marketingAnswer, acceptedPrivacy }, consentInfo, 'new-order')
+        : customerFields;
       const res = await fetch('/api/customers', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(newCustomer)
+         body: JSON.stringify(postBody)
       });
       const data = await res.json();
       if (res.ok) {
+         if (data.consentWarning) alert(data.consentWarning);
          setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
          setStep(2);
          setDuplicateCustomers([]);
@@ -2090,7 +2096,7 @@ export default function NewOrderPage() {
             )}
 
             {searchMode === 'new' && (
-              <div className="card card-pad" ref={newCustomerFormRef}>
+              <div className="card card-pad" ref={newCustomerFormRef} onKeyDown={handleNewCustomerFieldEnter}>
                 {/* 1 - לא נמצא לקוח לפי הטלפון שהוזן (או שנבחר "לקוח אחר") - לפני שממלאים
                     כרטיס לקוח חדש מלא, להציע במפורש לנסות חיפוש לפי שם/עיר, כדי שטעות הקלדה
                     בטלפון לא תדחוף ליצירת כרטיס כפול ללקוח שכבר קיים במערכת. */}
@@ -2185,7 +2191,7 @@ export default function NewOrderPage() {
                     </label>
                     <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} {...nf('zeout')} value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
-                  {settings.hide_marketing_consent_field !== 'true' && (
+                  {!explicitConsent && settings.hide_marketing_consent_field !== 'true' && (
                     <div className="field" style={{ marginTop: 10 }}>
                       <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                         <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
@@ -2193,12 +2199,15 @@ export default function NewOrderPage() {
                       </label>
                     </div>
                   )}
+                  {/* חתימה על התקנון (חובה בכל הזמנה). כשההסכמות המפורשות דולקות השאלה "חתם/ה על התקנון: כן/לא" מופיעה ב-ConsentFields למטה ומסמנת גם את ההזמנה */}
+                  {!explicitConsent && (
                   <div className="field" style={{ marginTop: 10 }}>
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                       <input id={SIGNATURE_CHECKBOX_ID} type="checkbox" checked={!!order.hasSignedRegulations} onChange={e => setOrder(prev => ({ ...prev, hasSignedRegulations: e.target.checked }))} onKeyDown={handleNewCustomerFieldEnter} />
                       <span>חתם/ה על התקנון <span style={{ color: 'var(--danger)' }}>*</span></span>
                     </label>
                   </div>
+                  )}
                   {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
                   {settings.hok_enabled === 'true' && (
                     <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
@@ -2224,6 +2233,23 @@ export default function NewOrderPage() {
                     </div>
                   )}
                 </NocCollapsible>
+
+                {explicitConsent && (
+                  <ConsentFields
+                    idPrefix="lgCn" isNew settings={settings} info={consentInfo}
+                    value={{ acceptedTerms: newCustomer.acceptedTerms ?? null, marketingConsent: newCustomer.marketingAnswer ?? null, acceptedPrivacy: !!newCustomer.acceptedPrivacy }}
+                    invalid={consentTried ? invalidConsentFields({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true }) : {}}
+                    onChange={(patch) => {
+                      if ('acceptedTerms' in patch) setOrder(prev => ({ ...prev, hasSignedRegulations: patch.acceptedTerms === true }));
+                      setNewCustomer(prev => {
+                      const next = { ...prev };
+                      if ('acceptedTerms' in patch) next.acceptedTerms = patch.acceptedTerms;
+                      if ('acceptedPrivacy' in patch) next.acceptedPrivacy = patch.acceptedPrivacy;
+                      if ('marketingConsent' in patch) { next.marketingAnswer = patch.marketingConsent; next.marketingConsent = patch.marketingConsent === true; }
+                      return next;
+                    });}}
+                  />
+                )}
 
                 <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>
                   <svg className="icon"><use href="#i-check" /></svg> שמור לקוח והמשך

@@ -10,6 +10,9 @@ import { useNoFill } from '@/lib/autofillGuard';
 import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import ConsentFields from '@/app/components/shared/ConsentFields';
+import { invalidConsentFields } from '@/lib/consentForm';
 
 const TABS = [
   { v: 'phone', label: 'לפי טלפון', icon: 'phone' },
@@ -142,15 +145,8 @@ function NewTab({ ctl }) {
   const s = ctl.settings;
   const n = ctl.newCustomer;
   const set = (k) => (v) => { ctl.setNewCustomerError(null); ctl.setNewCustomer(prev => ({ ...prev, [k]: v })); };
-  const onEnter = (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    const box = e.target.closest('.blk');
-    if (!box) return;
-    const all = Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && (el.type !== 'checkbox' || el.id === 'noNcSign') && el.offsetParent !== null);
-    const next = all[all.indexOf(e.target) + 1];
-    if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed();
-  };
+  // Enter עובר לשדה הבא בכל הסדר (גם דרך מתגים ובחירות כן/לא; Enter עליהם רק מקדם) ובשדה האחרון שומר - lib/enterNavigation.js
+  const navKeyDown = useEnterNavigation(() => ctl.handleSaveNewCustomerAndProceed());
   // חתימה על התקנון (חובה): Enter עליה מסמן אותה וממשיך לשדה הבא / שומר, כמו בשאר השדות
   const onSignEnter = (e) => {
     if (e.key !== 'Enter') return;
@@ -169,9 +165,9 @@ function NewTab({ ctl }) {
   // c89234ec (auto_advance_fixed_fields): נייד מלא -> השדה הבא; עיר/רחוב שנבחרו מהרשימה -> הרחוב / מספר הבית
   const aa = s.auto_advance_fixed_fields === 'true';
   const phoneAdvance = (k, nextId) => ({ onChange: (e) => { set(k)(e.target.value); if (aa && justCompleted(isMobilePhoneComplete, n[k], e.target.value)) focusField(nextId); } });
-  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, ...nf(k), value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
+  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, ...nf(k), value: n[k] || '', onChange: (e) => set(k)(e.target.value), ...extra });
   return (
-    <>
+    <div style={{ display: 'contents' }} onKeyDown={navKeyDown}>
       {ctl.phoneSearchInput.trim() ? (
         <Note style={{ marginBottom: 14 }} icon="alert">
           לא נמצא לקוח עם הטלפון שהוזן. יתכן שהמספר במערכת שונה מעט - כדאי לנסות{' '}
@@ -189,13 +185,13 @@ function NewTab({ ctl }) {
             {errFor('email')}
             {groupErrors.map(m => <div key={m} className="no-grp" role="note"><Ic n="alert" c="sm" />{m}</div>)}
           </>}>
-          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ inputMode: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל', onKeyDown: onEnter }} />
+          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ inputMode: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל' }} />
         </Field>
       </div>
       <div className="ncmore">
         <div className="grid2 col1">
-          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} onPick={aa ? () => focusField('noNcStreet') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
-          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} onPick={aa ? () => focusField('noNcHouse') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
+          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} onPick={aa ? () => focusField('noNcStreet') : undefined} /></Field>
+          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} onPick={aa ? () => focusField('noNcHouse') : undefined} /></Field>
           <Field label={`מספר בית${star(addrReq('houseNum'))}`} icon="home" htmlFor="noNcHouse"><input id="noNcHouse" {...inp('houseNum')} /></Field>
           <Field
             label={<>תעודת זהות{s.require_customer_id_number === 'true' ? ' *' : (s.require_id_for_edit_cancel === 'true' ? <> <span className="muted sm">(לעריכה/ביטול עתידי)</span></> : null)}</>}
@@ -203,17 +199,36 @@ function NewTab({ ctl }) {
             <input id="noNcId" dir="ltr" inputMode="numeric" placeholder="ת״ז" {...inp('zeout')} />
           </Field>
         </div>
-        {s.hide_marketing_consent_field !== 'true' ? (
+        {ctl.explicitConsent ? (
+          // הסכמות מפורשות (explicit_consent_enabled): תקנון כן/לא, דיוורים כן/לא, אישור פרטיות - בלי ברירת מחדל; lib/consentForm.js + שרת: lib/customerConsent.js
+          <ConsentFields
+            idPrefix="noNcCn" isNew settings={s} info={ctl.consentInfo}
+            value={{ acceptedTerms: n.acceptedTerms ?? null, marketingConsent: n.marketingAnswer ?? null, acceptedPrivacy: !!n.acceptedPrivacy }}
+            invalid={err && err.field === 'consent' ? invalidConsentFields({ acceptedTerms: n.acceptedTerms, marketingConsent: n.marketingAnswer, acceptedPrivacy: n.acceptedPrivacy }, s, { isNew: true }) : {}}
+            onChange={(patch) => {
+              ctl.setNewCustomerError(null);
+              // חתימה על התקנון בהזמנה (Order.hasSignedRegulations, חובה בכל הזמנה) נגזרת מהתשובה המפורשת "חתם/ה על התקנון: כן" - שאלה אחת, לא שתיים
+              if ('acceptedTerms' in patch) ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: patch.acceptedTerms === true }));
+              ctl.setNewCustomer(prev => {
+                const next = { ...prev };
+                if ('acceptedTerms' in patch) next.acceptedTerms = patch.acceptedTerms;
+                if ('acceptedPrivacy' in patch) next.acceptedPrivacy = patch.acceptedPrivacy;
+                if ('marketingConsent' in patch) { next.marketingAnswer = patch.marketingConsent; next.marketingConsent = patch.marketingConsent === true; }
+                return next;
+              });
+            }}
+          />
+        ) : s.hide_marketing_consent_field !== 'true' ? (
           <div className="trow"><Switch checked={n.marketingConsent} onChange={set('marketingConsent')} label="אישור דיוור" /><span>מאשר/ת קבלת דיוורים{star(s.require_marketing_consent === 'true')}</span></div>
         ) : null}
-        <div className="trow"><Switch id="noNcSign" checked={ctl.order.hasSignedRegulations} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} onKeyDown={onSignEnter} label="חתימה על התקנון" /><span>חתם/ה על התקנון *</span></div>
+        {!ctl.explicitConsent ? <div className="trow"><Switch id="noNcSign" checked={ctl.order.hasSignedRegulations} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} onKeyDown={onSignEnter} label="חתימה על התקנון" /><span>חתם/ה על התקנון *</span></div> : null}
       </div>
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
-      {err && !err.field ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
+      {err && (!err.field || err.field === 'consent') ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
       <div className="row" style={{ marginTop: 24 }}>
         <button type="button" className="btn primary" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
       </div>
-    </>
+    </div>
   );
 }
 

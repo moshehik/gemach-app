@@ -1,6 +1,6 @@
 import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
-import prisma from '../../lib/prisma';
+import prisma, { getActingEmployeeId } from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS, validateCustomerBankFields } from '@/lib/customerBankFields';
@@ -13,7 +13,9 @@ import {
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
-import { planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
+import { readSignatureFlag } from '@/lib/customerSignature';
+import { prepareStaffConsent, recordConsentEntries } from '@/lib/customerConsent';
+import { loadConsentContext } from '@/lib/consentDocsLoad';
 import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
 import { newOrderPickerConditions } from '@/lib/customerPickerFilter';
 
@@ -250,7 +252,16 @@ async function POST(request) {
     if (requestedSignature === 'invalid') {
       return NextResponse.json({ error: 'ערך חתימה על התקנון לא תקין' }, { status: 400 });
     }
-    const signaturePlan = planSignatureWrite({ requested: requestedSignature, current: null, now: new Date() });
+
+    // הסכמות מפורשות (תקנון כן/לא, דיוור כן/לא, אישור פרטיות) - lib/customerConsent.js: ולידציה בשרת + תוכנית כתיבה (כולל החתימה
+    // על התקנון דרך planSignatureWrite הקיים) + שורות ליומן CustomerConsent. מערכת כבויה והבקשה בלי consentExplicit = בדיוק כמו קודם.
+    let consentCtx = { map: new Map(), docs: {} };
+    try { consentCtx = await loadConsentContext(); } catch (e) { console.error('consent docs unavailable (fail-open)', e); }
+    const consent = await prepareStaffConsent({
+      prisma, body, settings: consentCtx.map, existing: null, docs: consentCtx.docs, employeeId: await getActingEmployeeId(),
+      legacyTerms: typeof requestedSignature === 'boolean' ? requestedSignature : undefined,
+    });
+    if (consent.errors.length) return NextResponse.json({ error: consent.errors.join(', '), ...(consent.status === 409 ? { code: 'CONSENT_DOC_CHANGED' } : {}) }, { status: consent.status || 400 });
 
     // Auto-generate a short legacyId for new customers so it displays nicely
     const maxCustomer = await prisma.customer.findFirst({
@@ -282,10 +293,11 @@ async function POST(request) {
         ...(body.hokBankBranch !== undefined ? { hokBankBranch: body.hokBankBranch || null } : {}),
         ...(body.hokBankAccount !== undefined ? { hokBankAccount: body.hokBankAccount || null } : {}),
         ...(body.hokConsent !== undefined ? { hokConsent: !!body.hokConsent } : {}),
-        ...(signaturePlan ? signaturePlan.data : {}),
+        ...consent.plan.data,
       }
     });
-    return NextResponse.json(newCustomer);
+    const journal = await recordConsentEntries(prisma, newCustomer.id, consent.plan.entries);
+    return NextResponse.json(journal.ok ? newCustomer : { ...newCustomer, consentWarning: 'הלקוח נשמר, אך ההסכמות לא נרשמו ביומן ההסכמות - יש לעדכן את מנהל המערכת' });
   } catch (error) {
     console.error('Error creating customer:', error);
     return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 });

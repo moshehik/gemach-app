@@ -17,7 +17,10 @@ import { requiredFieldsFromSettings, customerBankFieldsEnabled } from '@/lib/cus
 import {
   accountSummary, deleteBlockers, paymentApprovalLevel, buildPaymentPayload, buildSavePayload, computeChanges, customerXlsxSheets, displayName, manualPaymentMethods,
   nameOk, openCharges, safeFileBase, tabMarkers, undoField, unblockPayload, validateForSave, CARD_FIELD_KEYS,
+  consentAnswerFields, consentChangedKeys, consentAnswersOfDraft,
 } from './customerCardLogic';
+import { explicitConsentOn, withConsentBody } from '@/lib/consentForm';
+import { useConsentInfo } from '@/app/components/shared/ConsentFields';
 import { DeleteDialog, DiscardDialog, PaymentDialog, SuccessDialog, SummaryDialog } from './CcDialogs';
 import CcApprovalDialog from './CcApproval';
 import CcMailSheet from './CcMailSheet';
@@ -52,6 +55,8 @@ export default function useCustomerCard(customerId, ui) {
       const c = await cRes.json().catch(() => ({}));
       const r = await rRes.json().catch(() => []);
       if (!cRes.ok || c.error) { setStatus('notfound'); return null; }
+      // שדות העזר המשולשים של ההסכמות (חתימה / דיוור / פרטיות) נגזרים מהעמודות + יומן ההסכמות; בטיוטה ובשמור זהים עד שהמשתמשת משנה
+      Object.assign(c, consentAnswerFields(c));
       setSaved(c);
       setCur(clone(c));
       if (Array.isArray(r)) setRefunds(r);
@@ -92,6 +97,9 @@ export default function useCustomerCard(customerId, ui) {
   const paymentsEnabled = settings.allow_additional_payment_on_order === 'true';
   // שדות הבנק בכרטיס מוצגים רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי)
   const bankEnabled = customerBankFieldsEnabled(settings);
+  // הסכמות מפורשות (explicit_consent_enabled): בחירה כן/לא לתקנון ולדיוורים + אישור פרטיות, עם רישום ביומן ההסכמות (docs/customer-consents.md)
+  const explicitConsent = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicitConsent);
   const methods = useMemo(() => manualPaymentMethods(settings), [settings]);
 
   // אזהרת דפדפן בסגירת לשונית עם שינויים שלא נשמרו
@@ -149,8 +157,14 @@ export default function useCustomerCard(customerId, ui) {
 
   const putCustomer = useCallback(async () => {
     setSaving(true);
+    // הגוף הרגיל + (רק כשההסכמה המפורשת פעילה והמשתמשת שינתה תשובה) שדות ההסכמה שהשתנו בלבד - ר' withConsentBody
+    const consentKeys = explicitConsent ? consentChangedKeys(saved, cur) : [];
+    const buildBody = () => {
+      const base = buildSavePayload(cur, saved);
+      return consentKeys.length ? withConsentBody(base, consentAnswersOfDraft(cur), consentInfo, 'customer-card', { only: consentKeys }) : base;
+    };
     try {
-      const res = await fetch(`/api/customers/${customerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSavePayload(cur, saved)) });
+      const res = await fetch(`/api/customers/${customerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildBody()) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 409 && data.message) {
@@ -161,7 +175,15 @@ export default function useCustomerCard(customerId, ui) {
         return false;
       }
       // התשובה של PUT היא שורת הלקוח בלי ההזמנות - שומרים את ההזמנות שכבר בזיכרון
+      if (data.consentWarning) ui.toast('error', 'ההסכמות לא נרשמו ביומן', data.consentWarning);
       const merged = { ...cur, ...data, orders: cur.orders };
+      if (consentKeys.length) {
+        // שורת המצב של ההסכמות מתעדכנת מיד (בלי טעינה מחדש של כל הכרטיס): נרשם עכשיו, בידי עובד/ת
+        const kinds = { acceptedTerms: ['terms', 'consentTerms'], marketingConsent: ['marketing', 'consentMarketing'], acceptedPrivacy: ['privacy', 'consentPrivacy'] };
+        const nowIso = new Date().toISOString();
+        merged.consents = { ...(cur.consents || {}) };
+        for (const k of consentKeys) merged.consents[kinds[k][0]] = { granted: cur[kinds[k][1]] === true, at: nowIso, channel: 'staff', method: 'staff_recorded', surface: 'customer-card', documentVersion: null };
+      }
       setSaved(merged);
       setCur(clone(merged));
       setRedoStack([]);
@@ -175,7 +197,7 @@ export default function useCustomerCard(customerId, ui) {
     } finally {
       setSaving(false);
     }
-  }, [customerId, cur, saved, ui]);
+  }, [customerId, cur, saved, ui, explicitConsent, consentInfo]);
 
   const printDoc = useCallback((doc) => {
     window.open(`/print/customer?customerId=${encodeURIComponent(customerId)}&type=${doc}`, '_blank', 'noopener');
@@ -376,7 +398,7 @@ export default function useCustomerCard(customerId, ui) {
 
   return {
     customerId, status, saved, cur, refunds, settings, me, tab, setTab, editCust, setEditCust,
-    requiredKeys, bankEnabled, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving, readOnly, paying,
+    requiredKeys, bankEnabled, explicitConsent, consentInfo, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving, readOnly, paying,
     redoCount: redoStack.length, historyTick,
     setField, undo, redo, discardAll, save, exit, unblock, deleteCustomer, pay, openMail,
     exportXlsx, downloadCard, printDoc, printOrder, reload: load,

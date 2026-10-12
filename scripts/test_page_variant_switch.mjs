@@ -506,7 +506,7 @@ const PINNED_BLOBS = {
   // + סימון pickerFor=new-order בחיפוש הטלפון ובבורר CustomerSelector (הגדרה new_order_customer_list_filter; ברירת מחדל all = אפס שינוי)
   // LegacyProfilePage.js: נעול כאן ב-hash במקום RESTORED_EXCEPTIONS - אותו תחליף של "שם מלא" (ר' למעלה) + שדות הפרופיל בלי היסטוריית הצעות של הדפדפן (name אקראי דרך useNoFill, המטפל קורא fieldOf; scripts/test_email_autofill_guard.mjs)
   'app/profile/LegacyProfilePage.js': '21ba42891a5c4ebbfbc6704f8d2de45938fef26e',
-  'app/orders/new/LegacyNewOrderPage.js': '94adfa1a73ff4a7bdbbc90c045d477656134927a',
+  'app/orders/new/LegacyNewOrderPage.js': '57f4f01fea4d075234552d08852dfafbf0a99f01',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

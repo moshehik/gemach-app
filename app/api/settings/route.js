@@ -12,6 +12,7 @@ import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWor
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { hasPermission } from '@/lib/permissions';
 import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
+import { TERMS_FILE_KEYS } from '@/lib/consentDocsServer';
 import { cachedJson, REFERENCE_CACHE_CONTROL, NO_STORE } from '@/lib/httpCache';
 import { toPublicSettings } from '@/lib/publicSettings';
 import { toStaffSettings } from '@/lib/adminOnlySettings';
@@ -107,6 +108,11 @@ export async function POST(request) {
     // רשימת העובדים שמורשים להפעיל מצב גיבוי במחשב שלהם - המתכנת בלבד (lib/deviceBackupAccess.js)
     if (data.some((item) => item && item.key === DEVICE_BACKUP_EMPLOYEES_KEY) && !(await checkAuth('מתכנת'))) {
       return NextResponse.json({ error: 'Unauthorized. Developer access required.' }, { status: 403 });
+    }
+
+    // מפתחות קובץ התקנון נכתבים רק דרך /api/admin/terms-file (הוא מאמת סוג / hash): שמירה גנרית יכלה להצביע על Attachment אחר ולחשוף אותו בנתיב הציבורי
+    if (data.some((item) => item && TERMS_FILE_KEYS.includes(item.key))) {
+      return NextResponse.json({ error: 'קובץ התקנון מנוהל במסך העלאת התקנון בלבד' }, { status: 400 });
     }
 
     for (const item of data) {

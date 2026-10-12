@@ -75,6 +75,7 @@
 | [docs/GAS_DRIVE_SETUP_HE.md](GAS_DRIVE_SETUP_HE.md) | שליחת קבצים לדרייב דרך GAS — תכנית שמעולם לא נפרסה | היסטורי |
 | [docs/gas-mail-drive.gs](gas-mail-drive.gs) | גרסת סקריפט מייל+דרייב שמעולם לא נפרסה (החי: `gas-mailer-live.gs`) | היסטורי |
 | `final_diffs.md`, `final_diffs_v3.md`, `final_diffs_v4.md` (בשורש) | טבלאות השוואת שדות בין Access למערכת מיולי 2026 (ה-"v3" בשם הוא גרסת הטבלה, לא עיצוב v3) | היסטורי |
+| [docs/customer-consents.md](customer-consents.md) | הסכמות לקוחות (תקנון / דיוורים / פרטיות): מה נרשם, יומן `CustomerConsent`, חוזה לעמדה, מה נדרש לפי החוק (טיוטה לבדיקת עו"ד) | פעיל (12.10.2026, מאחורי `explicit_consent_enabled`) |
 
 ## כפילויות
 

@@ -30,6 +30,7 @@ import {
 } from '@/lib/settingsSimLayout';
 import SettingRow from './SettingRow';
 import DeviceBackupAccessEditor from '../DeviceBackupAccessEditor';
+import TermsFileManager from '../shared/TermsFileManager';
 import { Ic, ConfirmDialog, UnsavedDialog, AuthDialog, Toast } from './SettingsDialogs';
 
 const TITLES = { sys: 'הגדרות מערכת', site: 'הגדרות אתר', names: 'שינוי שמות' };
@@ -780,6 +781,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     let special = null;
     if (s.special === 'logo') special = <LogoBlock onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'העלאת הלוגו נכשלה', text: m })} />;
     if (s.special === 'permissions') special = <PermissionsRow />;
+    if (s.special === 'terms') special = <div className="st-list-extra"><TermsFileManager variant="sim" onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'קובץ התקנון', text: m })} /></div>;
     if (s.special === 'dbmode') special = <><DeviceDbViewRow root={portalRoot} /><DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} /></>;
     if (s.special === 'neon') special = <NeonRows />;
     if (q && special && !shownRows.length) return null;

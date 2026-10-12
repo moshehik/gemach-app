@@ -232,9 +232,12 @@ test('order route (A2): the sync runs right after the $transaction commit - befo
 });
 
 test('customer routes: use the shared plan, never read regulationsSignedAt from the body, never write AuditLog by hand', () => {
+  assert.match(code(read('lib/customerConsent.js')), /planSignatureWrite\(/, 'the consent plan reuses the existing signature plan');
+  assert.ok(!/body\.regulationsSignedAt|\.\.\.body\b/.test(code(read('lib/customerConsent.js'))), 'lib/customerConsent.js never reads the timestamp from the body');
   for (const f of ['app/api/customers/[id]/route.js', 'app/api/customers/route.js']) {
     const src = code(read(f));
-    assert.match(src, /planSignatureWrite/, f);
+    // 12.10.2026: התוכנית עברה ל-lib/customerConsent.js (prepareStaffConsent -> planConsentWrite -> planSignatureWrite) - אותו מנגנון, בלי מקביל
+    assert.match(src, /prepareStaffConsent/, f);
     assert.match(src, /readSignatureFlag/, f);
     assert.ok(!/body\.regulationsSignedAt|body\[['"]regulationsSignedAt['"]\]|\.\.\.body/.test(src), `${f}: the timestamp must not come from the body`);
     assert.ok(!/auditLog\./i.test(src), `${f}: no manual AuditLog writes`);
@@ -252,8 +255,8 @@ test('card wiring: the button toggles through setField, is locked (aria-disabled
   assert.ok(!/אחרי עדכון מסד הנתונים/.test(src), 'the "after DB update" placeholder text is gone');
   assert.match(read('app/components/customer-card/tabs/CcDetailsTab.js'), /חתמה על התקנון/);
   const setField = code(read('app/components/customer-card/useCustomerCard.js'));
-  assert.match(setField, /JSON\.stringify\(buildSavePayload\(cur, saved\)\)/, 'the save compares the draft with the saved row (signature only when edited)');
-  assert.match(setField, /\[customerId, cur, saved, ui\]/, 'putCustomer depends on saved');
+  assert.match(setField, /buildSavePayload\(cur, saved\)/, 'the save compares the draft with the saved row (signature only when edited)');
+  assert.match(setField, /\[customerId, cur, saved, ui, explicitConsent, consentInfo\]/, 'putCustomer depends on saved');
   assert.match(setField, /CARD_FIELD_KEYS\.includes\(key\)/, 'setField only accepts card fields (hasSignedRegulations is one now)');
 });
 
