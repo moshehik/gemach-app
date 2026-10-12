@@ -117,6 +117,23 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
       </button>
     );
   }
+  if (item.newTab) {
+    // פותח בלשונית חדשה (טעינה מלאה): היעד מרונדר בלי שלד האתר, ולכן לא עושים ניווט רך אליו.
+    return (
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cls}
+        role={menu ? 'menuitem' : undefined}
+        data-tip={tip}
+        data-menu-id={item.id}
+        data-guide-id={`menu.${item.id}`}
+      >
+        {content}
+      </a>
+    );
+  }
   return (
     <Link
       href={item.href}
