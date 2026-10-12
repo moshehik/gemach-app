@@ -234,8 +234,8 @@ export default function EmailCenterPage() {
           </div>
           <div className="li st-row st-ctlrow">
             <div className="ic-b"><Ic id="gear" /></div>
-            <div className="t"><b className="st-lb">הגדרות המייל בהגדרות מערכת</b><small>מתגי ההפעלה של התזכורות, האישורים והדוחות נמצאים גם בהגדרות מערכת, לשונית &quot;הודעות&quot; (אותן הגדרות בדיוק - שינוי כאן או שם זהה).</small></div>
-            <div className="st-ctl"><Link className="btn ghost sm" href="/admin/settings?tab=msg"><Ic id="ext" />פתיחה</Link></div>
+            <div className="t"><b className="st-lb">הגדרות המייל בהגדרות מערכת</b><small>מתגי ההפעלה של התזכורות, האישורים והדוחות נמצאים גם בהגדרות מערכת, לשונית &quot;אוטומציה&quot; (אותן הגדרות בדיוק - שינוי כאן או שם זהה).</small></div>
+            <div className="st-ctl"><Link className="btn ghost sm" href="/admin/settings?tab=%D7%90%D7%95%D7%98%D7%95%D7%9E%D7%A6%D7%99%D7%94"><Ic id="ext" />פתיחה</Link></div>
           </div>
           <div className="li st-row">
             <div className="ic-b"><Ic id="clock" /></div>

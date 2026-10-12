@@ -128,7 +128,7 @@ t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממ�
 });
 t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / מצב מסד / Neon תמיד מוצגים', () => {
   const sys = L.buildViewModel('sys', []);
-  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'msg', 'disp']); // msg: שורת הקישור למרכז המיילים (special: emailcenter) תמיד מוצגת
+  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'auto', 'disp']); // auto (אוטומציה): שורת הקישור למרכז המיילים (special: emailcenter) תמיד מוצגת
   const site = L.buildViewModel('site', []);
   assert.deepEqual(site.tabs.map((tb) => tb.id), ['db']);
 });
@@ -315,7 +315,7 @@ t('חיפוש לפי שם, הערה, מפתח וכותרת סעיף (בלי גר
 t('קישור עמוק ?tab=<קטגוריה>&highlight=<key> (SettingQuickPanel / AI) נפתח בלשונית הנכונה', () => {
   const sys = L.buildViewModel('sys', fakeRows);
   assert.equal(L.tabForDeepLink(sys, 'כללי', 'item_locations'), 'cfg');
-  assert.equal(L.tabForDeepLink(sys, 'אוטומציה', 'late_return_email_text'), 'msg');
+  assert.equal(L.tabForDeepLink(sys, 'אוטומציה', 'late_return_email_text'), 'auto'); // 2026-10-12: מיילים אוטומטיים חזרו ללשונית אוטומציה
   assert.equal(L.tabForDeepLink(sys, 'יומן', null), 'inv');
   assert.equal(L.tabForDeepLink(sys, 'nonsense', null), null);
 });
