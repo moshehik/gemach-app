@@ -55,14 +55,18 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
   const busyRef = useRef(false);
   const stateRef = useRef(null);
   const returnTo = useRef(null);
+  const closeTimer = useRef(null);
+  const gen = useRef(0); // דור הבקשה: תשובה מאוחרת של הזמנה קודמת לא מצוירת בחלונית של ההזמנה הנוכחית
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const focusInput = useCallback(() => { setTimeout(() => inputRef.current && inputRef.current.focus(), 30); }, []);
 
   const load = useCallback(async () => {
     if (!target) return;
+    const g = gen.current;
     setLoadError('');
     const r = await api('GET', `/api/schedule/barcodes?orderId=${encodeURIComponent(target.orderId)}&stageKey=${encodeURIComponent(target.stageKey)}`);
+    if (g !== gen.current) return;
     if (!r.ok) {
       setLoadError(r.json.error || 'לא ניתן לטעון את פריטי ההזמנה');
       return;
@@ -74,17 +78,22 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
   // פתיחה / החלפת הזמנה: איפוס וטעינה
   useEffect(() => {
     if (!open) return undefined;
+    gen.current += 1;
+    clearTimeout(closeTimer.current);
+    busyRef.current = false;
+    setBusy(false);
     setState(null); setStatus(null); setOptions(null); setCode(''); setDone(false); setLoadError('');
     changed.current = false;
     returnTo.current = typeof document !== 'undefined' ? document.activeElement : null;
     load().then(focusInput);
     return () => {
+      clearTimeout(closeTimer.current);
       const el = returnTo.current;
       if (el && typeof el.focus === 'function' && document.contains(el)) el.focus();
     };
   }, [open, target && target.orderId, target && target.stageKey]);
 
-  const close = useCallback(() => { if (onClose) onClose(changed.current); }, [onClose]);
+  const close = useCallback(() => { clearTimeout(closeTimer.current); if (onClose) onClose(changed.current); }, [onClose]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -99,12 +108,14 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
     busyRef.current = true;
     setBusy(true);
     setOptions(null);
+    const g = gen.current;
     try {
       const st = stateRef.current;
       const r = await api('POST', '/api/schedule/barcodes', {
         orderId: target.orderId, stageKey: target.stageKey, barcode, dayKey: target.dayKey, itemId: itemId || undefined,
         intent: st && st.intent ? st.intent : undefined, source: 'schedule_dialog',
       });
+      if (g !== gen.current) return; // החלונית עברה להזמנה אחרת בזמן הבקשה - התשובה לא נוגעת בה
       if (!r.ok) {
         const j = r.json;
         setStatus({ kind: 'error', text: j.error || ERROR_FALLBACK });
@@ -129,15 +140,18 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
         setDone(true);
         setStatus({ kind: 'ok', text: 'כל הפריטים נסרקו - ההזמנה נרשמה כנמסרה' });
         changed.current = true;
-        setTimeout(() => { if (onClose) onClose(true); }, 1100);
+        clearTimeout(closeTimer.current);
+        closeTimer.current = setTimeout(() => { if (onClose) onClose(true); }, 1100);
       }
     } catch {
-      setStatus({ kind: 'error', text: 'אין חיבור לשרת - הברקוד לא נשמר. נסו שוב.' });
+      if (g === gen.current) setStatus({ kind: 'error', text: 'אין חיבור לשרת - הברקוד לא נשמר. נסו שוב.' });
     } finally {
-      busyRef.current = false;
-      setBusy(false);
-      setCode('');
-      focusInput();
+      if (g === gen.current) {
+        busyRef.current = false;
+        setBusy(false);
+        setCode('');
+        focusInput();
+      }
     }
   }, [target, load, onProgress, onClose, focusInput]);
 
@@ -153,19 +167,23 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
     if (!target || busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    const g = gen.current;
     try {
       const r = await api('DELETE', `/api/schedule/barcodes?orderId=${encodeURIComponent(target.orderId)}&itemId=${encodeURIComponent(it.orderItemId)}`);
+      if (g !== gen.current) return;
       if (!r.ok) { setStatus({ kind: 'error', text: r.json.error || 'הרישום לא בוטל' }); return; }
       changed.current = true;
       setState((prev) => ({ ...(prev || {}), items: r.json.items, summary: r.json.summary }));
       setStatus({ kind: 'ok', text: 'הרישום בוטל · ' + itemLabel(it) });
       if (onProgress) onProgress({ orderId: target.orderId, stageKey: target.stageKey, summary: r.json.summary, gate: (stateRef.current || {}).gate, when: (stateRef.current || {}).when });
     } catch {
-      setStatus({ kind: 'error', text: 'אין חיבור לשרת - הרישום לא בוטל' });
+      if (g === gen.current) setStatus({ kind: 'error', text: 'אין חיבור לשרת - הרישום לא בוטל' });
     } finally {
-      busyRef.current = false;
-      setBusy(false);
-      focusInput();
+      if (g === gen.current) {
+        busyRef.current = false;
+        setBusy(false);
+        focusInput();
+      }
     }
   }, [target, onProgress, focusInput]);
 
@@ -223,7 +241,9 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
           </div>
 
           <div className="lz-bc-status" role="status" aria-live="polite">
-            {loadError ? <span className="lz-bc-err">{loadError}</span> : null}
+            {loadError ? (
+              <span className="lz-bc-err">{loadError} <button type="button" className="btn ghost" onClick={() => { load().then(focusInput); }}>נסו שוב</button></span>
+            ) : null}
             {!loadError && status ? <span className={status.kind === 'error' ? 'lz-bc-err' : 'lz-bc-ok'}>{status.text}</span> : null}
             {!loadError && !status && !state ? <span className="lz-bc-hint">טוען...</span> : null}
           </div>

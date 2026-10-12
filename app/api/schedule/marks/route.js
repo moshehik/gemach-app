@@ -22,6 +22,24 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 // 409 { needBarcodes:true, gate, when, required, registered, missing:[{orderItemId, model, size}] } (בסימון יחיד); ב-mark_all השורה מדולגת
 // (skipped: reason 'needs_barcode'). במסירה (pick/dout) "בוצע" לוקח את הפריטים הרשומים; ביטול מסירה מחזיר אותם ל"לא נלקח".
 // שער: אותו דפוס כמו GET /api/schedule - checkAuth + canOpenPage('page:schedule') בשרת, סגור כברירת מחדל.
+// לקיחה בפועל מהלו״ז (מסירה עם ברקוד): "הושכר = ההכנה בוצעה" + תיקון משוער - אחרי התשובה, בדיוק כמו rentals/confirm. נכשל בשקט.
+async function runTookTasks(took, user) {
+  if (!took.length) return;
+  // טעינה עצלה: רק מסירה עם ברקוד (הגדרה פעילה) צריכה את המודולים האלה - כל שאר הסימונים נטענים בדיוק כמו קודם
+  try {
+    const [{ autoMarkPrepForOrder }, { autoMarkAlterationsForItems, isAutoAlterationEnabled }, { runAfterResponse }] = await Promise.all([
+      import('@/lib/schedule/autoPrepMark'), import('@/lib/schedule/autoAlterationDone'), import('@/lib/schedule/afterResponse'),
+    ]);
+    const altOn = await isAutoAlterationEnabled();
+    await runAfterResponse(
+      took.flatMap((r) => [() => autoMarkPrepForOrder(r.orderId, { userId: user.id }), () => autoMarkAlterationsForItems(r.tookItemIds)]),
+      { actorId: user.id, ...(altOn ? {} : { afterFn: null }) },
+    );
+  } catch (e) {
+    console.error('schedule marks: after-take work failed (items are saved)', e);
+  }
+}
+
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
   if (!(await canOpenPage('page:schedule'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: NO_STORE });
@@ -39,19 +57,7 @@ export async function POST(request) {
 
     const result = await applyStageMark(input, { user });
 
-    // לקיחה בפועל מהלו״ז (מסירה עם ברקוד): "הושכר = ההכנה בוצעה" + תיקון משוער - אחרי התשובה, בדיוק כמו rentals/confirm. נכשל בשקט.
-    const took = result.results.filter((r) => r.tookItemIds && r.tookItemIds.length);
-    if (took.length) {
-      // טעינה עצלה: רק מסירה עם ברקוד (הגדרה פעילה) צריכה את המודולים האלה - כל שאר הסימונים נטענים בדיוק כמו קודם
-      const [{ autoMarkPrepForOrder }, { autoMarkAlterationsForItems, isAutoAlterationEnabled }, { runAfterResponse }] = await Promise.all([
-        import('@/lib/schedule/autoPrepMark'), import('@/lib/schedule/autoAlterationDone'), import('@/lib/schedule/afterResponse'),
-      ]);
-      const altOn = await isAutoAlterationEnabled();
-      await runAfterResponse(
-        took.flatMap((r) => [() => autoMarkPrepForOrder(r.orderId, { userId: user.id }), () => autoMarkAlterationsForItems(r.tookItemIds)]),
-        { actorId: user.id, ...(altOn ? {} : { afterFn: null }) },
-      );
-    }
+    await runTookTasks(result.results.filter((r) => r.tookItemIds && r.tookItemIds.length), user);
 
     if (input.action !== 'mark_all') {
       const r = result.results[0];
@@ -81,6 +87,10 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, rows, skipped, counts, remaining: result.remaining || 0 }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof MarkError) {
+      if (error.tookItemIds && error.tookItemIds.length) {
+        const u = await getSessionEmployee().catch(() => null);
+        if (u && u.id) await runTookTasks([{ orderId: error.tookOrderId, tookItemIds: error.tookItemIds }], u);
+      }
       return NextResponse.json({ error: error.message, ...(error.extra || {}) }, { status: error.status, headers: NO_STORE });
     }
     console.error('POST /api/schedule/marks error:', error);

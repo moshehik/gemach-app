@@ -6,6 +6,7 @@ import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../../../../lib/priceRows';
+import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash
@@ -96,6 +97,8 @@ export async function PUT(request, { params }) {
     }
 
     const itemData = await request.json();
+    // ברקוד בלו״ז: כשההגדרה פעילה להזמנה, החלפת דגם/מידה מבטלת רישום ברקוד שלא נלקח (H5). נבדק מחוץ לטרנזקציה; כבוי = ההתנהגות הקודמת.
+    const barcodeEntryOn = !!(await barcodeFeatureFor(parsedId));
 
     // dressModelId לא נדרש כאן באופן גורף: פריטים שהוגרו מ-Access בלי DressItem מקושר
     // (currentItem.dressItem === null) מזוהים לפי barcodePrefix/legacyId ולא מחזיקים dressModelId
@@ -229,7 +232,7 @@ export async function PUT(request, { params }) {
 
       // ברקוד שנרשם לפריט (בהכנה מהלו״ז) שייך ליחידה הפיזית של הדגם/המידה שהוזמנו. הוחלפו דגם/מידה (הפריט עוד לא נלקח - נלקח חסום למעלה) -
       // הרישום מתבטל באותה כתיבה (נרשם ביומן עם from/to), והפריט חוזר להיות "חסר ברקוד" (docs/schedule-barcode-plan.md H5).
-      if (!freshItem.isTaken && !freshItem.takenDate && freshItem.barcode && String(freshItem.barcode).trim() !== ''
+      if (barcodeEntryOn && !freshItem.isTaken && !freshItem.takenDate && freshItem.barcode && String(freshItem.barcode).trim() !== ''
         && (String(updateData.dressItemId || '') !== String(freshItem.dressItemId || '') || String(updateData.sizeText || '') !== String(freshItem.sizeText || ''))) {
         updateData.barcode = null;
       }

@@ -52,7 +52,7 @@ export async function POST(request) {
         // כל פריט במערכת (docs/schedule-barcode-plan.md, H4). לקוח תקין תמיד שולח פריט כזה, ולכן אין שינוי התנהגות עבורו.
         const forceOk = itemIdToForce
           ? !!(await prisma.orderItem.findFirst({
-              where: { id: String(itemIdToForce), orderId: parseInt(orderId), isDeleted: false, OR: [{ barcode: null }, { barcode: barcode }] },
+              where: { id: String(itemIdToForce), orderId: parseInt(orderId), isDeleted: false, OR: [{ barcode: null }, { barcode: barcode }, { barcodeInvalid: true }] },
               select: { id: true }
             }))
           : false;

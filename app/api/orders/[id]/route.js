@@ -787,9 +787,11 @@ async function putOrder(request, { params }, claims) {
             const normalizedSleeve = (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0);
             const normalizedLength = (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null;
             let normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
-            if (barcodeEntryOn && stored && stored.barcode && String(stored.barcode).trim() !== '') {
-              normalizedBarcode = undefined; // לא משנים ברקוד רשום מתוך שמירת הזמנה
-              if (!stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted))) normalizedBarcode = null;
+            if (barcodeEntryOn && stored) {
+              // בהגדרה פעילה הברקוד נקבע רק במסלולי הרישום/הלקיחה (בדיקות כפילות, יומן): שמירת הזמנה לא משנה ברקוד רשום ולא מקצה ברקוד חדש מעותק ישן של הכרטיס
+              const hadRegistered = !!(stored.barcode && String(stored.barcode).trim() !== '');
+              normalizedBarcode = undefined;
+              if (hadRegistered && !stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted))) normalizedBarcode = null;
             }
             // Prisma's @updatedAt stamps this row's updatedAt on *any* update() call, even one
             // that changes nothing - and orderItemEditWindow.js's 15-minute full-edit lock reads

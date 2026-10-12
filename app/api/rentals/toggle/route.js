@@ -6,8 +6,8 @@ import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationForItem, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
-import { barcodeFeatureFor, openElsewhereError } from '@/lib/schedule/barcodeFeature';
-import { autoMarkHandoverForOrder, autoUnmarkHandoverForOrder } from '@/lib/schedule/barcodeScan';
+import { barcodeFeatureFor, openElsewhereError, lazyAutoMarkHandover, lazyAutoUnmarkHandover } from '@/lib/schedule/barcodeFeature';
+import { itemNeedsBarcode } from '@/lib/schedule/barcodeEntry';
 import { isAlterationEstimated, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
@@ -68,8 +68,9 @@ export async function POST(request) {
     //  - לקיחה: לא על פריט/הזמנה שנמחקו; לא מחליפים בשקט ברקוד שכבר נרשם לפריט (לשינוי - לבטל את הרישום תחילה); אותו ברקוד לא פתוח בהזמנה אחרת
     //  - החזרה: רק לפריט שנמסר (הכנה שלא נמסרה אינה "הוחזרה")
     //  - ביטול לקיחה: מאפס גם את הברקוד (כמו rentals/cancel ובדיוק כמו שהכרטיס מציג אותו מקומית) - אחרת נשאר "רישום רפאים" שחוסם הזמנות אחרות
+    let bc = null;
     if (['rent', 'return', 'undoRent'].includes(action) && before.order) {
-      const bc = await barcodeFeatureFor(before.order.orderId);
+      bc = await barcodeFeatureFor(before.order.orderId);
       if (bc) {
         if (action === 'rent') {
           if (before.isDeleted || (before.order && before.order.isDeleted)) {
@@ -80,6 +81,10 @@ export async function POST(request) {
             return NextResponse.json({ error: `לפריט כבר נרשם ברקוד ${registered}. לשינוי הברקוד יש לבטל קודם את הרישום שלו.`, barcodeAlreadyRegistered: true, registered }, { status: 409 });
           }
           const effectiveBarcode = (barcode ? String(barcode).trim() : '') || registered;
+          // פריט שנדרש לו ברקוד נלקח רק עם ברקוד (נרשם בהכנה או נשלח עכשיו) - אחרת הלקיחה הייתה מספקת את בדיקת השלמות בלי שנסרק דבר
+          if (!effectiveBarcode && itemNeedsBarcode(before)) {
+            return NextResponse.json({ error: 'לפריט הזה לא נרשם ברקוד - יש לסרוק את השמלה לפני הסימון כנלקח', needBarcode: true }, { status: 409 });
+          }
           if (effectiveBarcode) {
             const elsewhere = await openElsewhereError(effectiveBarcode, { orderId: before.order.orderId, exceptItemId: String(itemId) });
             if (elsewhere) return NextResponse.json({ error: elsewhere.message, ...(elsewhere.extra || {}), barcodeElsewhere: true }, { status: elsewhere.status });
@@ -137,8 +142,8 @@ export async function POST(request) {
     if ((action === 'rent' || action === 'return') && before.order) afterTasks.push(() => autoMarkPrepForOrder(before.order.orderId, { userId: actorId }));
     if (action === 'rent') afterTasks.push(() => autoMarkAlterationForItem(itemId));
     // מסירה אוטומטית / ביטולה כשההגדרה פעילה (כבוי = no-op בלי שאילתות): כל הפריטים הנדרשים נלקחו -> סימון pick/dout; ביטול לקיחה -> ביטול הסימון
-    if (action === 'rent' && before.order) afterTasks.push(() => autoMarkHandoverForOrder(before.order.orderId, { userId: actorId }));
-    if (action === 'undoRent' && before.order) afterTasks.push(() => autoUnmarkHandoverForOrder(before.order.orderId, { userId: actorId }));
+    if (bc && action === 'rent') afterTasks.push(() => lazyAutoMarkHandover(before.order.orderId, { userId: actorId }));
+    if (bc && action === 'undoRent') afterTasks.push(() => lazyAutoUnmarkHandover(before.order.orderId, { userId: actorId }));
     // הגדרה כבויה (ברירת מחדל) = בדיוק ההתנהגות הקודמת: ההכנה נרשמת לפני התשובה (מוגבל 1.5ש'); רק כשהתכונה דולקת - אחרי התשובה
     const altOn = await isAutoAlterationEnabled();
     await runAfterResponse(afterTasks, { actorId, ...(altOn ? {} : { afterFn: null }) });

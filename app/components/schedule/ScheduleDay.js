@@ -194,7 +194,7 @@ export default function ScheduleDay({
   useEffect(() => { dataRef.current = data; }, [data]);
   useEffect(() => { bcTargetRef.current = bcTarget; }, [bcTarget]);
   const marksUi = useMemo(() => ({ ...marks, openBarcodes }), [marks, openBarcodes]);
-  const closeBarcodes = useCallback((changed) => { setBcTarget(null); setScanQueue([]); if (changed) refreshDay(); }, [refreshDay]);
+  const closeBarcodes = useCallback((changed) => { lastScanOrder.current = null; setBcTarget(null); setScanQueue([]); if (changed) refreshDay(); }, [refreshDay]);
   const patchBarcodeInfo = marks.patchBarcodeInfo;
   const onBarcodeProgress = useCallback((info) => {
     if (!info || !info.summary) return;
@@ -219,7 +219,7 @@ export default function ScheduleDay({
       const last = lastScanOrder.current;
       const stage = last && d && d.stages.find((s) => s.key === last.stageKey);
       const row = stage && stage.items.find((r) => r.orderId === last.orderId);
-      if (stage && row && row.barcodeInfo) { openBarcodes(stage, row); setScanQueue([c.barcode]); return; }
+      if (stage && row && row.barcodeInfo && !row.barcodeInfo.complete) { openBarcodes(stage, row); setScanQueue([c.barcode]); return; }
       say('אין הזמנה פעילה לברקוד', 'סרקו קודם את קוד ההזמנה מהדף המודפס (למשל PRP-40113), או לחצו "בוצע" בשורה', 'warn');
       return;
     }
@@ -255,7 +255,7 @@ export default function ScheduleDay({
       p.delete('scan');
       window.history.replaceState(null, '', window.location.pathname + (p.toString() ? '?' + p.toString() : ''));
     } catch { /* לא קריטי */ }
-    handleScan(code);
+    if (data.settings && data.settings.barcodeEntry) handleScan(code); // בלי הגדרת ברקוד פעילה הפרמטר מוסר והדף כמו היום
   }, [data, loading, handleScan]);
   // שורש הדף לחלונות "בטוח?" (LzPortal.js) - כמו L.modal בעיצוב: scrim אח של .app ולא בתוך השורה
   const [portalRoot, setPortalRoot] = useState(null);
@@ -394,7 +394,7 @@ export default function ScheduleDay({
         </div>
 
         <div className="lz-layout">
-          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || handleScan} updatedCount={updatedCount} />
+          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || (data && data.settings && data.settings.barcodeEntry ? handleScan : undefined)} updatedCount={updatedCount} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
               <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">

@@ -256,7 +256,8 @@ const read = (rel) => readFileSync(process.env.PROJ + '/' + rel, 'utf8');
 
 test('source: PUT items/[itemId] cancels a not-yet-taken registration when the model/size changes, inside the same update, with an audit note (H5)', () => {
   const s = read('app/api/orders/[id]/items/[itemId]/route.js');
-  assert.match(s, /!freshItem\.isTaken && !freshItem\.takenDate && freshItem\.barcode/);
+  assert.match(s, /barcodeEntryOn && !freshItem\.isTaken && !freshItem\.takenDate && freshItem\.barcode/, 'gated by the setting (legacy rentals with a barcode keep it when the setting is off)');
+  assert.match(s, /const barcodeEntryOn = !!\(await barcodeFeatureFor\(parsedId\)\);/);
   assert.match(s, /updateData\.barcode = null/);
   assert.match(s, /itemChanges\.barcode = \{ from: freshItem\.barcode, to: null \}/);
   // the clear sits after buildUpdateData and before the audited update of that very transaction
@@ -267,8 +268,8 @@ test('source: PUT items/[itemId] cancels a not-yet-taken registration when the m
 test('source: PUT orders/[id] never changes a registered barcode from a (possibly stale) card, and cancels an untaken registration on size change / item restore - only when the setting is on (D11)', () => {
   const s = read('app/api/orders/[id]/route.js');
   assert.match(s, /const barcodeEntryOn = !!\(await barcodeFeatureFor\(parsedOrderId\)\);/);
-  assert.match(s, /if \(barcodeEntryOn && stored && stored\.barcode/);
-  assert.match(s, /normalizedBarcode = undefined; \/\/ לא משנים ברקוד רשום/);
+  assert.match(s, /if \(barcodeEntryOn && stored\) \{/, 'a stale card cannot (re)assign a barcode either');
+  assert.match(s, /normalizedBarcode = undefined;/);
   assert.match(s, /item\.sizeText !== stored\.sizeText \|\| \(stored\.isDeleted && !nowDeleted\)/);
   // the feature lookup happens outside the interactive transaction
   assert.ok(s.indexOf('barcodeFeatureFor(parsedOrderId)') < s.indexOf('prisma.$transaction(async (tx)'));

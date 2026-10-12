@@ -91,6 +91,7 @@ test('default (no barcode settings): rows carry no barcodeInfo, "done" works wit
   const res = await getScheduleDay({ date: DAY, user: head, now: NOW, settings: st });
   const json = JSON.stringify(res);
   assert.ok(!json.includes('barcodeInfo'), 'no new field in the payload');
+  assert.ok(!('barcodeEntry' in res.settings), 'no new settings key either: the page (scan field, ?scan=) behaves exactly as today');
   const r1 = await mark(st, 'prep', 5101);
   assert.equal(r1.results[0].status, 'marked');
   const r2 = await mark(st, 'pick', 5102);
@@ -105,6 +106,7 @@ test('default (no barcode settings): rows carry no barcodeInfo, "done" works wit
 test('rows: barcodeInfo only where a gate applies (local=pickup => pick yes, prep no); items of gated rows show barcode/taken', async () => {
   const st = world({ settings: BARCODE_ON('pickup'), orders: [prepOrder(5103, [it(0, { barcode: '1230301' }), it(0)]), pickOrder(5104, [it(0, { barcode: '1230301' }), it(0)])] });
   const res = await getScheduleDay({ date: DAY, user: head, now: NOW, settings: st });
+  assert.equal(res.settings.barcodeEntry, true, 'the page learns the feature is on (enables the scan field)');
   const row = (key, id) => res.stages.find((s) => s.key === key).items.find((r) => r.orderId === id);
   assert.equal(row('prep', 5103).barcodeInfo, undefined);
   const info = row('pick', 5104).barcodeInfo;

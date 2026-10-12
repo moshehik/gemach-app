@@ -4,7 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
-import { autoMarkHandoverForOrder, checkHandoverGate } from '@/lib/schedule/barcodeScan';
+import { lazyAutoMarkHandover, lazyCheckHandoverGate } from '@/lib/schedule/barcodeFeature';
 import { registeredByScheduleIds } from '@/lib/schedule/barcodeData';
 
 export async function POST(request) {
@@ -33,7 +33,7 @@ export async function POST(request) {
     }
 
     // ברקוד בלו״ז (docs/schedule-barcode-plan.md): כשההגדרה פעילה להזמנה, אישור לקיחה דורש ברקוד לכל השמלות הנדרשות. כבוי (ברירת מחדל) = אין שאילתה נוספת.
-    const gateBlock = await checkHandoverGate(parseInt(orderId));
+    const gateBlock = await lazyCheckHandoverGate(parseInt(orderId));
     if (gateBlock) return NextResponse.json(gateBlock, { status: 409 });
 
     // 2 & 3. Update them all in a transaction
@@ -79,7 +79,7 @@ export async function POST(request) {
     await runAfterResponse([
       () => autoMarkPrepForOrder(parseInt(orderId), { userId: confirmedBy }),
       () => autoMarkAlterationsForItems(confirmedItemIds),
-      () => autoMarkHandoverForOrder(parseInt(orderId), { userId: confirmedBy }), // כבוי בלי הגדרת ברקוד: לא עושה כלום
+      () => lazyAutoMarkHandover(parseInt(orderId), { userId: confirmedBy }), // כבוי בלי הגדרת ברקוד: בדיקת הגדרות מהמטמון בלבד, בלי לטעון את מנגנון הלו״ז
     ], { actorId: confirmedBy, ...(altOn ? {} : { afterFn: null }) });
 
     return NextResponse.json({ success: true, count: pendingItems.length });
