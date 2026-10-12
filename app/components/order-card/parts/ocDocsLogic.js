@@ -9,6 +9,7 @@
 // קבצי המייל המהיר (A8, AMB-11 - החלטת הבעלים: לבנות את כל שישת הסוגים): פרטי ההזמנה, תקנון חתום (דוח ההשכרה), דף תשלומים, דף משלוח (PP-12),
 // חשבונית/קבלה (אין באתר מסמך קבלה קיים - נבנה אישור תשלומים להדפסה/PDF מתשלומי ההזמנה) ותמונות דגמים (PDF מתמונות הדגמים השמורות, לא ZIP).
 import { hebDateOf } from '../orderCardLogic';
+import { collapseSameCodeLabel } from '../../../../lib/modelCodeLabel';
 import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
 import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_FILES, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
@@ -157,7 +158,7 @@ export function mailSentToast(to, fileCount, driveCount = 0) {
 // ייצוא Excel (A1) - עברית בלבד בכל תאריך (ENG-11); מספרים כמספרים; טלפון/ת״ז כטקסט
 // ---------------------------------------------------------------------------------------------
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-const itemName = (it) => it?.dressItem?.dress?.name || it?.dressModelName || it?.modelName || it?.description || '';
+const itemName = (it) => collapseSameCodeLabel(it?.dressItem?.dress?.name || it?.dressModelName || it?.modelName || it?.description || ''); // description נשמר כ-"522 (קוד: 522)"
 const methodOf = (p) => p?.paymentMethod || p?.method || '';
 
 /** גיליונות הקובץ: הזמנה (שדה/ערך), פריטים, חיובים, תשלומים. מקור: מצב השרת האחרון (snapshot) - מה שנשמר. */

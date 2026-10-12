@@ -17,9 +17,11 @@ import { hasPermission, canOpenAnyPage } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
+import { stripCodeLabel } from '@/lib/modelCodeLabel';
+import { sortByModelThenSize } from '@/lib/sizeSort';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
-const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+// שם = מספר דגם (נווה יעקב): "522 (קוד: 522)" מודפס "522" פעם אחת - stripCodeLabel ב-lib/modelCodeLabel.js (אותו כלל כמו app/print/order/page.js)
 
 // "פרטי החזרה" top-of-rental-report line - same best-effort logic as app/print/order/page.js
 // (no dedicated return-deadline field/SystemSetting exists for the standard flow); the
@@ -211,7 +213,11 @@ export async function POST(request, { params }) {
 
     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0)
       ? `<tr><td colspan="${colCount}" style="text-align: center; padding: 30px; color: #999;">אין פריטים פעילים בהזמנה זו</td></tr>`
-      : order.items.filter(i => !i.isDeleted).map(item => {
+      : sortByModelThenSize(
+          order.items.filter(i => !i.isDeleted),
+          (i) => i.dressItem?.dress?.barcodePrefix ?? i.dressItem?.barcodePrefix ?? i.barcodePrefix,
+          (i) => i.sizeText || i.dressItem?.sizeText
+        ).map(item => { // דגם לפי מספר עולה ובתוך הדגם מידה עולה - כמו בהדפסת ההזמנה
           let statusStr = 'טרם נלקח';
           if (item.isReturned) statusStr = 'הוחזר';
           else if (item.isTaken) statusStr = 'אצל הלקוח';
