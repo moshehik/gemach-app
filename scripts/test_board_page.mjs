@@ -281,7 +281,7 @@ await t('BD-O3: חלון "הזמנות ליום" נמחק לגמרי - הקבצ�
   hasNot(CSS, /bd-day|bd-dl\b|bd-dh\b|bd-rent|bd-menu|bd-rt\b|bd-info|bd-or\b|bd-cf|bd-scrim|bd-item|bd-dup|#toast/, 'סטייל של החלונות נשאר');
   // הרכיבים המשותפים שחלון ההשכרה של הלוח הסתמך עליהם - נשארים (משמשים את /orders, /rentals)
   assert.ok(existsSync(new URL('../components/orders/useRentalReturn.js', import.meta.url)));
-  has(LEGACY, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui: LEGACY_UI \}\)/);
+  has(LEGACY, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui: LEGACY_UI(, initialBarcode, onSwitchOrder, onItemReturned)? \}\)/);
   assert.ok(existsSync(new URL('../app/components/gate/NoAccessCard.js', import.meta.url)));
   assert.ok(existsSync(new URL('../app/components/schedule/MarkDialogs.js', import.meta.url)), 'שימוש משותף בלו״ז');
 });
