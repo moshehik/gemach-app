@@ -6,6 +6,8 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderGenericEmailHtml } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig } from '@/lib/emailConfig';
+import { makeTx } from '@/lib/emailRegistry';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +46,9 @@ export async function POST(request) {
       if (!seen.has(email)) seen.set(email, o);
     }
     const batchId = `bulk-${Date.now()}`;
-    const gmachName = get('gmach_name') || 'גמ"ח שמלות';
+    const cfg = await getEmailConfig('bulkEventDate', all);
+    const tx = makeTx('bulkEventDate', cfg.texts);
+    const gmachName = cfg.fixed.gmachName || get('gmach_name') || 'גמ"ח שמלות';
     // מקור לקישור האישור - origin של הבקשה הנוכחית (עובד גם ב-prod וגם ב-test/preview
     // deployments בלי env נוסף, ראה request.nextUrl ב-Next.js App Router).
     const origin = request.nextUrl?.origin || new URL(request.url).origin;
@@ -68,10 +72,11 @@ export async function POST(request) {
             title: subject,
             bodyText: String(body),
             gmachName,
-            subtitle: 'הודעה חשובה',
+            subtitle: tx('kicker'),
             icon: '📣',
             footnote: orderLine,
-            actionButton: { label: 'אישור קבלת ההודעה', url: confirmUrl },
+            actionButton: { label: tx('buttonLabel'), url: confirmUrl },
+            cfg,
           }),
           customerId: o.customerId || null,
           confirmToken,

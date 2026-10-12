@@ -3,16 +3,23 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
 import {
-  renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml,
+  renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml, renderDailyManagerReport,
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
 import { pickupAddressFrom } from '@/lib/gmachContact';
 import { skipPickupReminderForDelivery, skipReturnReminderForDelivery } from '@/lib/orderDelivery';
+import { getEmailConfig, cfgPlain } from '@/lib/emailConfig';
+import { whenWordForDays } from '@/lib/emailRegistry';
+import { sendOrderConfirmationEmail } from '@/lib/orderConfirmationMail';
+import { loadDeliverySection } from '@/lib/orderDeliveryServer';
+import { processDueCampaigns } from '@/lib/emailCampaign';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '@/lib/orderReservation';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, getExpectedReturnDate, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // Cron יומי: מופעל ע"י Vercel Cron (vercel.json) או ידנית GET /api/cron/daily
 // מכבד את כל מתגי האוטומציה - לא שולח אם ההגדרה כבויה.
@@ -53,35 +60,71 @@ export async function GET(request) {
   // (המשלוחן אוסף). רק כש-enable_deliveries דלוק (הגמ"ח הראשי - נשלחות כמו תמיד). ר' skip*ReminderForDelivery ב-lib/orderDelivery.js.
   const deliveriesEnabled = get('enable_deliveries') === 'true';
 
-  // 6 - תזכורת יום לפני איסוף
+  // 6 - תזכורת לפני איסוף. כמה ימים לפני האירוע (ברירת מחדל: יום אחד לפני = "מחר", כמו תמיד) - נקבע ב-/admin/email-center
+  // (cfg.days, אפשר כמה תזכורות, למשל 7 ו-1). השעה קבועה: ה-cron היומי של Vercel (vercel.json).
   if (get('pickup_reminder_enabled') === 'true') {
     try {
-      const orders = await prisma.order.findMany({
-        where: {
-          isDeleted: false,
-          eventDate: { gte: tomorrow, lte: tomorrowEnd },
-        },
-        include: { customer: true, items: { where: { isDeleted: false } } }
-      });
-      const gmachName = get('gmach_name') || 'גמ"ח שמלות';
-      const gmachAddress = pickupAddressFrom(get); // gmach_pickup_address אם הוגדרה, אחרת gmach_address
-      const gmachPhone = get('gmach_phone') || '';
-      for (const o of orders) {
-        if (skipPickupReminderForDelivery(o, deliveriesEnabled)) continue;
-        const email = o.customer?.email;
-        if (!email || !email.includes('@')) continue;
-        const hebrewDate = o.eventDateHebrew || getHebrewDateString(o.eventDate);
-        const itemsList = (o.items || []).map(i => i.description || i.sizeText || 'פריט').join(', ');
-        const body = `שלום ${o.customer.firstName || ''} ${o.customer.lastName || ''},\n\nתזכורת: מחר (${hebrewDate}) איסוף ההזמנה #${o.orderId} ב${gmachName}.\nכתובת: ${gmachAddress}\nטלפון: ${gmachPhone}\nפריטים: ${itemsList}\n\nנשמח לראותכם!`;
-        const html = renderPickupReminderEmailHtml({
-          customerName: `${o.customer.firstName || ''} ${o.customer.lastName || ''}`.trim(), orderId: o.orderId, eventDate: hebrewDate,
-          items: (o.items || []).map(i => i.description || i.sizeText || 'פריט'), gmachName, gmachAddress, gmachPhone,
+      const cfg = await getEmailConfig('pickupReminder', settings);
+      const gmachName = cfg.fixed.gmachName || get('gmach_name') || 'גמ"ח שמלות';
+      const gmachAddress = cfg.fixed.gmachAddress || pickupAddressFrom(get); // gmach_pickup_address אם הוגדרה, אחרת gmach_address
+      const gmachPhone = cfg.fixed.gmachPhone || get('gmach_phone') || '';
+      for (const daysBefore of (cfg.days || [1])) {
+        const { start: dayStart, end: dayEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, daysBefore));
+        const orders = await prisma.order.findMany({
+          where: {
+            isDeleted: false,
+            eventDate: { gte: dayStart, lte: dayEnd },
+          },
+          include: { customer: true, items: { where: { isDeleted: false } } }
         });
-        const r = await sendSystemEmail({ to: email, subject: emailSubject('pickupReminder', { orderId: o.orderId, gmachName }), body, html });
-        if (r.success) results.pickupReminders++;
-        else results.errors.push(`pickup ${o.orderId}: ${r.message}`);
+        for (const o of orders) {
+          if (skipPickupReminderForDelivery(o, deliveriesEnabled)) continue;
+          const email = o.customer?.email;
+          if (!email || !email.includes('@')) continue;
+          const hebrewDate = o.eventDateHebrew || getHebrewDateString(o.eventDate);
+          const itemsList = (o.items || []).map(i => i.description || i.sizeText || 'פריט').join(', ');
+          const body = `שלום ${o.customer.firstName || ''} ${o.customer.lastName || ''},\n\nתזכורת: ${whenWordForDays(daysBefore)} (${hebrewDate}) איסוף ההזמנה #${o.orderId} ב${gmachName}.\nכתובת: ${gmachAddress}\nטלפון: ${gmachPhone}\nפריטים: ${itemsList}\n\nנשמח לראותכם!`;
+          const html = renderPickupReminderEmailHtml({
+            customerName: `${o.customer.firstName || ''} ${o.customer.lastName || ''}`.trim(), orderId: o.orderId, eventDate: hebrewDate,
+            items: (o.items || []).map(i => i.description || i.sizeText || 'פריט'), daysBefore, gmachName, gmachAddress, gmachPhone, cfg,
+          });
+          const r = await sendSystemEmail({ to: email, subject: emailSubject('pickupReminder', { orderId: o.orderId, gmachName }, cfg), body: cfgPlain(cfg, body, html), html });
+          if (r.success) results.pickupReminders++;
+          else results.errors.push(`pickup ${o.orderId}: ${r.message}`);
+        }
       }
     } catch (e) { results.errors.push(`pickup: ${e.message}`); }
+  }
+
+  // 5 - אישור הזמנה "אחרי X ימים מיצירת ההזמנה" (מרכז המיילים, /admin/email-center). ברירת המחדל - מיד בסיום יצירת ההזמנה (app/api/orders/route.js),
+  // ואז הבלוק הזה לא עושה כלום. נשלח פעם אחת להזמנה (לפי EmailLog), רק להזמנות שאינן טיוטה/שריון.
+  if (get('auto_email_on_order_create') === 'true') {
+    try {
+      const cfg = await getEmailConfig('orderCreatedAuto', settings);
+      if (cfg.orderAfterDays) {
+        const { start: createdStart, end: createdEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, -cfg.orderAfterDays));
+        const created = await prisma.order.findMany({
+          where: { isDeleted: false, orderDate: { gte: createdStart, lte: createdEnd } },
+          include: { customer: true, obligations: true, payments: true },
+          take: 300,
+        });
+        const gmachNameForSubject = cfg.fixed.gmachName || get('gmach_name') || 'גמ"ח שמלות';
+        for (const o of created) {
+          if (o.status === DRAFT_ORDER_STATUS || o.status === RESERVED_ORDER_STATUS) continue;
+          if (!o.customer?.email || !String(o.customer.email).includes('@')) continue;
+          const subjects = [...new Set([
+            emailSubject('orderCreatedAuto', { orderId: o.orderId, gmachName: gmachNameForSubject }),
+            emailSubject('orderCreatedAuto', { orderId: o.orderId, gmachName: gmachNameForSubject }, cfg),
+          ])];
+          const already = await prisma.emailLog.findFirst({ where: { subject: { in: subjects }, status: 'success', to: String(o.customer.email) } });
+          if (already) continue;
+          // בלוק המשלוח (lib/orderDelivery.js buildDeliverySection): כתובת/מועדים/עלות, שורות פריט, "שימו לב" וכללי ביקור בגמ"ח - זהה לשליחה המיידית ב-POST /api/orders
+          const r = await sendOrderConfirmationEmail(o, { emailCfg: cfg, wait: true, delivery: await loadDeliverySection(o, { settings }) });
+          if (r && r.success) results.orderConfirmations = (results.orderConfirmations || 0) + 1;
+          else if (r && r.success === false) results.errors.push(`orderConfirmation ${o.orderId}: ${r.message}`);
+        }
+      }
+    } catch (e) { results.errors.push(`orderConfirmation: ${e.message}`); }
   }
 
   // 8 - דוח יומי למנהל
@@ -112,13 +155,11 @@ export async function GET(request) {
         const formatLine = (o) => `#${o.orderId} - ${o.customer?.firstName || ''} ${o.customer?.lastName || ''} - ${o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : '')} - ${o.items.length} פריטים`;
         const openedLines = openedYesterday.map(formatLine).join('\n');
         const reservedLines = reservedToday.map(formatLine).join('\n');
-        const body = `דוח יומי - ${getHebrewDateString(todayDisplay)}\n\nהזמנות חדשות שנפתחו אתמול: ${openedYesterday.length}\n${openedLines || 'אין'}\n\nהזמנות עם אירוע היום: ${reservedToday.length}\n${reservedLines || 'אין'}`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${getHebrewDateString(todayDisplay)}</h2>` +
-          `<p><strong>הזמנות חדשות שנפתחו אתמול:</strong> ${openedYesterday.length}</p>` +
-          `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${openedLines || 'אין'}</pre>` +
-          `<p><strong>הזמנות עם אירוע היום:</strong> ${reservedToday.length}</p>` +
-          `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${reservedLines || 'אין'}</pre></div>`;
-        const r = await sendSystemEmail({ to: managerEmail, subject: `דוח יומי ${getHebrewDateString(todayDisplay)} - ${openedYesterday.length} הזמנות חדשות אתמול, ${reservedToday.length} עם אירוע היום`, body, html });
+        // מרכז המיילים: כותרות הדוח והנושא ניתנים לעריכה (ברירת המחדל זהה לטקסט שהיה כאן). שמות הלקוחות עוברים escape (נכנסים ל-HTML).
+        const reportCfg = await getEmailConfig('dailyManagerReport', settings);
+        const dateLabel = getHebrewDateString(todayDisplay);
+        const { body, html } = renderDailyManagerReport({ dateLabel, openedCount: openedYesterday.length, eventTodayCount: reservedToday.length, openedLines, reservedLines, gmachName: get('gmach_name') || 'גמ"ח שמלות', cfg: reportCfg });
+        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('dailyManagerReport', { hebrewDate: dateLabel, openedCount: openedYesterday.length, eventTodayCount: reservedToday.length }, reportCfg), body, html });
         results.dailyReport = !!r.success;
         if (!r.success) results.errors.push(`dailyReport: ${r.message}`);
       }
@@ -138,6 +179,7 @@ export async function GET(request) {
   //    נשלח פעם אחת בלבד להזמנה, לפי EmailLog קיים (בלי צורך בעמודה חדשה ב-DB).
   if (get('late_return_email_enabled') === 'true') {
     try {
+      const lateCfg = await getEmailConfig('lateReturnReminder', settings);
       const text = get('late_return_email_text') || 'המערכת זיהתה שלא החזרתם את השמלות, במידה ולא יחזרו במיידי המערכת מעבירה לגביה אוטומטית.';
       const candidates = await prisma.order.findMany({
         where: {
@@ -154,8 +196,10 @@ export async function GET(request) {
         if (skipReturnReminderForDelivery(o, deliveriesEnabled)) continue;
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
-        const subject = emailSubject('lateReturnReminder', { orderId: o.orderId });
-        const alreadySent = await prisma.emailLog.findFirst({ where: { subject, status: 'success' } });
+        const subject = emailSubject('lateReturnReminder', { orderId: o.orderId }, lateCfg);
+        // פעם אחת להזמנה: בודקים גם את הנושא המקורי וגם את הנושא שנערך, כדי ששינוי נושא ב-/admin/email-center לא יגרום לשליחה חוזרת
+        const defaultSubject = emailSubject('lateReturnReminder', { orderId: o.orderId });
+        const alreadySent = await prisma.emailLog.findFirst({ where: { subject: { in: [...new Set([subject, defaultSubject])] }, status: 'success' } });
         if (alreadySent) continue;
         // תאריך ההחזרה במייל = אותו מועד שנספר כאיחור (getExpectedReturnDate): תאריך מפורש שנופל על יום סגור
         // מוצג כיום העבודה הבא (החלטת הבעלים 2.10.2026), ונקרא לפי היום הישראלי של הרגע השמור (לא לפי UTC של השרת).
@@ -163,9 +207,9 @@ export async function GET(request) {
         const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${returnDateLabel}\n`;
         const html = renderLateReturnEmailHtml({
           customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: returnDateLabel, message: text,
-          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: pickupAddressFrom(get), gmachPhone: get('gmach_phone') || '',
+          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: pickupAddressFrom(get), gmachPhone: get('gmach_phone') || '', cfg: lateCfg,
         });
-        const r = await sendSystemEmail({ to: email, subject, body, html });
+        const r = await sendSystemEmail({ to: email, subject, body: cfgPlain(lateCfg, body, html), html });
         if (r.success) results.lateEmails++;
         else results.errors.push(`late ${o.orderId}: ${r.message}`);
       }
@@ -265,15 +309,23 @@ export async function GET(request) {
       if (managerEmail && managerEmail.includes('@') && items.length > 0) {
         const lines = items.map(i => `#${i.order?.orderId ?? '?'} - ברקוד: ${i.barcode || '?'} - ${i.description || i.sizeText || ''}`).join('\n');
         const body = `ברקודים שהוקלדו ידנית היום (${getHebrewDateString(todayDisplay)}): ${items.length}\n\n${lines}`;
+        const barcodesCfg = await getEmailConfig('manualBarcodesReport', settings);
         const html = renderManualBarcodesEmailHtml({
           dateHebrew: getHebrewDateString(todayDisplay), gmachName: get('gmach_name') || 'גמ"ח שמלות',
           items: items.map(i => ({ orderId: i.order?.orderId ?? '?', barcode: i.barcode || '?', description: i.description || i.sizeText || '' })),
+          cfg: barcodesCfg,
         });
-        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('manualBarcodesReport', { hebrewDate: getHebrewDateString(todayDisplay), count: items.length }), body, html });
+        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('manualBarcodesReport', { hebrewDate: getHebrewDateString(todayDisplay), count: items.length }, barcodesCfg), body: cfgPlain(barcodesCfg, body, html), html });
         if (!r.success) results.errors.push(`manualBarcodes: ${r.message}`);
       }
     } catch (e) { results.errors.push(`manualBarcodes: ${e.message}`); }
   }
+
+  // דיוורים מתוזמנים שהגיע זמנם (מרכז המיילים, לשונית "דיוורים") - אותה ריצה, אחרי כל המיילים האוטומטיים. כשל כאן לא פוגע בשאר.
+  try {
+    const campaigns = await processDueCampaigns({ deadlineMs: Date.now() + 30000 });
+    if (campaigns.processed) results.campaigns = campaigns;
+  } catch (e) { results.errors.push(`campaigns: ${e.message}`); }
 
   return NextResponse.json({ success: true, ...results });
 }

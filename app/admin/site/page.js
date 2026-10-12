@@ -52,6 +52,7 @@ const categories = [
       { href: '/admin/site-settings/api-keys', icon: 'i-shield', label: 'מפתחות API', subLabel: 'כניסה בלי סיסמה לסוכנים וסקריפטים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/admin/site-settings/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו (מתכנת בלבד)' },
+      { href: '/admin/email-center', icon: 'i-mail', label: 'מרכז המיילים', subLabel: 'עריכת כל המיילים, נתונים קבועים, תזמון ודיוורים' },
       { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
       // דף סטטי (public/design-system/index.html, ראו design-system/README.md) - לא מסלול של האפליקציה, לכן <a> רגיל
