@@ -22,6 +22,7 @@ const ON = { kiosk_public_link_enabled: 'true', kiosk_public_show_registration: 
 beforeEach(() => {
   globalThis.__CUSTOMERS = [];
   globalThis.__AUDIT = [];
+  globalThis.__CONSENTS = [];
   globalThis.__AUTH = true;
   globalThis.__MODELS = [
     { id: 'm1', name: 'דגם 511', barcodePrefix: 511, priceCategory: 'A', imageUrl: '/api/attachment/11111111-2222-3333-4444-555555555555', thumbnailUrl: null, notes: 'פנימי', isDeleted: false, exitDateFromRepo: null,
@@ -136,7 +137,11 @@ test('register: success creates a pending customer (server-side fields only) and
   const c = globalThis.__CUSTOMERS[0];
   assert.equal(c.firstName, 'רחל'); assert.equal(c.phone1, '0501234567'); assert.equal(c.zeout, '012345674'); assert.equal(c.houseNum, 12);
   assert.equal(c.marketingConsent, true);
-  assert.equal(c.hasSignedRegulations, true, 'acceptedTerms -> signature (stub until lib/customerConsent.js lands)');
+  assert.equal(c.hasSignedRegulations, true, 'acceptedTerms -> signature (one path: planSignatureWrite via lib/customerConsent.js)');
+  assert.ok(c.regulationsSignedAt instanceof Date, 'the signature timestamp is server-side');
+  // יומן ההסכמות (CustomerConsent): שלוש שורות, ערוץ ציבורי, method customer_self, surface kiosk-register, בלי עובד
+  assert.deepEqual(globalThis.__CONSENTS.map((r) => [r.kind, r.granted]).sort(), [['marketing', true], ['privacy', true], ['terms', true]]);
+  assert.ok(globalThis.__CONSENTS.every((r) => r.customerId === c.id && r.channel === 'public' && r.method === 'customer_self' && r.surface === 'kiosk-register' && !r.recordedByEmployeeId));
   assert.match(c.officeNotes, /נרשמה - לאמת פרטים/);
   assert.ok(!c.officeNotes.includes('inject'));
   assert.notEqual(c.id, 'forced'); assert.notEqual(c.legacyId, 999);

@@ -2,6 +2,7 @@
 globalThis.__CUSTOMERS = globalThis.__CUSTOMERS || [];
 globalThis.__SETTINGS = globalThis.__SETTINGS || [];
 globalThis.__AUDIT = globalThis.__AUDIT || [];
+globalThis.__CONSENTS = globalThis.__CONSENTS || []; // CustomerConsent journal rows (lib/customerConsent.js via lib/customerConsentServer.js)
 globalThis.__MODELS = globalThis.__MODELS || [];
 globalThis.__ITEMS = globalThis.__ITEMS || [];
 
@@ -51,8 +52,15 @@ const customer = {
   },
 };
 
+let consentSeq = 0;
+const customerConsent = {
+  createMany: async ({ data }) => { for (const d of data) globalThis.__CONSENTS.push({ id: `cc-${++consentSeq}`, createdAt: new Date(), ...d }); return { count: data.length }; },
+  findMany: async () => [...globalThis.__CONSENTS],
+};
+
 const prisma = {
   customer,
+  customerConsent,
   systemSetting: { findMany: async () => [...globalThis.__SETTINGS], findUnique: async (a) => globalThis.__SETTINGS.find((s) => s.key === a.where.key) || null, findFirst: async () => null },
   dressModel: {
     findMany: async (args = {}) => {

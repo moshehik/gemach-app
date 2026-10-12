@@ -10,6 +10,7 @@ import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
 import { calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
 import { modelMatchesQuery } from '@/lib/kioskModelSearch';
+import { useNoFill } from '@/lib/autofillGuard';
 import './kiosk.css';
 
 // 32/33 - קיוסק לקוח: מותנה ב-kiosk_customer_self_service / kiosk_allow_self_order (כבוי = מוסתר/דורש התחברות)
@@ -292,6 +293,7 @@ function AtelierCalendar({ selectedDate, onSelect }) {
 
 export default function CustomerInventoryViewer() {
   const router = useRouter();
+  const nf = useNoFill(); // טופס הרישום בעמדה: בלי הצעות היסטוריית הקלדה של הדפדפן (שמות / טלפונים / מיילים של לקוחות קודמות)
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState(1);
@@ -1264,42 +1266,42 @@ export default function CustomerInventoryViewer() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div className="ka-field">
                         <label>שם פרטי *</label>
-                        <input data-agy-id="reg_firstName_input" type="text" value={regForm.firstName}
+                        <input data-agy-id="reg_firstName_input" {...nf('firstName')} type="text" value={regForm.firstName}
                           onChange={e => setRegForm(p => ({ ...p, firstName: e.target.value }))} />
                       </div>
                       <div className="ka-field">
                         <label>שם משפחה *</label>
-                        <input data-agy-id="reg_lastName_input" type="text" value={regForm.lastName}
+                        <input data-agy-id="reg_lastName_input" {...nf('lastName')} type="text" value={regForm.lastName}
                           onChange={e => setRegForm(p => ({ ...p, lastName: e.target.value }))} />
                       </div>
                     </div>
 
                     <div className="ka-field">
                       <label>טלפון *</label>
-                      <input data-agy-id="reg_phone1_input" type="tel" dir="ltr" placeholder="נייד או קווי" value={regForm.phone1}
+                      <input data-agy-id="reg_phone1_input" {...nf('phone1')} type="tel" dir="ltr" placeholder="נייד או קווי" value={regForm.phone1}
                         onChange={e => setRegForm(p => ({ ...p, phone1: e.target.value }))} />
                     </div>
 
                     <div className="ka-field">
                       <label>אימייל {settings.require_customer_email === 'true' && '*'}</label>
-                      <input data-agy-id="reg_email_input" type="email" dir="ltr" value={regForm.email}
+                      <input data-agy-id="reg_email_input" {...nf('email')} type="email" dir="ltr" value={regForm.email}
                         onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                       <div className="ka-field">
                         <label>עיר {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_city_input" type="text" value={regForm.city}
+                        <input data-agy-id="reg_city_input" {...nf('city')} type="text" value={regForm.city}
                           onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} />
                       </div>
                       <div className="ka-field">
                         <label>רחוב {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_street_input" type="text" value={regForm.street}
+                        <input data-agy-id="reg_street_input" {...nf('street')} type="text" value={regForm.street}
                           onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} />
                       </div>
                       <div className="ka-field">
                         <label>מספר בית {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_houseNum_input" type="text" value={regForm.houseNum}
+                        <input data-agy-id="reg_houseNum_input" {...nf('houseNum')} type="text" value={regForm.houseNum}
                           onChange={e => setRegForm(p => ({ ...p, houseNum: e.target.value }))} />
                       </div>
                     </div>

@@ -97,7 +97,7 @@ calendar, the model-orders window, the AI assistant and every `kiosk_*` / `hide_
   step 3 results (tiles by default; list / table / filter panel / zoom / AI / print / lock live in the results bar).
 - "מילוי פרטים אישיים" (`KioskRegistration.js`, shared component, `mode="station"|"public"`): shown when `kiosk_customer_self_service` is on. Its single send point is
   `submitRegistration` in `kioskRegistrationApi.js` (POST `/api/public-kiosk/register`, `channel:'kiosk'` for the store kiosk / `'public'` for the public link).
-  Explicit yes / no (no default) for terms and marketing, a required privacy checkbox, Enter moves to the next field (`kioskEnterNav.js`), and "צפייה בתקנון" /
+  Explicit yes / no (no default) for terms and marketing, a required privacy checkbox, Enter moves to the next field (shared `useEnterNavigation`, `lib/enterNavigation.js`), and "צפייה בתקנון" /
   "מדיניות פרטיות" open in a window inside the screen (iframe of `/api/public-terms` and `/privacy`), so the locked kiosk is never left.
 - Tests: `node scripts/test_kiosk_logic.mjs`, `node --import ./scripts/business-days-tests/register.mjs scripts/test_kiosk_model_search.mjs`.
 

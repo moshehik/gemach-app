@@ -37,9 +37,9 @@ export function KioskThumbImg({ model }) {
 
 /**
  * בחירה מפורשת כן / לא בלי ברירת מחדל: שני לחצני .btn.tgl (בורר 13 בפלטה) בתוך radiogroup.
- * value: null | true | false. רווח / לחיצה בוחרים; חצים עוברים בין שתי האפשרויות; Enter מועבר לשדה הבא ע"י useEnterNav (data-enter).
+ * value: null | true | false. רווח / לחיצה בוחרים; חצים עוברים בין שתי האפשרויות; Enter מועבר לשדה הבא ע"י useEnterNav (ה-hook המשותף; role=radio).
  */
-export function YesNo({ id, label, value, onChange, enterName, yesLabel = 'כן', noLabel = 'לא', invalid }) {
+export function YesNo({ id, label, value, onChange, yesLabel = 'כן', noLabel = 'לא', invalid }) {
   const pick = (v) => () => onChange(v);
   const onKey = (e) => {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -51,12 +51,10 @@ export function YesNo({ id, label, value, onChange, enterName, yesLabel = 'כן'
     <div className={`ks-yn${invalid ? ' bad' : ''}`} role="radiogroup" aria-labelledby={`${id}-l`} onKeyDown={onKey}>
       <span className="ks-yn-l" id={`${id}-l`}>{label}</span>
       <div className="ks-yn-b">
-        <button type="button" id={`${id}-y`} role="radio" aria-checked={value === true} className={`btn tgl${value === true ? ' on' : ''}`}
-          data-enter={enterName} data-agy-id={`${id}_yes`} onClick={pick(true)}>
+        <button type="button" id={`${id}-y`} role="radio" aria-checked={value === true} className={`btn tgl${value === true ? ' on' : ''}`} data-agy-id={`${id}_yes`} onClick={pick(true)}>
           {value === true ? <KIcon id="check" size="sm" /> : null}{yesLabel}
         </button>
-        <button type="button" id={`${id}-n`} role="radio" aria-checked={value === false} className={`btn tgl${value === false ? ' on' : ''}`}
-          data-enter={enterName} data-agy-id={`${id}_no`} onClick={pick(false)}>
+        <button type="button" id={`${id}-n`} role="radio" aria-checked={value === false} className={`btn tgl${value === false ? ' on' : ''}`} data-agy-id={`${id}_no`} onClick={pick(false)}>
           {value === false ? <KIcon id="x" size="sm" /> : null}{noLabel}
         </button>
       </div>

@@ -8,13 +8,15 @@
 //   submit        פונקציית השליחה היחידה (ברירת מחדל: submitRegistration מ-kioskRegistrationApi.js, היום POST /api/customers).
 //   termsUrl      קובץ התקנון לצפייה בחלון בתוך המסך, בלי לצאת מהעמדה הנעולה (ברירת מחדל: GET /api/public-terms).
 //   privacyUrl    מדיניות הפרטיות בחלון (ברירת מחדל: /privacy). שני הקישורים נפתחים ב-iframe בתוך חלון (Dlg), לא בלשונית חדשה.
-//   useEnterNav   ה-hook לניווט באנטר (מקומי: kioskEnterNav.js; יוחלף ב-hook המשותף של סוכן customer-consent).
+//   useEnterNav   ה-hook לניווט באנטר: ברירת מחדל = ה-hook המשותף של כל טפסי הלקוח (app/components/shared/useEnterNavigation.js, lib/enterNavigation.js);
+//                 קורא useEnterNav(onSubmit) ומחזיר מטפל keydown שמחברים ל-<form>. בשדה האחרון Enter מעביר פוקוס ללחצן השליחה (data-enter-submit) ולא שולח.
 //   שדות הבקשה:   acceptedTerms / marketingConsent (true|false מפורש) / acceptedPrivacy - נשלחים כמו שהם ב-submit.
 
 import { useEffect, useRef, useState } from 'react';
 import { Dlg, DlgBadge } from '../a5-list/A5Ui';
 import { KIcon, YesNo } from './KioskParts';
-import { useEnterNav as useLocalEnterNav } from './kioskEnterNav';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import { useNoFill } from '@/lib/autofillGuard';
 import { submitRegistration } from './kioskRegistrationApi';
 import { getMissingRegFields, settingsFromRules, CUSTOMER_FIELD_LABELS } from './kioskLogic';
 
@@ -72,7 +74,7 @@ export default function KioskRegistration({
   submit = submitRegistration,
   termsUrl = TERMS_URL,
   privacyUrl = PRIVACY_URL,
-  useEnterNav = useLocalEnterNav,
+  useEnterNav = useEnterNavigation,
 }) {
   const [form, setForm] = useState(EMPTY);
   const [touched, setTouched] = useState(false);
@@ -82,7 +84,10 @@ export default function KioskRegistration({
   const [doc, setDoc] = useState(null); // 'terms' | 'privacy'
   const [serverFields, setServerFields] = useState({}); // שדות שהשרת סימן כלא תקינים (400 fields), מתנקים בעריכה
   const formRef = useRef(null);
-  useEnterNav(formRef);
+  // עמדה ציבורית משותפת: בלי הצעות היסטוריית הקלדה של הדפדפן (שמות / טלפונים / מיילים של לקוחות קודמות) - lib/autofillGuard.js
+  const nf = useNoFill();
+  // Enter = השדה הבא (גם על בחירת כן/לא, בלי לשנות אותה); בשדה האחרון - פוקוס ללחצן השליחה, לא שליחה
+  const onFormKeyDown = useEnterNav(() => { const b = formRef.current && formRef.current.querySelector('[data-enter-submit]'); if (b && !b.disabled) b.focus(); });
 
   // מסלול ציבורי: הגדרות הטופס מגיעות מ-rules (GET /api/public-kiosk/config); בעמדה - מ-settings
   const eff = rules ? { ...settings, ...settingsFromRules(rules) } : settings;
@@ -147,48 +152,48 @@ export default function KioskRegistration({
         <p className="ks-sub">ממלאים כאן את הפרטים פעם אחת, והעובדת תמשיך איתך משם להזמנה.</p>
       </div>
 
-      <form className="ks-card ks-form" ref={formRef} onSubmit={onSubmit} noValidate autoComplete="off">
+      <form className="ks-card ks-form" ref={formRef} onSubmit={onSubmit} onKeyDown={onFormKeyDown} noValidate autoComplete="off">
         <div className="ks-grid ks-grid-2">
           <div className={`field${bad('firstName') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-first">שם פרטי *</label>
-            <input id="ks-r-first" className="inp" data-enter="firstName" data-agy-id="reg_firstName_input" value={form.firstName} onChange={set('firstName')} autoComplete="off" />
+            <input id="ks-r-first" className="inp" {...nf('firstName')} data-agy-id="reg_firstName_input" value={form.firstName} onChange={set('firstName')} />
           </div>
           <div className={`field${bad('lastName') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-last">שם משפחה *</label>
-            <input id="ks-r-last" className="inp" data-enter="lastName" data-agy-id="reg_lastName_input" value={form.lastName} onChange={set('lastName')} autoComplete="off" />
+            <input id="ks-r-last" className="inp" {...nf('lastName')} data-agy-id="reg_lastName_input" value={form.lastName} onChange={set('lastName')} />
           </div>
           <div className={`field${bad('zeout') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-id">תעודת זהות{req(eff.require_customer_id_number === 'true')}</label>
-            <input id="ks-r-id" className="inp" dir="ltr" inputMode="numeric" maxLength={9} data-enter="zeout" data-agy-id="reg_zeout_input" value={form.zeout}
-              onChange={(e) => setForm((p) => ({ ...p, zeout: e.target.value.replace(/\D/g, '') }))} autoComplete="off" />
+            <input id="ks-r-id" className="inp" dir="ltr" inputMode="numeric" maxLength={9} {...nf('zeout')} data-agy-id="reg_zeout_input" value={form.zeout}
+              onChange={(e) => setForm((p) => ({ ...p, zeout: e.target.value.replace(/\D/g, '') }))} />
           </div>
           <div className={`field${bad('phone1') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-phone">טלפון נייד *</label>
-            <input id="ks-r-phone" className="inp" type="tel" dir="ltr" inputMode="tel" data-enter="phone1" data-agy-id="reg_phone1_input" value={form.phone1} onChange={set('phone1')} autoComplete="off" />
+            <input id="ks-r-phone" className="inp" type="tel" dir="ltr" inputMode="tel" {...nf('phone1')} data-agy-id="reg_phone1_input" value={form.phone1} onChange={set('phone1')} />
           </div>
           {showPhone2 ? (
             <div className={`field${bad('phone2') ? ' bad' : ''}`}>
               <label className="lbl" htmlFor="ks-r-phone2">טלפון נוסף</label>
-              <input id="ks-r-phone2" className="inp" type="tel" dir="ltr" inputMode="tel" data-enter="phone2" data-agy-id="reg_phone2_input" value={form.phone2} onChange={set('phone2')} autoComplete="off" />
+              <input id="ks-r-phone2" className="inp" type="tel" dir="ltr" inputMode="tel" {...nf('phone2')} data-agy-id="reg_phone2_input" value={form.phone2} onChange={set('phone2')} />
             </div>
           ) : null}
           <div className={`field ks-span2${bad('email') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-mail">אימייל{req(eff.require_customer_email === 'true')}</label>
-            <input id="ks-r-mail" className="inp" type="email" dir="ltr" inputMode="email" data-enter="email" data-agy-id="reg_email_input" value={form.email} onChange={set('email')} autoComplete="off" />
+            <input id="ks-r-mail" className="inp" type="email" dir="ltr" inputMode="email" {...nf('email')} data-agy-id="reg_email_input" value={form.email} onChange={set('email')} />
           </div>
         </div>
         <div className="ks-grid ks-grid-3">
           <div className={`field${bad('city') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-city">עיר{req(needFullAddress)}</label>
-            <input id="ks-r-city" className="inp" data-enter="city" data-agy-id="reg_city_input" value={form.city} onChange={set('city')} autoComplete="off" />
+            <input id="ks-r-city" className="inp" {...nf('city')} data-agy-id="reg_city_input" value={form.city} onChange={set('city')} />
           </div>
           <div className={`field${bad('street') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-street">רחוב{req(needFullAddress)}</label>
-            <input id="ks-r-street" className="inp" data-enter="street" data-agy-id="reg_street_input" value={form.street} onChange={set('street')} autoComplete="off" />
+            <input id="ks-r-street" className="inp" {...nf('street')} data-agy-id="reg_street_input" value={form.street} onChange={set('street')} />
           </div>
           <div className={`field${bad('houseNum') ? ' bad' : ''}`}>
             <label className="lbl" htmlFor="ks-r-house">מספר בית{req(needFullAddress)}</label>
-            <input id="ks-r-house" className="inp" inputMode="numeric" data-enter="houseNum" data-agy-id="reg_houseNum_input" value={form.houseNum} onChange={set('houseNum')} autoComplete="off" />
+            <input id="ks-r-house" className="inp" inputMode="numeric" {...nf('houseNum')} data-agy-id="reg_houseNum_input" value={form.houseNum} onChange={set('houseNum')} />
           </div>
         </div>
 
@@ -200,20 +205,20 @@ export default function KioskRegistration({
 
         <div className="ks-consent">
           <div className="ks-consent-row">
-            <YesNo id="ks-terms" label="חתמ/ה על התקנון *" value={form.acceptedTerms} enterName="acceptedTerms" invalid={bad('acceptedTerms')}
+            <YesNo id="ks-terms" label="חתמ/ה על התקנון *" value={form.acceptedTerms} invalid={bad('acceptedTerms')}
               onChange={(v) => setForm((p) => ({ ...p, acceptedTerms: v }))} />
             <button type="button" className="ks-link" data-agy-id="kiosk_view_terms_btn" onClick={() => setDoc('terms')}><KIcon id="file" size="sm" />צפייה בתקנון</button>
           </div>
           {form.acceptedTerms === false ? <p className="ks-hint">אפשר לחתום על התקנון גם אצל העובדת.</p> : null}
           {showMarketing ? (
             <div className="ks-consent-row">
-              <YesNo id="ks-mkt" label="מאשר/ת קבלת דיוורים *" value={form.marketingConsent} enterName="marketingConsent" invalid={bad('marketingConsent')}
+              <YesNo id="ks-mkt" label="מאשר/ת קבלת דיוורים *" value={form.marketingConsent} invalid={bad('marketingConsent')}
                 onChange={(v) => setForm((p) => ({ ...p, marketingConsent: v }))} />
             </div>
           ) : null}
           <div className={`ks-consent-row ks-privacy${bad('acceptedPrivacy') ? ' bad' : ''}`}>
             <label className="ks-check">
-              <input type="checkbox" data-enter="acceptedPrivacy" data-agy-id="reg_privacy_input" checked={form.acceptedPrivacy}
+              <input type="checkbox" data-agy-id="reg_privacy_input" checked={form.acceptedPrivacy}
                 onChange={(e) => setForm((p) => ({ ...p, acceptedPrivacy: e.target.checked }))} />
               <span>אישרתי את מדיניות הפרטיות *</span>
             </label>

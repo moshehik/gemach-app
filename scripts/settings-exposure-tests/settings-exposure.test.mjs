@@ -226,7 +226,12 @@ const SESSION_BOUND = {
   'app/components/login/LoginNew.js': ['notify_on_new_message_at_login'],
   // the legacy kiosk page: every data call it makes (/api/dresses, /api/orders, /api/customers, /api/employees full) needs an employee cookie
   // when require_login is on, so these business rules are only ever useful - and only ever served - with a session
-  'app/customer-interface/page.js': ['kiosk_customer_self_service', 'kiosk_allow_self_order', 'mandatory_fields', 'require_customer_email', 'require_full_address', 'require_marketing_consent', 'hide_marketing_consent_field'],
+  'app/customer-interface/LegacyKioskPage.js': ['kiosk_customer_self_service', 'kiosk_allow_self_order', 'mandatory_fields', 'require_customer_email', 'require_full_address', 'require_marketing_consent', 'hide_marketing_consent_field'],
+  // the A5 kiosk skin (feature/kiosk-a5-skin, integrated 2026-10-12; app/customer-interface/page.js now only picks a variant): same situation as the legacy page - the data it shows
+  // (dresses, orders, customers) needs an employee session on the shop's logged-in computer, so these reads are session-bound, deliberately NOT on PUBLIC_SETTING_KEYS.
+  // The customer-facing public route (/station) never calls /api/settings: it gets its flags from /api/public-kiosk/config and a server-side allow-list loader.
+  'app/components/kiosk/KioskSwitch.js': ['ui_variant_kiosk'],
+  'app/components/kiosk/KioskA5.js': ['gmach_name', 'kiosk_customer_self_service', 'kiosk_splash_screen'],
 };
 
 function listFiles(dir) {
@@ -267,7 +272,7 @@ test('(e) the scanner sees the public screens (sanity: it is not vacuous)', () =
   for (const f of ['app/customer-interface/page.js', 'app/punch-clock/PunchClockLegacy.js', 'app/components/login/LoginNew.js', 'app/components/LoginScreen.js', 'app/components/login/PunchClockNew.js', 'app/components/AIFloatingWidget.js']) {
     assert.ok(scanned.includes(f), `${f} is scanned`);
   }
-  assert.ok(keysReadBy('app/customer-interface/page.js').has('kiosk_sticky_date_bar'));
+  assert.ok(keysReadBy('app/customer-interface/LegacyKioskPage.js').has('kiosk_sticky_date_bar'));
   assert.ok(keysReadBy('app/components/login/PunchClockNew.js').has('laundress_return_check_on_exit'));
   assert.ok(keysReadBy('app/components/LoginScreen.js').has('notify_on_new_message_at_login'));
   assert.ok(KNOWN_KEYS.size > 150, 'settings metadata parsed');
@@ -371,7 +376,9 @@ test('(f) no public page / print view / popup fetches a closed route without a s
     'app/components/dress-card/useDressCard.js', 'app/components/dress-new/LegacyNewDressPage.js', 'app/components/dress-new/useModelNewController.js',
     'app/dashboard/dresses/[id]/LegacyDressCardPage.js', 'app/dashboard/pricelist/page.js', 'app/admin/database/page.js', 'components/ClipboardDebugger.js',
     // the legacy kiosk: every data call it makes already needs an employee cookie
-    'app/customer-interface/page.js',
+    'app/customer-interface/LegacyKioskPage.js',
+    // the A5 kiosk skin used by the shop's logged-in computer (integrated 2026-10-12); the customer-facing public route /station uses other components of the same folder
+    'app/components/kiosk/KioskA5.js',
     // cache bookkeeping lists, not fetches
     'lib/apiCache.js',
   ]);
@@ -393,8 +400,10 @@ test('(f) no public page / print view / popup fetches a closed route without a s
       if (closedPaths.some((p) => stripComments(fs.readFileSync(path.join(PROJ, rel), 'utf8')).includes(p))) consumers.push(rel);
     }
   })(d);
-  assert.ok(consumers.includes('app/dashboard/pricelist/page.js') && consumers.includes('app/customer-interface/page.js'), 'the consumer scan is not vacuous');
+  assert.ok(consumers.includes('app/dashboard/pricelist/page.js') && consumers.includes('app/customer-interface/LegacyKioskPage.js'), 'the consumer scan is not vacuous');
   const unexpected = consumers.filter((f) => !allowed.has(f) && !f.startsWith('app/api/'));
   assert.deepEqual(unexpected, [], 'a new consumer of a closed route: check it runs with a session, then add it to the allowed list');
-  for (const f of ['app/print', 'app/station', 'app/privacy', 'app/terms', 'app/components/kiosk', 'app/components/a5-print']) assert.ok(!consumers.some((c) => c.startsWith(f + '/')), `${f} does not use a closed route`);
+  // app/components/kiosk holds both the shop kiosk (KioskA5.js - session-bound, allowed above) and the PUBLIC /station screens (KioskPublic / KioskRegistration / ...): only the latter must stay clear
+  const SHOP_KIOSK_ONLY = ['app/components/kiosk/KioskA5.js'];
+  for (const f of ['app/print', 'app/station', 'app/privacy', 'app/terms', 'app/components/kiosk', 'app/components/a5-print']) assert.ok(!consumers.some((c) => c.startsWith(f + '/') && !SHOP_KIOSK_ONLY.includes(c)), `${f} does not use a closed route`);
 });
