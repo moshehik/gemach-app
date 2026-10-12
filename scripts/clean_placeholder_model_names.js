@@ -23,6 +23,7 @@
  */
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { Client } = require('pg');
@@ -31,8 +32,8 @@ const { parseOrgArg, resolveDbUrl, loadEnvFiles } = require('./lib/db-env');
 
 const ROOT = path.join(__dirname, '..');
 const BOOLEAN_FLAGS = new Set(['apply', 'dry-run', 'i-know-this-is-prod', 'not-prod', 'include-obligations', 'help']);
-const VALUE_FLAGS = new Set(['confirm-host']);
-const USAGE = 'Usage: node scripts/clean_placeholder_model_names.js --confirm-host <full DB host | ep-xxxx> [--org=1|2] [--i-know-this-is-prod | --not-prod] [--include-obligations] [--apply]\nDRY RUN by default (nothing is written without --apply).';
+const VALUE_FLAGS = new Set(['confirm-host', 'backup-file']);
+const USAGE = 'Usage: node scripts/clean_placeholder_model_names.js --confirm-host <full DB host | ep-xxxx> [--org=1|2] [--i-know-this-is-prod | --not-prod] [--include-obligations] [--apply --backup-file=<new file.json>]\nDRY RUN by default (nothing is written without --apply).';
 
 function parseArgs(argv) {
   const { org, rest } = parseOrgArg(argv);
@@ -54,6 +55,7 @@ function parseArgs(argv) {
   if (!opts['confirm-host']) throw new Error('--confirm-host <full DB host or ep-xxxx endpoint id> is required');
   if (opts['not-prod'] && opts['i-know-this-is-prod']) throw new Error('--not-prod and --i-know-this-is-prod are mutually exclusive');
   if (opts.apply && opts['dry-run']) throw new Error('--apply and --dry-run are mutually exclusive');
+  if (opts.apply && !opts['backup-file']) throw new Error('--apply requires --backup-file=<path of a NEW .json file> (the full before/after list; restore with scripts/clean_placeholder_model_names_rollback.js)');
   return opts;
 }
 
@@ -71,6 +73,12 @@ async function connect(url) {
     try { await client.connect(); return client; } catch (e) { last = e; await new Promise((r) => setTimeout(r, 8000)); }
   }
   throw last;
+}
+
+function writeBackup(file, body) {
+  const fd = fs.openSync(path.resolve(file), 'wx'); // wx: נכשל אם הקובץ כבר קיים
+  try { fs.writeSync(fd, JSON.stringify({ version: 1, ...body }, null, 1)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+  console.log(`backup written: ${path.resolve(file)} (${body.models.length} models, ${body.items.length} items, ${body.obligations.length} obligations)`);
 }
 
 async function run(client, opts, lib, log = console.log) {
@@ -110,6 +118,8 @@ async function run(client, opts, lib, log = console.log) {
     if (!opts.apply) { log(`\nDRY RUN - nothing written. ${total} change(s) would be applied with --apply.`); return { total, applied: 0 }; }
     if (total === 0) { log('\nNothing to do.'); return { total, applied: 0 }; }
 
+    // גיבוי לפני הכתיבה: הרשימה המלאה (id / לפני / אחרי) של כל שורה שתשתנה - קובץ חדש בלבד (לא דורס), נכתב ונסגר לפני ה-UPDATE הראשון. שחזור: clean_placeholder_model_names_rollback.js
+    writeBackup(opts['backup-file'], { at: new Date().toISOString(), models: mp.renames.map((r) => ({ id: r.id, from: r.from, to: r.to })), items: ip.map((u) => ({ id: u.id, from: u.from, to: u.to })), obligations: op.updates.map((u) => ({ id: u.id, from: u.from, to: u.to })) });
     await client.query('BEGIN');
     let applied = 0;
     for (const r of mp.renames) {
