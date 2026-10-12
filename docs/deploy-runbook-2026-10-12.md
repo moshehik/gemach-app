@@ -3,12 +3,26 @@
 ענף: `integrate/2026-10-12` (worktree `C:\wt\wt-integrate-2026-10-12`). **מסמך זה לא הורץ. שום פקודה בו לא הורצה מול אף DB.** כל פקודה היא העתק של הנוסח שבכותרת הסקריפט (נקראו אחד אחד).
 שני הגמ"חים: **ראשי** (org1, אתר `gemach-app-uyh4-beryl.vercel.app`, DB `ep-weathered-tree-avpypjjr`) ו**נווה יעקב** (org2, אתר `gmach-neve-yaakov.vercel.app`, DB `ep-young-math-b1veujp3`).
 
+## החלטות הבעלים בלילה (קובעות על כל מה שבהמשך)
+
+- **הקישור הציבורי `/station` נשאר כבוי** בשני הגמ"חים (`kiosk_public_link_enabled=false`; ב7). לא מדליקים.
+- **ברקוד בלו"ז בנווה לא מדליקים:** ב4 רץ **בלי** `--profile=neve` (יוצר שורות `off` בלבד) או לא רץ בכלל. את הפרופיל (`prep` / `pickup`) מחליטים בנפרד, אחרי הלילה.
+- **משלוח משותף בנווה:** seed של המחיר (20 ש"ח, כבוי) ← dry-run של דוח ההשפעה ← בדיקה והצגה לבעלים ← הדלקה (ב3 ← ב3א ← ב3ב).
+- **ניקויים בנווה (סעיף ג):** רק אחרי בדיקת העשן הסופית, ובלי `--include-obligations`.
+- **בגמ"ח הראשי לא מריצים seeds** (ר' פתיח סעיף ב).
+
 ## 0. הכנה לפני תחילת הלילה
 
-1. **חיבורי DB לסקריפטים.** הסקריפטים קוראים `PROD_DATABASE_URL` (org1) ו-`PROD_DATABASE_URL_ORG2` (org2) מהסביבה או מ-`.env.local` שבשורש הפרויקט (`scripts/lib/db-env.js`). ב-worktree של האינטגרציה אין `.env.local`: או מעתיקים אליו את `.env.local` מהריפו הראשי (קובץ מקומי שאינו ב-git), או מגדירים את שני המשתנים בחלון ה-PowerShell. הסקריפטים `size_cleanup_*` ו-`seed_neve_new_ui_default`/`clean_placeholder_*` משתמשים גם ב-`--env "C:\Users\moshe\Desktop\גמח שמלות חדש\gemach-app\scratch\new_gemach_db.env" --var PROD_DATABASE_URL` (נווה). **לעולם לא להדפיס/להדביק מחרוזות חיבור.**
-2. **לפני כל כתיבה: dry-run ואימות ה-host.** כל סקריפט מדפיס את ה-host שאליו הוא מחובר - לוודא שהוא `ep-weathered-tree…` לראשי ו-`ep-young-math…` לנווה, ורק אז לחזור עם דגל הכתיבה.
-3. **גיבוי:** לפני ה-DDL וה-seeds - נקודת שחזור לשני ה-DB (ענף Neon / snapshot לפי `memory/neon-db-infrastructure`). הניקויים של נווה (סעיף ג') מייצרים גיבוי משלהם.
-4. מצב הענף: `prisma validate` עבר; `prisma migrate diff` בין הסכמה של `origin/main` (9a56d6ab) לסכמה הסופית מניב **בדיוק** את הפער שמכוסה בסעיף א' (ראו שם). בדיקות: 142 משימות, 15 כשלים - כולם הכשלים הקיימים ב-`origin/main` (ר' `docs/integration-2026-10-12.md`).
+1. **חיבורי DB לסקריפטים.** `scripts/lib/db-env.js` (שורה 23) קורא קודם את `.env.local` ואחריו את `.env` משורש הפרויקט, וערך שכבר קיים בסביבה גובר. מחרוזות החיבור (`PROD_DATABASE_URL` לראשי, `PROD_DATABASE_URL_ORG2` לנווה) נמצאות ב-**`.env`** של הריפו הראשי; `.env.local` שם מכיל רק `NEON_API_KEY`. ב-worktree של האינטגרציה אין אף אחד מהם, ולכן: **או** להעתיק אליו את `.env` (וגם `.env.local`) מהריפו הראשי (קבצים מקומיים שאינם ב-git), **או** להגדיר `PROD_DATABASE_URL` ו-`PROD_DATABASE_URL_ORG2` בחלון ה-PowerShell. בחירת הארגון בכל הסקריפטים: `--org=1|2`.
+   **חריג:** רק `size_cleanup_apply.js` / `size_cleanup_rollback.js` (סעיף ג1) משתמשים ב-`--env "<קובץ env>" --var PROD_DATABASE_URL` (לנווה: `…\gemach-app\scratch\new_gemach_db.env`), ו-`set-ui-variant.js` קורא `DATABASE_URL` מהסביבה (בלי `--org`). כל השאר (`seed_*`, `clean_placeholder_model_names*`, `apply_*_ddl`, `apply_pending_ddl`) ב-`--org=1|2`. **לעולם לא להדפיס/להדביק מחרוזות חיבור.**
+2. **לפני כל כתיבה: dry-run ואימות ה-host.** סקריפטי ה-DDL, `seed_neve_new_ui_default`, `seed_shared_delivery_neve`, `seed_customer_consent_settings`, `seed_barcode_entry_settings`, `seed_quick_barcode_setting` והניקויים מדפיסים את ה-host שאליו הם מחוברים - לוודא `ep-weathered-tree…` לראשי ו-`ep-young-math…` לנווה, ורק אז לחזור עם דגל הכתיבה. סקריפטים שאינם מדפיסים host (`seed_order_docs_delivery_settings`, `seed_new_order_customer_list_filter_setting`, `seed_kiosk_public_settings`, `seed_email_center_settings`) מוגנים רק ב-`--org=2` ובכך שהמשתנה `PROD_DATABASE_URL_ORG2` מצביע על נווה - לוודא זאת לפני ההרצה. **שומרים את פלט כל dry-run לקובץ** (ר' 0.3ד).
+3. **גיבוי ונקודת חזרה (לפני ה-DDL וה-seeds):**
+   - **א. גיבוי מיידי בשני האתרים:** `/admin/backups` ← "גיבוי מיידי", בכל אחד מהאתרים (`gemach-app-uyh4-beryl.vercel.app`, `gmach-neve-yaakov.vercel.app`), והמתנה ל"הצליח" ביומן הגיבויים.
+   - **ב. Neon branch בשם `pre-integrate-2026-10-12` לכל פרויקט** (לפי CLAUDE.md: הראשי `gemach-main-prod`, נווה `gemach-dresses-2`; לאמת מזהה פרויקט ו-endpoint ב-`docs/vercel-resource-audit-2026-09-20.md` וב-CLAUDE.md לפני היצירה - כי פרויקטי Neon עברו החלפות). branch הוא נקודת עזר לבדיקה בלבד; **אין לשחזר ממנו DB** (ר' ו.10).
+   - **ג. רישום מזהה ה-deployment הנוכחי** (Production) של כל פרויקט Vercel (`gemach-app-uyh4`, `gmach-neve-yaakov`) - זו נקודת החזרה ל-Instant Rollback.
+   - **ד. שמירת פלט כל dry-run לקובץ** (למשל `C:\wt\backups\integrate-2026-10-12\<שם>.txt`) - ובמיוחד לפני `--clear-user-legacy-overrides` (ב1), שמשנה `Employee.themeColor` בלי גיבוי אחר.
+   - הניקויים של נווה (סעיף ג') מייצרים גיבוי משלהם.
+4. מצב הענף: `prisma validate` עבר; `prisma migrate diff` בין הסכמה של `origin/main` (9a56d6ab) לסכמה הסופית מניב **בדיוק** את הפער שמכוסה בסעיף א' (ראו שם). בדיקות: 144 משימות, 15 כשלים - כולם הכשלים הקיימים ב-`origin/main` (ר' `docs/integration-2026-10-12.md`).
 5. **משתני סביבה ב-Vercel:** אין חובה להוסיף. אופציונליים (מרכז מיילים, תזמון מדויק של דיוורים בלבד): `EMAIL_SCHEDULER_URL`, `EMAIL_SCHEDULER_SECRET` (Apps Script, `docs/gas-campaign-scheduler.gs`), `EMAIL_SITE_ORIGIN`. **`EMAIL_DRY_RUN` אסור להגדיר בפרודקשן** (מצב יבש - אף מייל לא יוצא).
 6. **Vercel "Ignored Build Step":** דחיפה ל-`main` שהקומיט האחרון שלה הוא בדיקות/מסמכים בלבד עלולה לא להפעיל פריסה. הקומיט האחרון שנדחף חייב להיות קומיט קוד (בדרך כלל עדכון גרסה) או להכיל `[force-deploy]` (ר' `memory/vercel-ignore-build-step-force-deploy`). מגבלת 100 פריסות ליום - פריסה אחת בלבד.
 
@@ -65,21 +79,21 @@ node scripts/apply_pending_ddl.js --file=auth-throttle --org=2 --apply --expect-
 
 ## ב. Seeds (נווה בלבד, ממוקדי ארגון) - **אחרי** שהפריסה הושלמה ונבדקה
 
-כולם: dry-run קודם, לבדוק שה-host הוא `ep-young-math…`, ואז הדגל. אף ערך קיים לא נדרס אלא היכן שנאמר. סדר ההפעלה:
+כולם: dry-run קודם (פלט הדרי-ראן נשמר לקובץ), לבדוק את ה-host/הארגון לפי סעיף 0.2, ואז הדגל. **ערך קיים לא נדרס, חוץ מ:** ב1 (`ui_variant_*` נכתבים `a5`), ב2 עם `--force-delivery-item-row`, ב3ב (`--enable` מדליק), וב4 עם פרופיל (דורס את שלושת המפתחות). לפני `--clear-user-legacy-overrides` (ב1) חובה לשמור את פלט ה-dry-run לקובץ (שינוי `Employee.themeColor` ללא גיבוי אחר). **בגמ"ח הראשי לא מריצים seeds:** כל ברירות המחדל בקוד זהות לערכים שה-seeds יוצרים, וההרצה רק מוסיפה שורות. אם בכל זאת מריצים seed בראשי - לעצור אם בפלט אין host שמתחיל ב-`ep-weathered-tree` (סקריפט שאינו מדפיס host לא מריצים בראשי). סדר ההפעלה:
 
 | # | מטרה | פקודה (dry-run ← כתיבה) | מה נכתב / הערות |
 |---|---|---|---|
-| ב1 | **ממשק חדש כברירת מחדל בנווה** | `node scripts/seed_neve_new_ui_default.js --org=2` ← `node scripts/seed_neve_new_ui_default.js --org=2 --write --confirm-host ep-young-math-b1veujp3 --clear-user-legacy-overrides` | שורות `ui_variant_<מסך>` = `a5` לכל מסך שיש לו גרסה חדשה; `--clear-user-legacy-overrides` מסיר בחירות אישיות 'legacy' של עובדות פעילות (הן יקבלו את ברירת המחדל; לחצן "חזרה לממשק החדש" נשאר). מסרב על org1; בודק ש-`gmach_name` מכיל "נווה"; `--confirm-host` = ה-host המלא או `ep-…` כפי שהודפס. **Rollback:** `ui_variant_*` = `legacy` (`scripts/set-ui-variant.js`). |
+| ב1 | **ממשק חדש כברירת מחדל בנווה** | `node scripts/seed_neve_new_ui_default.js --org=2` ← `node scripts/seed_neve_new_ui_default.js --org=2 --write --confirm-host ep-young-math-b1veujp3 --clear-user-legacy-overrides` | שורות `ui_variant_<מסך>` = `a5` לכל מסך שיש לו גרסה חדשה; `--clear-user-legacy-overrides` מסיר בחירות אישיות 'legacy' של עובדות פעילות (הן יקבלו את ברירת המחדל; לחצן "חזרה לממשק החדש" נשאר). מסרב על org1; בודק ש-`gmach_name` מכיל "נווה"; `--confirm-host` = ה-host המלא או `ep-…` כפי שהודפס. **לפני `--clear-user-legacy-overrides`: שמירת פלט ה-dry-run לקובץ.** **Rollback:** `ui_variant_*` = `legacy` ב-`set-ui-variant.js --screen <מסך> --value legacy --scope org --confirm-host <ep-…> --apply` (קורא `DATABASE_URL` מהסביבה; dry-run כברירת מחדל), ובחירות אישיות: `--scope user --employee <id> --clear`. |
 | ב2 | **כתובת איסוף + משלוח כשורת פריט + נוסח "שימו לב"** | `node scripts/seed_order_docs_delivery_settings.js --org=2` ← `... --org=2 --write` (ואם `delivery_as_item_row` כבר קיים כ-`false`: להוסיף `--force-delivery-item-row`) | `gmach_pickup_address` = `צוקרמן 1, נווה יעקב`, `delivery_as_item_row` = `true`, `gmach_pickup_maps_url` = ריק, `delivery_notice_text` / `delivery_outbound_hours` / `delivery_return_hours` = ברירות המחדל שאישר הבעלים. ערך קיים לא נדרס (חוץ מהדגל הנ"ל). |
 | ב3 | **משלוח משותף: מחיר** | `node scripts/seed_shared_delivery_neve.js --org=2` ← `node scripts/seed_shared_delivery_neve.js --org=2 --write` | `shared_delivery_price_mode=global`, `shared_delivery_price=20`, `shared_delivery_enabled=false` (נוצר **כבוי**). |
 | ב3א | **דוח לפני ההדלקה** | `$env:SD_DATABASE_URL = '<DB נווה>'; node scripts/shared_delivery_reprice.mjs --simulate-enabled --expect-host=ep-young-math` | dry-run בלבד: אילו הזמנות עתידיות היו משתנות, בכמה, ואילו זיכויים/חובות היו נוצרים. **להציג לבעלים.** (`--simulate-enabled` דורש שב3 כבר רץ.) |
 | ב3ב | **הדלקה (רק אחרי אישור הדוח)** | `node scripts/seed_shared_delivery_neve.js --org=2 --enable` ← `node scripts/seed_shared_delivery_neve.js --org=2 --enable --write` | מדליק `shared_delivery_enabled=true`; מסרב אם `enable_deliveries` אינו `true` או שהמחיר חסר. מרגע ההדלקה שמירות הזמנות בקבוצה ישנו חיובים (עם זיכוי/חוב מסומנים). אחרי ההדלקה, אם הבעלים רוצה לחשב מחדש הזמנות קיימות: `shared_delivery_reprice.mjs ... --write --expect-host=ep-young-math` (רק אחרי הדוח). |
-| ב4 | **ברקוד בלו"ז (פרופיל נווה)** | `node scripts/seed_barcode_entry_settings.js --org=2 --profile=neve` ← `node scripts/seed_barcode_entry_settings.js --org=2 --profile=neve --write --expect-host=ep-young-math` | `barcode_entry_when_delivery=prep`, `barcode_entry_when_local_pickup=pickup`, `barcode_return_scan_required=false`. **זה מדליק את הפיצ'ר בנווה** (תשובות הבעלים 12.10). בראשי: שורות `off` בלבד (אופציונלי): `--org=1 --write --expect-host=ep-weathered-tree`. |
-| ב5 | **מסנן בורר הלקוחות** | `node scripts/seed_new_order_customer_list_filter_setting.js --org=2` ← `... --org=2 --write`;  וגם `--org=1` ← `--org=1 --write` | נווה = `complete`, ראשי = `all`. ערך קיים לא נדרס. |
-| ב6 | **הסכמות (כבויות)** | `node scripts/seed_customer_consent_settings.js --org=2` ← `... --org=2 --apply --expect-host=ep-young-math`; וכן `--org=1 --apply --expect-host=ep-weathered-tree` | `explicit_consent_enabled=false`, `require_privacy_acceptance=true`, `privacy_policy_text=''`. **לא מדליקים** את ההסכמות המפורשות בלילה הזה (דורש DDL של CustomerConsent + החלטת בעלים; ר' `docs/customer-consents.md`). |
-| ב7 | **עמדה ציבורית: הקישור נשאר כבוי** | `node scripts/seed_kiosk_public_settings.js --org=2` ← `... --org=2 --write`; וכן `--org=1` | **שונה בשלב ב':** הסקריפט המקורי יצר בנווה `kiosk_public_link_enabled=true`; לפי החלטת הרכז הוא עודכן כך ששלושת המפתחות (`kiosk_public_link_enabled`, `_show_inventory`, `_show_registration`) נוצרים `false` **בשני** הגמ"חים. **לא להדליק** את `kiosk_public_link_enabled` (הכתובת `/station` תציג "העמדה אינה זמינה"). |
-| ב8 | מרכז מיילים - מתגי דוחות (אופציונלי) | `node scripts/seed_email_center_settings.js --org=N` ← `... --org=N --write` (N=1,2) | יוצר `daily_manager_report_enabled`, `manual_barcode_daily_report`, `order_quick_mail_enabled` = `false` (= ההתנהגות הנוכחית) כדי שיופיעו בהגדרות. לא חובה. |
-| ב9 | חיפוש מהיר - השכרה בברקוד (אופציונלי) | `node scripts/seed_quick_barcode_setting.js --org=N` ← `... --org=N --write --expect-host=<תחילית>` | יוצר `quick_search_barcode_opens_rental=false`. הזרימה עצמה (החזרה/מעבר הזמנה) פעילה גם בלי ההגדרה; ההגדרה מוסיפה רק פתיחת **השכרה** לפריט פנוי. |
+| ב4 | **ברקוד בלו"ז - נווה נשאר כבוי** | `node scripts/seed_barcode_entry_settings.js --org=2` ← `node scripts/seed_barcode_entry_settings.js --org=2 --write --expect-host=ep-young-math` (**בלי `--profile=neve`**; או לדלג על ב4 לגמרי) | יוצר שורות `off` בלבד. **החלטת הבעלים בלילה: לא מדליקים.** הפרופיל `--profile=neve` (`barcode_entry_when_delivery=prep`, `barcode_entry_when_local_pickup=pickup`, `barcode_return_scan_required=false`) מדליק את הפיצ'ר ונשמר להחלטה נפרדת. |
+| ב5 | **מסנן בורר הלקוחות (נווה)** | `node scripts/seed_new_order_customer_list_filter_setting.js --org=2` ← `... --org=2 --write` | נווה = `complete`. ערך קיים לא נדרס. בראשי לא מריצים (ברירת המחדל בקוד `all`). |
+| ב6 | **הסכמות (כבויות) - נווה** | `node scripts/seed_customer_consent_settings.js --org=2` ← `... --org=2 --apply --expect-host=ep-young-math` | `explicit_consent_enabled=false`, `require_privacy_acceptance=true`, `privacy_policy_text=''`. **לא מדליקים** את ההסכמות המפורשות בלילה הזה (דורש DDL של CustomerConsent + החלטת בעלים; ר' `docs/customer-consents.md`). בראשי לא מריצים. |
+| ב7 | **עמדה ציבורית: הקישור נשאר כבוי (נווה)** | `node scripts/seed_kiosk_public_settings.js --org=2` ← `... --org=2 --write` | **שונה בשלב ב':** הסקריפט המקורי יצר בנווה `kiosk_public_link_enabled=true`; לפי החלטת הרכז הוא עודכן כך ששלושת המפתחות (`kiosk_public_link_enabled`, `_show_inventory`, `_show_registration`) נוצרים `false`. **לא להדליק** את `kiosk_public_link_enabled` (הכתובת `/station` תציג "העמדה אינה זמינה"). בראשי לא מריצים. |
+| ב8 | מרכז מיילים - מתגי דוחות (אופציונלי, נווה) | `node scripts/seed_email_center_settings.js --org=2` ← `... --org=2 --write` | יוצר `daily_manager_report_enabled`, `manual_barcode_daily_report`, `order_quick_mail_enabled` = `false` (= ההתנהגות הנוכחית) כדי שיופיעו בהגדרות. לא חובה. בראשי לא מריצים. |
+| ב9 | חיפוש מהיר - השכרה בברקוד (אופציונלי, נווה) | `node scripts/seed_quick_barcode_setting.js --org=2` ← `... --org=2 --write --expect-host=ep-young-math` | יוצר `quick_search_barcode_opens_rental=false`. הזרימה עצמה (החזרה/מעבר הזמנה) פעילה גם בלי ההגדרה; ההגדרה מוסיפה רק פתיחת **השכרה** לפריט פנוי. בראשי לא מריצים. |
 | ב10 | סניפים / לו"ז | אין seed | `multi_branch_enabled` ושאר הגדרות הסניפים (`branches_config`, `branch_transfer_*`, `branch_return_alert_enabled`, `reserve_return_alert_enabled`) נכתבות רק ממסך `/admin/branches` ומחלון "הגדרות תהליכים" בלו"ז; בלילה הזה נשארות כבויות. ההגדרות הקיימות `branch_list`/`branches_enabled` של נווה לא משתנות. |
 
 פרטי הסדר: ב1 ו-ב2 לא תלויים זה בזה; ב3 → ב3א → (אישור) → ב3ב; ב6 אחרי א2 (DDL של `CustomerConsent`) אם בכלל תופעל ההסכמה.
@@ -128,7 +142,7 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 | `delivery_notice_text`, `delivery_outbound_hours`, `delivery_return_hours` | כיתוב "שימו לב" ושעות הכיוונים במייל אישור ההזמנה (שורה ריקה = מוסתר) | ברירות המחדל של נווה מובנות בקוד | נוסח הבעלים (ב2) | לא רלוונטי |
 | `shared_delivery_enabled` | משלוח משותף: מחיר מוזל לכתובת זהה באותו יום (ורק עם `enable_deliveries`) | כבוי | `false` ← `true` אחרי הדוח (ב3ב) | כבוי |
 | `shared_delivery_price_mode` / `shared_delivery_price` / `shared_delivery_price_by_city` | סוג ומחיר המחיר המוזל לצד | - | `global` / `20` / ריק | לא מוגדר |
-| `barcode_entry_when_delivery`, `barcode_entry_when_local_pickup` | מתי מזינים ברקוד בלו"ז: `off` / `prep` / `pickup` | `off` | `prep` / `pickup` (ב4) | `off` |
+| `barcode_entry_when_delivery`, `barcode_entry_when_local_pickup` | מתי מזינים ברקוד בלו"ז: `off` / `prep` / `pickup` | `off` | `off` (ב4 בלי פרופיל; הפרופיל נשמר להחלטה נפרדת) | `off` |
 | `barcode_return_scan_required` | חסימת "החזרה בוצעה" בלו"ז עד שכל השמלות נסרקו בהחזרה | כבוי | `false` | `false` |
 | `quick_search_barcode_opens_rental` | ברקוד של שמלה פנויה בחיפוש המהיר פותח השכרה | כבוי | `false` (החלטת הבעלים בנפרד) | `false` |
 | `new_order_customer_list_filter` | בורר "לקוח קיים" בהזמנה חדשה: `all` / `complete` | `all` | `complete` (ב5) | `all` |
@@ -140,6 +154,8 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 | `ui_variant_<מסך>` | ברירת מחדל ארגונית לממשק חדש/ישן | לפי תפקיד | `a5` לכל המסכים (ב1) | ללא שינוי |
 | `email_tpl:<מזהה>`, `email_fixed_fields`, `email_campaign_log` | מרכז המיילים (עריכת שורות, שדות קבועים, יומן דיוורים) - JSON שנכתב ממסך המרכז | אין שורה = המייל כמו לפני | לפי הצורך | לפי הצורך |
 | `daily_manager_report_enabled`, `manual_barcode_daily_report`, `order_quick_mail_enabled` | מתגי מייל קיימים בקוד שלא הייתה להם שורה (ב8) | כבוי | `false` | `false` |
+
+**הערה:** בגמ"ח הראשי לא מריצים seeds - עמודת "ראשי" היא ברירת המחדל בקוד כשהשורה חסרה, לא ערך שנכתב.
 
 הרשאות חדשות/רלוונטיות: `/admin/email-center`, `/admin/branches` - הנהלה ראשית; `/station-analytics` - `page:station_analytics`; העברת פריטים בין סניפים - `page:dresses_catalog`.
 
@@ -156,21 +172,28 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 
 ## ו. סדר פעולות מלא לליל הפריסה
 
-1. **הכנה** (סעיף 0): חיבורים, גיבוי/נקודת שחזור לשני ה-DB, לוודא שאף session אחר לא דוחף ל-`main`.
+1. **הכנה** (סעיף 0, כולל "החלטות הבעלים בלילה"): חיבורים, גיבוי מיידי + Neon branch + רישום deployment נוכחי + שמירת dry-run (0.3), לוודא שאף session אחר לא דוחף ל-`main`.
 2. **DDL** (סעיף א) על **שני** ה-DB - קודם dry-run, אחר כך כתיבה: (1) `DressItem` **חובה**, ואז (2) `CustomerConsent`, (3) `StationEvent`, (4) `AuthThrottle`. לוודא "applied. table present: true" / אין שגיאה.
-3. **אימות DDL:** `prisma migrate diff --from-url` לכל DB ריק (עם משתנה סביבה, בלי להדפיס).
-4. **Push:** הרכז מאחד לגרסה, קומיט קוד אחרון (או `[force-deploy]`), `git push origin main` (SSH). לא לדחוף `integrate/…` ישירות כענף נפרד לפרודקשן.
+3. **אימות DDL:** להריץ שוב את ארבעת ה-dry-run (סעיף א) בשני ה-DB ולראות `ALREADY EXISTS` ל-`CustomerConsent` / `StationEvent` / `AuthThrottle`, ו-"עמודות שכבר קיימות: branch, locationBeforeRental" ל-`apply_branches_ddl.js`. (`prisma migrate diff --from-url` מול כל DB, עם משתנה סביבה ובלי להדפיס, הוא אימות נוסף **אופציונלי**.)
+4. **Push:** קודם `git ls-remote origin main` - חייב להחזיר `9a56d6ab…`; אחרת **לעצור** ולמזג מחדש מול ה-`main` החדש (מישהו דחף). אחר כך: הרכז מאחד לגרסה, קומיט קוד אחרון (או `[force-deploy]`), `git push origin main` (SSH). לא לדחוף `integrate/…` ישירות כענף נפרד לפרודקשן.
 5. **המתנה לפריסה** בשני הפרויקטים (`gemach-app-uyh4`, `gmach-neve-yaakov`):
    `gh api repos/moshehik/gemach-app/commits/<sha>/status` עד `state: success` בשני ההקשרים; ואז
    `curl https://gemach-app-uyh4-beryl.vercel.app/api/health` ו-`curl https://gmach-neve-yaakov.vercel.app/api/health` (`{"ok":true,"db":"up"}`), ו-`/api/version` בשניהם (הגרסה = הגרסה שנדחפה).
-6. **בדיקות עשן ראשונות (לפני ה-seeds):** כניסה לשני האתרים; הזמנה קיימת נפתחת; קטלוג שמלות נטען (מוכיח ש-DDL של `DressItem` תקין); חיפוש מהיר; לו"ז יומי נטען.
-7. **Seeds** (סעיף ב) בנווה לפי הסדר ב1…ב9, ובראשי ב5/ב6/ב7(+ב8/ב9 אופציונליים). ב3ב רק אחרי אישור הבעלים לדוח.
+6. **בדיקות עשן ראשונות (לפני ה-seeds), בשני האתרים:** כניסה; **פתיחת הזמנה קיימת** ו**כרטיס דגם**; קטלוג שמלות נטען (מוכיח ש-DDL של `DressItem` תקין); חיפוש מהיר; לו"ז יומי נטען; `GET /api/settings` **בלי עוגייה** מחזיר רשימה קצרה בלבד, ו**עם עוגיית כניסה** מחזיר את הרשימה המלאה; `/privacy` ו-`/terms` נפתחים בלי התחברות; `/station` מציג "העמדה אינה זמינה" ו-`GET /api/public-kiosk/config` מחזיר `{"enabled":false}`; `/customer-interface` נטען; `/landing` נטען; `/api/version` = הגרסה שנדחפה.
+7. **Seeds** (סעיף ב) **בנווה בלבד** לפי הסדר ב1…ב9 (ב4 בלי פרופיל; בראשי לא מריצים seeds). ב3ב רק אחרי אישור הבעלים לדוח.
 8. **ניקויים בנווה** (סעיף ג) - רק אם הרכז ביקש; dry-run, אישור, כתיבה עם גיבוי.
 9. **בדיקות עשן סופיות:**
-   - נווה: כניסה (ממשק חדש כברירת מחדל; לחצן "חזרה לממשק החדש" בכותרת הישנה); הזמנה חדשה (חתימה על תקנון, בורר לקוחות `complete`); הזמנת משלוח - מייל אישור (כתובת איסוף `צוקרמן 1, נווה יעקב` + קישור מפות, שורות משלוח, "שימו לב", בלי קבלה/החזרה בהלוך-חזור); חיפוש מהיר: ברקוד מושכר → "השכרה והחזרה" נפתח, סריקה הבאה עוברת בין הזמנות; לו"ז: שורת הברקוד, הכנה עם ברקוד; `/station` מציג "העמדה אינה זמינה"; `/privacy`, `/terms` נפתחים בלי התחברות.
-   - ראשי: הכול כמו קודם (הממשק הישן/הרגיל, בלי משלוח משותף, בלי ברקוד בלו"ז); מייל אישור הזמנה זהה לקודם; חיפוש ראשי - פאנל התפוסה.
+   - נווה: כניסה (ממשק חדש כברירת מחדל; לחצן "חזרה לממשק החדש" בכותרת הישנה); הזמנה חדשה (חתימה על תקנון, בורר לקוחות `complete`); הזמנת משלוח - מייל אישור (כתובת איסוף `צוקרמן 1, נווה יעקב` + קישור מפות, שורות משלוח, "שימו לב", בלי קבלה/החזרה בהלוך-חזור); חיפוש מהיר: ברקוד מושכר → "השכרה והחזרה" נפתח, סריקה הבאה עוברת בין הזמנות; לו"ז: שורת הסריקה פעילה (קוד שלב מסמן "בוצע"), ובלי חלונית ברקוד כי ברקוד בלו"ז כבוי; `/station` מציג "העמדה אינה זמינה"; `/privacy`, `/terms` נפתחים בלי התחברות.
+   - ראשי: הכול כמו קודם (הממשק הישן/הרגיל, בלי משלוח משותף, בלי ברקוד בלו"ז); מייל אישור הזמנה זהה לקודם; חיפוש ראשי - פאנל התפוסה. בכל האתרים: `/api/version` = הגרסה שנדחפה, `/privacy` ו-`/terms` ללא התחברות, `/station` = "העמדה אינה זמינה".
    - `/admin/email-center`: תצוגה מקדימה של "אישור הזמנה" עם ובלי משלוח (בלי שליחה אמיתית אלא באישור הבעלים); `/admin/branches` נפתח.
-10. **Rollback כללי:** `git revert` של קומיט הפריסה ב-`main` (DDL נשאר - תוספתי ובטוח עם הקוד הישן, חוץ מהעמודות שהקוד הישן לא מכיר ולכן לא נוגע בהן); seeds: מחיקת השורות החדשות או הערכים הקודמים (כולם נוצרו בלי לדרוס); `ui_variant_*` ← `legacy`.
+10. **תוכנית חזרה:**
+   - **קוד:** Vercel **Instant Rollback** לפריסה הקודמת (הרשומה ב-0.3ג) בכל אחד משני הפרויקטים. שים לב: אחרי Instant Rollback דחיפות חדשות ל-`main` **לא יעלו** עד שמקדמים ידנית (Promote) פריסה. חלופה: קומיט חדש שעץ הקבצים שלו זהה ל-`9a56d6ab` - `git read-tree -u --reset 9a56d6ab` ואז commit עם `[force-deploy]` ודחיפה. (לא `git revert` של קומיט המיזוג.)
+   - **DDL:** לא מחזירים (תוספתי ובטוח עם הקוד הישן; העמודות והטבלאות החדשות פשוט לא בשימוש).
+   - **Seeds:** מחיקת השורות החדשות או שחזור לערך הקודם שהודפס ב-dry-run השמור.
+   - **ממשק:** `set-ui-variant.js --screen <מסך> --value legacy --scope org --confirm-host <ep-…> --apply` (או `--scope user --employee <id> --clear`); `DATABASE_URL` מהסביבה, dry-run כברירת מחדל.
+   - **ניקויים בנווה:** סקריפטי ה-rollback (`size_cleanup_rollback.js`, `clean_placeholder_model_names_rollback.js`) עם קובץ הגיבוי, dry-run קודם.
+   - **מה שאי אפשר להחזיר:** מיילים שנשלחו, חיובים/זיכויים אוטומטיים שנרשמו אחרי הדלקת משלוח משותף, שורות `CustomerConsent`.
+   - **אין לשחזר DB מ-branch של Neon** (ולא מגיבוי) אלא באסון נתונים - שחזור מוחק כל כתיבה שנעשתה מאז.
 
 ---
 
@@ -179,5 +202,5 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 1. **קישור ציבורי בנווה:** נשאר כבוי (החלטת הרכז). הסקריפט `seed_kiosk_public_settings.js` שונה בהתאם (המקורי יצר `true` בנווה).
 2. **`delivery_notice` במרכז המיילים:** ברירת המחדל = הנוסח המחושב מההגדרות; עקיפה במרכז מחליפה את כל הבלוק. שדה "כתובת" קבוע במרכז גובר על כתובת האיסוף בטקסט, אך קישור המפות נגזר תמיד מ-`gmach_pickup_address`.
 3. ~~`AuthThrottle` חסר ב-`lib/ai/sqlTablePolicy.js`~~ - תוקן בשלב ג' (נוסף ל-`ALL_TABLES` ול-`NEVER_TABLES`; `test_ai_sql_table_policy` ירוק).
-4. הוראת הבעלים "ברקוד בלו"ז בנווה" (ב4) מדליקה את הפיצ'ר בנווה בעת ההרצה - לוודא שזה רצוי בלילה הזה, אחרת לדלג על `--profile=neve` ולהריץ בלעדיו (`off`).
+4. ~~ברקוד בלו"ז בנווה~~ - הוחלט: לא מדליקים בלילה הזה (ב4 בלי `--profile=neve`); ר' "החלטות הבעלים בלילה".
 5. ב-`origin/main` הממשק של ההסכמות המפורשות כבוי; בנווה לא מתוכנן להדליק בלילה זה.
