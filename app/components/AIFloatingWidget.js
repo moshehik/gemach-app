@@ -14,6 +14,7 @@ import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/u
 import { formatActionSteps } from '../../lib/actionRecorderCore';
 import { useUiVariant } from './UiVariantContext';
 import { useAiDialogs } from './ai-widget/AiDialogs';
+import { extractSafeOpenLinks } from './home/homeLogic';
 import { AI_FILE_INPUT_ACCEPT, validateAiFiles, isAiImageName } from '../../lib/aiAttachmentTypes';
 
 // תפריט צץ שנסגר בלחיצה/מיקוד מחוץ אליו (וגם מחוץ לכפתור שפותח אותו, שמטפל בפתיחה/סגירה בעצמו - אחרת הסגירה
@@ -101,20 +102,7 @@ function extractFilterTerm(content) {
   return { displayText: content.replace(tagRegex, '').trim(), term };
 }
 
-// מפריד תגיות [OPEN_LINK:route|תווית] שה-AI מוסיף (app/api/ai/route.js, ACTION:
-// HOWTO_GUIDE) - מקביל ל-extractOpenSettingKeys אבל לניווט ישיר לעמוד, לא לפתיחת
-// פאנל עריכת הגדרה.
-function extractOpenLinks(content) {
-  if (typeof content !== 'string') return { displayText: content, links: [] };
-  const links = [];
-  const tagRegex = /\[OPEN_LINK:([^\]|]+)\|([^\]]+)\]/g;
-  let match;
-  while ((match = tagRegex.exec(content)) !== null) {
-    links.push({ route: match[1].trim(), label: match[2].trim() });
-  }
-  const displayText = content.replace(tagRegex, '').trim();
-  return { displayText, links };
-}
+// תגיות [OPEN_LINK:route|תווית] (ACTION: HOWTO_GUIDE הישן): extractSafeOpenLinks (home/homeLogic.js) משאירה רק route פנימי תקין - מתחיל ב-"/" ולא ב-"//".
 
 export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
   // במעטפת החדשה (A5) הכפתור והחלונית בכחול-זהב של האתר (class ai-a5, globals.css) במקום צבע הערכה הישנה (--primary-solid).
@@ -767,7 +755,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <div className="chat-thread">
               {messages.map((msg, idx) => {
                 const { displayText: afterSettings, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
-                const { displayText: afterLinks, links: openLinks } = extractOpenLinks(afterSettings);
+                const { displayText: afterLinks, links: openLinks } = extractSafeOpenLinks(afterSettings);
                 const { displayText, term: filterTerm } = extractFilterTerm(afterLinks);
                 return (
                   <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>

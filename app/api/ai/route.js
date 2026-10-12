@@ -290,7 +290,13 @@ The system will then give you the verified map of the new interface for this use
         try {
           fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SITE GUIDE RESPONSE ====\n' + guideOut.response + '\n' + JSON.stringify(guideOut.meta) + '\n\n');
         } catch (e) {}
-        return NextResponse.json({ response: finalizeAiText(guideOut.response), data: null, sqlQuery: null, guide: guideOut.guide, guideHref: guideOut.guideHref });
+        // גם תשובת המדריך עוברת את אימות התגיות (OPEN_SETTING / OPEN_LINK) כמו כל תשובה אחרת (סקירת אבטחה 12.10.2026) - תגית שהמודל המציא לא מגיעה ללקוח
+        const guideText = await finalizeTagsAndText(guideOut.response, {
+          isManager,
+          loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
+          loadHowToCatalog: async () => [],
+        });
+        return NextResponse.json({ response: guideText, data: null, sqlQuery: null, guide: guideOut.guide, guideHref: guideOut.guideHref });
       } catch (err) {
         console.error('Site guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';

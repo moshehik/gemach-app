@@ -364,6 +364,20 @@ export function parseAiTags(content) {
   return { t, settingKeys, links, filter };
 }
 
+// תגיות [OPEN_LINK:route|label] מתוך טקסט תשובת AI, כשרק route פנימי תקין נשמר (safeInternalRoute: מתחיל ב-"/" ולא ב-"//" / "/\\", בלי פרוטוקול או כתובת חיצונית).
+// תגית עם route לא תקין נמחקת מהטקסט ולא הופכת לקישור (סקירת אבטחה 12.10.2026: AIFloatingWidget הציג את ה-route כמו שהוא).
+export function extractSafeOpenLinks(content) {
+  if (typeof content !== 'string') return { displayText: content, links: [] };
+  const links = [];
+  const re = /\[OPEN_LINK:([^\]|]+)\|([^\]]+)\]/g;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    const route = safeInternalRoute(m[1]);
+    if (route) links.push({ route, label: m[2].trim() });
+  }
+  return { displayText: content.replace(re, '').trim(), links };
+}
+
 // קישור פנימי בלבד (OPEN_LINK / _actionUrl / קישורי תוצאות) — לא כתובת חיצונית, פרוטוקול, "//" או "/\".
 // הדפדפן והנתב מתייחסים ל-"\" כמו "/", ולכן נדחים גם "\", תווי בקרה ורווחים, ו-%5C / %2F בתחילת הנתיב.
 // בסוף נבדק גם שפענוח ה-URL נשאר באותו מקור (שומר מפני צורות שלא חזינו מראש).
