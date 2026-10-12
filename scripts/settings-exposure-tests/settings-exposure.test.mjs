@@ -230,8 +230,8 @@ const SESSION_BOUND = {
   // the A5 kiosk skin (feature/kiosk-a5-skin, integrated 2026-10-12; app/customer-interface/page.js now only picks a variant): same situation as the legacy page - the data it shows
   // (dresses, orders, customers) needs an employee session on the shop's logged-in computer, so these reads are session-bound, deliberately NOT on PUBLIC_SETTING_KEYS.
   // The customer-facing public route (/station) never calls /api/settings: it gets its flags from /api/public-kiosk/config and a server-side allow-list loader.
-  'app/components/kiosk/KioskSwitch.js': ['ui_variant_kiosk'],
-  'app/components/kiosk/KioskA5.js': ['gmach_name', 'kiosk_customer_self_service', 'kiosk_splash_screen'],
+  // ui_variant_kiosk / kiosk_splash_screen moved to PUBLIC_SETTING_KEYS on 12.10.2026 (display flags only; an anonymous kiosk machine must honour them)
+  'app/components/kiosk/KioskA5.js': ['gmach_name', 'kiosk_customer_self_service'],
 };
 
 function listFiles(dir) {

@@ -298,3 +298,16 @@ test('email center keys: isAdminOnlySettingKey covers the prefixes; the shared a
   assert.ok(!keys.some((k) => k.startsWith('email_campaign:')));
   assert.ok(keys.includes('email_tpl:orderCreatedAuto') && keys.includes('email_fixed_fields'), 'lib/emailConfig.js (mailer + /api/admin/email-center) still reads them through the cache');
 });
+
+test('kiosk display flags (12.10.2026 review #9): a guest gets ui_variant_kiosk and kiosk_splash_screen, but NOT gmach_name / kiosk_customer_self_service', async () => {
+  seed();
+  let i = 950;
+  for (const k of ['ui_variant_kiosk', 'kiosk_splash_screen', 'gmach_name', 'kiosk_customer_self_service']) globalThis.__SETTINGS.push(row(i++, k, `V-${k}`));
+  SC.invalidateSettingsCache();
+  globalThis.__TIER = 'guest';
+  const g = await get();
+  const keys = g.json.map((s) => s.key);
+  assert.ok(keys.includes('ui_variant_kiosk') && keys.includes('kiosk_splash_screen'));
+  assert.ok(!keys.includes('gmach_name') && !keys.includes('kiosk_customer_self_service'));
+  assert.deepEqual(g.json.find((s) => s.key === 'ui_variant_kiosk'), { key: 'ui_variant_kiosk', value: 'V-ui_variant_kiosk' }, 'only { key, value }');
+});
