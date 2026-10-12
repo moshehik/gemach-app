@@ -33,15 +33,25 @@ const CHANNELS = [
   { id: 'kiosk', label: VIEW_CHANNEL_LABELS.kiosk },
   { id: 'all', label: VIEW_CHANNEL_LABELS.all },
 ];
-const WINDOW_OPTIONS = [7, 14, 21, 30, 45, 60];
+const WINDOW_PILLS = [7, 14, 30, 60].map((n) => ({ id: String(n), label: `${n} ימים` }));
 const SECTIONS = [
   { id: 'sa-sum', label: 'סיכום להיום', icon: 'sig' },
   { id: 'sa-funnel', label: 'משפך ההמרה', icon: 'list' },
   { id: 'sa-daily', label: 'לאורך זמן', icon: 'cal' },
   { id: 'sa-regs', label: 'הרישומים', icon: 'users' },
+  { id: 'sa-how', label: 'איך סופרים', icon: 'info' },
 ];
 const PARENT_LABELS = { visits: 'הנכנסים', availability: 'מי שבדקו זמינות', formStart: 'מי שפתחו את הטופס', registered: 'מי שמילאו פרטים', opened: 'מי שנפתחה להן הזמנה' };
 const VERIFY_LABEL = { pending: 'ממתינה לאימות', repeat: 'רישום חוזר, ממתינה לאימות', verified: 'אומתה' };
+
+/** "איך סופרים": שורות בערכת ההגדרות (li > ic-b + t). windowDays = חלון ההמרה הנבחר. */
+const HOW_ROWS = (windowDays) => [
+  { id: 'visits', icon: 'eye', title: 'נכנסו', text: 'כל כניסה לעמדה בקישור הכללי, פעם אחת ליום לכל מכשיר ולשונית. בלי שמות ובלי כתובות.' },
+  { id: 'reg', icon: 'user', title: 'מילאו פרטים', text: 'לקוחות שהשלימו את הטופס, כל לקוחה פעם אחת. גם לקוחה קיימת שמילאה שוב. לקוחה שנמחקה לא נספרת.' },
+  { id: 'ver', icon: 'userck', title: 'אומתו', text: 'מי שהעובדת סימנה אצלה "אומתה" בכרטיס הלקוחה.' },
+  { id: 'open', icon: 'cart', title: 'נפתחה הזמנה', text: `הלקוחה בעמדה לא מזמינה בעצמה, והעובדת ממשיכה איתה להזמנה. נספרת הזמנה אמיתית שנפתחה אחרי המילוי, עד ${windowDays} ימים (כולל יום המילוי), גם אם נשמרה בלי תשלום. טיוטה והזמנה מבוטלת אינן נספרות. זה המדד העיקרי.` },
+  { id: 'appr', icon: 'check', title: 'הזמנה אושרה או שולמה', text: 'המדד המחמיר: אותה הזמנה, כשהשמלה כבר נתפסה סופית (שולם משהו, יציאה באישור מנהל, או שאין מה לשלם).' },
+];
 
 function Banner({ kind = 'info', icon, heading, text, children }) {
   return (
@@ -94,7 +104,7 @@ function Section({ id, icon, title, extra, children }) {
 }
 
 function StatusChip({ kind, children }) {
-  return <span className={`chip sa-chip-tbl ${kind}`}>{children}</span>;
+  return <span className={`chip ${kind}`}>{children}</span>;
 }
 
 /** preload = { data, list } - נתונים מוכנים לבדיקות רינדור בלי שרת (scripts/station-analytics-tests/ssr.test.mjs); בשימוש רגיל לא מועבר. */
@@ -203,7 +213,7 @@ export default function StationAnalyticsPage({ preload = null }) {
     <div className="gm-ds gm-st gm-sa home-bg dlg-dark" ref={setRoot} dir="rtl" data-agy-id="station_analytics_root">
       <HomeSprite />
       <A5PortalRoot.Provider value={portalRoot}>
-        <div className="app st-view sa-view">
+        <div className="app st-view">
           <div className="st-banners">
             {ok && !d.linkEnabled ? (
               <Banner kind="info" icon="info" heading="הקישור הציבורי כבוי בארגון הזה" text={hasData ? 'מוצגים נתונים מהתקופה שבה הוא היה פתוח. אין איסוף חדש כל עוד הוא כבוי.' : 'כל עוד הוא כבוי אין מה למדוד. בהגדרות המערכת אפשר להפעיל אותו.'} />
@@ -222,21 +232,17 @@ export default function StationAnalyticsPage({ preload = null }) {
             </div>
           </div>
 
-          <div className="hf-bar adm-bar st-bar sa-bar" role="group" aria-label="סינון">
+          <div className="hf-bar adm-bar st-bar" role="group" aria-label="סינון">
             <Seg label="תקופה" idPrefix="sa_preset" options={PRESETS} value={preset} onChange={pickPreset} />
             {preset === 'custom' ? (
-              <button type="button" className="btn ghost sm sa-range" onClick={() => setAskRange(true)} data-agy-id="sa_range_btn">
+              <button type="button" className="btn ghost sm" onClick={() => setAskRange(true)} data-agy-id="sa_range_btn">
                 <Ic id="cal" /><bdi>{hDateShort(range.from)}</bdi> עד <bdi>{hDateShort(range.to)}</bdi>
               </button>
             ) : null}
             <Seg label="ערוץ" idPrefix="sa_channel" options={CHANNELS} value={channel} onChange={setChannel} />
-            <label className="sa-win">
-              <span>חלון המרה</span>
-              <select className="inp st-sel" value={windowDays} onChange={(e) => setWindowDays(parseInt(e.target.value, 10))} aria-label="חלון ההמרה לסגירת הזמנה, בימים" data-agy-id="sa_window_select">
-                {WINDOW_OPTIONS.map((n) => <option key={n} value={n}>{n} ימים</option>)}
-              </select>
-            </label>
-            <button type="button" className="btn ghost sm sa-refresh" onClick={() => setTick((n) => n + 1)} disabled={state.status === 'loading' || state.status === 'refreshing'} data-agy-id="sa_refresh_btn"><Ic id="refresh" />רענון</button>
+            <span className="chip gray">חלון המרה</span>
+            <Seg label="חלון ההמרה לסגירת הזמנה, בימים" idPrefix="sa_window" options={WINDOW_PILLS} value={String(windowDays)} onChange={(v) => setWindowDays(parseInt(v, 10))} />
+            <button type="button" className="btn ghost sm" onClick={() => setTick((n) => n + 1)} disabled={state.status === 'loading' || state.status === 'refreshing'} data-agy-id="sa_refresh_btn"><Ic id="refresh" />רענון</button>
           </div>
 
           {state.status === 'loading' && !d ? (
@@ -244,21 +250,21 @@ export default function StationAnalyticsPage({ preload = null }) {
           ) : null}
 
           {noTable ? (
-            <div className="empty st-state sa-note" role="status">
+            <div className="empty st-state" role="status">
               <b>איסוף הנתונים עדיין לא הופעל בארגון הזה</b>
               <span>המסך מוכן, אבל טבלת האירועים עוד לא נוצרה במסד הנתונים. יש לפנות למתכנת כדי להפעיל אותה, ואז המדדים יתחילו להצטבר.</span>
             </div>
           ) : null}
 
           {ok && !d.linkEnabled && !hasData ? (
-            <div className="empty st-state sa-note" role="status">
+            <div className="empty st-state" role="status">
               <b>אין מדדים להציג</b>
               <span>העמדה הציבורית כבויה, ולכן לא נאסף שום מידע. כשתופעל, כאן יופיעו הכניסות, מילוי הפרטים וההזמנות.</span>
             </div>
           ) : null}
 
           {ok && (d.linkEnabled || hasData) ? (
-            <div className={`layout sa-layout${state.status === 'refreshing' ? ' sa-busy' : ''}`}>
+            <div className={`layout${state.status === 'refreshing' ? ' sa-busy' : ''}`}>
               <aside className="rail" aria-label="ניווט וההסבר על המדדים">
                 <div className="st-sidenav">
                   <nav className="st-stabs" role="tablist" aria-label="קטעי המסך" aria-orientation="vertical">
@@ -270,22 +276,23 @@ export default function StationAnalyticsPage({ preload = null }) {
                       </button>
                     ))}
                   </nav>
-                  <div className="sa-defs">
-                    <div className="sa-defs-h"><Ic id="info" /><b>איך סופרים</b></div>
-                    <dl>
-                      <dt>נכנסו</dt><dd>כל כניסה לעמדה בקישור הכללי, פעם אחת ליום לכל מכשיר ולשונית. בלי שמות ובלי כתובות.</dd>
-                      <dt>מילאו פרטים</dt><dd>לקוחות שהשלימו את הטופס, כל לקוחה פעם אחת. גם לקוחה קיימת שמילאה שוב. לקוחה שנמחקה לא נספרת.</dd>
-                      <dt>אומתו</dt><dd>מי שהעובדת סימנה אצלה &quot;אומתה&quot; בכרטיס הלקוחה.</dd>
-                      <dt>נפתחה הזמנה</dt><dd>הלקוחה בעמדה לא מזמינה בעצמה, והעובדת ממשיכה איתה להזמנה. נספרת הזמנה אמיתית שנפתחה אחרי המילוי, עד {d.range.windowDays} ימים (כולל יום המילוי), גם אם נשמרה בלי תשלום. טיוטה והזמנה מבוטלת אינן נספרות. זה המדד העיקרי.</dd>
-                      <dt>הזמנה אושרה או שולמה</dt><dd>המדד המחמיר: אותה הזמנה, כשהשמלה כבר נתפסה סופית (שולם משהו, יציאה באישור מנהל, או שאין מה לשלם).</dd>
-                    </dl>
-                  </div>
+                  {/* כמו במסכי ההגדרות: שורת השמירה תמיד ב-DOM (מוסתרת); בנייד ערכת ההגדרות מסתירה בגללה את הסרגל התחתון ומציגה במקומו לשוניות (st-toptabs) */}
+                  <div className="st-saverow" hidden />
                 </div>
               </aside>
 
               <div className="st-main">
+                <div className="st-toptabs">
+                  <nav className="tabs" role="tablist" aria-label="קטעי המסך">
+                    {SECTIONS.map((t) => (
+                      <button key={t.id} type="button" className={`tab${activeSec === t.id ? ' on' : ''}`} role="tab" aria-selected={activeSec === t.id} data-ico={t.icon} onClick={() => goSection(t.id)}>
+                        <span className="tico"><Ic id={t.icon} plain /></span>{t.label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
                 {/* ------------------------------------------------ סיכום להיום */}
-                <Section id="sa-sum" icon="sig" title="היום" extra={<small className="sa-sub">{dayTitle(todayKey)}</small>}>
+                <Section id="sa-sum" icon="sig" title="היום" extra={<small>{dayTitle(todayKey)}</small>}>
                   <div className="sa-tiles" data-agy-id="sa_tiles">
                     <StatTile index={0} icon="eye" label="נכנסו לעמדה" value={cards.today.visits} yesterday={cards.yesterday.visits} weekAvg={cards.weekAvg && cards.weekAvg.visits} unmeasured={!topMeasured} />
                     <StatTile index={1} icon="user" label="מילאו פרטים" value={cards.today.registered} yesterday={cards.yesterday.registered} weekAvg={cards.weekAvg && cards.weekAvg.registered} />
@@ -295,7 +302,7 @@ export default function StationAnalyticsPage({ preload = null }) {
                     <StatTile index={5} icon="sparkle" label="אחוז ממילאות הפרטים שנפתחה להן הזמנה" kind="rate" value={cards.today.registeredToOpened} yesterday={cards.yesterday.registeredToOpened} weekAvg={cards.weekAvg && cards.weekAvg.registeredToOpened}
                       gauge={{ strict: cards.today.registeredToApproved, strictLabel: 'בהגדרה המחמירה (אושרה או שולמה)' }} />
                   </div>
-                  <p className="st-note sa-foot">
+                  <p className="st-note">
                     {!topMeasured ? 'ההשוואה לאתמול ולממוצע השבועי חלה על הערוץ שנבחר. כניסות נמדדות רק בקישור הכללי. ' : ''}
                     &quot;נפתחה הזמנה&quot; של היום כולל רק הזמנות שנפתחו עד עכשיו. הערך עוד יכול לעלות עד {d.range.windowDays} ימים.
                   </p>
@@ -349,23 +356,23 @@ export default function StationAnalyticsPage({ preload = null }) {
                 </Section>
 
                 {/* ------------------------------------------------ הרישומים של יום */}
-                <Section id="sa-regs" icon="users" title={listDay === todayKey ? 'הרישומים של היום' : 'הרישומים'} extra={<small className="sa-sub">{dayTitle(listDay)}</small>}>
-                  <div className="card sa-card">
+                <Section id="sa-regs" icon="users" title={listDay === todayKey ? 'הרישומים של היום' : 'הרישומים'} extra={<small>{dayTitle(listDay)}</small>}>
+                  <div className="card adm-rows">
                     {list.status === 'loading' ? <div className="empty st-state" role="status"><span className="st-spin" aria-hidden="true" /><div>טוען רישומים…</div></div> : null}
                     {list.status === 'forbidden' ? <p className="st-note" role="status">הרשימה מוצגת רק למי שמורשה לצפות בפרטי לקוחות.</p> : null}
                     {list.status === 'error' ? <div className="empty st-state" role="alert"><b>{list.error}</b><button type="button" className="btn ghost sm" onClick={() => setTick((n) => n + 1)}><Ic id="refresh" />נסו שוב</button></div> : null}
                     {list.status === 'no_table' ? <p className="st-note" role="status">איסוף הנתונים עדיין לא הופעל.</p> : null}
                     {list.status === 'ok' && list.rows.length === 0 ? <div className="empty st-state" role="status"><b>אין רישומים ביום הזה</b><span>כשלקוחה תמלא את הפרטים בעמדה, היא תופיע כאן.</span></div> : null}
                     {list.status === 'ok' && list.rows.length > 0 ? (
-                      <div className="tblw sa-tblw">
-                        <table className="rtbl sa-table" data-agy-id="sa_regs_table">
+                      <div className="tblw">
+                        <table className="rtbl" data-agy-id="sa_regs_table">
                           <caption className="sr-only">הרישומים של {dayTitle(listDay)}</caption>
                           <thead><tr><th scope="col">שעה</th><th scope="col">שם</th><th scope="col">ערוץ</th><th scope="col">אימות</th><th scope="col">הזמנה</th></tr></thead>
                           <tbody>
                             {list.rows.map((r) => (
                               <tr key={r.customerId}>
                                 <td dir="ltr"><bdi>{timeHM(r.at)}</bdi></td>
-                                <td><bdi>{r.name}</bdi>{r.outcome && r.outcome !== 'created' ? <small className="sa-rep"> רישום חוזר</small> : null}</td>
+                                <td><bdi>{r.name}</bdi>{r.outcome && r.outcome !== 'created' ? <small className="faint"> רישום חוזר</small> : null}</td>
                                 <td>{r.channel === 'kiosk' ? 'עמדת חנות' : 'קישור כללי'}</td>
                                 <td>{r.verification === 'verified' ? <StatusChip kind="green"><Ic id="userck" />{VERIFY_LABEL.verified}</StatusChip> : r.verification ? <StatusChip kind="amber">{VERIFY_LABEL[r.verification]}</StatusChip> : <span className="faint">—</span>}</td>
                                 <td>{r.approved ? <StatusChip kind="green"><Ic id="check" />{r.approvedSameDay ? 'הזמנה אושרה היום' : 'הזמנה אושרה'}</StatusChip> : r.opened ? <StatusChip kind="amber">{r.openedSameDay ? 'נפתחה הזמנה היום, עוד לא אושרה' : 'נפתחה הזמנה, עוד לא אושרה'}</StatusChip> : <span className="faint">עדיין לא</span>}</td>
@@ -376,6 +383,20 @@ export default function StationAnalyticsPage({ preload = null }) {
                       </div>
                     ) : null}
                     {listDay !== todayKey ? <div className="row"><button type="button" className="btn ghost sm" onClick={() => setListDay(todayKey)}><Ic id="back" size="sm" />חזרה להיום</button></div> : null}
+                  </div>
+                </Section>
+
+                {/* ------------------------------------------------ איך סופרים */}
+                <Section id="sa-how" icon="info" title="איך סופרים">
+                  <div className="card adm-rows">
+                    <div className="list">
+                      {HOW_ROWS(d.range.windowDays).map((r) => (
+                        <div className="li st-row" key={r.id}>
+                          <div className="ic-b"><Ic id={r.icon} /></div>
+                          <div className="t"><b className="st-lb">{r.title}</b><small>{r.text}</small></div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Section>
               </div>

@@ -5,6 +5,7 @@
 // SVG / CSS בלבד (בלי ספריות). הצבעים כולם משתני CSS (station-analytics.css; שני צבעי סדרה בלבד, אומתו ב-validate_palette), הצירים מימין לשמאל
 // (היום הראשון בטווח מימין), טולטיפ בריחוף ובמיקוד מקלדת, אנימציות מכבדות prefers-reduced-motion, ולכל גרף יש תצוגת טבלה (ב-StationAnalyticsPage).
 // מקור העיצוב: scripts/station-analytics-tests/graphs-3/ (קובץ ההדגמה). הגיאומטריה הטהורה: chartLogic.js (נבדקת ב-chart.test.mjs).
+import './station-charts.css';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Ic } from '../settings-sim/SettingsDialogs';
 import {
@@ -220,7 +221,7 @@ export function FunnelBars({ stages, parentLabels, hasData }) {
           return (
             <g key={s.key} className="sa-rise" style={{ '--i': i }}>
               <rect x={b.x} y={b.y} width={b.w} height={46} rx="14" style={{ fill: `var(${STAGE_COLOR_VARS[s.key]})`, opacity: hasData ? 1 : 0.35 }} />
-              <rect x={b.x} y={b.y} width={b.w} height={23} rx="14" fill="#fff" opacity="0.1" />
+              <rect x={b.x} y={b.y} width={b.w} height={23} rx="14" className="sa-shine" />
               <text x={geo.cx} y={b.y + 30} textAnchor="middle" className="sa-f-num num">{fmtInt(s.count)}</text>
               <text x={W - 4} y={b.y + 28} textAnchor="end" className="sa-f-lab">{s.label}</text>
               {tag ? (

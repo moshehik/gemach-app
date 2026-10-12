@@ -96,27 +96,64 @@ test('static: no Gregorian dates rendered - dates go through the Hebrew helpers 
   assert.ok(/hDateShort|dayTitle/.test(read('app/components/station-analytics/StationAnalyticsPage.js')));
 });
 
-test('static: CSS rules are all scoped under .gm-ds and use palette tokens (no raw hex besides white)', () => {
-  const css = read('app/components/station-analytics/station-analytics.css').replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
-  const selectors = [];
-  const re = /([^{}]+)\{[^{}]*\}/g;
-  let m;
-  while ((m = re.exec(css))) {
-    const head = m[1].trim();
-    if (head.startsWith('@media')) continue;
-    selectors.push(head.replace(/^@media[^{]*\{/, '').trim());
+const CSS_PAGE = 'app/components/station-analytics/station-analytics.css';
+const CSS_CHARTS = 'app/components/station-analytics/station-charts.css';
+const stripCss = (rel) => read(rel).replace(/\/\*[\s\S]*?\*\//g, '');
+// צבע גולמי = hex (לא url(#id)), rgb()/rgba()/hsl()/hsla()
+const rawColors = (src) => (src.match(/(?<![\w&(#])#[0-9a-fA-F]{3,8}\b(?![\w-])|\b(?:rgba?|hsla?)\(/g) || []);
+
+test('static: every CSS rule of the screen is scoped under .gm-ds (page CSS + chart CSS)', () => {
+  for (const rel of [CSS_PAGE, CSS_CHARTS]) {
+    const css = stripCss(rel).replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+    const selectors = [];
+    const re = /([^{}]+)\{[^{}]*\}/g;
+    let m;
+    while ((m = re.exec(css))) {
+      const head = m[1].trim();
+      if (head.startsWith('@media')) continue;
+      selectors.push(head.replace(/^@media[^{]*\{/, '').trim());
+    }
+    const unscoped = selectors.filter((x) => x && x.split(',').some((part) => !/\.gm-ds/.test(part) && !/^@/.test(part.trim())));
+    assert.deepEqual(unscoped, [], rel);
   }
-  const unscoped = selectors.filter((s) => s && s.split(',').some((p) => !/\.gm-ds/.test(p) && !/^@/.test(p.trim())));
-  assert.deepEqual(unscoped, []);
-  // צבעים גולמיים מותרים רק בהגדרת משתני --sa-* (בלוק הטוקנים בראש הקובץ) - כל שאר הכללים משתמשים במשתנים
-  const hex = css.replace(/--sa-[\w-]+:[^;}]+/g, '').match(/#[0-9a-fA-F]{3,8}\b/g) || [];
-  assert.ok(hex.every((h) => ['#fff', '#ffffff'].includes(h.toLowerCase())), `hex לא מטוקן: ${hex.join(',')}`);
 });
 
-test('static: charts use only the two validated series tokens; every chart has a table view; RTL root', () => {
-  const css = read('app/components/station-analytics/station-analytics.css');
-  // שני צבעי הסדרות בלבד (כחול וזהב), כפי שאומתו ב-validate_palette על משטח הנייבי
-  assert.ok(/--sa-blue:#5190cf/.test(css) && /--sa-gold:#b38c2a/.test(css));
+test('static: NO hard-coded colors (hex / rgb / hsl) anywhere in the screen - page JSX, page CSS, chart JSX and chart CSS all draw from palette tokens (--gm-*)', () => {
+  const files = [
+    'app/components/station-analytics/StationAnalyticsPage.js', 'app/components/station-analytics/StationAnalyticsSwitch.js', 'app/station-analytics/page.js', 'app/station-analytics/layout.js',
+    'app/components/station-analytics/StationCharts.js', 'app/components/station-analytics/chartLogic.js',
+  ];
+  for (const f of files) assert.deepEqual(rawColors(read(f)), [], f);
+  for (const rel of [CSS_PAGE, CSS_CHARTS]) assert.deepEqual(rawColors(stripCss(rel)), [], rel);
+  assert.ok(/--gm-/.test(stripCss(CSS_CHARTS)), 'הגרפים נבנים מטוקני הפלטה');
+});
+
+test('static: the page-level CSS (everything that is not a chart) declares no color / size / radius / spacing of its own - only the refresh dimming', () => {
+  const css = stripCss(CSS_PAGE);
+  assert.ok(!/(?:^|[;{\s])(?:color|background(?:-color)?|border(?:-radius)?|font-size|font-weight|width|height|padding|margin|gap|box-shadow)\s*:/.test(css), 'כלל עיצוב מקומי בדף שאינו גרף');
+  assert.ok(/\.sa-busy/.test(css));
+});
+
+test('static: classes used by the page outside the chart components are palette / settings-kit classes (only a short allow-list of local chart-container classes)', () => {
+  const page = read('app/components/station-analytics/StationAnalyticsPage.js');
+  const classText = [...page.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map((m) => m[1] || m[2] || '').join(' ');
+  const local = new Set((classText.match(/(?<![\w-])sa-[\w-]+/g) || []));
+  const allowed = new Set(['sa-panel', 'sa-card', 'sa-card-h', 'sa-charts', 'sa-tiles', 'sa-notes', 'sa-busy']);
+  const extra = [...local].filter((c) => !allowed.has(c));
+  assert.deepEqual(extra, [], `מחלקות מקומיות שאינן של גרפים: ${extra.join(', ')}`);
+  // רכיבי הפלטה / ערכת ההגדרות שהמסך חייב להשתמש בהם
+  for (const cls of ['nb-w', 'nb-head', 'nb-ic', 'topbar', 'back', 'hf-bar', 'seg pill', 'st-sec', 'adm-h', 'adm-rows', 'tblw', 'rtbl', 'chip', 'empty st-state', 'btn ghost sm', 'tabs', 'tab', 'tico', 'st-stab', 'st-toptabs', 'st-saverow']) {
+    assert.ok(page.includes(cls), `חסר רכיב פלטה / ערכת הגדרות: ${cls}`);
+  }
+  // המסך לא כותב משלו: טבלה, שדה, כפתור, שבב או באנר בעיצוב מקומי
+  assert.ok(!/<select\b/.test(page) && !/<input\b/.test(page), 'בקרות טופס מקומיות');
+  assert.ok(/RangeDialog/.test(page) && /A5PortalRoot/.test(page), 'בחירת טווח: הלוח העברי של הפלטה (OcHebrewCalendar) דרך RangeDialog');
+});
+
+test('static: charts use only the two validated series tokens (blue / gold, built from palette tokens); every chart has a table view; RTL root', () => {
+  const css = stripCss(CSS_CHARTS);
+  assert.ok(/--sa-blue:color-mix\(in srgb,var\(--gm-sky-400\) 35%,var\(--gm-navy-500\)\)/.test(css));
+  assert.ok(/--sa-gold:color-mix\(in srgb,var\(--gm-gold-b\) 85%,var\(--gm-gold-d\)\)/.test(css));
   assert.equal((css.match(/--sa-(blue|gold):/g) || []).length, 2);
   const page = read('app/components/station-analytics/StationAnalyticsPage.js');
   assert.ok(/dir="rtl"/.test(page));
