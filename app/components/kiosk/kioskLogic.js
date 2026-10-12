@@ -4,23 +4,19 @@
 
 import { HDate, Sedra, Locale, HebrewCalendar, gematriya } from '@hebcal/core';
 import { HEBREW_DAYS } from '../../../lib/hebrewDate.js';
+import { modelDisplayName, modelHasRealName as sharedModelHasRealName } from '../../../lib/modelDisplay.js';
 
 // הדוחות המודפסים נכתבים ל-document.write של חלון חדש: כל ערך שהוזן בידי משתמש (שם דגם, מידה, חיפוש) חייב escape, אחרת שם עם HTML רץ בהקשר האפליקציה
 export const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // דגמים שנשמרו עם השם הזמני "ללא שם" - ללקוח עדיף מספר הדגם. שימו לב: \b ב-JS לא עובד על אותיות עברית.
 export function getModelDisplayName(model) {
-  const rawName = (model.name || '').trim();
-  if (rawName && !rawName.startsWith('ללא שם')) return rawName;
-  return model.barcodePrefix ? String(model.barcodePrefix) : rawName;
+  return modelDisplayName(model, { fallback: '' }); // lib/modelDisplay.js: שם אמיתי, אחרת מספר הדגם
 }
 
 // שם תיאורי אמיתי: לא ריק, לא "ללא שם", ולא בדיוק מספר הדגם (חלק מהדגמים המיובאים מאקסס נשמרו עם name="316" ו-barcodePrefix=316)
 export function modelHasRealName(model) {
-  const rawName = (model.name || '').trim();
-  if (!rawName || rawName.startsWith('ללא שם')) return false;
-  if (model.barcodePrefix != null && rawName === String(model.barcodePrefix)) return false;
-  return true;
+  return sharedModelHasRealName(model); // lib/modelDisplay.js (גם "אין שם", "דגם <קוד>" ושם = קוד אינם שם אמיתי)
 }
 
 // אותיות הדגם לעיגול כשאין תמונה: אות ראשונה משתי המילים הראשונות; מילה בודדת שהיא מספר מלא - עד 3 ספרות
