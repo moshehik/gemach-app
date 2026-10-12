@@ -1,8 +1,13 @@
 'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import { useUiVariant } from './UiVariantContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getCatalogItem } from '@/lib/permissionsMetadata';
+
+// חלון "השכרה והחזרה" בעיצוב החדש (נטען בנפרד, בלי SSR: קבצי ה-CSS של הפלטה / הלו״ז נטענים רק כשהוא נפתח)
+const RentalReturnA5 = dynamic(() => import('./rental-return/RentalReturnWindow'), { ssr: false });
 
 const PopupContext = createContext(null);
 
@@ -38,6 +43,9 @@ export function PopupProvider({ children }) {
   // Global Rental Modal state
   const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
 
+  // המעטפת בעיצוב החדש (shell='a5'): החזרה מהירה / היסטוריית החיפוש פותחות את חלון "השכרה והחזרה" בעיצוב החדש
+  // (components של הלוח החודשי המאושר, app/components/rental-return) במקום החלון הישן. מעטפת ישנה - החלון הקיים כמו קודם.
+  const shellVariant = useUiVariant('shell');
   const openRentalModal = useCallback((orderId) => {
     setGlobalRentalModalOrderId(orderId);
   }, []);
@@ -423,11 +431,19 @@ export function PopupProvider({ children }) {
 
       {/* Global Rental Return Modal */}
       {globalRentalModalOrderId && (
-        <RentalReturnModal
-          orderId={globalRentalModalOrderId}
-          onClose={closeRentalModal}
-          onUpdate={() => {}}
-        />
+        shellVariant === 'a5' ? (
+          <RentalReturnA5
+            orderId={globalRentalModalOrderId}
+            onClose={closeRentalModal}
+            onUpdate={() => {}}
+          />
+        ) : (
+          <RentalReturnModal
+            orderId={globalRentalModalOrderId}
+            onClose={closeRentalModal}
+            onUpdate={() => {}}
+          />
+        )
       )}
     </PopupContext.Provider>
   );

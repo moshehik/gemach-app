@@ -24,6 +24,8 @@ export const EMPTY_ORDER = Object.freeze({
   isDelivery: false, deliveryDirection: 'הלוך-חזור', deliveryAddress: '', deliveryCity: '', deliveryOneDayBefore: false,
   isPhoneOrder: false, branch: '', pickupBranch: '',
   hokBankName: '', hokBankBranch: '', hokBankAccount: '', hokConsent: false,
+  // חתימת הלקוח על התקנון - חובה בכל הזמנה חדשה (נשמר על Order.hasSignedRegulations ומופיע במייל ללקוח)
+  hasSignedRegulations: false,
 });
 
 export const EMPTY_NEW_ITEM = Object.freeze({ dressModelId: '', selectedSizes: [], quantity: 1, repairs: '', dressName: '' });
@@ -451,6 +453,7 @@ export function buildSavePayload({ order, totalAmount, itemsToSave, hokDetailsPa
     branch: order.branch || null,
     pickupBranch: order.pickupBranch || null,
     deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+    hasSignedRegulations: !!order.hasSignedRegulations,
     ...(hokDetailsPayload !== undefined ? { hokDetails: hokDetailsPayload } : {}),
     paymentsList: finalPaymentsList,
     reservedOrderId,

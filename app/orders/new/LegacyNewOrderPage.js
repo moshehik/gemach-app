@@ -108,8 +108,10 @@ export default function NewOrderPage() {
     hokBankBranch: '',
     hokBankAccount: '',
     hokConsent: false,
+    // חתימת הלקוח על תקנון ההשכרה - חובה בכל הזמנה חדשה, נשמר על Order.hasSignedRegulations
+    hasSignedRegulations: false,
   });
-  
+
   const [newItem, setNewItem] = useState({
     dressModelId: '',
     selectedSizes: [],
@@ -451,14 +453,19 @@ export default function NewOrderPage() {
   const newCustomerFormRef = useRef(null);
   // Enter עובר לשדה הבא בטופס לקוח חדש, ובשדה האחרון שולח בפועל - במקום לנסות לשלוח
   // מכל שדה בנפרד (מה שנכשל כשעדיין חסרים שדות אחרים, אותה בעיה שתוקנה במודל
-  // האשראי למעלה). לא נוגע בתיבות סימון, כדי לא לשנות את הסימון שלהן בטעות (ר' דיווח e8ff9855).
+  // האשראי למעלה). לא נוגע בתיבות סימון, כדי לא לשנות את הסימון שלהן בטעות (ר' דיווח e8ff9855) -
+  // למעט תיבת "חתימה על התקנון": היא חלק מרצף ה-Enter, ו-Enter עליה מסמן אותה וממשיך הלאה.
+  const SIGNATURE_CHECKBOX_ID = 'cust-signed-regulations';
   const handleNewCustomerFieldEnter = (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const container = newCustomerFormRef.current;
     if (!container) return;
+    if (e.target.id === SIGNATURE_CHECKBOX_ID) {
+      setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
+    }
     const focusable = Array.from(container.querySelectorAll('input, select, textarea, button'))
-      .filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
+      .filter(el => !el.disabled && (el.type !== 'checkbox' || el.id === SIGNATURE_CHECKBOX_ID) && el.offsetParent !== null);
     const next = focusable[focusable.indexOf(e.target) + 1];
     if (next) {
       next.focus();
@@ -546,6 +553,12 @@ export default function NewOrderPage() {
 
     if (missingFields.length > 0) {
        alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
+       return;
+    }
+
+    if (!order.hasSignedRegulations) {
+       alert('יש לסמן שהלקוח חתם על התקנון');
+       document.getElementById(SIGNATURE_CHECKBOX_ID)?.focus();
        return;
     }
 
@@ -1267,6 +1280,11 @@ export default function NewOrderPage() {
   };
 
   const executeSaveOrderForList = async (finalPaymentsList, force = false) => {
+    // חתימה על התקנון חובה בכל הזמנה - גם ללקוח קיים (שלא עובר בטופס "לקוח חדש"), ר' התיבה בשלב 5.
+    if (!order.hasSignedRegulations) {
+      alert('יש לסמן שהלקוח חתם על התקנון לפני שמירת ההזמנה');
+      return;
+    }
     pendingSavePaymentsRef.current = finalPaymentsList;
     setSaving(true);
     // Stop the autosave and let whatever it already started finish, so the real save is not
@@ -1340,6 +1358,7 @@ export default function NewOrderPage() {
         // 19 - משלוח יוצא יום לפני האירוע במקום יומיים, פר-הזמנה (ר' checkbox למטה ליד
         // delivery_one_day_before_option) - נצרך ב-GET /api/deliveries לחישוב תאריך היציאה בפועל.
         deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+        hasSignedRegulations: !!order.hasSignedRegulations,
         ...(hokDetailsPayload !== undefined ? { hokDetails: hokDetailsPayload } : {}),
         paymentsList: finalPaymentsList,
         // Set once a card was charged: the order must be saved under the number that already
@@ -2132,7 +2151,7 @@ export default function NewOrderPage() {
                     בחלונית מוסתרת"). */}
                 <NocCollapsible
                   title="פרטים נוספים"
-                  openWhen={settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city') || isFieldMandatoryFromPicker('street') || isFieldMandatoryFromPicker('houseNum') || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
+                  openWhen={true /* חתימה על התקנון היא שדה חובה תמידי ויושבת בתוך המגירה */}
                 >
                   <div className="form-grid">
                     <div className="field">
@@ -2171,6 +2190,12 @@ export default function NewOrderPage() {
                       </label>
                     </div>
                   )}
+                  <div className="field" style={{ marginTop: 10 }}>
+                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                      <input id={SIGNATURE_CHECKBOX_ID} type="checkbox" checked={!!order.hasSignedRegulations} onChange={e => setOrder(prev => ({ ...prev, hasSignedRegulations: e.target.checked }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <span>חתם/ה על התקנון <span style={{ color: 'var(--danger)' }}>*</span></span>
+                    </label>
+                  </div>
                   {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
                   {settings.hok_enabled === 'true' && (
                     <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
@@ -2707,6 +2732,16 @@ export default function NewOrderPage() {
         {step === 5 && (
           <div>
             <h2>תשלום וסיום</h2>
+
+            {/* לקוח חדש כבר סימן בטופס הלקוח; ללקוח קיים זו הנקודה היחידה לסמן, ולכן מוצג רק כשעוד לא נחתם. */}
+            {!order.hasSignedRegulations && (
+              <div className="card card-pad" style={{ marginBottom: 14 }}>
+                <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                  <input type="checkbox" checked={false} onChange={e => setOrder(prev => ({ ...prev, hasSignedRegulations: e.target.checked }))} />
+                  <span>הלקוח חתם על התקנון <span style={{ color: 'var(--danger)' }}>*</span></span>
+                </label>
+              </div>
+            )}
 
             <div className="two-col">
               <div className="card card-pad">

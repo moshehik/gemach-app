@@ -100,9 +100,9 @@ export function SegPill({ id, options, value, onChange, label }) {
 }
 
 // מתג הפעלה של הפלטה (label.sw)
-export function Switch({ checked, onChange, label, id }) {
+export function Switch({ checked, onChange, label, id, onKeyDown }) {
   return (
-    <label className="sw"><input type="checkbox" id={id} checked={!!checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} /><i /></label>
+    <label className="sw"><input type="checkbox" id={id} checked={!!checked} onChange={(e) => onChange(e.target.checked)} onKeyDown={onKeyDown} aria-label={label} /><i /></label>
   );
 }
 

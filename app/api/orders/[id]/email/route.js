@@ -544,6 +544,7 @@ export async function POST(request, { params }) {
       printType,
       customerName: [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' '),
       eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : ''),
+      hasSignedRegulations: !!order.hasSignedRegulations,
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
       gmachPhone: printSettings.gmachPhone

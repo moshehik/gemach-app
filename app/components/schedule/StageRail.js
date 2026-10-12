@@ -57,7 +57,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
             className={'st-stab lz-stab' + (!filter ? ' on' : '')}
             aria-pressed={!filter}
             onClick={() => onFilter(null)}
-            data-tip="הצגת כל השלבים"
+            data-tip={data ? 'הצגת כל השלבים · ' + allTotal + ' פריטים' : 'הצגת כל השלבים'}
           >
             <span className="st-sic"><ScheduleIcon name="rows" /></span>
             <span className="st-slb">
@@ -78,9 +78,10 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
             // מוצג מעומעם (fut) בלי כיתוב: החלטת הבעלים 4.10.2026 (SCH-EMPTY-TXT = ב') הסירה את "אין פעולות" שמתחת לשם.
             let line = '';
             if (s) {
+              // הבעלים (12.10.2026): בריחוף על שורה יצוף מספר הפריטים בה - לכן הטולטיפ פותח במספר הפריטים הכולל, ואחריו לביצוע / בוצע
               if (!total) line = 'אין פעולות';
               else if (isInfo) line = total + ' ' + s.plural;
-              else line = 'לביצוע ' + total + ' · בוצע ' + done;
+              else line = total + ' פריטים · לביצוע ' + (total - done) + ' · בוצע ' + done;
             }
             const label = s ? stageLabel(s) : meta.label;
             const tip = s ? label + ': ' + line + (alerts ? ' · ' + alerts + ' התראות' : '') + (s.shiftLabel ? ' · משמרת ' + s.shiftLabel : '') + ' · לחיצה לסינון' : label;
@@ -120,7 +121,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
               style={{ '--pc': 'var(' + UPDATED_META.color + ')' }}
               aria-pressed={filter === 'updated'}
               onClick={() => onFilter('updated')}
-              data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount) + ' · לחיצה לסינון'}
+              data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount + ' הזמנות') + ' · לחיצה לסינון'}
             >
               <span className="st-sic">
                 <ScheduleIcon name={UPDATED_META.icon} />
