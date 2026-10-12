@@ -246,6 +246,12 @@ await t('"2" מציע גם "02" (מאוחדים לכתיב הנפוץ), ולא �
   assert.deepEqual(r2.body.options, ['02', '20', '22']);
 });
 
+await t('הצעות: "06.1" ו-"6.1" (כתיבים של אותה מידה עשרונית) הן שורה אחת, בכתיב הנפוץ', async () => {
+  T.pages = new Set(['page:orders']);
+  T.dressItems = ['06.1', '06.1', '6.1', '06.2', '00.6'].map((sizeText) => ({ sizeText, isDeleted: false }));
+  const r = await get(optionsRoute, '/api/a5/options?key=size&typed=' + encodeURIComponent('6.'));
+  assert.deepEqual(r.body.options, ['06.1', '06.2'], JSON.stringify(r.body));
+});
 await t('נושא 12: רק מידות שלמות ("36א" / "38-40" / "XL" / "38.5" לא מוצעות), "38.0" = "38"; תו שאינו ספרה מבקש חריגות', async () => {
   T.pages = new Set(['page:orders']);
   const di = (sizeText) => ({ sizeText, isDeleted: false });
@@ -276,6 +282,13 @@ await t('הזמנות: size=2 מוצא "02" ו-"2" (גם בפריט הקטלוג
   assert.deepEqual(links(await adv('orders', { size: '2', ost: ['soon'] })), ['101', '103']);
   assert.deepEqual(links(await adv('orders', { size: '02', ost: ['soon'] })), ['101', '103']);
   assert.deepEqual(links(await adv('orders', { size: '12', ost: ['soon'] })), ['102']);
+});
+await t('הזמנות: size=6.1 מוצא הזמנה ששמורה "6.1" ופריט קטלוג ששמור "06.1" ולהפך; בלי עיגול (6 / 6.2 / 6.10 לא נמצאים)', async () => {
+  customersFixture(); const [c1, c2] = T.customers; T.pages = new Set(['page:orders']);
+  T.orders = [aorder(201, c1, [aitem('6.1')]), aorder(202, c2, [aitem(null, '06.1')]), aorder(203, c2, [aitem('6.2')]), aorder(204, c1, [aitem('06')]), aorder(205, c1, [aitem('6.10')]), aorder(206, c2, [aitem('16.1')])];
+  assert.deepEqual(links(await adv('orders', { size: '6.1', ost: ['soon'] })), ['201', '202']);
+  assert.deepEqual(links(await adv('orders', { size: '06.1', ost: ['soon'] })), ['201', '202']);
+  assert.deepEqual(links(await adv('orders', { size: '6', ost: ['soon'] })), ['204']);
 });
 await t('הזמנות: טלפון בכל צורה (050-123-4567 / +972) מוצא את הלקוח ששמור "050-1234567"', async () => {
   advFixture(); T.pages = new Set(['page:orders']);

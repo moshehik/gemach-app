@@ -49,6 +49,8 @@ function normalizeSizeKey(raw) {
   if (/^\d{1,3}$/.test(t)) return String(parseInt(t, 10));
   const z = /^(\d{1,3})[.,]0+$/.exec(t);
   if (z) return String(parseInt(z[1], 10));
+  const d = /^(\d{1,3})[.,](\d+)$/.exec(t); // "06.1" == "6.1" (spelling only, no rounding)
+  if (d) return `${parseInt(d[1], 10)}.${d[2]}`;
   return t;
 }
 

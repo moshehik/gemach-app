@@ -274,7 +274,7 @@ for (const [label, day, before, after] of [['DST start Fri', '2026-03-27', '2026
 
 /* ---------- נרמול מפתח המידה (אפס מוביל / רווחים / "8" לצד "08") - אחרי בדיקת הנתונים האמיתיים 2.10.2026 ---------- */
 eq('normalizeSizeKey', ['06', '6', ' 06 ', '00', '100', '06.1', '36א', '38-40', '', null, undefined, 'כללי'].map(sc.normalizeSizeKey),
-  ['6', '6', '6', '0', '100', '06.1', '36א', '38-40', 'כללי', 'כללי', 'כללי', 'כללי']);
+  ['6', '6', '6', '0', '100', '6.1', '36א', '38-40', 'כללי', 'כללי', 'כללי', 'כללי']); // "06.1" ≡ "6.1" (12.10.2026): איחוד כתיב בלבד
 eq('candidates 06 flex -> normalized 4/6/8', sc.candidateSizes('06', true), ['4', '6', '8']);
 eq('candidates 100 flex', sc.candidateSizes('100', true), ['98', '100', '102']);
 eq('candidates " 08" exact -> key 8', sc.candidateSizes(' 08', false), ['8']);
@@ -282,7 +282,7 @@ eq('normalizeSizeRequests: "06" and "6" are one request; flex by either spelling
   [['06', '6', true, ['4', '6', '8']], ['8', '8', false, ['8']]]);
 const padded = { '04': { available: 1 }, '06': { available: 2 }, '08': { available: 1 }, '8': { available: 1 }, ' 10': { available: 1 }, '06.1': { available: 1 }, '': { available: 1 } };
 eq('bucketAvailability: merged keys, display = DB spelling when unique', [...sc.bucketAvailability(padded).values()].map((b) => [b.key, b.free, b.display]),
-  [['8', 2, '8'], ['4', 1, '04'], ['6', 2, '06'], ['10', 1, '10'], ['06.1', 1, '06.1'], ['כללי', 1, 'כללי']]); // '8' ראשון: מפתח שלם של אובייקט JS
+  [['8', 2, '8'], ['4', 1, '04'], ['6', 2, '06'], ['10', 1, '10'], ['6.1', 1, '06.1'], ['כללי', 1, 'כללי']]); // המפתח "6.1", התצוגה הכתיב שב-DB // '8' ראשון: מפתח שלם של אובייקט JS
 eq('evaluateModel: "6" flex on padded data = 04+06+08/8', sc.evaluateModel(padded, sc.normalizeSizeRequests(['6'], true)),
   { sizes: [{ size: '6', free: 5, flexible: true, candidates: [{ size: '04', free: 1 }, { size: '06', free: 2 }, { size: '8', free: 2 }] }], free: 5 });
 eq('evaluateModel: "08" exact counts "08" and "8" together', sc.evaluateModel(padded, sc.normalizeSizeRequests(['08'])).free, 2);
@@ -314,7 +314,7 @@ eq('"6" and "06" collapse to one requested size', [r.query.sizes.length, brief(r
 
 /* ---------- נושא 12 (12.10.2026): מידה שנשמרה "גולמית" כעשרוני-עם-אפסים ("44.0") נמצאת תחת המידה השלמה ("44") ---------- */
 eq('normalizeSizeKey: zero-fraction decimals are the whole size; true decimals stay', ['38.0', '38.00', '038,0', ' 7.0 ', '0.0', '38.5', '06.1', '06.10', '38.', '.5', '1000.0', '38.0.0', '38.0א'].map(sc.normalizeSizeKey),
-  ['38', '38', '38', '7', '0', '38.5', '06.1', '06.10', '38.', '.5', '1000.0', '38.0.0', '38.0א']);
+  ['38', '38', '38', '7', '0', '38.5', '6.1', '6.10', '38.', '.5', '1000.0', '38.0.0', '38.0א']);
 eq('isNumericSize: "38.0" / "038" yes, "38.5" / "06.1" no', ['38.0', '038', '38.5', '06.1', '12,0'].map(sc.isNumericSize), [true, true, false, false, true]);
 eq('candidates 44.0 flex -> 42/44/46 (same as 44)', sc.candidateSizes('44.0', true), ['42', '44', '46']);
 eq('normalizeSizeRequests: "44" and "44.0" and "044" are one request', sc.normalizeSizeRequests(['44', '44.0', '044']).map((r) => [r.size, r.key]), [['44', '44']]);
@@ -331,6 +331,15 @@ eq('normalizeSizeRequests: "44" and "44.0" and "044" are one request', sc.normal
   eq('size "44" flex still sees them (42/44/46 -> 44:3)', brief(r), [[700, 3, '44:3[44=3]']]);
   r = await run({ sizes: ['44.0'], flexible: ['44.0'] });
   eq('"44.0" is flexible-capable like 44', [r.query.sizes[0].flexible, r.query.sizes[0].candidates], [true, ['42', '44', '46']]);
+  // 12.10.2026: "06.1" (DressItem) ≡ "6.1" (OrderItem) — איחוד כתיב בלבד, בלי עיגול
+  globalThis.__DB.dressItem.push(rawItem('w5', '6.1'), rawItem('w6', '6.2'));
+  r = await run({ sizes: ['6.1'] });
+  eq('size "6.1" counts the item saved "06.1" and the one saved "6.1" together (2); "6.2" and "06" are not counted', brief(r), [[700, 2, '6.1:2']]);
+  r = await run({ sizes: ['06.1'] });
+  eq('size "06.1" = same request', brief(r), [[700, 2, '06.1:2']]);
+  r = await run({ models: ['700'] });
+  eq('model-only: "06.1" + "6.1" shown as one row', r.results[0].sizes.filter((x) => x.size.startsWith('6.') || x.size.startsWith('06.')).map((x) => x.size + ':' + x.free), ['6.1:2', '6.2:1']);
+  globalThis.__DB.dressItem.splice(globalThis.__DB.dressItem.findIndex((i) => i.id === 'w5'), 2);
   r = await run({ models: ['700'] });
   eq('model-only check keeps the real rows (no stock is hidden): 44 merged as "44", 44.5 listed on its own', r.results[0].sizes.filter((x) => x.size.startsWith('44')).map((x) => x.size + ':' + x.free), ['44:3', '44.5:1']);
   globalThis.__DB.dressItem.splice(globalThis.__DB.dressItem.findIndex((i) => i.id === 'w1'), 4);

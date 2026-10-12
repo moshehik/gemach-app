@@ -130,7 +130,10 @@ async function employees(typed) {
 async function sizes(typed) {
   // "2" מציע גם "02" (כתיבים שקולים מתאחדים לאחד, בכתיב הנפוץ ביותר ב-DB) - lib/searchNormalize.js sizeKey / sizeSpellings
   const where = { isDeleted: false };
-  if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed)])].map((s) => ({ sizeText: { startsWith: s } }));
+  // הקלדה חלקית של עשרוני ("6." / "6.1"): גם הכתיבים עם אפס מוביל ("06.1" ב-DressItem, "6.1" ב-OrderItem) — איחוד כתיב בלבד, 12.10.2026
+  const partial = /^(\d{1,3})[.,](\d*)$/.exec(typed);
+  const partialSpellings = partial ? [partial[1], partial[1].padStart(2, '0'), partial[1].padStart(3, '0')].map((w) => `${w}.${partial[2]}`) : [];
+  if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed), ...partialSpellings])].map((s) => ({ sizeText: { startsWith: s } }));
   else where.sizeText = { not: null };
   // מידות עשרוניות (38.1, 38.2, 06.1) הן מידות נפרדות ולא "האפשרויות" של 38 - לא מוצעות כשמקלידים "38"; מופיעות רק כשמקלידים נקודה ("38."). דיווח 27b0f8a5
   if (!typed.includes('.')) where.AND = [{ NOT: { sizeText: { contains: '.' } } }];
