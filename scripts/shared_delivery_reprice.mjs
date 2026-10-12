@@ -4,6 +4,7 @@
 //
 //   SD_DATABASE_URL=<חיבור> node scripts/shared_delivery_reprice.mjs --expect-host=<חלק משם המארח> [--json] [--from=YYYY-MM-DD]
 //   כתיבה בפועל (רק אחרי שראית את הדוח):  ... --write --expect-host=<חלק משם המארח>
+//   דוח לפני ההדלקה (המתג עוד כבוי, משלוחים דלוקים): ... --simulate-enabled   (dry-run בלבד; דורש שה-seed של המחיר כבר רץ)
 //
 // בטיחות:
 //  * ה-DB נקרא רק מהמשתנה SD_DATABASE_URL (במכוון לא DATABASE_URL) ושם המארח מודפס. --write בלי --expect-host מסרב; --expect-host שלא תואם מסרב.
@@ -26,6 +27,7 @@ const WRITE = flag('write');
 const AS_JSON = flag('json');
 const expectHost = opt('expect-host');
 const fromKey = opt('from');
+const SIMULATE = flag('simulate-enabled');
 
 function die(msg, code = 2) { console.error(`\nמסרב להמשיך: ${msg}`); process.exit(code); }
 
@@ -34,6 +36,7 @@ if (!url) die('חסר SD_DATABASE_URL (חיבור ה-DB של הגמ"ח שבו מ
 let host;
 try { host = new URL(url.replace(/^postgres(ql)?:/, 'http:')).hostname; } catch { die('SD_DATABASE_URL אינו כתובת תקינה.'); }
 if (process.env.GEMACH_ORG === 'main') die('GEMACH_ORG=main - הגמ"ח הראשי אין לו משלוחים; הסקריפט מיועד לנווה יעקב בלבד.');
+if (SIMULATE && WRITE) die('--simulate-enabled מיועד ל-dry-run בלבד (אי אפשר לכתוב לפני שהמתג דלוק בפועל).');
 if (WRITE && !expectHost) die('--write דורש --expect-host=<חלק משם המארח> (הגנה מכתיבה ל-DB לא נכון).');
 if (expectHost && !host.includes(expectHost)) die(`המארח בפועל (${host}) אינו מכיל את --expect-host (${expectHost}).`);
 console.error(`DB host: ${host}${WRITE ? '   [מצב כתיבה]' : '   [dry-run - לא נכתב כלום]'}`);
@@ -45,8 +48,17 @@ const { default: prisma, disconnect } = await import(pathToFileURL(path.join(her
 
 let exitCode = 0;
 try {
-  const settings = await SD.loadSharedDeliverySettings();
-  if (!settings.enabled) die('בבסיס הנתונים הזה משלוח משותף כבוי (shared_delivery_enabled / enable_deliveries) - כנראה הגמ"ח הראשי או שהפיצ\'ר עוד לא הופעל.');
+  let settings = await SD.loadSharedDeliverySettings();
+  if (!settings.enabled) {
+    // סימולציה לפני ההדלקה: משלוחים דלוקים (נווה) והמתג עוד כבוי - מחשבים כאילו דלוק (dry-run בלבד, בלי כתיבה)
+    if (SIMULATE && settings.deliveriesEnabled) {
+      settings = { ...settings, enabled: true };
+      console.error('מצב --simulate-enabled: המתג shared_delivery_enabled עוד כבוי ב-DB; הדוח מחושב כאילו היה דלוק.');
+    } else {
+      die('בבסיס הנתונים הזה משלוח משותף כבוי (shared_delivery_enabled / enable_deliveries) - כנראה הגמ"ח הראשי או שהפיצ׳ר עוד לא הופעל. (לדוח לפני ההדלקה בנווה: --simulate-enabled).');
+    }
+  }
+  if (SD.discountedPricePerLeg(settings, '') === null && settings.mode !== 'by_city') console.error('אזהרה: לא הוגדר מחיר מוזל כללי (shared_delivery_price) - הדוח לא יראה הנחות. הריצו קודם את scripts/seed_shared_delivery_neve.js.');
 
   const today = H.getIsraelTodayKey();
   const start = fromKey && fromKey > today ? fromKey : today;
@@ -68,7 +80,7 @@ try {
     }
   }
 
-  const dry = await SD.reconcileSharedDelivery({ groupKeys: allKeys, dryRun: true, reason: 'משלוח משותף - חישוב מחדש חד-פעמי (dry-run)' });
+  const dry = await SD.reconcileSharedDelivery({ groupKeys: allKeys, dryRun: true, settings, reason: 'משלוח משותף - חישוב מחדש חד-פעמי (dry-run)' });
   const byGroup = new Map();
   for (const r of dry.results) { if (!byGroup.has(r.groupKey)) byGroup.set(r.groupKey, []); byGroup.get(r.groupKey).push(r); }
 

@@ -81,3 +81,11 @@
 `SD_DATABASE_URL=<חיבור> node scripts/shared_delivery_reprice.mjs --expect-host=<חלק מהמארח> [--json] [--from=YYYY-MM-DD]` - מדפיס לכל קבוצה עתידית: ראשי, הזמנות, חיוב לפני / אחרי, הפרש, זיכוי אוטומטי / חוב. כתיבה רק עם `--write --expect-host=...`.
 מסרב: בלי SD_DATABASE_URL, `--write` בלי `--expect-host`, מארח שלא תואם, `GEMACH_ORG=main`, או DB שבו המתג כבוי (גמ"ח ראשי). משתמש באותו קוד בדיוק כמו האתר (`lib/sharedDelivery.js`) ורושם היסטוריה (AuditLog בלי עובד).
 נבדק מקצה לקצה על TEST בלבד (הזמנות סינתטיות שנמחקו אחר כך): dry-run לא כותב; --write מעדכן את המצורפות, יוצר זיכוי אוטומטי יחיד, ורצה שנייה = אפס שינויים. **לא הורץ על פרודקשן.**
+
+## 9. הפעלה בנווה - סדר מומלץ (החלטת הבעלים: מחיר מוזל כללי 20 ₪ לכיוון)
+1. **seed של המחיר** - `node scripts/seed_shared_delivery_neve.js --org=2` (dry-run), ואז `--write`. כותב `shared_delivery_price_mode=global`, `shared_delivery_price=20`, ויוצר את `shared_delivery_enabled=false` אם חסר (כבוי - לא משנה שום חיוב).
+   נווה בלבד: `--org=2` חובה, `--org=1`/בלי org מסרבים, נבדק host; ערך קיים שונה לא נדרס בלי `--overwrite`; לא מורץ בלי אישור הבעלים בזמן ההרצה.
+2. **dry-run של חישוב מחדש** - `SD_DATABASE_URL=<DB נווה> node scripts/shared_delivery_reprice.mjs --expect-host=<מארח> --simulate-enabled`. המתג עוד כבוי, ולכן `--simulate-enabled` מחשב כאילו דלוק (dry-run בלבד; `--write` איתו מסרב). הדוח: הזמנות עתידיות, קבוצה, ראשי, הפרש, זיכוי / חוב.
+3. **בדיקת הדוח** עם הבעלים (שימו לב לזיכויים שייווצרו ולחובות בהזמנות ששולמו; סטטוס תשלום שמור יתעדכן).
+4. **הדלקה** - `node scripts/seed_shared_delivery_neve.js --org=2 --enable --write` (מסרב אם `enable_deliveries` כבוי או אין מחיר מוזל תקין). ההדלקה משנה חיובים בשמירה הבאה של הזמנות בקבוצה - רגע ההפעלה הוא החלטת הרכז / הבעלים.
+5. אופציונלי אחרי ההדלקה: `shared_delivery_reprice.mjs --write --expect-host=...` ליישור הזמנות עתידיות קיימות מיד (במקום לחכות לשמירה הבאה שלהן).
