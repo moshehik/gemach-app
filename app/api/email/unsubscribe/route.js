@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { verifyUnsubscribeToken } from '@/lib/emailCampaign';
 import { allow } from '@/lib/simpleRateLimit';
+import { recordConsentEntries, MARKETING_WORDING, MARKETING_WORDING_VERSION } from '@/lib/customerConsent';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,15 @@ export async function POST(request) {
   if (!id) return respond(404, page(GENERIC_BAD));
   try {
     const c = await prisma.customer.findUnique({ where: { id }, select: { id: true, marketingConsent: true } });
-    if (c && c.marketingConsent) await prisma.customer.update({ where: { id }, data: { marketingConsent: false } });
+    if (c && c.marketingConsent) {
+      await prisma.customer.update({ where: { id }, data: { marketingConsent: false } });
+      // ראיה ביומן ההסכמות (CustomerConsent): ביטול הסכמה לדיוור שיווקי, ערוץ ציבורי / הלקוחה עצמה / מסך email-unsubscribe, בלי עובד.
+      // recordConsentEntries לא זורקת לעולם: טבלה שעוד לא נוצרה / קליינט ישן = נרשם בקונסול והביטול עצמו (העמודה) כבר נשמר (סקירת אבטחה 12.10.2026, ממצא 10).
+      await recordConsentEntries(prisma, id, [{
+        channel: 'public', method: 'customer_self', surface: 'email-unsubscribe', recordedByEmployeeId: null, meta: null,
+        kind: 'marketing', granted: false, documentVersion: MARKETING_WORDING_VERSION, documentRef: null, wording: MARKETING_WORDING,
+      }]);
+    }
   } catch (e) {
     console.error('email unsubscribe failed', e);
     return respond(500, page({ title: 'אירעה שגיאה', message: 'לא הצלחנו לעדכן כרגע. נסו שוב בעוד כמה דקות.', tone: 'error' }));
