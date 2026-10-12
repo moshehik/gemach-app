@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString, getIsraelTodayDate, getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { pickupAddressFromList } from '../../../lib/gmachContact';
 
 export default function PrintAlterationsPage() {
   const searchParams = useSearchParams();
@@ -85,7 +86,7 @@ export default function PrintAlterationsPage() {
         // Letterhead details - same settings keys print/order reads for its header
         setPrintSettings({
           gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
-          gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+          gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
           gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
         });

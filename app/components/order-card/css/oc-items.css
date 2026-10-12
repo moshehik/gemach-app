@@ -84,3 +84,7 @@
 .gm-ds.gm-oc .app .seg.pill.oc-cond{flex:none;width:auto;min-width:0}
 .gm-ds.gm-oc .app .seg.pill.oc-cond button{flex:1 1 auto;padding:5px 14px;min-height:0;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .gm-ds.gm-oc .app .oc-retchip{flex:none}
+
+/* נושא 9 - שורת המשלוח בפריטים (delivery_as_item_row): תצוגה בלבד, בלי חץ פתיחה */
+.gm-ds.gm-oc .oc-delrow .li{cursor:default}
+.gm-ds.gm-oc .oc-delrow-d{font-weight:400;font-size:.85em;opacity:.75;margin-top:2px}

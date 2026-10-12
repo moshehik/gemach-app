@@ -162,7 +162,7 @@ const itemName = (it) => collapseSameCodeLabel(it?.dressItem?.dress?.name || it?
 const methodOf = (p) => p?.paymentMethod || p?.method || '';
 
 /** גיליונות הקובץ: הזמנה (שדה/ערך), פריטים, חיובים, תשלומים. מקור: מצב השרת האחרון (snapshot) - מה שנשמר. */
-export function orderExportSheets({ order, items = [], obligations = [], payments = [] }) {
+export function orderExportSheets({ order, items = [], obligations = [], payments = [], deliveryRows = [] }) {
   const o = order || {};
   const c = o.customer || {};
   const activeItems = items.filter((i) => !i.isDeleted);
@@ -197,7 +197,11 @@ export function orderExportSheets({ order, items = [], obligations = [], payment
         '#': i + 1, 'דגם': itemName(it), 'מידה': String(it.sizeText || it.dressItem?.sizeText || ''),
         'מחיר': num(it.finalPrice ?? it.price), 'נלקח': it.isTaken || it.takenDate ? 'כן' : 'לא', 'הוחזר': it.isReturned || it.returnDate ? 'כן' : 'לא',
         'תיקונים': [it.neckAlteration > 0 ? 'צוואר' : '', it.sleeveAlteration > 0 ? 'שרוול' : '', it.lengthAlteration && !['', 'null', '0'].includes(String(it.lengthAlteration)) ? `אורך ${it.lengthAlteration}` : ''].filter(Boolean).join(', '),
-      })),
+      })).concat((deliveryRows || []).map((r) => ({
+        // delivery_as_item_row (נושא 9): שורת תצוגה בלבד, שורה לכל כיוון - לא פריט (בלי מספר סידורי/נלקח/הוחזר); המחיר הוא חיוב המשלוח שכבר בגיליון "חיובים"
+        '#': '', 'דגם': [r.label, r.detail].filter(Boolean).join(' - '), 'מידה': '',
+        'מחיר': r.amount === null || r.amount === undefined ? '' : num(r.amount), 'נלקח': '', 'הוחזר': '', 'תיקונים': '',
+      }))),
     },
     { sheetName: 'חיובים', rows: activeObl.map((x) => ({ 'תיאור': String(x.description || ''), 'סכום': num(x.amount) })) },
     {

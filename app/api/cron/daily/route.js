@@ -6,6 +6,8 @@ import {
   renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml,
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
+import { pickupAddressFrom } from '@/lib/gmachContact';
+import { skipPickupReminderForDelivery, skipReturnReminderForDelivery } from '@/lib/orderDelivery';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, getExpectedReturnDate, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
@@ -47,6 +49,10 @@ export async function GET(request) {
   // פעילות, lib/businessDays.js); משמש את מייל האיחור (9) ואת הגביה האוטומטית בהו"ק (3).
   const nonWorkingDays = parseNonWorkingDaysSetting(get(NON_WORKING_DAYS_SETTING_KEY) ?? null);
 
+  // החלטה 27 (12.10.2026): אין תזכורת איסוף להזמנת משלוח עם כיוון הלוך (המשלוחן מביא), ואין תזכורת החזרה/איחור להזמנת משלוח עם כיוון חזור
+  // (המשלוחן אוסף). רק כש-enable_deliveries דלוק (הגמ"ח הראשי - נשלחות כמו תמיד). ר' skip*ReminderForDelivery ב-lib/orderDelivery.js.
+  const deliveriesEnabled = get('enable_deliveries') === 'true';
+
   // 6 - תזכורת יום לפני איסוף
   if (get('pickup_reminder_enabled') === 'true') {
     try {
@@ -58,9 +64,10 @@ export async function GET(request) {
         include: { customer: true, items: { where: { isDeleted: false } } }
       });
       const gmachName = get('gmach_name') || 'גמ"ח שמלות';
-      const gmachAddress = get('gmach_address') || '';
+      const gmachAddress = pickupAddressFrom(get); // gmach_pickup_address אם הוגדרה, אחרת gmach_address
       const gmachPhone = get('gmach_phone') || '';
       for (const o of orders) {
+        if (skipPickupReminderForDelivery(o, deliveriesEnabled)) continue;
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
         const hebrewDate = o.eventDateHebrew || getHebrewDateString(o.eventDate);
@@ -144,6 +151,7 @@ export async function GET(request) {
       const lateReturnThresholdDays = Number(get('late_return_threshold_days')) || LATE_RETURN_THRESHOLD_DAYS;
       const overdueOrders = candidates.filter(o => getLateReturnInfo(o, lateReturnThresholdDays, { nonWorkingDays }).isLate);
       for (const o of overdueOrders) {
+        if (skipReturnReminderForDelivery(o, deliveriesEnabled)) continue;
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
         const subject = emailSubject('lateReturnReminder', { orderId: o.orderId });
@@ -155,7 +163,7 @@ export async function GET(request) {
         const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${returnDateLabel}\n`;
         const html = renderLateReturnEmailHtml({
           customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: returnDateLabel, message: text,
-          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: get('gmach_address') || '', gmachPhone: get('gmach_phone') || '',
+          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: pickupAddressFrom(get), gmachPhone: get('gmach_phone') || '',
         });
         const r = await sendSystemEmail({ to: email, subject, body, html });
         if (r.success) results.lateEmails++;

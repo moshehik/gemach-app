@@ -19,6 +19,9 @@ import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
 import { stripCodeLabel } from '@/lib/modelCodeLabel';
 import { sortByModelThenSize } from '@/lib/sizeSort';
+import { loadDeliverySection } from '@/lib/orderDeliveryServer';
+import { pickupAddressFromList, pickupMapsUrlFromList } from '@/lib/gmachContact';
+
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 // שם = מספר דגם (נווה יעקב): "522 (קוד: 522)" מודפס "522" פעם אחת - stripCodeLabel ב-lib/modelCodeLabel.js (אותו כלל כמו app/print/order/page.js)
@@ -44,6 +47,7 @@ const ICON_SVG = {
   shirt: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
   scissors: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>',
   ruler: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>',
+  truck: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>',
   check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -143,13 +147,22 @@ export async function POST(request, { params }) {
     }
 
     const settingsData = await getAllCachedSettings();
+    // משלוח (נושא 9 - דוחות): בלוק פרטים בכותרת ההזמנה, ושורת פריט אם delivery_as_item_row דלוק. תצוגה בלבד - הסכומים נשארים כפי שהם.
+    const deliverySection = await loadDeliverySection(order, { settings: settingsData });
+    // החלטה 27: בהזמנת משלוח רק מה שהלקוחה צריכה - הלוך-חזור: בלי קבלה/החזרה/כתובת איסוף; הלוך בלבד: רק החזרה; חזור בלבד: רק קבלה. null = כמו תמיד
+    const visits = deliverySection ? deliverySection.visits : null;
+    const showPickupBox = !visits || visits.pickup;
+    const showReturnBox = !visits || visits.ret;
+    const showAddress = !visits || visits.address;
+    // קישור "פתיחה במפות Google" (אופט-אין: gmach_pickup_address / gmach_pickup_maps_url); '' = אין קישור
+    const pickupMapsUrl = showAddress ? pickupMapsUrlFromList(settingsData) : '';
     const enableAlterations = settingsData.find(s => s.key === 'enable_alterations')?.value !== 'false';
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
       box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
       footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
       gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות',
-      gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+      gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
       gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
       gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
       returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
@@ -265,6 +278,13 @@ export async function POST(request, { params }) {
             </tr>
           `;
         }).join('');
+
+    // שורת המשלוח בטבלת הפריטים (delivery_as_item_row): לא פריט מלאי - בלי ברקוד/מידה/סטטוס, המחיר נלקח מחיוב המשלוח שכבר נספר בסה"כ.
+    const deliveryRowHtml = deliverySection ? deliverySection.itemRows.map(row => `
+            <tr style="background:#f4f4f4;">
+              <td colspan="${colCount - 1}" style="font-weight: 600; color: #333;">${ICON_SVG.truck} ${escapeHtml(row.label)}${row.detail ? `<div style="font-weight:400;font-size:12px;color:#777;margin-top:2px;">${escapeHtml(row.detail)}</div>` : ''}</td>
+              <td style="font-weight: 700; color: #333; white-space: nowrap;">${row.amount !== null && row.amount !== undefined ? `₪${row.amount}` : '-'}</td>
+            </tr>`).join('') : '';
 
     // Payment notes formatting - mirrors app/print/order/page.js's formatPaymentNotes so the
     // emailed report shows the same human-readable credit-approval text instead of raw JSON.
@@ -401,15 +421,16 @@ export async function POST(request, { params }) {
       <body>
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
-          ${pickupDate ? `<div class="return-details-box"><strong>קבלת השמלות:</strong> ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${printSettings.pickupHours} בדיוק.</div>` : ''}
-          ${returnByDate ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${printSettings.returnHour}</div>` : ''}
+          ${pickupDate && showPickupBox ? `<div class="return-details-box"><strong>קבלת השמלות:</strong> ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${printSettings.pickupHours} בדיוק.</div>` : ''}
+          ${returnByDate && showReturnBox ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${printSettings.returnHour}</div>` : ''}
           <div class="print-header">
             <h1>${printSettings.gmachName}</h1>
             <div class="company-details">${[
-              printSettings.gmachAddress,
+              showAddress ? printSettings.gmachAddress : '',
               printSettings.gmachPhone ? `טלפון: ${printSettings.gmachPhone}` : '',
               printSettings.gmachEmail ? `דוא"ל: ${printSettings.gmachEmail}` : ''
             ].filter(Boolean).join(' | ')}</div>
+            ${pickupMapsUrl && printSettings.gmachAddress ? `<div class="company-details">כתובת האיסוף: ${escapeHtml(printSettings.gmachAddress)} · <a href="${escapeHtml(pickupMapsUrl)}" style="color:#1a56b0;">פתיחה במפות Google</a></div>` : ''}
           </div>
 
           <table class="order-details-table">
@@ -421,6 +442,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
+                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type' && r.key !== 'cost' && (!deliverySection.itemRows.length || r.key === 'address')).map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
                 ${!order.isAbroad ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
@@ -443,6 +465,7 @@ export async function POST(request, { params }) {
             </thead>
             <tbody>
               ${itemsHtml}
+              ${deliveryRowHtml}
             </tbody>
           </table>
 
@@ -455,6 +478,7 @@ export async function POST(request, { params }) {
                     <td>סה"כ לחיוב:</td>
                     <td>₪${totalObligations}</td>
                   </tr>
+                  ${deliverySection ? deliverySection.summaryRows.map(r => `<tr><td style="font-size:13px;">מתוכם ${escapeHtml(r.label)}:</td><td style="font-size:13px;">₪${r.amount}</td></tr>`).join('') : ''}
                   <tr>
                     <td>סה"כ שולם:</td>
                     <td>₪${totalPayments}</td>
@@ -553,7 +577,9 @@ export async function POST(request, { params }) {
       hasSignedRegulations: !!order.hasSignedRegulations,
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
-      gmachPhone: printSettings.gmachPhone
+      gmachPhone: printSettings.gmachPhone,
+      delivery: deliverySection,
+      pickupMapsUrl
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
