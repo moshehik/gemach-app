@@ -631,3 +631,382 @@ test('#274 + משלוח משותף: סכום שמור = פריטים + משלו�
   assert.equal(stored(b), 340);
   assert.equal(refunds(a.orderId).length + refunds(b.orderId).length, 0, 'אין זיכוי אוטומטי מדומה');
 });
+
+// ---------------------------------------------------------------------------------------------
+// הזמנות "קפואות" - shared_delivery_first_order_id ("מההזמנות הבאות והלאה"): הזמנה שמספרה קטן מההגדרה קיימת מלפני ההפעלה ושום כתיבה
+// של המשלוח המשותף לא נוגעת בה. כאן כל הזמנה קיימת נוצרת כשהמתג *כבוי* (חיוב מלא ששולם), ואז מדליקים עם first_order_id = אחרי האחרונה.
+// ---------------------------------------------------------------------------------------------
+function setSetting(key, value) {
+  const rows = db().systemSetting;
+  const r = rows.find((s) => s.key === key);
+  if (r) r.value = value; else rows.push({ key, value });
+  Cache.invalidateAllSettingsCache();
+}
+/** הזמנה קיימת מלפני ההפעלה: חיוב משלוח מלא, סכום שמור כולל משלוח, ושולמה במלואה (סטטוס 'שולם'). */
+async function legacyOrder(over = {}, { paid = true } = {}) {
+  const o = addOrder(over);
+  await saveOrder(o.orderId);
+  const amount = charge(o.orderId).amount;
+  setOrder(o.orderId, { totalAmount: amount });
+  if (paid) { pay(o.orderId, amount); setOrder(o.orderId, { status: 'שולם' }); }
+  return o;
+}
+/** ההדלקה: first_order_id = המספר שאחרי האחרונה שנוצרה עד כאן (כמו max+1 ב-seed). */
+function turnOn(first) {
+  setSetting('shared_delivery_enabled', 'true');
+  setSetting('shared_delivery_first_order_id', String(first ?? orderSeq + 1));
+}
+const snap = (orderId) => JSON.stringify({
+  o: db().order.find((x) => x.orderId === orderId),
+  obl: db().paymentObligation.filter((x) => x.orderId === orderId),
+  pay: db().payment.filter((x) => x.orderId === orderId),
+  ref: db().refund.filter((x) => x.orderId === orderId),
+});
+/** כל כתיבה (create/update/delete) שפונה להזמנה, לשורות החיוב / התשלום / הזיכוי שלה. */
+function touches(orderId) {
+  const ids = new Set([...db().paymentObligation, ...db().payment, ...db().refund].filter((x) => x.orderId === orderId).map((x) => x.id));
+  return writes().filter((c) => {
+    const w = c.args?.where || {}; const d = c.args?.data || {};
+    return w.orderId === orderId || d.orderId === orderId || (w.id !== undefined && ids.has(w.id));
+  });
+}
+const resultOf = (rec, orderId) => rec.results.find((r) => r.orderId === orderId);
+
+test('קפואות: הגדרה חסרה / ריקה / לא תקינה = אין קפואות - ההתנהגות זהה לקודם', async () => {
+  for (const value of [undefined, '', '   ', 'abc', '0', '-5', '12.5', '1']) {
+    reset({ shared_delivery_first_order_id: value });
+    const a = addOrder(); const b = addOrder();
+    await createFlow(a.orderId); const rec = await createFlow(b.orderId);
+    assert.equal(charge(a.orderId).amount, 80, `first=${value}`);
+    assert.equal(charge(b.orderId).amount, 40, `first=${value}`);
+    assert.deepEqual(rec.notices, []);
+    // החלפת ראשי מותרת כמו תמיד
+    const r = await SD.setSharedDeliveryPrimary(a.orderId, b.orderId);
+    assert.equal(r.ok, true, `first=${value}: ${r.error}`);
+    assert.equal(charge(b.orderId).amount, 80);
+    const info = await SD.getSharedDeliveryInfo(a.orderId);
+    assert.equal(info.frozenInGroup, false);
+    assert.ok(info.members.every((m) => m.frozen === false));
+  }
+});
+
+test('קפואות: קבוצה ללא קפואות (ההגדרה נמוכה מכל ההזמנות) - זהה לקודם, כולל זיכוי על הזמנה ששולמה', async () => {
+  reset({ shared_delivery_first_order_id: '1' });
+  const a = addOrder(); const b = addOrder();
+  await createFlow(a.orderId);
+  await saveOrder(b.orderId, { dropExisting: false });
+  assert.equal(charge(b.orderId).amount, 40);
+  setSetting('shared_delivery_enabled', 'false'); await saveOrder(b.orderId); setSetting('shared_delivery_enabled', 'true'); // חיוב מלא כאילו נוצרה לפני ההדלקה
+  assert.equal(charge(b.orderId).amount, 80);
+  setOrder(b.orderId, { totalAmount: 80 }); pay(b.orderId, 80); // שולמה 80 ואז הוזלה בדיעבד => זיכוי 40
+  const rec = await SD.reconcileSharedDelivery({ groupKeys: [await SD.getSharedGroupKeyForOrder(a.orderId)] });
+  assert.equal(resultOf(rec, b.orderId).status, 'updated');
+  assert.equal(resultOf(rec, b.orderId).creditAmount, 40);
+  assert.equal(refunds(b.orderId).length, 1);
+});
+
+test('קפואות: ראשית קפואה + חדשה מצורפת - החדשה מוזלת, הקפואה לא נוגעים בה (בלי זיכוי / חוב / התראה / סטטוס), הרצה חוזרת אפס כתיבות', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  assert.equal(charge(f.orderId).amount, 80);
+  const before = snap(f.orderId);
+  globalThis.__MOCK_CALLS = [];
+  const n = addOrder(); // אותה כתובת ואותו יום
+  const rec = await createFlow(n.orderId);
+  assert.equal(charge(n.orderId).amount, 40, 'החדשה מוזלת');
+  assert.ok(charge(n.orderId).description.includes('משלוח משותף'));
+  assert.equal(charge(f.orderId).amount, 80, 'הקפואה נשארת במחיר הרגיל');
+  assert.ok(!charge(f.orderId).description.includes('משלוח משותף'));
+  assert.equal(snap(f.orderId), before, 'הקפואה לא השתנתה בשום שדה');
+  assert.deepEqual(touches(f.orderId), []);
+  assert.equal(refunds(f.orderId).length, 0);
+  assert.deepEqual(rec.notices, []);
+  assert.equal(resultOf(rec, f.orderId).status, 'skipped'); assert.equal(resultOf(rec, f.orderId).reason, 'frozen');
+  // המצב בכרטיס: החדשה מצורפת לקפואה; הקפואה עצמה "לא רלוונטית"
+  const infoN = await SD.getSharedDeliveryInfo(n.orderId);
+  assert.equal(infoN.shared, true); assert.equal(infoN.isPrimary, false); assert.equal(infoN.primaryOrderId, f.orderId);
+  assert.equal(infoN.canChangePrimary, false); assert.equal(infoN.frozenInGroup, true);
+  assert.deepEqual(infoN.members.map((m) => [m.orderId, m.frozen]), [[f.orderId, true], [n.orderId, false]]);
+  const infoF = await SD.getSharedDeliveryInfo(f.orderId);
+  assert.equal(infoF.applicable, false); assert.equal(infoF.frozen, true); assert.equal(infoF.shared, false);
+  // אידמפוטנטי: הרצה חוזרת ושמירה חוזרת של החדשה - אפס כתיבות בחישוב מחדש
+  globalThis.__MOCK_CALLS = [];
+  const again = await SD.reconcileSharedDelivery({ groupKeys: [await SD.getSharedGroupKeyForOrder(n.orderId)] });
+  assert.equal(again.notices.length, 0);
+  assert.equal(writes().length, 0);
+  await saveOrder(n.orderId);
+  assert.equal(charge(n.orderId).amount, 40);
+  assert.equal(snap(f.orderId), before);
+  assert.equal(allObl(n.orderId).filter((o) => o.description.includes('משלוח')).length, 1);
+});
+
+test('קפואות: הקפואה ששולמה לא מקבלת זיכוי גם כשהחדשה נרשמה אחריה ו"הקדימה" לפי orderDate', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder({ orderDate: new Date(T0 + 99 * 3600e3) }); // orderDate מאוחר מאוד
+  turnOn();
+  const before = snap(f.orderId);
+  const n = addOrder({ orderDate: new Date(T0) });                         // החדשה נרשמה "קודם" לפי השעון
+  await createFlow(n.orderId);
+  assert.equal(charge(n.orderId).amount, 40, 'החדשה מוזלת (הקפואה היא הראשית)');
+  assert.equal(charge(f.orderId).amount, 80);
+  assert.equal(snap(f.orderId), before);
+  assert.equal(refunds(f.orderId).length, 0);
+});
+
+test('קפואות: קבוצה של קפואות בלבד - אפס שינוי וללא שום כתיבה', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const fs = [await legacyOrder(), await legacyOrder(), await legacyOrder({}, { paid: false })];
+  turnOn();
+  const before = fs.map((o) => snap(o.orderId));
+  globalThis.__MOCK_CALLS = [];
+  const key = await SD.getSharedGroupKeyForOrder(fs[0].orderId);
+  assert.ok(key, 'קפואה עדיין משתתפת בזיהוי הקבוצה');
+  const rec = await SD.reconcileSharedDelivery({ groupKeys: [key] });
+  assert.equal(rec.notices.length, 0);
+  assert.deepEqual(rec.results.map((r) => r.reason), ['frozen', 'frozen', 'frozen']);
+  assert.equal(writes().length, 0);
+  assert.deepEqual(fs.map((o) => snap(o.orderId)), before);
+  assert.deepEqual(fs.map((o) => charge(o.orderId).amount), [80, 80, 80]);
+  const state = await SD.getDayState(DAY, await SD.loadSharedDeliverySettings());
+  for (const o of fs) assert.deepEqual([...state.byOrder.get(o.orderId).info.discountedLegs], []);
+  assert.equal((await SD.getSharedDiscountForOrder(fs[1].orderId)), null);
+  assert.equal(writes().length, 0);
+});
+
+test('קפואות: שתי קפואות + חדשה (ועוד חדשה): הקפואות נשארות מלאות, כל החדשות מוזלות, שום כתיבה בקפואות', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f1 = await legacyOrder(); const f2 = await legacyOrder();
+  turnOn();
+  const before = [snap(f1.orderId), snap(f2.orderId)];
+  globalThis.__MOCK_CALLS = [];
+  const n1 = addOrder(); const rec1 = await createFlow(n1.orderId);
+  assert.equal(charge(n1.orderId).amount, 40);
+  const n2 = addOrder(); const rec2 = await createFlow(n2.orderId);
+  assert.equal(charge(n2.orderId).amount, 40, 'גם החדשה השנייה מוזלת - הקפואות הן שמשלמות מלא');
+  assert.deepEqual([charge(f1.orderId).amount, charge(f2.orderId).amount], [80, 80]);
+  assert.deepEqual([snap(f1.orderId), snap(f2.orderId)], before);
+  assert.deepEqual([touches(f1.orderId), touches(f2.orderId)], [[], []]);
+  assert.deepEqual([rec1.notices, rec2.notices], [[], []]);
+  assert.deepEqual([refunds(f1.orderId), refunds(f2.orderId)], [[], []]);
+});
+
+test('קפואות: חדשות בלבד אחרי ההדלקה בכתובת שאין בה קפואה - כרגיל (ראשונה מלא, שנייה מוזלת); קפואה בכתובת אחרת לא מתערבבת', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const other = await legacyOrder({ deliveryAddress: 'סולם יעקב 30' });
+  turnOn();
+  const a = addOrder(); const b = addOrder();
+  await createFlow(a.orderId); await createFlow(b.orderId);
+  assert.deepEqual([charge(a.orderId).amount, charge(b.orderId).amount], [80, 40]);
+  assert.equal(charge(other.orderId).amount, 80);
+});
+
+test('קפואות: החלפת ראשי אל / מקפואה אסורה (הודעה בעברית), וגם בקבוצה שיש בה קפואה; בלי שום כתיבה', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  const n1 = addOrder(); const n2 = addOrder();
+  await createFlow(n1.orderId); await createFlow(n2.orderId);
+  const before = [f, n1, n2].map((o) => snap(o.orderId));
+  globalThis.__MOCK_CALLS = [];
+  const MSG = 'הזמנה זו קיימת מלפני הפעלת המשלוח המשותף ואינה משתתפת בהנחה';
+  // אל קפואה
+  let r = await SD.setSharedDeliveryPrimary(n1.orderId, f.orderId);
+  assert.equal(r.ok, false); assert.equal(r.frozen, true); assert.equal(r.error, MSG);
+  // מקפואה (הכרטיס של הקפואה)
+  r = await SD.setSharedDeliveryPrimary(f.orderId, n1.orderId);
+  assert.equal(r.ok, false); assert.equal(r.frozen, true); assert.equal(r.error, MSG);
+  // בין שתי חדשות בקבוצה שיש בה קפואה (הראשית שלה קפואה)
+  r = await SD.setSharedDeliveryPrimary(n1.orderId, n2.orderId);
+  assert.equal(r.ok, false); assert.equal(r.frozen, true); assert.match(r.error, /קיימת מלפני הפעלת המשלוח המשותף/);
+  assert.equal(writes().length, 0);
+  assert.deepEqual([f, n1, n2].map((o) => snap(o.orderId)), before);
+  assert.equal(db().deliveryJoin.length, 0, 'לא נכתב סימון ראשי');
+});
+
+test('קפואות: שינוי כתובת בכרטיס לקוחה - קפואה לא נכתבת ולא נספרת כמושפעת; החדשות בקבוצה מיושרות', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const cf = addCustomer(); const cn = addCustomer();
+  const f = await legacyOrder({ customerId: cf.id });
+  turnOn();
+  const n = addOrder({ customerId: cn.id });
+  await createFlow(n.orderId);
+  assert.equal(charge(n.orderId).amount, 40);
+  const fBefore = snap(f.orderId);
+  globalThis.__MOCK_CALLS = [];
+  // הלקוחה של הקפואה עוברת דירה: הקפואה עצמה לא נכתבת, החדשה (שהייתה מצורפת) חוזרת למחיר מלא ומקבלת התראת חוב
+  const before = { street: cf.street, houseNum: cf.houseNum, city: cf.city };
+  setCustomer(cf.id, { street: 'סולם יעקב', houseNum: 30 });
+  const rec = await SD.reconcileAfterCustomerAddressChange(cf.id, before);
+  assert.deepEqual(rec.affectedOrders, [], 'הקפואה לא נספרת כמושפעת');
+  assert.equal(snap(f.orderId), fBefore);
+  assert.deepEqual(touches(f.orderId), []);
+  assert.equal(charge(n.orderId).amount, 80, 'הראשונה שנותרה בכתובת משלמת מלא');
+  assert.equal(rec.notices.length, 1); assert.equal(rec.notices[0].orderId, n.orderId);
+  // חוזרת לכתובת: החדשה מוזלת שוב, הקפואה עדיין לא נוגעים
+  globalThis.__MOCK_CALLS = [];
+  setCustomer(cf.id, { street: 'הנטקה', houseNum: 52 });
+  const rec2 = await SD.reconcileAfterCustomerAddressChange(cf.id, { street: 'סולם יעקב', houseNum: 30, city: 'ירושלים' });
+  assert.equal(charge(n.orderId).amount, 40);
+  assert.deepEqual(rec2.affectedOrders, []);
+  assert.equal(snap(f.orderId), fBefore);
+  assert.deepEqual(touches(f.orderId), []);
+});
+
+test('קפואות: לקוחה עם הזמנה קפואה והזמנה חדשה - שינוי כתובת מחשב מחדש רק את החדשה', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const ca = addCustomer(); const cb = addCustomer();
+  const fa = await legacyOrder({ customerId: ca.id });
+  const fb = await legacyOrder({ customerId: cb.id, deliveryAddress: 'הנטקה 52' }); // כתובת מפורשת - לא עוברת עם כרטיס הלקוחה
+  turnOn();
+  const nb = addOrder({ customerId: cb.id });
+  await createFlow(nb.orderId);
+  assert.equal(charge(nb.orderId).amount, 40);
+  const fBefore = [snap(fa.orderId), snap(fb.orderId)];
+  globalThis.__MOCK_CALLS = [];
+  const before = { street: cb.street, houseNum: cb.houseNum, city: cb.city };
+  setCustomer(cb.id, { street: 'סולם יעקב', houseNum: 30 });
+  const rec = await SD.reconcileAfterCustomerAddressChange(cb.id, before);
+  assert.deepEqual(rec.affectedOrders, [nb.orderId]);
+  assert.equal(charge(nb.orderId).amount, 80, 'יצאה מהקבוצה ולכן מחיר מלא');
+  assert.deepEqual([snap(fa.orderId), snap(fb.orderId)], fBefore);
+  assert.deepEqual([touches(fa.orderId), touches(fb.orderId)], [[], []]);
+  assert.deepEqual(rec.notices.map((x) => x.orderId), [nb.orderId]);
+});
+
+test('קפואות: ביטול הזמנה חדשה ראשית (בצד שהקפואה לא נוסעת בו) - החדשה הבאה הופכת למלאה, הקפואה לא נוגעים', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder({ deliveryDirection: 'חזור' });
+  turnOn();
+  const fBefore = snap(f.orderId);
+  const n1 = addOrder({ deliveryDirection: 'הלוך' }); const n2 = addOrder({ deliveryDirection: 'הלוך' });
+  await createFlow(n1.orderId); await createFlow(n2.orderId);
+  assert.deepEqual([charge(n1.orderId).amount, charge(n2.orderId).amount], [40, 20], 'בצד ההלוך אין קפואה: הראשונה מלא והשנייה מוזלת');
+  globalThis.__MOCK_CALLS = [];
+  const rec = await cancelFlow(n1.orderId);
+  assert.equal(charge(n2.orderId).amount, 40);
+  assert.equal(rec.notices.length, 1);
+  assert.equal(snap(f.orderId), fBefore);
+  assert.deepEqual(touches(f.orderId), []);
+});
+
+test('קפואות: ביטול חדשה מצורפת לקפואה - הקפואה לא נוגעים ואין התראות; ביטול הקפואה עצמה - החדשה הופכת לראשית (מלא)', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  const fBefore = snap(f.orderId);
+  const n1 = addOrder(); const n2 = addOrder();
+  await createFlow(n1.orderId); await createFlow(n2.orderId);
+  globalThis.__MOCK_CALLS = [];
+  let rec = await cancelFlow(n1.orderId);
+  assert.deepEqual(rec.notices, []);
+  assert.equal(charge(n2.orderId).amount, 40);
+  assert.equal(snap(f.orderId), fBefore);
+  assert.deepEqual(touches(f.orderId), []);
+  // הקפואה בוטלה (לא דרך המנגנון המשותף): החדשה שנותרה לבד בכתובת משלמת מחיר מלא
+  rec = await cancelFlow(f.orderId);
+  assert.equal(charge(n2.orderId).amount, 80);
+  assert.deepEqual(rec.notices.map((x) => x.orderId), [n2.orderId]);
+});
+
+test('קפואות: עריכת הקפואה עצמה (שינוי כתובת) - מחיר רגיל, סטטוס תשלום לא משתנה, החדשה בקבוצה מיושרת', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  const n = addOrder();
+  await createFlow(n.orderId);
+  assert.equal(charge(n.orderId).amount, 40);
+  // הקפואה עוברת לכתובת אחרת (PUT): applyDeliveryCharge מחיר רגיל, reconcile של הקבוצה הישנה, ושמירת הסטטוס מדלגת
+  globalThis.__MOCK_CALLS = [];
+  const rec = await editFlow(f.orderId, { deliveryAddress: 'סולם יעקב 30', deliveryCity: 'ירושלים' });
+  assert.equal(charge(f.orderId).amount, 80, 'הקפואה נשארת במחיר הרגיל');
+  assert.ok(!charge(f.orderId).description.includes('משלוח משותף'));
+  assert.equal(charge(n.orderId).amount, 80, 'החדשה נשארה לבד בכתובת => מחיר מלא');
+  assert.deepEqual(rec.notices.map((x) => x.orderId), [n.orderId]);
+  setOrder(f.orderId, { status: 'שולם' }); db().payment = db().payment.filter((p) => p.orderId !== f.orderId); pay(f.orderId, 10); // היתרה "לא מתיישבת" עם הסטטוס
+  const st = await SD.syncStoredPaymentStatus(f.orderId);
+  assert.deepEqual(st, { changed: false, from: null, to: null, frozen: true });
+  assert.equal(db().order.find((o) => o.orderId === f.orderId).status, 'שולם', 'סטטוס קפואה לא משתנה');
+  // ביקורת: אותה היתרה בהזמנה חדשה כן מיושרת (הלוגיקה עצמה לא נשברה)
+  setOrder(n.orderId, { status: 'שולם' }); pay(n.orderId, 10);
+  assert.equal((await SD.syncStoredPaymentStatus(n.orderId)).changed, true);
+});
+
+test('קפואות: חדשה שנערכת אל כתובת של קפואה מוזלת; ויוצאת ממנה - מלא', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  const fBefore = snap(f.orderId);
+  const lone = addOrder({ deliveryAddress: 'סולם יעקב 30' });
+  await createFlow(lone.orderId);
+  assert.equal(charge(lone.orderId).amount, 80);
+  await editFlow(lone.orderId, { deliveryAddress: null, customerId: f.customerId });
+  assert.equal(charge(lone.orderId).amount, 40);
+  await editFlow(lone.orderId, { deliveryAddress: 'סולם יעקב 30', customerId: addCustomer().id });
+  assert.equal(charge(lone.orderId).amount, 80);
+  assert.equal(snap(f.orderId), fBefore);
+});
+
+test('קפואות: תצוגה מקדימה - הזמנה חדשה (מספר וירטואלי) מוזלת מול קפואה גם כשההגדרה גבוהה; הזמנה קפואה קיימת בעריכה לא מוזלת', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn(5000); // מספר הזמנה וירטואלי (-1) של הזמנה חדשה לא נחשב קפוא
+  const cust = addCustomer();
+  const p = await SD.previewSharedDelivery({ customerId: cust.id, eventDate: EVENT, isDelivery: true, deliveryDirection: 'הלוך-חזור' });
+  assert.equal(p.shared, true); assert.equal(p.isPrimary, false);
+  assert.deepEqual(p.discount.discountedLegs, ['out', 'ret']);
+  assert.equal(p.matches[0].orderId, f.orderId);
+  const q = await SD.previewSharedDelivery({ orderId: f.orderId, customer: db().customer.find((c) => c.id === f.customerId), eventDate: EVENT, isDelivery: true });
+  assert.equal(q.frozen, true); assert.equal(q.discount, null); assert.equal(q.shared, false);
+});
+
+test('קפואות: הגדלת ההגדרה אחרי ההדלקה מקפיאה גם הזמנות שנוצרו מאז - הן לא נכתבות', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder();
+  turnOn();
+  const n1 = addOrder(); const n2 = addOrder();
+  await createFlow(n1.orderId); await createFlow(n2.orderId);
+  assert.deepEqual([charge(n1.orderId).amount, charge(n2.orderId).amount], [40, 40]);
+  setSetting('shared_delivery_first_order_id', String(n2.orderId)); // n1 עכשיו קפואה, n2 לא
+  const state = await SD.getDayState(DAY, await SD.loadSharedDeliverySettings());
+  assert.equal(state.byOrder.get(n1.orderId).member.frozen, true);
+  assert.equal(state.byOrder.get(n2.orderId).member.frozen, false);
+  globalThis.__MOCK_CALLS = [];
+  await SD.reconcileSharedDelivery({ groupKeys: [await SD.getSharedGroupKeyForOrder(n2.orderId)] });
+  assert.deepEqual(touches(f.orderId), []); assert.deepEqual(touches(n1.orderId), []);
+});
+
+test('קפואות: דוח ה-dry-run של הסקריפט (reconcile עם settings לסימולציה) מדלג על קפואות ולא כותב; בלי ההגדרה המצב הישן היה יוצר זיכוי', async () => {
+  // המצב מהדוח של 12.10: שתי הזמנות קיימות באותה כתובת ויום ששולם בהן מחיר מלא - בלי הקפאה השנייה הייתה מוזלת + זיכוי אוטומטי
+  reset({ shared_delivery_enabled: 'false' });
+  const a = await legacyOrder(); const b = await legacyOrder();
+  const base = { ...(await SD.loadSharedDeliverySettings()), enabled: true }; // --simulate-enabled
+  const key = await SD.getSharedGroupKeyForOrder(a.orderId, base);
+  assert.ok(key);
+  globalThis.__MOCK_CALLS = [];
+  const noFreeze = await SD.reconcileSharedDelivery({ groupKeys: [key], dryRun: true, settings: base });
+  assert.equal(resultOf(noFreeze, b.orderId).status, 'updated');
+  assert.equal(resultOf(noFreeze, b.orderId).creditAmount, 40, 'בלי הקפאה: זיכוי אוטומטי על הזמנה קיימת (מה שהבעלים רוצה להימנע ממנו)');
+  assert.equal(writes().length, 0, 'dry-run לא כותב');
+  const frozen = await SD.reconcileSharedDelivery({ groupKeys: [key], dryRun: true, settings: { ...base, firstOrderId: orderSeq + 1 } }); // --first-order-id
+  assert.deepEqual(frozen.results.map((r) => [r.orderId, r.status, r.reason]), [[a.orderId, 'skipped', 'frozen'], [b.orderId, 'skipped', 'frozen']]);
+  assert.equal(frozen.notices.length, 0);
+  // כתיבה אמיתית (כמו --write) עם ההגדרה ב-DB: גם כן מדלגת
+  turnOn();
+  const real = await SD.reconcileSharedDelivery({ groupKeys: [key], reason: 'x' });
+  assert.deepEqual(real.results.map((r) => r.status), ['skipped', 'skipped']);
+  assert.equal(writes().length, 0);
+  assert.equal(charge(b.orderId).amount, 80); assert.equal(refunds(b.orderId).length, 0);
+  // repriceDeliveryCharge ישירות
+  assert.deepEqual(await SD.repriceDeliveryCharge(b.orderId), { orderId: b.orderId, status: 'skipped', reason: 'frozen' });
+});
+
+test('קפואות: קפואה באותו בית ביום אחר לא מצטרפת לקבוצה של יום אחר', async () => {
+  reset({ shared_delivery_enabled: 'false' });
+  const f = await legacyOrder({ eventDate: new Date('2026-12-02T00:00:00.000Z') });
+  turnOn();
+  const n = addOrder(); // יום אחר
+  await createFlow(n.orderId);
+  assert.equal(charge(n.orderId).amount, 80, 'ראשונה בקבוצה של היום שלה');
+  assert.equal(charge(f.orderId).amount, 80);
+});

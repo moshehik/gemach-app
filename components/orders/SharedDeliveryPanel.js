@@ -49,7 +49,7 @@ export default function SharedDeliveryPanel({ orderId, order }) {
   };
 
   const others = info.members.filter((m) => !m.isSelf);
-  const legsText = (m) => (m.discountedLegs.length === 0 ? 'מחיר מלא' : `מוזל (${m.discountedLegs.map((l) => (l === 'out' ? 'הלוך' : 'חזור')).join(' + ')})`);
+  const legsText = (m) => (m.frozen ? 'מחיר מלא (קיימת מלפני ההפעלה, ללא הנחה)' : m.discountedLegs.length === 0 ? 'מחיר מלא' : `מוזל (${m.discountedLegs.map((l) => (l === 'out' ? 'הלוך' : 'חזור')).join(' + ')})`);
 
   return (
     <div className="card card-pad" style={{ marginBottom: '16px' }} data-testid="shared-delivery-panel">
@@ -64,7 +64,7 @@ export default function SharedDeliveryPanel({ orderId, order }) {
         </div>
         <div role="group" aria-label="משלוח ראשי" style={{ display: 'inline-flex', gap: '4px' }}>
           <button type="button" className={`btn btn-sm${info.isPrimary ? ' btn-primary' : ''}`} aria-pressed={info.isPrimary} disabled={busy || info.isPrimary || !info.canChangePrimary}
-            title={info.canChangePrimary ? 'הפוך הזמנה זו למשלוח הראשי' : 'החלפה אינה זמינה כרגע'} onClick={() => choosePrimary(orderId)}>
+            title={info.canChangePrimary ? 'הפוך הזמנה זו למשלוח הראשי' : (info.frozenInGroup ? 'בקבוצה יש הזמנה שקיימת מלפני ההפעלה - אי אפשר להחליף משלוח ראשי' : 'החלפה אינה זמינה כרגע')} onClick={() => choosePrimary(orderId)}>
             משלוח ראשי
           </button>
           <button type="button" className={`btn btn-sm${!info.isPrimary ? ' btn-primary' : ''}`} aria-pressed={!info.isPrimary} disabled={busy || !info.isPrimary || !info.canChangePrimary}
@@ -83,7 +83,7 @@ export default function SharedDeliveryPanel({ orderId, order }) {
       <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {info.members.map((m) => (
           <div key={m.orderId} className="hint" style={{ display: 'flex', gap: '10px', alignItems: 'center', color: m.isSelf ? 'var(--text)' : 'var(--text-2)' }}>
-            <span style={{ minWidth: '88px' }}>{m.isPrimary ? 'ראשי' : 'מצורף'}</span>
+            <span style={{ minWidth: '88px' }}>{m.frozen ? (m.isPrimary ? 'ראשי (קיימת)' : 'קיימת') : (m.isPrimary ? 'ראשי' : 'מצורף')}</span>
             {m.isSelf ? <b>#{m.orderId} {m.customerName} (הזמנה זו)</b> : <Link href={`/orders/${m.orderId}`}>#{m.orderId} {m.customerName}</Link>}
             <span>{m.direction}</span>
             <span>{legsText(m)}</span>
