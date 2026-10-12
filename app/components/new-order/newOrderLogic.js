@@ -335,7 +335,12 @@ export function buildCalculateBody(order) {
     deliveryCity: order.deliveryCity,
     // נפילה-לאחור של עיר המשלוח לעיר הלקוח גם בחישוב השרת - ר' resolveEffectiveDeliveryCity (lib/pricingCalc.js). כמו בישן (06467870 / 3a4d36df)
     customerCity: (order.selectedCustomer && order.selectedCustomer.city) || '',
-    deliveryDirection: order.deliveryDirection
+    deliveryDirection: order.deliveryDirection,
+    // משלוח משותף (shared_delivery_enabled): הכתובת והיום קובעים אם יש משלוח ראשי אחר באותה כתובת (מחיר מוזל). השרת מתעלם כשהפיצ'ר כבוי.
+    customerId: order.customerId || (order.selectedCustomer && order.selectedCustomer.id) || null,
+    deliveryAddress: order.deliveryAddress || '',
+    deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+    fromDate: order.fromDate || null
   };
 }
 

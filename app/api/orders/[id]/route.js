@@ -64,6 +64,7 @@ async function fetchOrderItemsWithDress(orderId) {
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
 import { isDeliveryJoinEnabled, saveDeliveryJoin, releaseOrderJoins } from '../../../../lib/deliveryJoin';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo, syncStoredPaymentStatus } from '../../../../lib/sharedDelivery';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -361,6 +362,11 @@ async function putOrder(request, { params }, claims) {
         return NextResponse.json({ error: deliveryError, message: deliveryError }, { status: 400 });
       }
     }
+
+    // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל = null בלי שאילתה): מפתח הקבוצה (יום אירוע + כתובת) *לפני* השמירה - אחרי
+    // השמירה מיישרים מחדש גם את הקבוצה הישנה (ההזמנה אולי יצאה ממנה: כתובת / תאריך / משלוח שונו) וגם את החדשה. כישלון לא מפיל את השמירה.
+    let sharedPreKey = null;
+    try { sharedPreKey = await getSharedGroupKeyForOrder(parsedOrderId); } catch (sharedErr) { console.error(`Order ${parsedOrderId}: shared delivery pre-key failed:`, sharedErr); }
 
     // Debt approval. The approver is read FROM the signed approvalToken that POST /api/auth/verify-pin issued after the typed
     // code matched (bound to this order, the logged-in employee and the debt_approval kind; single use) - not from a CLAIMED
@@ -1032,6 +1038,24 @@ async function putOrder(request, { params }, claims) {
     }
     await applyDeliveryCharge(parsedOrderId);
 
+    // משלוח משותף: מיישרים את חיוב המשלוח של שאר ההזמנות בקבוצה הישנה והחדשה (הזיכוי / החיוב נרשם אוטומטית דרך המנגנון הקיים),
+    // והתשובה נושאת את ההתראות להצגה לעובד. הזמנה זו עצמה כבר חושבה למעלה (applyDeliveryCharge).
+    let sharedDelivery = null;
+    try {
+      const sharedPostKey = await getSharedGroupKeyForOrder(parsedOrderId);
+      if (sharedPreKey || sharedPostKey) {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedPreKey, sharedPostKey], excludeOrderIds: [parsedOrderId], reason: `שמירת הזמנה #${parsedOrderId}` });
+        if (rec.enabled) {
+          // סטטוס התשלום השמור של ההזמנה הזו עוקב אחרי היתרה אחרי שינוי המשלוח (הזמנות אחרות עודכנו בתוך reconcile)
+          const st = await syncStoredPaymentStatus(parsedOrderId);
+          sharedDelivery = { notices: rec.notices, self: sharedPostKey ? await getSharedDeliveryInfo(parsedOrderId) : null, ...(st.changed ? { selfStatus: { from: st.from, to: st.to } } : {}) };
+        }
+      }
+    } catch (sharedErr) {
+      console.error(`Order ${parsedOrderId}: shared delivery reconcile failed:`, sharedErr);
+      sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+    }
+
     // Fetch the fully updated order to return to the client.
     // These queries are independent of each other - fetch them concurrently.
     const [finalOrderRaw, items, payments, refunds, obligationsRaw, priceList] = await Promise.all([
@@ -1140,7 +1164,7 @@ async function putOrder(request, { params }, claims) {
       return ob;
     });
     
-    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}) };
+    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}), ...(sharedDelivery ? { sharedDelivery } : {}) };
 
     return NextResponse.json(finalOrder);
   } catch (error) {
@@ -1238,6 +1262,10 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Cannot delete order with rental history' }, { status: 400 });
     }
 
+    // משלוח משותף: הקבוצה שההזמנה משתייכת אליה (לפני הביטול). אם זו הייתה הראשית - הבאה בתור הופכת לראשית וכל השאר מחושבים מחדש.
+    let sharedCancelKey = null;
+    try { sharedCancelKey = await getSharedGroupKeyForOrder(parsedOrderId); } catch (sharedErr) { console.error(`Order ${parsedOrderId}: shared delivery key before cancel failed:`, sharedErr); }
+
     // הפריטים וההתחייבויות שמבוטלים בפועל — נאספים לפני העדכון כדי לרשום לכל אחד מהם
     // שורת היסטוריה משלו. updateMany לא עובר דרך תוסף היומן, ולכן עד כה ביטול הזמנה
     // לא הותיר שום רישום בהיסטוריה של הפריט או של ההתחייבות — רק בהזמנה עצמה.
@@ -1309,6 +1337,18 @@ export async function DELETE(request, { params }) {
       console.error(`Order ${parsedOrderId}: releasing delivery join on cancel failed:`, joinFailure);
     }
 
+    // משלוח משותף: הזמנה שבוטלה יוצאת מהקבוצה - שאר החברים מחושבים מחדש (ראשית חדשה / חזרה למחיר מלא). כשל לא מפיל את הביטול.
+    let sharedDelivery = null;
+    if (sharedCancelKey) {
+      try {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedCancelKey], excludeOrderIds: [parsedOrderId], reason: `ביטול הזמנה #${parsedOrderId}` });
+        if (rec.enabled) sharedDelivery = { notices: rec.notices, self: null };
+      } catch (sharedErr) {
+        console.error(`Order ${parsedOrderId}: shared delivery reconcile after cancel failed:`, sharedErr);
+        sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+      }
+    }
+
     // קיזוז זיכוי (customer_credit_offset_prompt, lib/creditOffset.js): הזיכוי שקוזז לתוך ההזמנה שנמחקה חוזר להזמנה שממנה בא, בתנועות הפוכות -
     // אחרת הכסף נשאר תקוע בהזמנה מחוקה בלי בקשת זיכוי. בלי תשלומי קיזוז בהזמנה זה לא עושה כלום; כשל כאן לא מפיל את הביטול.
     try {
@@ -1317,7 +1357,7 @@ export async function DELETE(request, { params }) {
       console.error(`Order ${parsedOrderId}: reversing credit offsets on cancel failed:`, offsetFailure);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(sharedDelivery ? { success: true, sharedDelivery } : { success: true });
   } catch (error) {
     console.error('Error deleting order:', error);
     return NextResponse.json(

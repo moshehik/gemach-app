@@ -32,6 +32,7 @@ import { UniqueNamesProvider } from './components/UniqueNamesContext';
 
 import PrefetchManager from './components/PrefetchManager';
 import DesignPrefsSync from './components/DesignPrefsSync';
+import SharedDeliveryNoticeHost from '../components/SharedDeliveryNoticeHost';
 import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
@@ -852,6 +853,8 @@ function cpCssText(vars) {
             of truth; this syncs it into the fast cookie/localStorage mirrors
             on load (and migrates legacy local-only prefs into the DB once). */}
         {!showLogin && !printBare && isAuthenticated && <DesignPrefsSync />}
+        {/* משלוח משותף: חלון התראה גלובלי (רק כשמשלוחים פעילים; גמ"ח בלי משלוחים לא מקבל אותו) */}
+        {!showLogin && !printBare && isAuthenticated && showDeliveries && <SharedDeliveryNoticeHost />}
         {showLogin ? (
           <LoginGate data-element-name="רכיב_layout_7" />
         ) : (punchBare || printBare || stationBare) ? (

@@ -11,6 +11,7 @@ import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/deliveryValidation';
 import { useNoFill } from '../../../lib/autofillGuard';
+import SharedDeliveryPanel from '../SharedDeliveryPanel';
 
 /**
  * טאב "פרטים כלליים" בעיצוב "אריג" — כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
@@ -544,6 +545,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           ))}
         </div>
       )}
+      {/* משלוח משותף (shared_delivery_enabled): לא מרונדר כלום כשהפיצ'ר כבוי / אין קבוצה */}
+      {deliverySettings.enabled && order?.isDelivery && order?.orderId ? <SharedDeliveryPanel orderId={order.orderId} order={order} /> : null}
 
       {/* כפתור מאוחד "הוספת תשלום/זיכוי ידני" - מחליף את שני הכפתורים הנפרדים שמוסתרים אז
           בטאב תשלומים (ר' ModernPaymentsManager.js, מותנה באותו SystemSetting

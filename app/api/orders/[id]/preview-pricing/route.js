@@ -4,6 +4,7 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations, computeOrderObligationsWithLegacyPolicy, buildLegacyAwarePreviewObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
 import { isOrderJoinValid } from '@/lib/deliveryJoin';
+import { previewSharedDelivery } from '@/lib/sharedDelivery';
 import { resolveExtraDay } from '@/lib/extraDayGate';
 
 export const dynamic = 'force-dynamic';
@@ -75,7 +76,7 @@ export async function POST(request, { params }) {
         // חייב להתאים ל-applyDeliveryCharge כדי שהתצוגה המקדימה תכלול את אותו חיוב.
         include: {
           obligations: { where: { isDeleted: false }, select: { description: true } },
-          customer: { select: { city: true } }
+          customer: { select: { id: true, firstName: true, lastName: true, street: true, houseNum: true, city: true } }
         }
       }),
       prisma.priceList.findMany(),
@@ -153,6 +154,27 @@ export async function POST(request, { params }) {
         if (joined) joinPrice = parsedJoinPrice;
       }
     }
+    // משלוח משותף (shared_delivery_enabled): מחיר מוזל גם בתצוגה המקדימה כשעוד אין חיוב משלוח בהזמנה (אחרת התצוגה מציגה מחיר מלא והשמירה מוזלת).
+    // חיוב שכבר קיים לא משתנה בתצוגה (כמו היום) - ההפרש נרשם בשמירה ומוצג בהתראה.
+    let sharedDiscount = null;
+    if (effectiveOrder.isDelivery && !joinPrice) {
+      try {
+        const sp = await previewSharedDelivery({
+          orderId: parsedOrderId,
+          customer: baseOrder.customer,
+          eventDate: effectiveOrder.eventDate,
+          fromDate: effectiveOrder.fromDate,
+          isDelivery: true,
+          deliveryAddress: orderOverrides.deliveryAddress !== undefined ? orderOverrides.deliveryAddress : baseOrder.deliveryAddress,
+          deliveryCity: effectiveOrder.deliveryCity,
+          deliveryDirection: effectiveOrder.deliveryDirection,
+          deliveryOneDayBefore: orderOverrides.deliveryOneDayBefore !== undefined ? orderOverrides.deliveryOneDayBefore : baseOrder.deliveryOneDayBefore,
+        });
+        if (sp.enabled && sp.discount) sharedDiscount = { discountedPerLeg: sp.discount.discountedPerLeg, discountedLegs: sp.discount.discountedLegs };
+      } catch (sharedErr) {
+        console.error('shared delivery preview failed (showing regular price)', sharedErr);
+      }
+    }
     const deliveryPreview = computeDeliveryObligationPreview({
       isDelivery: effectiveOrder.isDelivery,
       deliveryCity: effectiveOrder.deliveryCity,
@@ -162,6 +184,7 @@ export async function POST(request, { params }) {
       deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
       deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,
       joinPrice,
+      sharedDiscount,
       // חיוב "משלוח" קיים ולא נמחק בהזמנה האמיתית - נבדק בנפרד מ-newObligations (שמכיל רק
       // חיובים אוטומטיים מ-computeOrderObligations, לא כולל משלוח מלכתחילה, כך שאין סיכון
       // לספור פעמיים).
