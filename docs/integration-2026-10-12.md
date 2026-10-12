@@ -131,3 +131,9 @@
   - `app/version.json`, `package.json`: צד integrate.
 - #275 (בקשת פרטי בנק בזיכוי) ב-`settingsMetadata.js`/כרטיס ההזמנה: נמזג אוטומטית, נבדק שהמפתחות `credit_bank_*` קיימים לצד `shared_delivery_*`.
 - תיקון: משתנה `body` כפול ב-PUT של הלקוח (שם התשובה שונה ל-`respBody`).
+
+## 12. feature/order-docs-delivery-2026-10-12
+- **שגיאת תחביר בענף עצמו:** ב-`lib/settingsMetadata.js` (הסבר ההגדרה `delivery_as_item_row`) היה גרש `ר'` בתוך מחרוזת בגרשיים בודדים - הקובץ כולו לא נטען (נפל settings-exposure, settings-get, test_settings_sim ועוד 12 בדיקות). הוחלף בגרש עברי (`ר׳`). בלי התיקון הענף שובר את האתר כולו.
+- קונפליקטים: `lib/emailTemplates.js` (שורת "חתם/ה על התקנון" של #276 + בלוק המשלוח; `renderOrderCardEmailHtml`/`renderOrderConfirmationEmailHtml` מקבלות עכשיו גם `hasSignedRegulations` וגם `delivery`/`pickupMapsUrl`), `app/api/orders/route.js` (מייל האישור: שורות מסוננות לפי `visibleVisitLines`, שורת התקנון נוספה לפני כתובת האיסוף, `hasSignedRegulations` + `delivery` + `pickupMapsUrl` ל-HTML), `orders/[id]/email` ו-`print/order/page.js` (ייבואים משני הצדדים), `settingsMetadata` (שני מפתחות בוליאניים), `settingsSimLayout` (`dlv_main` של הענף + `dlv_shared`).
+- **patch 01** לא חל כמות שהוא (אחרי מיזוג model-numbers הקוד כבר משתמש ב-`stripCodeLabel`/`collapseSameCodeLabel`) - הוחל ידנית באותה משמעות על `orders/[id]/email` (שם דגם דרך `modelDisplayName`/`scrubPlaceholderInText`), `ocDocsLogic` (`itemName`, `modelPhotosOf`), `print/order/page.js`. החלק של `app/api/orders/route.js` נדחה עד מיזוג email-center (שם הלוגיקה עוברת ל-`lib/orderConfirmationMail.js`).
+- תיקוני בדיקות: `test_delivery_leg_button.mjs`, `test_delivery_different_address_button.mjs` - מיקום המפתח בפריסה/ברשימה השתנה (נוספו אחריו `delivery_as_item_row` וחבריו); הציפייה נעשתה עמידה לכך.
