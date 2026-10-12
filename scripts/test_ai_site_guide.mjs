@@ -271,6 +271,7 @@ const { selectHub, accessForRole } = await import('../lib/adminHubCatalog.js');
 const { buildGuideBlock, menuItemIdsOf, describeMenuTree, resolveTokens, indexMenuTree, tokenize } = await import('../lib/aiGuide/knowledge.js');
 const { finalizeGuideTags, LEGACY_PHRASE_RE } = await import('../lib/aiGuide/resolve.js');
 const { collectPermissionKeys, checkAccess } = await import('../lib/aiGuide/access.js');
+const await_getTarget = await import('../lib/aiGuide/targetsIndex.js');
 
 const ALL_KEYS = [...new Set([...NAV_PAGE_KEYS, ...MENU_PAGE_KEYS, ...collectPermissionKeys({ pages: PAGES, targets: TARGETS, tasks: TASKS })])];
 function makeCtx({ roleId, logged = true, settings = {}, openKeys = null, currentPath = '/' }) {
@@ -345,6 +346,24 @@ check('finalizeGuideTags: מזהה לא מוכר נזרק, כפילות מצטמ
     if (r.steps.some((s) => s.id === ent.id)) errs.push(`יעד entity ${ent.id} הוחזר בלי שנמצאים בדף רשומה`);
     const r2 = finalizeGuideTags(`[[guide:${ent.id}]]`, { allowedIds: new Set(TARGETS.map((t) => t.id)), ctx: { ...ctx, currentPath: ent.route.replace(/:[a-zA-Z]+/g, '123') } });
     if (!r2.steps.some((s) => s.id === ent.id)) errs.push(`יעד entity ${ent.id} לא הוחזר בתוך דף רשומה`);
+  }
+  return errs;
+});
+
+check('יעדי set.key-* הדינמיים: רק הנהלה ראשית / מתכנת מקבלות צעד (גם מפתח "ניהול בלבד"); עובדת רגילה ומנהלת סניף - נזרק (סקירת אבטחה 12.10.2026)', null, () => {
+  const errs = [];
+  const { getTarget } = await_getTarget;
+  for (const key of ['hok_enabled', 'gmach_name', 'nedarim_plus_terminal', 'daily_manager_report_email']) {
+    const id = 'set.key-' + key.toLowerCase().replace(/_/g, '-');
+    const t = getTarget(id);
+    if (!t) { errs.push(id + ': לא נפתר כיעד דינמי'); continue; }
+    if (!t.access || t.access.gate !== 'head') errs.push(id + ': חסר access.gate=head');
+    for (const who of ['employee', 'branch']) {
+      const r = finalizeGuideTags('[[guide:' + id + ']]', { allowedIds: new Set(), ctx: CTXS[who] });
+      if (r.steps.length) errs.push(who + ' קיבלה צעד אל ' + id);
+    }
+    const h = finalizeGuideTags('[[guide:' + id + ']]', { allowedIds: new Set(), ctx: CTXS.head });
+    if (h.steps.length !== 1) errs.push('הנהלה ראשית לא קיבלה צעד אל ' + id);
   }
   return errs;
 });
