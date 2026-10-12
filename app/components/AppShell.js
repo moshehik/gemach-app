@@ -9,7 +9,7 @@ import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
-import PageVariantToggle from './variant/PageVariantToggle';
+import ReturnToNewDesignButton from './variant/ReturnToNewDesignButton';
 import MessageHistoryButton from './MessageHistoryButton';
 import OverdueRemindersWatcher from './OverdueRemindersWatcher';
 import ShiftMessageWatcher from './ShiftMessageWatcher';
@@ -235,6 +235,10 @@ export default function AppShell({
 
           <TopbarSearch />
 
+          {/* "חזרה לממשק החדש" (12.10.2026, בקשת הבעלים): לחצן בולט עם טקסט בכותרת הממשק הישן, לכל עובד/ת פעיל/ה (מחליף את אייקון
+              המעבר של המעטפת בלבד, 4.10.2026). מחליף את כל המסכים לחדש בבת אחת. לא קיים בממשק החדש. */}
+          <ReturnToNewDesignButton placement="topbar" />
+
           {/* כל אייקוני הפעולה + הפרופיל יושבים יחד באזור ממוסגר אחד
               (.topbar-icon-cluster) — הכפתורים עצמם שקופים, ראה design-system.css */}
           <div className="topbar-icon-cluster">
@@ -243,8 +247,6 @@ export default function AppShell({
             </button>
             <ThemeToggle employeeId={authToken} initialTheme={themePreference} />
             {isProgrammer && <MessageHistoryButton />}
-            {/* "מעבר לתצוגה החדשה" של התפריט (4.10.2026) - הדרך חזרה אחרי "האתר הישן"; רק להנהלה ראשית / מתכנת */}
-            <PageVariantToggle screen="shell" placement="topbar" />
             {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
             <UserMenu hideInternalMessaging={hideInternalMessaging} checkOverdueOnLogout={!!showOverdueRemindersPopup && !isProgrammer} />

@@ -2,7 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
-import { applyUiVariantRequest, describeSelfSwitch } from '@/lib/uiVariantSelfSwitch';
+import { applyUiVariantRequest, applyUiVariantAllRequest, describeSelfSwitch } from '@/lib/uiVariantSelfSwitch';
 import { syncDesignPrefsCookie } from './designPrefsCookie';
 
 // הדבק של ה-routes של /api/me/ui-variant/* (shell, home) ושל GET /api/me/ui-variant: זיהוי העובד, קריאת הגוף,
@@ -64,6 +64,39 @@ export async function handleUiVariantPost(request, screen) {
     return res;
   } catch (error) {
     console.error(`Error updating ${screen} ui-variant override:`, error);
+    return NextResponse.json({ success: false, error: 'שגיאת שרת' }, { status: 500 });
+  }
+}
+
+/** POST /api/me/ui-variant { value: 'a5' | 'legacy' } — כל המסכים בבת אחת (לחצן "חזרה לממשק החדש" / "האתר הישן"). אותה זהות ואותו רענון עוגייה. */
+export async function handleUiVariantPostAll(request) {
+  try {
+    const session = await getSessionEmployee();
+
+    let body = null;
+    let bodyParseFailed = false;
+    if (session) {
+      try {
+        body = await request.json();
+      } catch (e) {
+        bodyParseFailed = true;
+      }
+    }
+
+    const result = await applyUiVariantAllRequest({
+      body,
+      bodyParseFailed,
+      employee: session ? session.employee : null,
+      prisma,
+    });
+
+    const res = NextResponse.json(result.json, { status: result.status });
+    if (result.status === 200 && result.nextPrefs && session) {
+      syncDesignPrefsCookie(res, session.cookieStore, session.cookieKey, result.nextPrefs);
+    }
+    return res;
+  } catch (error) {
+    console.error('Error updating ui-variant overrides (all screens):', error);
     return NextResponse.json({ success: false, error: 'שגיאת שרת' }, { status: 500 });
   }
 }

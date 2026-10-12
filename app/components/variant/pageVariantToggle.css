@@ -34,6 +34,23 @@
 .gm-pvt.gm-pvt-topbar .gm-pvt-ic{width:18px;height:18px}
 .gm-pvt.gm-pvt-topbar .gm-pvt-tt{bottom:auto;top:calc(100% + 10px)}
 
+/* "חזרה לממשק החדש" (ReturnToNewDesignButton, 12.10.2026) - לחצן זהב עם טקסט בכותרת הממשק הישן / בפינה של דף ישן בתוך המעטפת החדשה. */
+.gm-pvt.gm-pvt-return{flex:none}
+.gm-pvt .gm-pvt-return-btn{box-sizing:border-box;height:38px;min-width:0;margin:0;padding:0 16px 0 14px;gap:8px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1.5px solid #000;background:var(--gm-gbtn);color:#000;font:inherit;font-size:15px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,244,196,.7),0 2px 8px -3px rgba(15,44,82,.45);transition:transform .15s,box-shadow .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.gm-pvt .gm-pvt-return-btn:hover{background:linear-gradient(135deg,#c9a227,#9a7a1f);transform:translateY(-1px);box-shadow:0 5px 12px -4px rgba(15,44,82,.5)}
+.gm-pvt .gm-pvt-return-btn:active{transform:none;box-shadow:none}
+.gm-pvt .gm-pvt-return-btn:focus-visible{outline:3px solid var(--gm-navy);outline-offset:3px}
+.gm-pvt .gm-pvt-return-btn:disabled{cursor:progress;opacity:.7;transform:none}
+.gm-pvt .gm-pvt-return-btn .gm-pvt-ic{width:18px;height:18px}
+.gm-pvt.gm-pvt-return-corner{position:fixed;bottom:20px;inset-inline-end:20px;z-index:880}
+@media (max-width:640px){
+  /* בכותרת הישנה במובייל: שורה משלו ברוחב מלא מתחת לשורת הכותרת (עדיין בתוך ה-topbar) */
+  .topbar:has(.gm-pvt-return-topbar){flex-wrap:wrap}
+  .gm-pvt.gm-pvt-return-topbar{order:99;flex:1 1 100%;display:flex}
+  .gm-pvt.gm-pvt-return-topbar .gm-pvt-return-btn{width:100%;height:42px;font-size:16px}
+  .gm-pvt.gm-pvt-return-corner{bottom:16px;inset-inline-end:16px}
+}
+
 @media (max-width:640px){
   .gm-pvt.gm-pvt-corner,.gm-pvt.gm-pvt-overlay{bottom:16px;inset-inline-end:16px}
 }
