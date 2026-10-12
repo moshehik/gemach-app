@@ -160,7 +160,7 @@ export default function StationAnalyticsPage() {
     }, { rootMargin: '-20% 0px -60% 0px' });
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, [state.status === 'ok']); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.status === 'ok']);
 
   const goSection = (id) => {
     const el = document.getElementById(id);

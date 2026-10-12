@@ -251,14 +251,31 @@ try {
     assert.ok(!JSON.stringify(list).includes('אוטומטית'));
   });
 
-  // חסרון הטבלה
+  // חסרון הטבלה (תמיד דרך חיבור pg: שינוי שם הטבלה בטרנזקציה נועל אותה, ו-Prisma בחיבור נפרד היה נתקע על הנעילה)
   await client.query('BEGIN');
   await client.query('ALTER TABLE "StationEvent" RENAME TO "StationEvent_tmp_sa"');
   let missing;
-  try { missing = await computeStationAnalytics(dbSvc, { from, to: todayKey, channel: 'public', windowDays: 14 }, { now: NOW }); } finally { await client.query('ROLLBACK'); }
+  let written;
+  try {
+    missing = await computeStationAnalytics(db, { from, to: todayKey, channel: 'public', windowDays: 14 }, { now: NOW });
+    await client.query('ROLLBACK'); // שגיאה בתוך טרנזקציה פוסלת אותה; מתחילים אחת חדשה לבדיקת הכתיבה
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE "StationEvent" RENAME TO "StationEvent_tmp_sa"');
+    written = await recordAnonEvent(db, { type: 'visit', sid: 'abcdef0123456789abcdef01' });
+  } finally { await client.query('ROLLBACK'); }
   check('טבלת StationEvent חסרה: status no_table (לא קריסה)', () => assert.equal(missing.status, 'no_table'));
-  const written = await (async () => { await client.query('BEGIN'); await client.query('ALTER TABLE "StationEvent" RENAME TO "StationEvent_tmp_sa"'); try { return await recordAnonEvent(dbSvc, { type: 'visit', sid: 'abcdef0123456789abcdef01' }); } finally { await client.query('ROLLBACK'); } })();
   check('כתיבת אירוע כשהטבלה חסרה: written=false, missingTable=true', () => { assert.equal(written.written, false); assert.equal(written.missingTable, true); });
+  // צורת השגיאה של Prisma עצמו על טבלה חסרה מזוהה ע"י isMissingTableError
+  if (dbSvc !== db) {
+    const { isMissingTableError } = await L('lib/stationAnalytics/queries.js');
+    let perr = null;
+    try { await dbSvc.$queryRawUnsafe('SELECT 1 FROM "StationEvent_missing_for_test"'); } catch (e) { perr = e; }
+    check('שגיאת Prisma על טבלה חסרה (42P01) מזוהה כ"טבלה חסרה" רק כשהיא ה-StationEvent', () => {
+      assert.ok(perr);
+      assert.equal(isMissingTableError({ message: String(perr.message).replace('StationEvent_missing_for_test', 'StationEvent'), code: perr.code, meta: perr.meta }), true);
+      assert.equal(isMissingTableError(new Error('relation "Customer" does not exist')), false);
+    });
+  }
 
   // כתיבה אמיתית דרך recordAnonEvent + ייחודיות, מול ה-DB
   const sid = 'sa-realwrite-0123456789abcdef'.replace(/[^A-Za-z0-9_-]/g, '');
