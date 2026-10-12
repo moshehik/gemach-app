@@ -119,6 +119,30 @@ t('שורה לא מוכרת בתבנית זורקת שגיאה (לא טקסט ר
   assert.throws(() => makeTx('nope', {})('x'), /מייל לא מוכר/);
 });
 
+// ---- משלוח באישור הזמנה (חיבור ללוגיקת המשלוחים של סוכן אחר: delivery={outbound,return,outHours,returnHours}) ----
+t('אישור הזמנה: בלי delivery / delivery ריק = בלי בלוק משלוח', () => {
+  const p = CASES.renderOrderConfirmationEmailHtml[0];
+  assert.equal(NEW.renderOrderConfirmationEmailHtml({ ...p, delivery: { outbound: false, return: false } }), NEW.renderOrderConfirmationEmailHtml(p));
+  assert.ok(!NEW.renderOrderConfirmationEmailHtml(p).includes('משלוחן'));
+});
+
+t('אישור הזמנה עם משלוח: שורות הלוך/חזור + בלוק "שימו לב" עם השעות; הניסוח ניתן לעריכה', () => {
+  const p = { ...CASES.renderOrderConfirmationEmailHtml[0], delivery: { outbound: true, return: true, outHours: 'בשעות אחה"צ–ערב', returnHours: '10:00–13:00' } };
+  const html = NEW.renderOrderConfirmationEmailHtml(p);
+  assert.ok(html.includes('משלוח הלוך') && html.includes('משלוח חזור'));
+  assert.ok(html.includes('אין צורך לבוא לגמ') && html.includes('משלוח הלוך: בשעות אחה') && html.includes('משלוח חזור: 10:00–13:00'));
+  const edited = NEW.renderOrderConfirmationEmailHtml({ ...p, delivery: { outbound: true, return: false, outHours: 'ערב', returnHours: '' }, cfg: { texts: { deliveryNotice: 'המשלוחן יתקשר ({{deliveryOutHours}})', lblDeliveryOut: 'שליחה אליך' } } });
+  assert.ok(edited.includes('המשלוחן יתקשר (ערב)') && edited.includes('שליחה אליך') && !edited.includes('משלוח חזור'));
+});
+
+t('לוגו בכותרת: רק עם fixed.logoUrl http(s)', () => {
+  const p = CASES.renderPickupReminderEmailHtml[0];
+  const html = NEW.renderPickupReminderEmailHtml({ ...p, cfg: { fixed: { logoUrl: 'https://gemach.example/api/logo' } } });
+  assert.ok(html.includes('<img src="https://gemach.example/api/logo"'));
+  assert.ok(!NEW.renderPickupReminderEmailHtml({ ...p, cfg: { fixed: { logoUrl: 'javascript:alert(1)' } } }).includes('<img'));
+  assert.equal(NEW.renderPickupReminderEmailHtml({ ...p, cfg: { fixed: {} } }), NEW.renderPickupReminderEmailHtml(p));
+});
+
 // ---- הדוח היומי (נבנה בעבר inline ב-cron/daily): אותו פלט, חוץ מ-escape של < > & בשמות ----
 t('renderDailyManagerReport זהה ל-HTML הישן של ה-cron (נתונים רגילים)', () => {
   const dateLabel = 'כז אלול תשפ"ו';

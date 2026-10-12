@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { gateEmailAdmin } from '@/lib/emailCenterAuth';
+import { gateEmailAdmin, requestOrigin } from '@/lib/emailCenterAuth';
 import { buildDraftCfg } from '@/lib/emailConfig';
 import { EMAIL_REGISTRY } from '@/lib/emailRegistry';
 import { buildSampleEmail } from '@/lib/emailSamples';
@@ -16,7 +16,7 @@ export async function POST(request) {
   const id = body && body.id;
   if (!id || !Object.prototype.hasOwnProperty.call(EMAIL_REGISTRY, id)) return NextResponse.json({ error: 'מייל לא מוכר' }, { status: 404 });
   try {
-    const draft = await buildDraftCfg(id, (body && body.draft) || {});
+    const draft = await buildDraftCfg(id, (body && body.draft) || {}, { origin: requestOrigin(request) });
     if (!draft.ok) return NextResponse.json({ error: draft.error, key: draft.key || null }, { status: 400 });
     const days = Number(body && body.daysBefore);
     const sample = buildSampleEmail(id, { cfg: draft.cfg, ...(Number.isInteger(days) && days >= 0 && days <= 30 ? { daysBefore: days } : {}) });
