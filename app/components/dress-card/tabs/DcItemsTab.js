@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { A5List, sortItems, findSorter } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
 import { DcAddItemDialog, DcEditItemDialog, DcItemInfoDialog } from '../dialogs/DcItemDialogs';
+import QuickTransferDialog from '../../branches/QuickTransferDialog';
+import { activeBranches, branchConfigFromSettings, isMultiBranchEnabled, mainBranch } from '@/lib/branches';
 import { Tip } from '../DcParts';
 import { exportItemsXlsx, runDressDoc } from '../dcPrint';
 import useDcListAi from '../useDcListAi';
@@ -24,6 +26,10 @@ export default function DcItemsTab({ dc, ui, active }) {
   // הוספה / עריכה / מחיקה / שחזור של פריט - feature:dress_items_manage (הנהלה ראשית ומתכנת תמיד). בלי ההרשאה: צפייה בלבד, והשרת חוסם בכל מקרה
   const canManage = !!dc.canManageItems;
   const lastLoc = useRef('');
+  // ריבוי סניפים (multi_branch_enabled, ברירת מחדל כבוי): עמודת / שדה סניף לפריט + חלונית "העברה מהירה". כבוי = שום שינוי בכרטיס.
+  const multi = isMultiBranchEnabled(dc.settings);
+  const branchCfg = useMemo(() => branchConfigFromSettings(dc.settings), [dc.settings]);
+  const branchNames = useMemo(() => (multi ? activeBranches(branchCfg).map((b) => b.name) : []), [multi, branchCfg]);
   const aiS = useDcListAi({ dc, ui, which: 'items' });
   const intent = dc.listIntent;
   const intentKey = intent ? intent.n : 0;
@@ -45,8 +51,9 @@ export default function DcItemsTab({ dc, ui, active }) {
       { k: 'unused', l: 'לא בשימוש', i: 'ban', test: (it) => stOf(it) === 'unused' },
       { k: 'deleted', l: 'מחוק', i: 'trash', test: (it) => it.del }] },
     { key: 'loc', label: 'מיקום', icon: 'pin', def: def.loc, options: locOpts.map((v) => ({ k: v, l: v, i: locIcon(v), test: (it) => it.loc === v })) },
+    ...(multi && branchNames.length ? [{ key: 'branch', label: 'סניף', icon: 'pin', def: [], options: [...new Set([...branchNames, ...cur.items.map((i) => i.branch).filter(Boolean)])].map((v) => ({ k: v, l: v, i: 'pin', test: (it) => it.branch === v })) }] : []),
     { key: 'size', label: 'מידה', icon: 'dress', def: [], options: sizes.map((s) => ({ k: s, l: `מידה ${s}`, i: 'tag', test: (it) => it.size === s })) },
-  ], [def, locOpts, sizes]);
+  ], [def, locOpts, sizes, multi, branchNames, cur.items]);
 
   const sorts = useMemo(() => [
     { k: 'size', l: 'מידה', i: 'dress', get: itemSortKey },
@@ -66,11 +73,11 @@ export default function DcItemsTab({ dc, ui, active }) {
   };
   const editItem = async (it) => {
     if (!canManage) { openInfo(it.id); return; }
-    const r = await ui.openDialog(DcEditItemDialog, { item: it, prefix, locations: locOpts, onInfo: openInfo });
+    const r = await ui.openDialog(DcEditItemDialog, { item: it, prefix, locations: locOpts, branches: multi ? branchNames : null, onInfo: openInfo });
     if (!r) return;
     if (r.action === 'delete') dc.deleteItem(it.id);
     else if (r.action === 'restore') dc.patchItem(it.id, { del: false });
-    else dc.patchItem(it.id, { loc: r.loc, carton: r.carton, repair: r.st === 'repair', unused: r.st === 'unused', why: r.why });
+    else dc.patchItem(it.id, { loc: r.loc, carton: r.carton, ...(multi ? { branch: r.branch || '' } : {}), repair: r.st === 'repair', unused: r.st === 'unused', why: r.why });
   };
   const addItem = async () => {
     if (!canManage) return;
@@ -79,6 +86,10 @@ export default function DcItemsTab({ dc, ui, active }) {
     lastLoc.current = r.loc;
     dc.addItemLocal({ id: -(++tempSeq), size: r.size, serial: r.serial, bc: '', loc: r.loc, carton: '', repair: false, unused: false, why: '', del: false, ent: getIsraelTodayKey(), since: null });
   };
+
+  // "העברה מהירה": חלונית רצף ברקודים - שיוך לסניף / למחסן / ממחסן / לרזרבה / קרטון. כותבת ישר לשרת (לא דרך עגלת השינויים) ומרעננת את הרשימה בסגירה
+  // ההעברה המהירה: הרשאת המלאי (page:dresses_catalog) - אותה הרשאה שפותחת את הכרטיס הזה, והשרת בודק שוב (requireItemTransferAccess); לא תלויה בהרשאת ניהול הפריט
+  const quickTransfer = () => ui.openDialog(QuickTransferDialog, { branches: branchNames, defaultBranch: (mainBranch(branchCfg) || {}).name || '', onApplied: () => dc.refreshFromServer() }, { dismissable: true });
 
   // ---------- סריקה: איתור פריט, פתיחת הפירוט וגלילה ----------
   const locateId = intent && intent.type === 'locate' ? intent.id : null;
@@ -111,7 +122,7 @@ export default function DcItemsTab({ dc, ui, active }) {
     return (
       <>
         {r('ברקוד', <bdi>{bc}</bdi>)}{r('מידה', it.size)}{r('סטטוס', ST_LABEL[st])}{it.unused ? r('סיבה', it.why || '—') : null}
-        {r('מיקום', it.loc || '—')}{r('מס׳ קרטון', it.carton || '—')}
+        {r('מיקום', it.loc || '—')}{multi ? r('סניף', it.branch || 'לא שויך') : null}{r('מס׳ קרטון', it.carton || '—')}
         {r('פרטי הוספה', `${it.ent ? hFull(it.ent) : '—'}${added ? ` · ${added.who}` : ''}`)}
         {last && last !== added ? r('עודכן', `${hFull(last.ts.slice(0, 10))} · ${last.who}`) : null}
         {it.del
@@ -131,6 +142,7 @@ export default function DcItemsTab({ dc, ui, active }) {
     { k: 'serial', t: 'סידורי', cell: (it) => <bdi>{pad2(it.serial)}</bdi> },
     { k: 'bc', t: 'ברקוד', cell: (it, c) => <bdi>{c.hl(bcFor(it, prefix))}</bdi> },
     { k: 'loc', t: 'מיקום', cell: (it, c) => <><OcIcon name={locIcon(it.loc)} />{c.hl(it.loc)}</> },
+    ...(multi ? [{ k: 'branch', t: 'סניף', cell: (it) => (it.branch || '—') }] : []),
     { k: 'carton', t: 'קרטון', cell: (it) => (it.carton || '—') },
     { k: 'status', t: 'סטטוס', cell: (it) => <><OcIcon name={ST_ICON[stOf(it)]} />{ST_LABEL[stOf(it)]}{isItemPending(saved, it) ? ' · ממתין' : ''}</> },
   ];
@@ -139,6 +151,9 @@ export default function DcItemsTab({ dc, ui, active }) {
     <div className="card hist items-card">
       <div className="card-h">
         <div className="ico gold"><OcIcon name="box" size="lg" /></div><h2>פריטים ומלאי</h2>
+        {multi && branchNames.length
+          ? <button type="button" className="btn" id="dcQuickBtn" aria-haspopup="dialog" onClick={quickTransfer}><OcIcon name="scan" />העברה מהירה</button>
+          : null}
         {canManage
           ? <button type="button" className="btn navy" id="dcAddBtn" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>
           : <span id="dcItemsRo"><Tip text="צפייה בלבד: הוספה, עריכה ומחיקה של פריטים דורשות הרשאת ניהול פריטי דגם" /></span>}
@@ -151,7 +166,7 @@ export default function DcItemsTab({ dc, ui, active }) {
         texts={{ placeholder: 'חיפוש פריט…', aiPlaceholder: 'בקשו מה-AI למצוא פריטים בדגם (למשל: פריטים שנמצאים ברזרבה)…', countLabel: 'פריטים', emptyText: aiS.emptyText || 'אין תוצאות' }}
         ai={aiS.ai}
         onStats={aiS.onStats}
-        hay={(it) => [it.size, pad2(it.serial), bcFor(it, prefix), it.loc, it.carton, ST_LABEL[stOf(it)], it.why].join(' ')}
+        hay={(it) => [it.size, pad2(it.serial), bcFor(it, prefix), it.loc, it.branch, it.carton, ST_LABEL[stOf(it)], it.why].join(' ')}
         filters={filters}
         sorts={sorts}
         defaultSort={{ k: 'size', dir: 1 }}
@@ -166,6 +181,7 @@ export default function DcItemsTab({ dc, ui, active }) {
                 <span className="ln mi">
                   <span className="lni" data-tip="ברקוד"><OcIcon name="scan" /><bdi>{c.hl(bc)}</bdi></span>
                   <span className="lni"><OcIcon name={locIcon(it.loc)} />{c.hl(it.loc)}</span>
+                  {multi && it.branch ? <span className="lni" data-tip="סניף"><OcIcon name="pin" />{c.hl(it.branch)}</span> : null}
                   {it.carton ? <span className="lni" data-tip="מספר קרטון"><OcIcon name="hash" />{c.hl(it.carton)}</span> : null}
                   <span className={`lni${st === 'normal' ? '' : ' warn'}`}><OcIcon name={ST_ICON[st]} />{ST_LABEL[st]}{st === 'unused' && it.why ? <> · {c.hl(it.why)}</> : null}</span>
                   {pend ? <span className="lni warn"><OcIcon name="pencil" />ממתין לשמירה</span> : null}

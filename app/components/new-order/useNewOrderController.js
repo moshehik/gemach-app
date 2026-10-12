@@ -143,9 +143,9 @@ export default function useNewOrderController({ router }) {
   // רק אם הוגדרה, ושמה מופיע ברשימת הסניפים (branch_list); ריק = בלי ברירת מחדל. הבחירה הידנית בהזמנה נשארת.
   const defaultOrderBranch = NL.defaultOrderBranchOf(settings);
   useEffect(() => {
-    if (settings.track_branch_on_order !== 'true' || !defaultOrderBranch) return;
+    if (!NL.trackBranchOn(settings) || !defaultOrderBranch) return;
     setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: defaultOrderBranch });
-  }, [settings.track_branch_on_order, defaultOrderBranch]);
+  }, [settings, defaultOrderBranch]);
 
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })

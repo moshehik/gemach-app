@@ -9,6 +9,7 @@ import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle, { DeviceBackupViewToggle } from './WebBackupModeToggle';
+import BranchesManager from '@/app/components/branches/BranchesManager';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
@@ -810,6 +811,22 @@ export default function SettingsClient({ mode = 'general' }) {
               <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0', fontSize: '12.5px' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
             </div>
           </div>
+
+          {activeTab === 'סניפים' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <BranchesManager compact />
+            </div>
+          )}
+
+          {activeTab === 'יומן' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <h3 style={{ fontSize: '14.5px', margin: '0 0 4px' }}>טווחי התהליכים בלו&quot;ז</h3>
+                <p className="hint" style={{ color: 'var(--text-3)', margin: 0, fontSize: '12.5px' }}>הכנה, איסוף, החזרה ותיקונים: כמה ימים לפני או אחרי האירוע, פעיל או כבוי, משמרת, וטווח ההתראה על העברת פריטים בין סניפים. נפתח כחלון בדף הלו&quot;ז.</p>
+              </div>
+              <Link href="/schedule?settings=1" className="btn btn-secondary btn-sm">פתיחת ההגדרות בלו&quot;ז</Link>
+            </div>
+          )}
 
           {activeTab === 'מסד נתונים' && (
             <>

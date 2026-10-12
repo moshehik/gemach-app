@@ -26,6 +26,7 @@ import { isCardNumberComplete, isExpiryComplete, isMobilePhoneComplete, justComp
 import { handleEnterKey } from '../../../lib/enterNavigation';
 import { explicitConsentOn, invalidConsentFields, missingConsentLabels, withConsentBody } from '../../../lib/consentForm';
 import ConsentFields, { useConsentInfo } from '../../components/shared/ConsentFields';
+import { branchConfigFromSettings, branchesWith, pickDefaultBranch } from '../../../lib/branches';
 import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
@@ -444,12 +445,14 @@ export default function NewOrderPage() {
   // ממלאים ברירת מחדל מהסניף האחרון שנבחר בדפדפן הזה (נשמר ב-onChange של ה-select
   // למטה), כדי שלא תצטרך לבחור שוב כל פעם; עדיין ניתן לשינוי לכל הזמנה בנפרד.
   useEffect(() => {
-    if (settings.track_branch_on_order !== 'true') return;
+    if (settings.track_branch_on_order !== 'true' && settings.multi_branch_enabled !== 'true') return;
     let remembered = '';
     try { remembered = localStorage.getItem('gemach_last_order_branch') || ''; } catch {}
+    // ריבוי סניפים: בלי סניף זכור בדפדפן - הסניף הראשי (בכל הזמנה נרשם סניף ביצוע)
+    if (!remembered && settings.multi_branch_enabled === 'true') remembered = pickDefaultBranch(branchConfigFromSettings(settings), '');
     if (!remembered) return;
     setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: remembered });
-  }, [settings.track_branch_on_order]);
+  }, [settings.track_branch_on_order, settings.multi_branch_enabled, settings.branches_config, settings.branch_list]);
 
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
@@ -1767,7 +1770,7 @@ export default function NewOrderPage() {
       hokFieldsOpen: settings.hok_enabled === 'true',
       isAbroad: order.isAbroad, eventDate: order.eventDate, fromDate: order.fromDate, toDate: order.toDate,
       deliveryError: validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities),
-      branchPending: settings.track_branch_on_order === 'true' && !order.branch && !order.isPhoneOrder,
+      branchPending: (settings.track_branch_on_order === 'true' || settings.multi_branch_enabled === 'true') && !order.branch && !order.isPhoneOrder,
     }),
     stateOverlay: duplicateCustomers.length > 0 || !!customerEditFor || !!deliveryModal || showExitConfirm || !!duplicateOrderWarning
       || pendingSpacingChange !== null || showSpacingCapacitySearch || !!capacityModalItem || showCreditModal || showQuickSwipeModal
@@ -2357,7 +2360,7 @@ export default function NewOrderPage() {
               </NocCollapsible>
 
               {/* 15 + 13/34 - משלוח, טלפוני וסניף (מותנה ב-toggle, כבוי = מוסתר) */}
-              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
+              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.multi_branch_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
               <div className="card card-pad" style={{ marginTop: 12 }}>
                 <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח / סניף / טלפוני</h3>
                 <div className="form-grid">
@@ -2384,7 +2387,7 @@ export default function NewOrderPage() {
                       זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה).
                       2 - select סגור מתוך הגדרת branch_list בלבד (לא עוד input חופשי + datalist -
                       אפשר היה להקליד כל טקסט, לא רק את הסניפים שבהגדרה). */}
-                  {settings.track_branch_on_order === 'true' && (
+                  {(settings.track_branch_on_order === 'true' || settings.multi_branch_enabled === 'true') && (
                     <div className="field">
                       <label>סניף ביצוע</label>
                       <select
@@ -2397,13 +2400,13 @@ export default function NewOrderPage() {
                         }}
                       >
                         <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        {(settings.multi_branch_enabled === 'true' ? branchesWith(branchConfigFromSettings(settings), 'pickup').map(b => b.name) : String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean)).map(b => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
                     </div>
                   )}
-                  {settings.branches_enabled === 'true' && (
+                  {(settings.branches_enabled === 'true' || settings.multi_branch_enabled === 'true') && (
                     <div className="field">
                       <label>סניף איסוף</label>
                       <select
@@ -2412,7 +2415,7 @@ export default function NewOrderPage() {
                         onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))}
                       >
                         <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        {(settings.multi_branch_enabled === 'true' ? branchesWith(branchConfigFromSettings(settings), 'pickup').map(b => b.name) : String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean)).map(b => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>

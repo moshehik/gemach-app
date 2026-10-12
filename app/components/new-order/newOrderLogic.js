@@ -6,6 +6,7 @@
 import { parseNonWorkingDaysSetting, addBusinessDays } from '../../../lib/businessDays';
 import { modelDisplayName, modelCodeSuffix as sharedModelCodeSuffix } from '../../../lib/modelDisplay';
 import { getExpectedReturnKey } from '../../../lib/lateReturn';
+import { branchConfigFromSettings, branchesWith, isMultiBranchEnabled, mainBranch } from '../../../lib/branches';
 
 // ---------- לקוח ----------
 export const getCustomerFullName = (c) => {
@@ -539,17 +540,23 @@ export const branchListOf = (settings) => String((settings || {}).branch_list ||
 // ברירת המחדל של "סניף ביצוע" (ההגדרה default_order_branch): רק אם שמה מופיע ברשימת הסניפים; אחרת '' (בלי ברירת מחדל)
 export const defaultOrderBranchOf = (settings) => {
   const d = String((settings || {}).default_order_branch || '').trim();
-  return d && branchListOf(settings).includes(d) ? d : '';
+  if (d && branchListOf(settings).includes(d)) return d;
+  // ריבוי סניפים (multi_branch_enabled): בכל הזמנה נשמר סניף ביצוע - אם לא הוגדרה ברירת מחדל, הסניף הראשי (docs/branches-plan.md). כבוי = '' כמו קודם.
+  if (isMultiBranchEnabled(settings)) { const m = mainBranch(branchConfigFromSettings(settings)); return m ? m.name : ''; }
+  return '';
 };
+// ריבוי סניפים: סניף ביצוע נרשם תמיד; סניף איסוף - רק סניפים עם יכולת איסוף (כבוי = כל רשימת הסניפים כמו קודם)
+export const trackBranchOn = (s) => (s || {}).track_branch_on_order === 'true' || isMultiBranchEnabled(s);
+export const pickupBranchesOf = (s) => (isMultiBranchEnabled(s) ? branchesWith(branchConfigFromSettings(s), 'pickup').map((b) => b.name) : branchListOf(s));
 // כמו בישן (LegacyNewOrderPage ~2030): כל הכרטיס "משלוח / סניף / טלפוני" מוצג כשאחד מדגלי הטלפוני/סניף דלוק או
 // delivery_show_in_order !== 'false'; "הזמנת משלוח" בתוכו דורשת גם enable_deliveries === 'true'. אופן ההזמנה - לפי הדגלים עצמם.
 export function deliveryStepVisibility(s) {
   const st = s || {};
-  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true';
+  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true' || st.multi_branch_enabled === 'true';
   const cardVisible = showMode || st.delivery_show_in_order !== 'false';
   return { showMode, showDelivery: cardVisible && st.enable_deliveries === 'true' };
 }
-export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.delivery_show_in_order !== 'false';
+export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.multi_branch_enabled === 'true' || s.delivery_show_in_order !== 'false';
 export const DELIVERY_DIRECTIONS = [
   { v: 'הלוך', icon: 'arrr' }, { v: 'חזור', icon: 'arrl' }, { v: 'הלוך-חזור', icon: 'arrlr' }
 ];

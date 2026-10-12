@@ -39,6 +39,8 @@ const YES = {
   '/refunds': 'head', '/dashboard/dresses': 'head', '/employees': 'head', '/deliveries': 'head',
   // 11.10.2026: רשימות הזמנות / לקוחות לניהול (דפים חדשים בלי גרסה ישנה, תחת /admin = שער app/admin/layout.js)
   '/admin/orders-list': 'head', '/admin/customers-list': 'head',
+  // 12.10.2026 (החלטת הבעלים, ריבוי סניפים): "ניהול סניפים" - שער הדף app/admin/layout.js (הנהלה ראשית / מתכנת), מוצג גם כשהריבוי כבוי כדי שאפשר יהיה להפעיל דרכו
+  '/admin/branches': 'head',
 };
 // אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
 const ADDED_LATER = {

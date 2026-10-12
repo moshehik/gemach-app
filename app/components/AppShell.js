@@ -13,6 +13,10 @@ import PageVariantToggle from './variant/PageVariantToggle';
 import MessageHistoryButton from './MessageHistoryButton';
 import OverdueRemindersWatcher from './OverdueRemindersWatcher';
 import ShiftMessageWatcher from './ShiftMessageWatcher';
+import dynamic from 'next/dynamic';
+
+// ריבוי סניפים (docs/branches-plan.md): נטען רק כשהוא מופעל (branchNotices מ-app/layout.js; null = שום קוד לא נטען)
+const BranchNotices = dynamic(() => import('./branches/BranchNotices'), { ssr: false });
 
 // Personal pinned-shortcuts prefs: a single shared, browser-wide localStorage key
 // (not per-employee/cookie-scoped like /display-settings) — this is a convenience
@@ -31,6 +35,7 @@ export default function AppShell({
   hideErrorReporting,
   hideInternalMessaging,
   showOverdueRemindersPopup,
+  branchNotices,
   authToken,
   themePreference,
   children,
@@ -251,6 +256,7 @@ export default function AppShell({
         )}
 
         <div className="content">
+          {branchNotices ? <BranchNotices cfg={branchNotices} /> : null}
           {children}
         </div>
       </div>

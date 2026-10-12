@@ -336,19 +336,31 @@ const walk = (d, out = []) => {
   return out;
 };
 const GATED = ['app/api/dresses/[id]/items/route.js', 'app/api/dresses/items/[itemId]/route.js'];
+// העברה מהירה בין סניפים / מחסן / רזרבה (docs/branches-plan.md): שער נפרד - הרשאת המלאי page:dresses_catalog (requireItemTransferAccess), לא ניהול פריט
+const TRANSFER_GATED = ['app/api/dresses/items/relocate/route.js'];
 // זרימות הזמנה שמעדכנות מיקום של DressItem כתוצאה מפעולה בהזמנה - נשארות פתוחות בכוונה (לא ניהול קטלוג)
 const ORDER_FLOW_ALLOW = {
   'app/api/rentals/confirm/route.js': 'אישור השכרה: location = "מושכר"',
   'app/api/rentals/scan/route.js': 'החזרה מהשכרה קודמת בסריקת השכרה חדשה: location = "חנות"',
   'app/api/returns/scan/route.js': 'החזרה / ביטול החזרה / ביטול כל ההחזרות: location חנות / מושכר',
   'lib/schedule/marks.js': 'סימוני הלו"ז היומי (החזרה): location (מאחורי מתג)',
+  'lib/returnBranchAdvice.js': 'סריקת החזרה (נקרא מ-returns/scan): סניף נוכחי של הפריט וניקוי סימון יצא-מהרזרבה - רק כשההגדרות דלוקות',
 };
 const WRITE_RE = /\bdressItem\s*\.\s*(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/;
 await t('כל קובץ בשרת (app/api, lib, app שאינו סקריפט) שכותב dressItem: אחד משני נתיבי הניהול (עם השער) או זרימת הזמנה מוצהרת', () => {
   const writers = [...walk('app'), ...walk('lib'), ...walk('components')].filter((f) => WRITE_RE.test(code(read(f))));
-  const unexpected = writers.filter((f) => !GATED.includes(f) && !ORDER_FLOW_ALLOW[f]);
+  const unexpected = writers.filter((f) => !GATED.includes(f) && !TRANSFER_GATED.includes(f) && !ORDER_FLOW_ALLOW[f]);
   assert.deepEqual(unexpected, [], 'כותב DressItem חדש: להוסיף requireDressItemManager() או להצהיר עליו ב-ORDER_FLOW_ALLOW (רק אם זו תוצאה של פעולה בהזמנה)');
   for (const f of GATED) assert.ok(writers.includes(f), f);
+});
+await t('נתיב ההעברה המהירה מתחיל ב-requireItemTransferAccess() לפני גישה ל-prisma ולפני קריאת ה-body, ולא תלוי בהרשאת ניהול הפריט', () => {
+  const src = code(read('app/api/dresses/items/relocate/route.js'));
+  assert.ok(!/requireDressItemManager|dress_items_manage/.test(src));
+  assert.match(read('lib/dressItemAccess.js'), /ITEM_TRANSFER_PERMISSION_KEY = 'page:dresses_catalog'/);
+  const body = src.slice(src.indexOf('export async function POST'));
+  const gate = body.indexOf('requireItemTransferAccess()');
+  assert.ok(gate > 0 && body.includes('if (denied) return denied;'));
+  for (const later of ['prisma.', 'request.json()']) { const at = body.indexOf(later); assert.ok(at === -1 || at > gate, later); }
 });
 await t('כל מטפל כותב בשני נתיבי הניהול מתחיל ב-requireDressItemManager() לפני כל גישה ל-prisma ולפני קריאת ה-body', () => {
   const must = [['app/api/dresses/[id]/items/route.js', 'POST'], ['app/api/dresses/items/[itemId]/route.js', 'PUT'], ['app/api/dresses/items/[itemId]/route.js', 'DELETE']];

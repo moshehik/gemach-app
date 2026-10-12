@@ -54,10 +54,11 @@ export function DcAddItemDialog({ items, prefix, locations, defaultLoc, close })
 const LockedField = ({ label, value }) => <div className="field"><label className="lbl">{label}</label><input className="inp" value={value} disabled readOnly /></div>;
 
 /** close({loc, carton, st, why} | {action:'delete'} | {action:'restore'} | null) */
-export function DcEditItemDialog({ item, prefix, locations, onInfo, close }) {
+export function DcEditItemDialog({ item, prefix, locations, branches, onInfo, close }) {
   const bc = bcFor(item, prefix);
   const [loc, setLoc] = useState(item.loc);
   const [carton, setCarton] = useState(item.carton);
+  const [branch, setBranch] = useState(item.branch || '');
   const [st, setSt] = useState(stOf(item) === 'deleted' ? 'normal' : stOf(item));
   const [why, setWhy] = useState(item.why);
   if (item.del) {
@@ -81,6 +82,13 @@ export function DcEditItemDialog({ item, prefix, locations, onInfo, close }) {
           <LockedField label="ברקוד" value={bc} />
         </div>
         <div className="field"><label className="lbl">מיקום</label><DcPill id="dcDLoc" value={loc} options={locOptions(locations, loc)} onChange={setLoc} label="מיקום" /></div>
+        {branches ? (
+          <div className="field"><label className="lbl" htmlFor="dcDBranch">סניף</label>
+            <select className="inp" id="dcDBranch" value={branch} onChange={(e) => setBranch(e.target.value)}>
+              <option value="">לא שויך</option>
+              {(branches.includes(branch) || !branch ? branches : [...branches, branch]).map((b) => <option key={b} value={b}>{b}</option>)}
+            </select></div>
+        ) : null}
         <div className="field"><label className="lbl">סטטוס</label><DcPill id="dcDSt" value={st} options={ST_OPTIONS} onChange={(v) => setSt(v)} label="סטטוס" /></div>
         {st === 'unused' ? <div className="field"><label className="lbl" htmlFor="dcDWhy">סיבה</label><textarea className="inp" id="dcDWhy" rows={2} placeholder="סיבה" value={why} data-autofocus="true" onChange={(e) => setWhy(e.target.value)} /></div> : null}
         <div className="field"><label className="lbl" htmlFor="dcDCart">מס׳ קרטון</label><input className="inp" id="dcDCart" value={carton} placeholder="מס׳" inputMode="numeric" autoComplete="off" onChange={(e) => setCarton(e.target.value)} /></div>
@@ -90,7 +98,7 @@ export function DcEditItemDialog({ item, prefix, locations, onInfo, close }) {
         </div>
       </div>
       <DlgButtons style={{ marginTop: 20 }}>
-        <DlgBtn kind="primary" icon="check" act="itm-ok" autoFocus onClick={() => close({ loc, carton: carton.trim(), st, why: st === 'unused' ? why.trim() : '' })}>אישור</DlgBtn>
+        <DlgBtn kind="primary" icon="check" act="itm-ok" autoFocus onClick={() => close({ loc, carton: carton.trim(), branch, st, why: st === 'unused' ? why.trim() : '' })}>אישור</DlgBtn>
         <DlgBtn kind="ghost" icon="back" onClick={() => close(null)}>ביטול</DlgBtn>
       </DlgButtons>
     </>
@@ -110,6 +118,7 @@ export function DcItemInfoDialog({ item, prefix, rentalsStore, close }) {
       <DlgHead id="oc-dlg-t" title={<>פרטי פריט <bdi>{bc}</bdi></>} sub={<><span data-tip="מידה">{item.size}</span> · <span data-tip="מספר סידורי">{pad2(item.serial)}</span> · {ST_LABEL[st]}</>} />
       <Row k="מיקום" v={item.loc || '—'} />
       <Row k="מס׳ קרטון" v={item.carton || '—'} />
+      {item.branch ? <Row k="סניף" v={item.branch} /> : null}
       <Row k="נכנס למאגר" v={item.ent ? hFull(item.ent) : '—'} />
       {item.unused ? <Row k="סיבה" v={item.why || 'לא נרשמה סיבה'} /> : null}
       {rentals.status === 'ready' ? <Row k="סה״כ השכרות" v={rs.length} /> : null}

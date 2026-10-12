@@ -22,6 +22,10 @@ import ErrorReportButton from '../ErrorReportButton';
 import MessageHistoryButton from '../MessageHistoryButton';
 import OverdueRemindersWatcher from '../OverdueRemindersWatcher';
 import ShiftMessageWatcher from '../ShiftMessageWatcher';
+import dynamic from 'next/dynamic';
+
+// ריבוי סניפים (docs/branches-plan.md): נטען רק כשהוא מופעל (branchNotices מ-app/layout.js; null = שום קוד לא נטען)
+const BranchNotices = dynamic(() => import('../branches/BranchNotices'), { ssr: false });
 import { A5ShellProvider } from './A5ShellContext';
 import { Ic, MenuRows, MenuSprite, SnLi, SOON_LABEL } from './menuParts';
 import MenuTabItem from './MenuTabPanel';
@@ -42,6 +46,7 @@ export default function MenuA5Shell({
   isProgrammer,
   hideInternalMessaging,
   showOverdueRemindersPopup,
+  branchNotices,
   children,
 }) {
   const pathname = usePathname();
@@ -495,6 +500,7 @@ export default function MenuA5Shell({
       <div className="a5-shell">
         {showOverdueRemindersPopup && <OverdueRemindersWatcher authToken={authToken} />}
         {!hideInternalMessaging && <ShiftMessageWatcher authToken={authToken} />}
+        {branchNotices ? <BranchNotices cfg={branchNotices} /> : null}
         {loginOpen && <LoginGate isModal onClose={() => setLoginOpen(false)} />}
 
         <div className="gm-ds gm-menu" ref={wrapRef}>

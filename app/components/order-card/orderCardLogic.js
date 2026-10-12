@@ -207,6 +207,8 @@ export function parseSettings(rows) {
     enableDeliveryJoin: bool('enable_delivery_join', false),
     enableBarcodeSequenceMode: bool('enable_barcode_sequence_mode', false),
     enableDressLocationAlert: bool('enable_dress_location_alert', false),
+    // ריבוי סניפים (docs/branches-plan.md): הצגת סניף הביצוע / האיסוף של ההזמנה בלשונית פרטים. חסר = כבוי
+    multiBranch: bool('multi_branch_enabled', false),
     orderQuickMailEnabled: bool('order_quick_mail_enabled', false),
     enableAlterations: bool('enable_alterations', false),
     // SystemSetting auto_alteration_done_on_take (ברירת מחדל כבוי): בלקיחה התיקון נרשם "בוצע (משוער)" - השרת (lib/schedule/autoAlterationDone.js) והשיקוף המקומי בכרטיס נשלטים באותה הגדרה, רק 'true'

@@ -1,3 +1,4 @@
+import { STAGES, SHIFT_VALUES } from '../../lib/schedule/stages.js';
 // Shared client+server validation for numeric SystemSetting values — used by both
 // app/admin/settings/SettingsClient.js (inline UI validation) and
 // app/api/settings/route.js (server-side guard, since the API can be called directly).
@@ -22,6 +23,8 @@ export const NUMBER_FIELD_LIMITS = {
   // חלונית "הזמנות שלא הוחזרו" בלבד (749aaf87): 0 חוקי (= כבר ביום ההחזרה הצפוי, בשילוב שעה); ריק = כמו late_return_threshold_days
   overdue_popup_threshold_days: { min: 0, max: 90, allowEmpty: true, emptyHint: 'ריק = כמו ימי האיחור הרגילים' },
   overdue_popup_after_hour: { min: 0, max: 23, allowEmpty: true, emptyHint: 'ריק = בלי הגבלת שעה' },
+  // ריבוי סניפים (docs/branches-plan.md): טווח התראת ההעברה בימים; ריק = 14
+  branch_transfer_horizon_days: { min: 1, max: 60, allowEmpty: true, emptyHint: 'ריק = 14 ימים' },
 };
 
 // allowEmpty: ערך ריק (או שורה חסרה) חוקי ומשמעותו "ברירת המחדל הישנה" - חל על הגדרות
@@ -65,4 +68,10 @@ export function validateNumericSetting(key, value) {
   if (num < limit.min) return `הערך קטן מדי — המינימום המותר הוא ${limit.min}.`;
   if (num > limit.max) return `הערך גדול מדי — המקסימום המותר הוא ${limit.max}.`;
   return null;
+}
+
+// תהליכי הלו"ז (schedule_stage_<שלב>_days / _shift): ימי עסקים 0-60, משמרת מרשימה סגורה (ריק = ברירת המחדל). ר' lib/schedule/stageSettings.js
+for (const stage of STAGES) {
+  SELECT_FIELD_ALLOWED_VALUES[`schedule_stage_${stage.key}_shift`] = SHIFT_VALUES;
+  if (stage.offsetConfigurable) NUMBER_FIELD_LIMITS[`schedule_stage_${stage.key}_days`] = { min: 0, max: 60, allowEmpty: true, emptyHint: 'ריק = ברירת המחדל' };
 }
