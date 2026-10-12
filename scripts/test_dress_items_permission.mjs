@@ -335,13 +335,14 @@ const walk = (d, out = []) => {
   }
   return out;
 };
-const GATED = ['app/api/dresses/[id]/items/route.js', 'app/api/dresses/items/[itemId]/route.js'];
+const GATED = ['app/api/dresses/[id]/items/route.js', 'app/api/dresses/items/[itemId]/route.js', 'app/api/dresses/items/relocate/route.js']; // relocate: העברה מהירה בין סניפים / מחסן / רזרבה (docs/branches-plan.md) - אותו שער
 // זרימות הזמנה שמעדכנות מיקום של DressItem כתוצאה מפעולה בהזמנה - נשארות פתוחות בכוונה (לא ניהול קטלוג)
 const ORDER_FLOW_ALLOW = {
   'app/api/rentals/confirm/route.js': 'אישור השכרה: location = "מושכר"',
   'app/api/rentals/scan/route.js': 'החזרה מהשכרה קודמת בסריקת השכרה חדשה: location = "חנות"',
   'app/api/returns/scan/route.js': 'החזרה / ביטול החזרה / ביטול כל ההחזרות: location חנות / מושכר',
   'lib/schedule/marks.js': 'סימוני הלו"ז היומי (החזרה): location (מאחורי מתג)',
+  'lib/returnBranchAdvice.js': 'סריקת החזרה (נקרא מ-returns/scan): סניף נוכחי של הפריט וניקוי סימון יצא-מהרזרבה - רק כשההגדרות דלוקות',
 };
 const WRITE_RE = /\bdressItem\s*\.\s*(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/;
 await t('כל קובץ בשרת (app/api, lib, app שאינו סקריפט) שכותב dressItem: אחד משני נתיבי הניהול (עם השער) או זרימת הזמנה מוצהרת', () => {
@@ -349,6 +350,13 @@ await t('כל קובץ בשרת (app/api, lib, app שאינו סקריפט) שכ
   const unexpected = writers.filter((f) => !GATED.includes(f) && !ORDER_FLOW_ALLOW[f]);
   assert.deepEqual(unexpected, [], 'כותב DressItem חדש: להוסיף requireDressItemManager() או להצהיר עליו ב-ORDER_FLOW_ALLOW (רק אם זו תוצאה של פעולה בהזמנה)');
   for (const f of GATED) assert.ok(writers.includes(f), f);
+});
+await t('נתיב ההעברה המהירה מתחיל ב-requireDressItemManager() לפני גישה ל-prisma ולפני קריאת ה-body', () => {
+  const src = code(read('app/api/dresses/items/relocate/route.js'));
+  const body = src.slice(src.indexOf('export async function POST'));
+  const gate = body.indexOf('requireDressItemManager()');
+  assert.ok(gate > 0 && body.includes('if (denied) return denied;'));
+  for (const later of ['prisma.', 'request.json()']) { const at = body.indexOf(later); assert.ok(at === -1 || at > gate, later); }
 });
 await t('כל מטפל כותב בשני נתיבי הניהול מתחיל ב-requireDressItemManager() לפני כל גישה ל-prisma ולפני קריאת ה-body', () => {
   const must = [['app/api/dresses/[id]/items/route.js', 'POST'], ['app/api/dresses/items/[itemId]/route.js', 'PUT'], ['app/api/dresses/items/[itemId]/route.js', 'DELETE']];
