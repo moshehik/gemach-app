@@ -77,7 +77,12 @@ function assertInt32(where) {
 }
 
 function model(name) {
-  const rows = () => globalThis.__DB[name] || [];
+  // יחס dress של פריט (DressItem -> DressModel) כשדה לא-נספר: מאפשר where: { dress: { exitDateFromRepo: null } } כמו Prisma.
+  const rows = () => {
+    const list = globalThis.__DB[name] || [];
+    if (name !== 'dressItem') return list;
+    return list.map((r) => Object.defineProperty({ ...r }, 'dress', { value: (globalThis.__DB.dressModel || []).find((m) => m.id === r.dressModelId) || null, enumerable: false }));
+  };
   const all = (args = {}) => {
     assertInt32(args.where);
     let out = rows().filter((r) => match(r, args.where));

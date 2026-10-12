@@ -126,11 +126,28 @@ console.log('sizes');
 t('sizeKey - טבלה', () => {
   const table = [['02', '2'], ['2', '2'], ['002', '2'], [' 2 ', '2'], ['0', '0'], ['00', '0'], ['12', '12'], ['012', '12'], ['06', '6'], ['6', '6'],
     ['1000', '1000'], ['xl', 'XL'], ['XL', 'XL'], ['Xl', 'XL'], ['m', 'M'], ['38 - 40', '38-40'], ['36 א', '36א'], ['36א', '36א'], ['', 'כללי'],
-    [null, 'כללי'], [undefined, 'כללי'], ['06.1', '06.1'], ['כללי', 'כללי'], [`${RLM}2`, '2'], [`${NBSP}02${NBSP}`, '2'], [2, '2'], ['38-40', '38-40']];
+    [null, 'כללי'], [undefined, 'כללי'], ['06.1', '6.1'], ['6.1', '6.1'], ['6,1', '6.1'], ['006.1', '6.1'], ['00.6', '0.6'], ['0.6', '0.6'], ['6.10', '6.10'], ['כללי', 'כללי'], [`${RLM}2`, '2'], [`${NBSP}02${NBSP}`, '2'], [2, '2'], ['38-40', '38-40'], ['38.0', '38'], ['038.00', '38'], ['6,0', '6'], ['38.5', '38.5'], ['0.0', '0']];
   for (const [i, o] of table) eq(sizeKey(i), o, `sizeKey(${JSON.stringify(i)})`);
 });
 t('sizeKey מתיישב עם normalizeSizeKey בקלט פשוט', () => {
   for (const x of ['02', '2', '10', '36', '006', '38-40', '36א', '', ' 06', '06.1', 'כללי']) eq(sizeKey(x), normalizeSizeKey(x), x);
+});
+t('עשרוניים: איחוד כתיב בלבד (אפס מוביל / פסיק), בלי עיגול — 06.1 ≡ 6.1 (DressItem מול OrderItem), 12.10.2026', () => {
+  for (const [a, b] of [['06.1', '6.1'], ['6.1', '06.1'], ['006.1', '6.1'], ['6,1', '06.1'], ['00.6', '0.6'], ['0.6', '00.6'], [' 06.1 ', '6.1'], ['38.50', '038.50']]) ok(sizeMatches(a, b), a + ' ~ ' + b);
+  for (const [a, b] of [['6.1', '6'], ['6', '6.1'], ['6.1', '6.2'], ['6.1', '6.10'], ['6.1', '16.1'], ['6.1', '61'], ['6.1', '6.01'], ['0.6', '6'], ['0.6', '0.60'], ['06.1', '06']]) no(sizeMatches(a, b), a + ' !~ ' + b);
+  eq(sizeSpellings('6.1'), ['6.1', '06.1', '006.1']); eq(sizeSpellings('06.1'), ['6.1', '06.1', '006.1']); eq(sizeSpellings('0.6'), ['0.6', '00.6', '000.6']);
+  const m = sizeSqlMatcher('6.1'); eq(m.regex, '^\\s*0*6\\.1\\s*$'); eq(m.flags, '');
+  const re = new RegExp(m.regex);
+  for (const s of ['6.1', '06.1', '006.1', ' 06.1 ']) ok(re.test(s), 'regex 6.1 ~ ' + s);
+  for (const s of ['6', '06', '6.2', '6.10', '16.1', '61', '6x1', '6.01', '60.1']) no(re.test(s), 'regex 6.1 !~ ' + s);
+  const m0 = sizeSqlMatcher('00.6'); eq(m0.regex, '^\\s*0+\\.6\\s*$');
+  const re0 = new RegExp(m0.regex); for (const s of ['0.6', '00.6', '000.6']) ok(re0.test(s), s); for (const s of ['6', '0', '10.6', '0.60', '0.5', '6.0']) no(re0.test(s), s);
+  // כל זוג (שלם, שבר) 0..30 × 1..9: האיותים והרג'קס תופסים את שלושת הכתיבים ואף כתיב של זוג אחר
+  for (let w = 0; w <= 30; w++) for (let f = 1; f <= 9; f++) {
+    const mm = sizeSqlMatcher(w + '.' + f); const r = new RegExp(mm.regex);
+    for (const own of [String(w), String(w).padStart(2, '0'), String(w).padStart(3, '0')].map((x) => x + '.' + f)) { ok(r.test(own), w + '.' + f + ' ~ ' + own); ok(mm.spellings.includes(own), w + '.' + f + ' has ' + own); }
+    for (const other of [(w + 1) + '.' + f, w + '.' + (f % 9 + 1), String(w), String(w) + f]) { no(r.test(other), w + '.' + f + ' !~ ' + other); no(mm.spellings.includes(other), w + '.' + f + ' !has ' + other); }
+  }
 });
 t('sizeMatches - מדויק, בלי תת-מחרוזת', () => {
   for (const [stored, q] of [['02', '2'], ['2', '02'], ['002', '2'], ['2', '2'], [' 2', '02'], ['XL', 'xl'], ['38-40', '38 - 40'], ['36א', '36 א']]) ok(sizeMatches(stored, q), `${stored} ~ ${q}`);
