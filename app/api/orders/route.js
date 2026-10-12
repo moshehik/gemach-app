@@ -17,7 +17,8 @@ import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import { loadDeliverySection } from '@/lib/orderDeliveryServer';
-import { deliveryItemRowText } from '@/lib/orderDelivery';
+import { pickupAddressFrom } from '@/lib/gmachContact';
+import { deliveryItemRowsText } from '@/lib/orderDelivery';
 import {
   planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
@@ -1092,7 +1093,9 @@ async function POST(request) {
       if (autoEmailSetting?.value === 'true' && email) {
           const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(israelLocalDate(updatedOrder.eventDate) ?? updatedOrder.eventDate) : '');
           const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
-          const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
+          // כתובת האיסוף ללקוח: gmach_pickup_address אם הוגדרה, אחרת gmach_address (lib/gmachContact.js) - רק מה-DB של הארגון הנוכחי
+          const [pickupAddrRow, gmachAddrRow] = await Promise.all([getCachedSetting('gmach_pickup_address'), getCachedSetting('gmach_address')]);
+          const gmachAddress = pickupAddressFrom((k) => (k === 'gmach_pickup_address' ? pickupAddrRow : gmachAddrRow)?.value);
           const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
           const pickupHours = (await getCachedSetting('standard_pickup_hours'))?.value || '20:00-21:30';
           const returnHour = (await getCachedSetting('standard_return_hour'))?.value || '13:00';
@@ -1131,7 +1134,7 @@ async function POST(request) {
           const { sendSystemEmail } = await import('@/lib/mailer');
           const { renderOrderConfirmationEmailHtml } = await import('@/lib/emailTemplates');
           const { emailSubject } = await import('@/lib/emailCatalog');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}${deliverySection && deliverySection.itemRow ? `, ${deliveryItemRowText(deliverySection)}` : ''}\n${deliverySection ? `${deliverySection.textLines.join('\n')}\n` : ''}סה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}${deliverySection && deliverySection.itemRows.length ? `, ${deliveryItemRowsText(deliverySection)}` : ''}\n${deliverySection ? `${deliverySection.textLines.join('\n')}\n${deliverySection.notice ? `${deliverySection.notice.plain.join('\n')}\n` : ''}` : ''}סה"כ לחיוב: ₪${totalObligations}\n${deliverySection ? deliverySection.summaryRows.map(r => `מתוכם ${r.label}: ₪${r.amount}\n`).join('') : ''}סה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
           const html = renderOrderConfirmationEmailHtml({
             customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
             orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,

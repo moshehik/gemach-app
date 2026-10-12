@@ -11,6 +11,7 @@ import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
 import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
+import { pickupAddressFromList } from '../../../lib/gmachContact';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -132,7 +133,7 @@ export default function PrintOrderPage() {
           box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
           footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
           gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
-          gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+          gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
           gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
           returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
@@ -410,7 +411,7 @@ export default function PrintOrderPage() {
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
                   {/* נושא 9: מועדי המשלוח (הלוך/חזור) והעלות. כשהמשלוח מוצג כשורת פריט (delivery_as_item_row) המועדים והמחיר מופיעים שם, ולא פעמיים */}
-                  {showDeliveryInPrint && deliverySection && !deliverySection.itemRow && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back' || r.key === 'cost').map(r => (
+                  {showDeliveryInPrint && deliverySection && !deliverySection.itemRows.length && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back').map(r => (
                     <Fragment key={r.key}>{r.label}: {r.value}<br /></Fragment>
                   ))}
                   {!ord.isAbroad ? (
@@ -503,17 +504,17 @@ export default function PrintOrderPage() {
             })
           )}
           {/* נושא 9 (delivery_as_item_row): המשלוח כשורה בטבלת הפריטים - לא פריט מלאי (בלי ברקוד/מידה), המחיר הוא חיוב המשלוח שכבר בסה"כ לחיוב */}
-          {deliverySection && deliverySection.itemRow && (
-            <tr className="delivery-item-row" style={{ background: '#f4f4f4' }}>
+          {deliverySection && deliverySection.itemRows.map((row) => (
+            <tr key={row.key} className="delivery-item-row" style={{ background: '#f4f4f4' }}>
               <td style={{ fontWeight: '600', color: '#333' }}>
-                <Truck size={13} style={{ verticalAlign: '-2px' }} /> {deliverySection.itemRow.label}
-                {deliverySection.itemRow.detail && <div style={{ fontWeight: 400, fontSize: '0.85em', color: '#777', marginTop: 2 }}>{deliverySection.itemRow.detail}</div>}
+                <Truck size={13} style={{ verticalAlign: '-2px' }} /> {row.label}
+                {row.detail && <div style={{ fontWeight: 400, fontSize: '0.85em', color: '#777', marginTop: 2 }}>{row.detail}</div>}
               </td>
               <td colSpan={colCount - 1} style={{ fontWeight: '700', whiteSpace: 'nowrap' }}>
-                {deliverySection.itemRow.amount !== null && deliverySection.itemRow.amount !== undefined ? `₪${deliverySection.itemRow.amount}` : '-'}
+                {row.amount !== null && row.amount !== undefined ? `₪${row.amount}` : '-'}
               </td>
             </tr>
-          )}
+          ))}
         </tbody>
         <tbody>
           <tr className="print-flow-row">
@@ -530,6 +531,12 @@ export default function PrintOrderPage() {
                         <td>סה&quot;כ לחיוב:</td>
                         <td>₪{totalObligations}</td>
                       </tr>
+                      {deliverySection && deliverySection.summaryRows.map((r) => (
+                        <tr key={r.key} className="delivery-summary-row">
+                          <td style={{ fontSize: '0.9em' }}>מתוכם {r.label}:</td>
+                          <td style={{ fontSize: '0.9em' }}>₪{r.amount}</td>
+                        </tr>
+                      ))}
                       <tr>
                         <td>סה&quot;כ שולם:</td>
                         <td>₪{totalPayments}</td>

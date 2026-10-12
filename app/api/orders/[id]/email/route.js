@@ -18,6 +18,7 @@ import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
 import { loadDeliverySection } from '@/lib/orderDeliveryServer';
+import { pickupAddressFromList } from '@/lib/gmachContact';
 
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
@@ -152,7 +153,7 @@ export async function POST(request, { params }) {
       box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
       footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
       gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות',
-      gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+      gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
       gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
       gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
       returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
@@ -266,11 +267,11 @@ export async function POST(request, { params }) {
         }).join('');
 
     // שורת המשלוח בטבלת הפריטים (delivery_as_item_row): לא פריט מלאי - בלי ברקוד/מידה/סטטוס, המחיר נלקח מחיוב המשלוח שכבר נספר בסה"כ.
-    const deliveryRowHtml = deliverySection && deliverySection.itemRow ? `
+    const deliveryRowHtml = deliverySection ? deliverySection.itemRows.map(row => `
             <tr style="background:#f4f4f4;">
-              <td colspan="${colCount - 1}" style="font-weight: 600; color: #333;">${ICON_SVG.truck} ${escapeHtml(deliverySection.itemRow.label)}${deliverySection.itemRow.detail ? `<div style="font-weight:400;font-size:12px;color:#777;margin-top:2px;">${escapeHtml(deliverySection.itemRow.detail)}</div>` : ''}</td>
-              <td style="font-weight: 700; color: #333; white-space: nowrap;">${deliverySection.itemRow.amount !== null && deliverySection.itemRow.amount !== undefined ? `₪${deliverySection.itemRow.amount}` : '-'}</td>
-            </tr>` : '';
+              <td colspan="${colCount - 1}" style="font-weight: 600; color: #333;">${ICON_SVG.truck} ${escapeHtml(row.label)}${row.detail ? `<div style="font-weight:400;font-size:12px;color:#777;margin-top:2px;">${escapeHtml(row.detail)}</div>` : ''}</td>
+              <td style="font-weight: 700; color: #333; white-space: nowrap;">${row.amount !== null && row.amount !== undefined ? `₪${row.amount}` : '-'}</td>
+            </tr>`).join('') : '';
 
     // Payment notes formatting - mirrors app/print/order/page.js's formatPaymentNotes so the
     // emailed report shows the same human-readable credit-approval text instead of raw JSON.
@@ -427,7 +428,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type' && (!deliverySection.itemRow || r.key === 'address')).map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
+                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type' && r.key !== 'cost' && (!deliverySection.itemRows.length || r.key === 'address')).map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
                 ${!order.isAbroad ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
@@ -463,6 +464,7 @@ export async function POST(request, { params }) {
                     <td>סה"כ לחיוב:</td>
                     <td>₪${totalObligations}</td>
                   </tr>
+                  ${deliverySection ? deliverySection.summaryRows.map(r => `<tr><td style="font-size:13px;">מתוכם ${escapeHtml(r.label)}:</td><td style="font-size:13px;">₪${r.amount}</td></tr>`).join('') : ''}
                   <tr>
                     <td>סה"כ שולם:</td>
                     <td>₪${totalPayments}</td>

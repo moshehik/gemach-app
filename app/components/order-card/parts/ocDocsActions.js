@@ -180,10 +180,10 @@ export async function exportOrderXlsx({ oc, orderId, download }) {
   const snap = oc.snapshot || {};
   const order = snap.order || oc.order;
   const obligations = snap.obligations || oc.obligations;
-  // delivery_as_item_row: שורת המשלוח גם בגיליון הפריטים (null כשההגדרה כבויה / אין משלוח = הקובץ זהה לקודם)
+  // delivery_as_item_row: שורות המשלוח (שורה לכל כיוון) גם בגיליון הפריטים (null כשההגדרה כבויה / אין משלוח = הקובץ זהה לקודם)
   const deliverySection = order && order.isDelivery && oc.settings && oc.settings.raw ? buildDeliverySection(order, { settings: deliverySettingsFrom(oc.settings.raw), obligations }) : null;
   const sheets = orderExportSheets({
-    order, items: snap.items || oc.items, obligations, payments: snap.payments || oc.payments, deliveryRow: deliverySection && deliverySection.itemRow,
+    order, items: snap.items || oc.items, obligations, payments: snap.payments || oc.payments, deliveryRows: deliverySection ? deliverySection.itemRows : [],
   });
   const fileName = docFileName('xlsx', orderId, 'xlsx');
   const save = download || (async (rows, name) => (await import('../../../../lib/schedule/print/xlsx')).downloadScheduleXlsx(rows, name));

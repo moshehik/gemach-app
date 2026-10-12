@@ -6,6 +6,7 @@ import {
   renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml,
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
+import { pickupAddressFrom } from '@/lib/gmachContact';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, getExpectedReturnDate, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
@@ -58,7 +59,7 @@ export async function GET(request) {
         include: { customer: true, items: { where: { isDeleted: false } } }
       });
       const gmachName = get('gmach_name') || 'גמ"ח שמלות';
-      const gmachAddress = get('gmach_address') || '';
+      const gmachAddress = pickupAddressFrom(get); // gmach_pickup_address אם הוגדרה, אחרת gmach_address
       const gmachPhone = get('gmach_phone') || '';
       for (const o of orders) {
         const email = o.customer?.email;
@@ -155,7 +156,7 @@ export async function GET(request) {
         const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${returnDateLabel}\n`;
         const html = renderLateReturnEmailHtml({
           customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: returnDateLabel, message: text,
-          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: get('gmach_address') || '', gmachPhone: get('gmach_phone') || '',
+          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: pickupAddressFrom(get), gmachPhone: get('gmach_phone') || '',
         });
         const r = await sendSystemEmail({ to: email, subject, body, html });
         if (r.success) results.lateEmails++;
