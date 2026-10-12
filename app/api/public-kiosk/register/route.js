@@ -5,6 +5,7 @@ import { loadPublicKioskConfig } from '@/lib/publicKiosk/config';
 import { publicJson, rateLimited, readJsonBody } from '@/lib/publicKiosk/http';
 import { loadSettingsMap, performRegistration, validateRegistration } from '@/lib/publicKiosk/registration';
 import prisma from '@/app/lib/prisma';
+import { getSessionEmployee } from '@/lib/auth';
 import { recordRegistrationEvent } from '@/lib/stationAnalytics/record';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +17,13 @@ export async function POST(request) {
   if (parsed.error) return parsed.error;
   try {
     const cfg = await loadPublicKioskConfig();
-    // פתוח לציבור רק כשהקישור וגם הרישום דלוקים; העמדה הנעולה בחנות (channel:'kiosk') נשענת על kiosk_customer_self_service הקיימת
-    const wantsKioskChannel = parsed.body && parsed.body.channel === 'kiosk';
-    const allowed = cfg.showRegistration || (wantsKioskChannel && cfg.storeSelfService);
+    // ערוץ ציבורי: רק כשהקישור וגם הרישום הציבורי דלוקים (cfg.showRegistration כולל linkEnabled).
+    // ערוץ 'kiosk' (העמדה הנעולה בחנות): kiosk_customer_self_service דלוק **וגם** עוגיית עובד תקפה ופעילה בבקשה - ההגדרה לבדה לא פותחת רישום לאינטרנט
+    // (סקירת אבטחה 12.10.2026). הערוץ הציבורי לא נשען על ההגדרה של החנות, והערוץ 'kiosk' לא נשען על הדגל הציבורי.
+    const wantsKioskChannel = !!(parsed.body && parsed.body.channel === 'kiosk');
+    const allowed = wantsKioskChannel
+      ? !!(cfg.storeSelfService && (await getSessionEmployee()))
+      : cfg.showRegistration;
     if (!allowed) return publicJson({ ok: false, code: 'unavailable', error: 'הרישום אינו זמין' }, 404);
 
     const sMap = await loadSettingsMap();
@@ -34,7 +39,7 @@ export async function POST(request) {
     if (r.customerId) await recordRegistrationEvent(prisma, { customerId: r.customerId, channel: v.input.channel, outcome: r.outcome });
     return publicJson({ ok: true });
   } catch (e) {
-    console.error('public-kiosk register failed:', e && e.message ? e.message : e);
+    console.error('public-kiosk register failed:', e && e.code ? e.code : (e && e.name) || 'error'); // לא e.message: עלול להכיל נתוני לקוחה (ת"ז, טלפון)
     return publicJson({ ok: false, code: 'server_error', error: 'שגיאה זמנית, נסו שוב' }, 500);
   }
 }

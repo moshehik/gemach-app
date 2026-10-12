@@ -124,9 +124,26 @@ test('register: unavailable (404) when the link or the registration flag is off;
   assert.equal((await reg(good())).status, 404);
   setSettings({ kiosk_customer_self_service: 'true' });
   assert.equal((await reg(good())).status, 404, 'public channel does not ride on the store flag');
-  assert.equal((await reg(good({ channel: 'kiosk' }), { ip: '3.3.3.3' })).status, 200, 'the locked store kiosk may register');
-  assert.equal(globalThis.__CUSTOMERS.length, 1);
-  assert.match(globalThis.__CUSTOMERS[0].officeNotes, /עמדת חנות/);
+  // סקירת אבטחה 12.10.2026: ההגדרה לבדה לא פותחת את הערוץ 'kiosk' לאינטרנט - נדרשת עוגיית עובד תקפה
+  assert.equal((await reg(good({ channel: 'kiosk' }), { ip: '3.3.3.3' })).status, 404, 'channel kiosk WITHOUT an employee cookie is refused even when kiosk_customer_self_service is on');
+  assert.equal(globalThis.__CUSTOMERS.length, 0);
+  globalThis.__SESSION_EMPLOYEE = { id: 'e1', roleId: 4, isActive: true };
+  try {
+    assert.equal((await reg(good({ channel: 'kiosk' }), { ip: '3.3.3.4' })).status, 200, 'the locked store kiosk (employee cookie) may register');
+    assert.equal(globalThis.__CUSTOMERS.length, 1);
+    assert.match(globalThis.__CUSTOMERS[0].officeNotes, /עמדת חנות/);
+    setSettings({ kiosk_public_link_enabled: 'true' });
+    assert.equal((await reg(good({ idNumber: '', phone1: '0507654321', lastName: 'לוי' }), { ip: '3.3.3.5' })).status, 404, 'an employee cookie does not open the PUBLIC channel (needs kiosk_public_show_registration)');
+  } finally { delete globalThis.__SESSION_EMPLOYEE; }
+});
+test('register: channel kiosk needs the store flag AND an employee; the public flags do not open it for anonymous callers', async () => {
+  setSettings({ ...ON, kiosk_customer_self_service: 'false' });
+  assert.equal((await reg(good({ channel: 'kiosk' }), { ip: '3.3.3.6' })).status, 404, 'public registration on + anonymous + channel kiosk = refused (cannot label itself as the store kiosk)');
+  globalThis.__SESSION_EMPLOYEE = { id: 'e1', roleId: 4, isActive: true };
+  try {
+    assert.equal((await reg(good({ channel: 'kiosk' }), { ip: '3.3.3.7' })).status, 404, 'employee but kiosk_customer_self_service off = refused');
+  } finally { delete globalThis.__SESSION_EMPLOYEE; }
+  assert.equal(globalThis.__CUSTOMERS.length, 0);
 });
 test('register: success creates a pending customer (server-side fields only) and answers exactly { ok:true }', async () => {
   setSettings(ON);

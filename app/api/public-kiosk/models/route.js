@@ -25,7 +25,7 @@ export async function GET(request) {
     });
     return publicJson({ ok: true, ...body }, 200, { 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=40' });
   } catch (e) {
-    console.error('public-kiosk models failed:', e && e.message ? e.message : e);
+    console.error('public-kiosk models failed:', e && e.code ? e.code : (e && e.name) || 'error');
     return publicJson({ ok: false, code: 'server_error', error: 'שגיאה זמנית' }, 500);
   }
 }
