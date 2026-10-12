@@ -281,3 +281,14 @@ test('kiosk-verify: staff-only; replaces the pending marker, keeps other notes, 
   const missing = await jr(await verifyRoute.POST(new Request('http://t.local/x', { method: 'POST' }), { params: Promise.resolve({ id: 'nope' }) }));
   assert.equal(missing.status, 404);
 });
+
+// ---------- סקירת אבטחה 12.10.2026 (ממצא 14): בלוג השגיאות של הראוטים הציבוריים אין e.message (עלול להכיל נתוני לקוחה) ----------
+test('public routes log only the error code / name, never the message', async () => {
+  const { readFileSync } = await import('node:fs');
+  for (const f of ['app/api/public-kiosk/register/route.js', 'app/api/public-kiosk/models/route.js']) {
+    const src = readFileSync(new URL('../../' + f, import.meta.url), 'utf8');
+    const logs = src.split('\n').filter((l) => /console\.error\(/.test(l));
+    assert.ok(logs.length >= 1, f);
+    for (const l of logs) assert.ok(!/\.message/.test(l), f + ': ' + l.trim());
+  }
+});
