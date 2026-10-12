@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import ScheduleIcon from './ScheduleIcon';
 import { LzPortal } from './LzPortal';
 
@@ -41,6 +42,7 @@ function itemLabel(it) {
 }
 
 export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady, scanQueue = [], onScanConsumed }) {
+  const nf = useNoFill();
   const open = !!target;
   const [state, setState] = useState(null); // תשובת GET / POST: { items, summary, gate, intent, customerName }
   const [loadError, setLoadError] = useState('');
@@ -256,10 +258,9 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
             <input
               ref={inputRef}
               className="inp"
-              name="barcode-nofill"
+              {...nf('barcode')}
               inputMode="numeric"
               dir="ltr"
-              autoComplete="off"
               data-lpignore="true"
               data-1p-ignore=""
               data-form-type="other"

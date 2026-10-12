@@ -154,3 +154,10 @@
 - תיקוני בדיקות: `PINNED_BLOBS` של `LegacyNewOrderPage.js` חושב מחדש; `review-fixes.test.mjs` מכיר את `multi_branch_enabled` בתנאי כרטיס "מצב הזמנה" של הטופס הישן.
 - `prisma validate` עבר (עם `DATABASE_URL` דמה). `DressItem.branch` / `locationBeforeRental` + אינדקס: **נדרש DDL לפני הפריסה** (`scripts/branches-ddl.sql`, `scripts/apply_branches_ddl.js`) - ר' runbook.
 - הערת lint קיימת (לא שלנו): `AppShell.js` "This value cannot be modified" (`window.location.hash =`) נכשל גם ב-HEAD לפני המיזוג.
+
+## 15. feature/schedule-barcode-2026-10-12
+- קונפליקטים: `orders/[id]` GET (שורת `mOpts` של model-numbers + `preppedIds` של הברקוד - שניהם), `rentals/confirm` (ייבואי `getCachedSetting` של סימון הרזרבה של branches + `lazyAutoMarkHandover/lazyCheckHandoverGate/registeredByScheduleIds`), `ScheduleDay` (`ScheduleSettingsDialog` של branches + `BarcodeDialog`/`ConfirmDialog`), `lib/schedule/index.js` (`getTransfersByOrder` + `isFeatureOn/attachDeliveryBarcodeInfo`; `canEditStages` + `barcodeEntry`), `settingsMetadata` (בוליאנים ואפשרויות בחירה משני הצדדים).
+- **`lib/schedule/loaders.js`**: מיפוי `barcodeInfo` לפי אינדקס פריט נעשה **לפני** `sortItemViews` של prep-pages (המיון משנה את סדר `row.items`; אחרת הברקוד היה מוצמד לפריט שגוי).
+- **#276 והחלון החדש:** `RentalReturnModal` הישן עדיין בשימוש במעטפת הישנה (PopupProvider כש-`shell!=='a5'`, `/orders`, `/rentals`, הלוח) והחלון החדש `RentalReturnWindow` (a5) חולק איתו את אותו hook (`useRentalReturn`) - לכן תיקוני O9/O12 שבהוק ובשרת חלים על שניהם. מה שחי בתצוגה בלבד הותאם לחלון החדש: באנר "N פריטים נרשם להם ברקוד בהכנה וטרם נמסרו - אשר מסירה" (`preppedCount`), והסתרת שבב "ממתין לאישור השכרה" לפריט שנרשם בהכנה (הכיתוב "ברקוד נרשם בהכנה – טרם נמסר" מגיע מ-`getItemStatus` המשותף). 409 של `postRent` (rentalToggle) משותף.
+- שדה הסריקה בלו"ז (`#scanIn` ב-`StageRail`, #276 + autofill): ללא קונפליקט (ענף schedule-barcode לא נגע בקובץ); שדה הברקוד ב-`BarcodeDialog` החדש קיבל `useNoFill` (בדיקת `test_email_autofill_guard` דורשת).
+- הערת lint קיימת: `components/modern/ChangesChips.js` (4 שגיאות react-hooks) קיימת גם לפני המיזוג.
