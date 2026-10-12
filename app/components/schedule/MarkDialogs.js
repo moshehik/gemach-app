@@ -32,12 +32,16 @@ export function doneTip(state) {
 }
 
 // מה הסימון/הביטול עושה בפועל בשלב הזה (בלי הפתעות: בשלבים 2/8 נוגעים בפריטים)
-export function confirmEffect(stageKey, { done, outcome, all }) {
+export function confirmEffect(stageKey, { done, outcome, all }, row = null) {
   if (stageKey === 'manret') {
     if (!done) return 'יבטל את ההחזרה של הפריטים בהזמנה (רק פריטים שהוחזרו מהלו״ז)';
     return all ? 'הפריטים יירשמו כהוחזרו תקין' : (outcome === 'not_ok' ? 'הפריטים יירשמו כהוחזרו - לא תקין' : 'הפריטים יירשמו כהוחזרו תקין');
   }
   if (stageKey === 'repair') return done ? 'יסמן "תיקון בוצע" בפריטי ההזמנה' : 'יבטל "תיקון בוצע" בפריטים';
+  // ברקוד בלו״ז (docs/schedule-barcode-plan.md): במסירה "בוצע" לוקח את הפריטים הרשומים, וביטול מחזיר אותם ל"לא נלקח" (הברקודים נשארים רשומים)
+  if ((stageKey === 'pick' || stageKey === 'dout') && row && row.barcodeInfo && row.barcodeInfo.gate === 'handover') {
+    return done ? 'הפריטים הרשומים יסומנו כנלקחו' : 'יבטל את הלקיחה של הפריטים בהזמנה (הברקודים נשארים רשומים)';
+  }
   return '';
 }
 

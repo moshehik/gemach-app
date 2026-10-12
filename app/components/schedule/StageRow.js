@@ -72,6 +72,7 @@ function RowDetails({ stage, row }) {
           <DetailRow key={it.orderItemId} label="שמלה">
             <span className="lz-itm">
               {itemText(it) || 'פריט ללא דגם'}
+              {it.barcode ? <span className="chip gray"><ScheduleIcon name="scan" />ברקוד <bdi dir="ltr">{it.barcode}</bdi>{it.taken ? ' · נלקח' : ''}</span> : null}
               {stage.key === 'repair' && alterationSummary(it) ? <span className="chip gray">תיקון: {alterationSummary(it)}</span> : null}
               {it.location ? <span className="chip gray"><ScheduleIcon name="pin" />מיקום: {it.location}</span> : null}
               {it.inRepair ? <span className="chip red">בתיקון</span> : null}
@@ -122,7 +123,7 @@ function rowClass(stage, row, doneState) {
   return 'lz-r' + (!known ? '' : (row.done === true ? ' lz-done' : ' lz-todo')) + (row.alerts && row.alerts.length ? ' lz-late' : '');
 }
 
-function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
+function StageRow({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
   const [open, setOpen] = useState(false);
   const meta = STAGE_META[stage.key] || STAGE_META.order;
   const name = row.customer?.name || 'לא ידוע';
@@ -149,7 +150,7 @@ function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
         <div className="lz-act">
           <AlertChip row={row} />
           <InfoChips stage={stage} row={row} />
-          <MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} />
+          <MarkButton stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneState} dayLabel={dayLabel} />
         </div>
         <GoLink orderId={row.orderId} />
       </div>
@@ -161,11 +162,12 @@ function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
 export default memo(StageRow);
 
 // שורת טבלה (תצוגת "טבלה", trHTML בעיצוב): עמודות הזמנה / לקוחה / פרטים / התראה / ביצוע / כרטיס
-function StageTableRowImpl({ stage, row, onMarkDone, doneState, dayLabel }) {
+function StageTableRowImpl({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
   const items = row.items || [];
   const itemLines = items.map((it) => {
     const parts = [itemText(it)];
     if (stage.key === 'repair' && alterationSummary(it)) parts.push('תיקון: ' + alterationSummary(it));
+    if (it.barcode) parts.push('ברקוד ' + it.barcode + (it.taken ? ' · נלקח' : ''));
     if (it.location) parts.push('מיקום: ' + it.location);
     if (it.inRepair) parts.push('בתיקון');
     return parts.filter(Boolean).join(' · ');
@@ -184,7 +186,7 @@ function StageTableRowImpl({ stage, row, onMarkDone, doneState, dayLabel }) {
         {row.internalNotes ? <small className="lz-sm">הערה פנימית (הנהלה בלבד): {row.internalNotes}</small> : null}
       </td>
       <td><AlertChip row={row} /><InfoChips stage={stage} row={row} /></td>
-      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} /></div></td>}
+      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkButton stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneState} dayLabel={dayLabel} /></div></td>}
       <td className="tc"><GoLink orderId={row.orderId} /></td>
     </tr>
   );

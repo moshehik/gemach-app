@@ -25,10 +25,15 @@ function cmp(a, b) {
   return av < bv ? -1 : av > bv ? 1 : 0;
 }
 
+const OPERATORS = new Set(['not', 'in', 'notIn', 'contains', 'gte', 'lte', 'gt', 'lt', 'equals', 'mode', 'startsWith', 'endsWith']);
 function matchField(value, cond) {
   if (cond === null) return value === null || value === undefined;
   if (cond instanceof Date || typeof cond !== 'object') return value === cond || (value instanceof Date && cond instanceof Date && value.getTime() === cond.getTime());
   if ('some' in cond || 'every' in cond || 'none' in cond || 'is' in cond || 'isNot' in cond) return true; // relation filter - not evaluated
+  // to-one relation filter written as a plain nested where (e.g. orderItem `order: { isDeleted: false }`): evaluated against the linked object when the
+  // mock row carries one (non-enumerable `order` link, see table()); otherwise treated as "match" like before
+  const keys = Object.keys(cond);
+  if (keys.length && keys.every((k) => !OPERATORS.has(k))) return value && typeof value === 'object' ? matchWhere(value, cond) : true;
   for (const [op, expected] of Object.entries(cond)) {
     if (op === 'not') { if (matchField(value, expected)) return false; continue; }
     if (op === 'in') { if (!expected.some((x) => matchField(value, x))) return false; continue; }
@@ -57,6 +62,7 @@ export function matchWhere(row, where) {
 function project(row, args) {
   const sel = (args && (args.select || args.include)) || null;
   const out = { ...row };
+  if (row.order && typeof row.order === 'object' && !('order' in out)) Object.defineProperty(out, 'order', { value: row.order, enumerable: false, configurable: true });
   if (sel && sel.items && Array.isArray(row.items)) {
     const w = sel.items.where;
     out.items = w ? row.items.filter((i) => matchWhere(i, w)) : row.items;
@@ -99,7 +105,12 @@ function table(model) {
   const d = db();
   // OrderItem rows live nested inside each mock order (order.items) - the same objects, so an
   // orderItem.update from the marks layer is visible through the order loaders in the same test
-  if (model === 'orderItem' && !(model in d) && Array.isArray(d.order)) return d.order.flatMap((o) => o.items || []);
+  if (model === 'orderItem' && !(model in d) && Array.isArray(d.order)) {
+    return d.order.flatMap((o) => (o.items || []).map((it) => {
+      if (!Object.getOwnPropertyDescriptor(it, 'order')) Object.defineProperty(it, 'order', { value: o, enumerable: false, configurable: true });
+      return it;
+    }));
+  }
   if (!(model in d)) throw prismaError('P2021', `The table \`public.${model[0].toUpperCase()}${model.slice(1)}\` does not exist in the current database.`);
   return d[model];
 }
@@ -143,7 +154,7 @@ const WRITES = {
     const row = rows.find((r) => matchWhere(r, where));
     if (!row) throw prismaError('P2025', 'Record to update not found.');
     for (const [k, v] of Object.entries(args.data || {})) row[k] = unset(v);
-    row.updatedAt = new Date();
+    if (!args.data || !('updatedAt' in args.data)) row.updatedAt = new Date(); // @updatedAt: an explicit value in data wins (like Prisma)
     return { ...row };
   },
   updateMany: (model, args = {}) => {
@@ -154,6 +165,12 @@ const WRITES = {
       n++;
     }
     return { count: n };
+  },
+  createMany: (model, args = {}) => {
+    const rows = table(model);
+    const list = Array.isArray(args.data) ? args.data : [args.data];
+    for (const data of list) rows.push({ id: newId(model), createdAt: new Date(), ...data });
+    return { count: list.length };
   },
   delete: (model, args = {}) => {
     const rows = table(model);
@@ -190,8 +207,8 @@ const proxy = new Proxy({}, {
     if (prop === 'then') return undefined;
     // stale generated client: a model that is not in the Prisma client at all (prisma.x === undefined)
     if (Array.isArray(globalThis.__MOCK_NO_MODEL) && globalThis.__MOCK_NO_MODEL.includes(prop)) return undefined;
-    // interactive / batch transactions (barcode tests): run the callback against the same in-memory proxy; no rollback emulation except
-    // globalThis.__MOCK_TX_FAIL_AT (n = 1-based write inside the tx that throws, after earlier writes were applied - tests assert partial state)
+    // interactive / batch transactions (barcode tests): run the callback against the same in-memory proxy; no rollback emulation (tests that need a
+    // failing write use globalThis.__MOCK_BEFORE_WRITE to throw at the n-th write and assert the partial state)
     if (prop === '$transaction') {
       return async (arg) => {
         if (typeof arg === 'function') {

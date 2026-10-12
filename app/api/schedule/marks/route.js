@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage, hasPermission } from '@/lib/permissions';
 import { applyStageMark, listOrderMarks, validateMarkInput, MarkError, MARK_ALL_PERMISSION } from '@/lib/schedule/marks';
-import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
-import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
-import { runAfterResponse } from '@/lib/schedule/afterResponse';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -45,6 +42,10 @@ export async function POST(request) {
     // לקיחה בפועל מהלו״ז (מסירה עם ברקוד): "הושכר = ההכנה בוצעה" + תיקון משוער - אחרי התשובה, בדיוק כמו rentals/confirm. נכשל בשקט.
     const took = result.results.filter((r) => r.tookItemIds && r.tookItemIds.length);
     if (took.length) {
+      // טעינה עצלה: רק מסירה עם ברקוד (הגדרה פעילה) צריכה את המודולים האלה - כל שאר הסימונים נטענים בדיוק כמו קודם
+      const [{ autoMarkPrepForOrder }, { autoMarkAlterationsForItems, isAutoAlterationEnabled }, { runAfterResponse }] = await Promise.all([
+        import('@/lib/schedule/autoPrepMark'), import('@/lib/schedule/autoAlterationDone'), import('@/lib/schedule/afterResponse'),
+      ]);
       const altOn = await isAutoAlterationEnabled();
       await runAfterResponse(
         took.flatMap((r) => [() => autoMarkPrepForOrder(r.orderId, { userId: user.id }), () => autoMarkAlterationsForItems(r.tookItemIds)]),
