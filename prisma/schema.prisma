@@ -334,6 +334,7 @@ model DressItem {
   orderItems      OrderItem[]
   updatedAt       DateTime    @updatedAt
   branch          String? // סניף נוכחי של הפריט הפיזי (multi_branch_enabled; ריק = לא שויך, ר' docs/branches-plan.md)
+  locationBeforeRental String? // 'רזרבה' / 'מחסן' כשהפריט יצא להשכרה באישור (rentals/confirm, רק כש-reserve_return_alert_enabled); מתנקה בהחזרה. ר' docs/branches-plan.md
 
   @@index([dressModelId])
   @@index([dressBarcode])

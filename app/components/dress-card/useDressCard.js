@@ -107,6 +107,15 @@ export default function useDressCard(dressId, ui) {
     return model;
   }, [dressId]);
 
+  // רענון מהשרת אחרי שינוי שנעשה מחוץ לעגלה (העברה מהירה של ברקודים) - רק כשאין שינויים לא שמורים בעגלה
+  const refreshFromServer = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/dresses/${dressId}?includeDeleted=true`, { cache: 'no-store' });
+      const d = r.ok ? await r.json() : null;
+      if (d && d.id && stateRef.current && !diffChanges(stateRef.current.saved, stateRef.current.cur).length) applyServer(d);
+    } catch { /* best-effort */ }
+  }, [dressId, applyServer]);
+
   useEffect(() => {
     let off = false;
     // fetchJson מאחד בקשות GET זהות שעדיין באוויר (strict-mode ב-dev מריץ את האפקט פעמיים) - בקשת רשת אחת
@@ -426,6 +435,6 @@ export default function useDressCard(dressId, ui) {
     changes, dirty, saving, uploading, redoCount, hit, setHit, listIntent, goFilter, locateItem,
     counts: cn, markers, rentals, rentalsStore, ensureRentals, logs, ensureLogs, historyRows, life, lastUpdate,
     patchModel, setActive, patchItem, addItemLocal, deleteItem, undoChange, redo, discardAll,
-    save, exit, deleteModel, restoreModel, uploadImage,
+    save, exit, deleteModel, restoreModel, uploadImage, refreshFromServer,
   };
 }

@@ -38,15 +38,15 @@ async function main() {
   const client = new Client({ connectionString: url });
   await client.connect();
   try {
-    const before = await client.query(`select column_name from information_schema.columns where table_name='DressItem' and column_name='branch'`);
-    console.log(`העמודה DressItem.branch ${before.rowCount ? 'כבר קיימת' : 'חסרה'}`);
+    const before = await client.query(`select column_name from information_schema.columns where table_name='DressItem' and column_name in ('branch','locationBeforeRental')`);
+    console.log(`עמודות שכבר קיימות: ${before.rows.map((r) => r.column_name).join(', ') || 'אין'}`);
     for (const st of statements) {
       console.log(`${write ? 'מריץ' : '[dry-run]'}: ${st}`);
       if (write) await client.query(st);
     }
     if (write) {
-      const after = await client.query(`select column_name from information_schema.columns where table_name='DressItem' and column_name='branch'`);
-      console.log(`אחרי: העמודה ${after.rowCount ? 'קיימת' : 'עדיין חסרה!'}`);
+      const after = await client.query(`select column_name from information_schema.columns where table_name='DressItem' and column_name in ('branch','locationBeforeRental')`);
+      console.log(`אחרי: ${after.rowCount === 2 ? 'שתי העמודות קיימות' : 'חסרה עמודה!'} (${after.rows.map((r) => r.column_name).join(', ')})`);
     }
   } finally {
     await client.end();
