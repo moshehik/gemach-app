@@ -345,6 +345,24 @@ await t('שער הסוד של /api/cron/email-campaigns מקבל CRON_SECRET ו�
   assert.ok(src.includes('more') );
 });
 
+// ---------- סקירת אבטחה 12.10.2026 (ממצא 21): EMAIL_DRY_RUN לא מכובד בפרודקשן ----------
+await t('EMAIL_DRY_RUN=1 מכובד מחוץ לפרודקשן ומתעלמים ממנו כש-VERCEL_ENV=production (גם postToMailer וגם המכסה עוברים דרך isDryRun)', async () => {
+  const prev = process.env.VERCEL_ENV;
+  try {
+    delete process.env.VERCEL_ENV;
+    assert.equal(M.isDryRun(), true);
+    process.env.VERCEL_ENV = 'preview';
+    assert.equal(M.isDryRun(), true, 'preview / development keep the dry run');
+    process.env.VERCEL_ENV = 'production';
+    assert.equal(M.isDryRun(), false, 'production ignores EMAIL_DRY_RUN');
+    // production + dry-run flag: the quota helper must not short-circuit as a dry run either (it would try the network - we only check the guard statically)
+  } finally { if (prev === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = prev; }
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../../lib/mailer.js', import.meta.url), 'utf8');
+  assert.ok(!/process\.env\.EMAIL_DRY_RUN === '1'\) return/.test(src), 'a raw EMAIL_DRY_RUN check is back in mailer.js');
+  assert.equal((src.match(/if \(isDryRun\(\)\) return/g) || []).length, 2, 'postToMailer and getMailerQuota both use isDryRun()');
+});
+
 // ---------- rate limit ----------
 await t('simpleRateLimit', async () => {
   const { allow, resetRateLimits } = await import('../../lib/simpleRateLimit.js');
