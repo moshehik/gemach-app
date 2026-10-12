@@ -6,6 +6,7 @@ import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationForItem, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
+import { barcodeFeatureFor, openElsewhereError, autoMarkHandoverForOrder, autoUnmarkHandoverForOrder } from '@/lib/schedule/barcodeScan';
 import { isAlterationEstimated, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
@@ -53,13 +54,43 @@ export async function POST(request) {
       where: { id: String(itemId) },
       select: {
         isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true,
-        alterationDone: true, alterationDetails: true,
+        alterationDone: true, alterationDetails: true, isDeleted: true,
         ...RENTAL_MATCH_ITEM_SELECT,
-        order: { select: { orderId: true, eventDate: true } }
+        order: { select: { orderId: true, eventDate: true, isDeleted: true } }
       }
     });
     if (!before) {
       return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
+    }
+
+    // ברקוד בלו״ז (docs/schedule-barcode-plan.md H6/H7/H8): רק כשההגדרה פעילה להזמנה הזו (אחרת barcodeFeatureFor מחזיר null בלי שאילתה על ההזמנה)
+    //  - לקיחה: לא על פריט/הזמנה שנמחקו; לא מחליפים בשקט ברקוד שכבר נרשם לפריט (לשינוי - לבטל את הרישום תחילה); אותו ברקוד לא פתוח בהזמנה אחרת
+    //  - החזרה: רק לפריט שנמסר (הכנה שלא נמסרה אינה "הוחזרה")
+    //  - ביטול לקיחה: מאפס גם את הברקוד (כמו rentals/cancel ובדיוק כמו שהכרטיס מציג אותו מקומית) - אחרת נשאר "רישום רפאים" שחוסם הזמנות אחרות
+    if (['rent', 'return', 'undoRent'].includes(action) && before.order) {
+      const bc = await barcodeFeatureFor(before.order.orderId);
+      if (bc) {
+        if (action === 'rent') {
+          if (before.isDeleted || (before.order && before.order.isDeleted)) {
+            return NextResponse.json({ error: 'הפריט או ההזמנה בוטלו - אי אפשר לסמן לקיחה' }, { status: 409 });
+          }
+          const registered = before.barcode ? String(before.barcode).trim() : '';
+          if (registered && barcode && String(barcode).trim() !== registered) {
+            return NextResponse.json({ error: `לפריט כבר נרשם ברקוד ${registered}. לשינוי הברקוד יש לבטל קודם את הרישום שלו.`, barcodeAlreadyRegistered: true, registered }, { status: 409 });
+          }
+          const effectiveBarcode = (barcode ? String(barcode).trim() : '') || registered;
+          if (effectiveBarcode) {
+            const elsewhere = await openElsewhereError(effectiveBarcode, { orderId: before.order.orderId, exceptItemId: String(itemId) });
+            if (elsewhere) return NextResponse.json({ error: elsewhere.message, ...(elsewhere.extra || {}), barcodeElsewhere: true }, { status: elsewhere.status });
+          }
+        } else if (action === 'return') {
+          if (!before.isTaken && !before.takenDate) {
+            return NextResponse.json({ error: 'הפריט טרם נמסר - אי אפשר לסמן החזרה', notTaken: true }, { status: 409 });
+          }
+        } else if (before.barcode) {
+          updateData.barcode = null;
+        }
+      }
     }
 
     if (action === 'return' && before.order) {
@@ -104,6 +135,9 @@ export async function POST(request) {
     const afterTasks = [];
     if ((action === 'rent' || action === 'return') && before.order) afterTasks.push(() => autoMarkPrepForOrder(before.order.orderId, { userId: actorId }));
     if (action === 'rent') afterTasks.push(() => autoMarkAlterationForItem(itemId));
+    // מסירה אוטומטית / ביטולה כשההגדרה פעילה (כבוי = no-op בלי שאילתות): כל הפריטים הנדרשים נלקחו -> סימון pick/dout; ביטול לקיחה -> ביטול הסימון
+    if (action === 'rent' && before.order) afterTasks.push(() => autoMarkHandoverForOrder(before.order.orderId, { userId: actorId }));
+    if (action === 'undoRent' && before.order) afterTasks.push(() => autoUnmarkHandoverForOrder(before.order.orderId, { userId: actorId }));
     // הגדרה כבויה (ברירת מחדל) = בדיוק ההתנהגות הקודמת: ההכנה נרשמת לפני התשובה (מוגבל 1.5ש'); רק כשהתכונה דולקת - אחרי התשובה
     const altOn = await isAutoAlterationEnabled();
     await runAfterResponse(afterTasks, { actorId, ...(altOn ? {} : { afterFn: null }) });

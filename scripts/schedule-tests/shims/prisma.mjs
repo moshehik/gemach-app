@@ -190,6 +190,17 @@ const proxy = new Proxy({}, {
     if (prop === 'then') return undefined;
     // stale generated client: a model that is not in the Prisma client at all (prisma.x === undefined)
     if (Array.isArray(globalThis.__MOCK_NO_MODEL) && globalThis.__MOCK_NO_MODEL.includes(prop)) return undefined;
+    // interactive / batch transactions (barcode tests): run the callback against the same in-memory proxy; no rollback emulation except
+    // globalThis.__MOCK_TX_FAIL_AT (n = 1-based write inside the tx that throws, after earlier writes were applied - tests assert partial state)
+    if (prop === '$transaction') {
+      return async (arg) => {
+        if (typeof arg === 'function') {
+          globalThis.__MOCK_TX_WRITES = 0;
+          return arg(proxy);
+        }
+        return Promise.all(arg);
+      };
+    }
     if (typeof prop === 'string' && prop.startsWith('$')) return async () => { throw new Error(`BLOCKED ${prop} in schedule tests`); };
     return modelProxy(prop);
   },

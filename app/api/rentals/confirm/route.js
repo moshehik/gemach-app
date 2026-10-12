@@ -4,6 +4,8 @@ import { checkAuth } from '@/lib/auth';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
+import { autoMarkHandoverForOrder, checkHandoverGate } from '@/lib/schedule/barcodeScan';
+import { registeredByScheduleIds } from '@/lib/schedule/barcodeData';
 
 export async function POST(request) {
   // העובד נקרא לפני כל await (ר' rentals/toggle ו-lib/schedule/afterResponse.js)
@@ -30,11 +32,15 @@ export async function POST(request) {
       return NextResponse.json({ message: 'אין פריטים חדשים לאישור' }, { status: 200 });
     }
 
+    // ברקוד בלו״ז (docs/schedule-barcode-plan.md): כשההגדרה פעילה להזמנה, אישור לקיחה דורש ברקוד לכל השמלות הנדרשות. כבוי (ברירת מחדל) = אין שאילתה נוספת.
+    const gateBlock = await checkHandoverGate(parseInt(orderId));
+    if (gateBlock) return NextResponse.json(gateBlock, { status: 409 });
+
     // 2 & 3. Update them all in a transaction
+    // לפי מזהי הפריטים שנקראו למעלה (ולא לפי ההזמנה): פריט שנסרק בין הקריאה לכתיבה לא נלקח בלי שורת יומן ובלי מיקום (H2)
     const updateItems = prisma.orderItem.updateMany({
       where: {
-        orderId: parseInt(orderId),
-        barcode: { not: null },
+        id: { in: pendingItems.map(item => item.id) },
         isTaken: false,
         isDeleted: false
       },
@@ -73,6 +79,7 @@ export async function POST(request) {
     await runAfterResponse([
       () => autoMarkPrepForOrder(parseInt(orderId), { userId: confirmedBy }),
       () => autoMarkAlterationsForItems(confirmedItemIds),
+      () => autoMarkHandoverForOrder(parseInt(orderId), { userId: confirmedBy }), // כבוי בלי הגדרת ברקוד: לא עושה כלום
     ], { actorId: confirmedBy, ...(altOn ? {} : { afterFn: null }) });
 
     return NextResponse.json({ success: true, count: pendingItems.length });
@@ -107,8 +114,15 @@ export async function DELETE(request) {
       return NextResponse.json({ success: true });
     }
 
+    // ברקודים שנרשמו בהכנה מהלו״ז (REGISTER_BARCODE) אינם "סריקות שטרם אושרו" של החלון הזה - לא מנקים אותם (H1). שחרור שלהם: DELETE /api/schedule/barcodes.
+    const keepIds = await registeredByScheduleIds(scannedItems);
+    const clearItems = scannedItems.filter(i => !keepIds.has(String(i.id)));
+    if (clearItems.length === 0) {
+      return NextResponse.json({ success: true, kept: scannedItems.length });
+    }
+
     await prisma.orderItem.updateMany({
-      where: { id: { in: scannedItems.map(i => i.id) } },
+      where: { id: { in: clearItems.map(i => i.id) }, isTaken: false },
       data: { barcode: null }
     });
 
@@ -116,7 +130,7 @@ export async function DELETE(request) {
     const cancelledBy = await getActingEmployeeId();
     // eslint-disable-next-line no-restricted-syntax -- ראה ההסבר למעלה: אין שורה אוטומטית ל-updateMany
     await prisma.auditLog.createMany({
-      data: scannedItems.map(item => ({
+      data: clearItems.map(item => ({
         entityType: 'OrderItem',
         entityId: item.id,
         action: 'CANCEL_SCAN',
@@ -128,7 +142,7 @@ export async function DELETE(request) {
       }))
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ...(keepIds.size ? { kept: keepIds.size } : {}) });
   } catch (error) {
     console.error('Error cancelling rentals:', error);
     return NextResponse.json({ error: 'שגיאה בביטול השכרות' }, { status: 500 });

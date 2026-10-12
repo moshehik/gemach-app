@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage, hasPermission } from '@/lib/permissions';
 import { applyStageMark, listOrderMarks, validateMarkInput, MarkError, MARK_ALL_PERMISSION } from '@/lib/schedule/marks';
+import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
+import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
+import { runAfterResponse } from '@/lib/schedule/afterResponse';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -18,6 +21,9 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 // תשובה (mark_all):    { ok, rows: [<טלאי>], skipped: [{orderId, reason}], counts: {marked, unchanged, blocked} }
 // שגיאות: 400 קלט, 401 בלי התחברות (גם אורח במצב פתוח - סימון דורש עובדת), 403 בלי page:schedule או בלי
 // הרשאת "הכל בוצע", 409 ההזמנה לא בשלב/יום או השלב כבוי או החזרה מוקדמת, 503 הטבלה עדיין לא נוצרה.
+// ברקוד בלו״ז (docs/schedule-barcode-plan.md, רק כשהגדרת barcode_entry_when_* פעילה): הכנה / איסוף מקומי / משלוח הלוך עם פריט בלי ברקוד =
+// 409 { needBarcodes:true, gate, when, required, registered, missing:[{orderItemId, model, size}] } (בסימון יחיד); ב-mark_all השורה מדולגת
+// (skipped: reason 'needs_barcode'). במסירה (pick/dout) "בוצע" לוקח את הפריטים הרשומים; ביטול מסירה מחזיר אותם ל"לא נלקח".
 // שער: אותו דפוס כמו GET /api/schedule - checkAuth + canOpenPage('page:schedule') בשרת, סגור כברירת מחדל.
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
@@ -36,6 +42,16 @@ export async function POST(request) {
 
     const result = await applyStageMark(input, { user });
 
+    // לקיחה בפועל מהלו״ז (מסירה עם ברקוד): "הושכר = ההכנה בוצעה" + תיקון משוער - אחרי התשובה, בדיוק כמו rentals/confirm. נכשל בשקט.
+    const took = result.results.filter((r) => r.tookItemIds && r.tookItemIds.length);
+    if (took.length) {
+      const altOn = await isAutoAlterationEnabled();
+      await runAfterResponse(
+        took.flatMap((r) => [() => autoMarkPrepForOrder(r.orderId, { userId: user.id }), () => autoMarkAlterationsForItems(r.tookItemIds)]),
+        { actorId: user.id, ...(altOn ? {} : { afterFn: null }) },
+      );
+    }
+
     if (input.action !== 'mark_all') {
       const r = result.results[0];
       if (!r) return NextResponse.json({ error: 'ההזמנה לא נמצאה בשלב' }, { status: 409, headers: NO_STORE });
@@ -47,6 +63,11 @@ export async function POST(request) {
     const skipped = [];
     const counts = { marked: 0, unchanged: 0, blocked: 0 };
     for (const r of result.results) {
+      if (r.status === 'needs_barcode') {
+        counts.needsBarcode = (counts.needsBarcode || 0) + 1; // מפתח רק כשיש בפועל - התשובה בלי הגדרת ברקוד זהה להיום
+        skipped.push({ orderId: r.orderId, reason: 'needs_barcode', missing: r.needs && r.needs.missing ? r.needs.missing.length : 0 });
+        continue;
+      }
       if (r.status === 'blocked') {
         counts.blocked++;
         skipped.push({ orderId: r.orderId, reason: 'early_return' });
