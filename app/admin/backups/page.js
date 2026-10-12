@@ -179,7 +179,7 @@ export default function BackupsPage() {
           <p className="page-desc">גיבוי ענני אוטומטי של כל נתוני הגמ&quot;ח ל-Google Drive, בנוסף ל-PITR של Neon (7 ימים)</p>
         </div>
         <div className="page-actions">
-          <Link href="/admin/site" className="btn btn-secondary">
+          <Link href="/admin" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה לניהול
           </Link>

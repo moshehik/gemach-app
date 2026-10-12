@@ -403,6 +403,20 @@ const __locErrs = await (async () => {
 })();
 check('מיקום הגדרה במסך ההגדרות החדש נגזר מהמיפוי; שורת מיקום נוספת בקוד; תצוגה ישנה מזוהה', null, () => __locErrs);
 
+check('תוויות ו"חזרה לניהול": /admin/labels = "שינוי שמות"; אין קישור חזרה ל-/admin/site (מתכנת בלבד) בדפי ניהול', null, () => {
+  const errs = [];
+  if (pageLabel('/admin/labels') !== 'שינוי שמות') errs.push('pageLabels: /admin/labels חייב להיות "שינוי שמות", התקבל ' + pageLabel('/admin/labels'));
+  const labels = PAGES.find((p) => p.route === '/admin/labels');
+  if (labels && labels.titleNote) errs.push('/admin/labels: titleNote כבר לא נחוץ');
+  for (const f of appFiles) {
+    const r = rel(f);
+    if (!r.startsWith('app/admin/') || r.startsWith('app/admin/site/') || r === 'app/admin/LegacyAdminPage.js' || /\/Legacy[A-Za-z]*\.js$/.test(r)) continue; // קבצי Legacy* קפואים (זהים בייט-בבייט ל-main)
+    const src = fs.readFileSync(f, 'utf8');
+    if (/<Link[^>]*href="\/admin\/site"/.test(src)) errs.push(r + ': קישור <Link href="/admin/site"> - הדף מיועד למתכנת בלבד, השתמשו ב-/admin');
+  }
+  return errs;
+});
+
 check('tokenize: קידומות עבריות ומילות עצירה', null, () => {
   const t = tokenize('איך מדפיסים את התווית בהזמנה');
   const errs = [];
