@@ -211,7 +211,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <form data-agy-id="rentalreturnmodal_form_2" className="field" onSubmit={handleGlobalBarcodeScan} style={{ marginBottom: '16px' }}>
                 <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-tag" /></svg>
-                  <input data-agy-id="rentalreturnmodal_input_3"
+                  <input data-agy-id="rentalreturnmodal_input_3" data-guide-id="ren.scan"
                     ref={modalBarcodeRef}
                     type="text"
                     className="input"
@@ -237,7 +237,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                     <svg className="icon"><use href="#i-alert-tri" /></svg>
                     {pendingCount} פריטים נסרקו וממתינים לאישור השכרה
                   </span>
-                  <button data-agy-id="rentalreturnmodal_button_8" type="button" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
+                  <button data-agy-id="rentalreturnmodal_button_8" data-guide-id="ren.confirm-scanned" type="button" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
                     {isConfirming ? 'מאשר...' : `אשר את הפריטים שנסרקו (${pendingCount})`}
                   </button>
                 </div>
@@ -367,7 +367,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                         )}
                                       </div>
                                     ) : (
-                                      <button data-agy-id="rentalreturnmodal_button_17" type="button" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>
+                                      <button data-agy-id="rentalreturnmodal_button_17" data-guide-id="ren.rent-item" type="button" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>
                                         <svg className="icon"><use href="#i-box" /></svg> השכרה
                                       </button>
                                     )
@@ -379,7 +379,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
                                   {item.isTaken && (
                                     <>
-                                      <div className="toggle-btn-group" title="מצב הפריט בהחזרה">
+                                      <div className="toggle-btn-group" data-guide-id="ren.return-condition" title="מצב הפריט בהחזרה">
                                         <button data-agy-id="rentalreturnmodal_button_18"
                                           type="button"
                                           className={item.isReturned && item.returnedOk ? 'on' : ''}
@@ -400,13 +400,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                         </button>
                                       </div>
                                       {!item.isReturned && (
-                                        <button data-agy-id="rentalreturnmodal_button_11" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoRental(item.id)}>
+                                        <button data-agy-id="rentalreturnmodal_button_11" data-guide-id="ren.undo-rent" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoRental(item.id)}>
                                           <svg className="icon"><use href="#i-refresh" /></svg> ביטול השכרה
                                         </button>
                                       )}
                                       {item.isReturned && (
                                         <>
-                                          <button data-agy-id="rentalreturnmodal_button_12" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoReturn(item.id)}>
+                                          <button data-agy-id="rentalreturnmodal_button_12" data-guide-id="ren.undo-return" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoReturn(item.id)}>
                                             <svg className="icon"><use href="#i-refresh" /></svg> ביטול החזרה
                                           </button>
                                           {item.returnedOk ? (
@@ -442,8 +442,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             </div>
 
             <div className="modal-foot">
-              <button data-agy-id="rentalreturnmodal_button_7" type="button" className="btn btn-danger-ghost" onClick={handleHeaderCancel}>בטל שינויים וסגור</button>
-              <button data-agy-id="rentalreturnmodal_button_6" type="button" className="btn btn-primary" onClick={handleHeaderSave} disabled={isConfirming}>
+              <button data-agy-id="rentalreturnmodal_button_7" data-guide-id="ren.cancel-close" type="button" className="btn btn-danger-ghost" onClick={handleHeaderCancel}>בטל שינויים וסגור</button>
+              <button data-agy-id="rentalreturnmodal_button_6" data-guide-id="ren.save-close" type="button" className="btn btn-primary" onClick={handleHeaderSave} disabled={isConfirming}>
                 <svg className="icon"><use href="#i-check" /></svg> שמור וסגור
               </button>
             </div>

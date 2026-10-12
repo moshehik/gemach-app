@@ -49,6 +49,7 @@ function WizButton({ mode, stageKey, onClick }) {
       type="button"
       className={cls}
       data-wiz={mode}
+      data-guide-id={stageKey ? `sched.sec-tool-${mode}` : `sched.tool-${mode}`}
       data-k={stageKey || undefined}
       aria-label={LABEL[mode]}
       data-tip={TIP[mode]}

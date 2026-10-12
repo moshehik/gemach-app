@@ -77,7 +77,7 @@ function ResultTable({ rows, onError }) {
       </div>
       <div className="stm-res-f">
         <span>{rows.length} שורות{rows.length > shown.length ? ` (מוצגות ${shown.length} הראשונות)` : ''}</span>
-        <button type="button" className="btn sm" onClick={() => downloadXlsx(rows, onError)}><Ic n="download" c="sm" />הורדה לאקסל (XLSX)</button>
+        <button type="button" className="btn sm" data-guide-id="stat.ai-xlsx" onClick={() => downloadXlsx(rows, onError)}><Ic n="download" c="sm" />הורדה לאקסל (XLSX)</button>
         <button type="button" className="btn ghost sm" onClick={() => downloadCsv(rows)}>CSV</button>
       </div>
     </div>
@@ -231,13 +231,13 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
       <MenuSprite />
       <DialogFrame layer={1} cls="stm-dlg" onBackdrop={onClose}>
         <div className="stm-tools">
-          <button type="button" className={`btn ghost sm icon${showHistory ? ' on' : ''}`} onClick={() => setShowHistory(!showHistory)} title="היסטוריה" aria-label="היסטוריה" aria-pressed={showHistory}><Ic n="sn-history" /></button>
-          <button type="button" className="btn ghost sm icon" onClick={startNewChat} title="שיחה חדשה" aria-label="שיחה חדשה"><Ic n="plus" /></button>
+          <button type="button" className={`btn ghost sm icon${showHistory ? ' on' : ''}`} onClick={() => setShowHistory(!showHistory)} title="היסטוריה" aria-label="היסטוריה" data-guide-id="stat.ai-history" aria-pressed={showHistory}><Ic n="sn-history" /></button>
+          <button type="button" className="btn ghost sm icon" onClick={startNewChat} title="שיחה חדשה" aria-label="שיחה חדשה" data-guide-id="stat.ai-new-chat"><Ic n="plus" /></button>
           <button type="button" className="btn ghost sm icon" onClick={clearChat} title="מחיקת השיחה" aria-label="מחיקת השיחה"><Ic n="trash" /></button>
           <button type="button" className="btn ghost sm icon" onClick={onClose} title="סגירה" aria-label="סגירה"><Ic n="x" /></button>
         </div>
         <div className="dbadge" aria-hidden="true"><Ic n="sn-chart" /></div>
-        <h2>סטטיסטיקות מתקדמות AI</h2>
+        <h2 data-guide-id="stat.ai-modal">סטטיסטיקות מתקדמות AI</h2>
 
         <div className="stm-body">
           {showHistory ? (
@@ -286,7 +286,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="שאל שאלה על הנתונים..."
-            aria-label="שאלה על הנתונים"
+            aria-label="שאלה על הנתונים" data-guide-id="stat.ai-input"
             disabled={loading}
             data-autofocus
           />

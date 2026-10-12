@@ -42,7 +42,7 @@ function StageSection({ stage, view, marks, canMarkAll = true, dayLabel, onExpor
   // במקטע - נספר מהשורות המוצגות, כך שהוא מתעדכן יחד איתן אחרי סימון "בוצע". "N אירועים" לא חוזר (SCH-CHIP-EVENTS = ב').
   const alertRows = rows.filter((row) => row.alerts && row.alerts.length).length;
   return (
-    <section className="lz-sec" id={'st-' + stage.key} data-k={stage.key} style={{ '--pc': 'var(' + meta.color + ')' }}>
+    <section className="lz-sec" id={'st-' + stage.key} data-k={stage.key} data-guide-id={`sched.sec-${stage.key}`} style={{ '--pc': 'var(' + meta.color + ')' }}>
       <div className="lz-hrow">
         <h2 className="adm-h">
           <span className="adm-hi"><ScheduleIcon name={meta.icon} /></span>

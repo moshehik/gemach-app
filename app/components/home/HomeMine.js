@@ -19,7 +19,7 @@ export default function HomeMine({ mine, onClose, table, onTable, onExport }) {
   const m = useMemo(() => buildMineModel({ state: mine.state, data: mine.data }, { limit: null, whoName: mine.whoName }), [mine.state, mine.data, mine.whoName]);
   const ready = m.state === 'ok' && m.sections.length > 0;
   const head = (
-    <div className="card-h">
+    <div className="card-h" data-guide-id="srch.mine-view">
       <h2 id="mine-h">
         השינויים שלי{mine.whoName ? <span className="mine-who-name"> · {mine.whoName}</span> : null}
         {ready ? <> <span className="faint">({m.total})</span></> : null}

@@ -62,7 +62,8 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const appFiles = walk(path.join(ROOT, 'app')).filter((f) => /\.(js|jsx)$/.test(f));
+const rel0 = (f) => path.relative(ROOT, f).split(path.sep).join('/');
+const appFiles = walk(path.join(ROOT, 'app')).filter((f) => /\.(js|jsx)$/.test(f) &&!rel0(f).startsWith('app/components/guide/'));
 const rel = (f) => path.relative(ROOT, f).split(path.sep).join('/');
 
 const pageRoutes = appFiles
@@ -302,7 +303,8 @@ check('הידע שנבנה לכל סוג משתמשת: בלי ביטויי ממ�
     }
   }
   const emp = buildGuideBlock(CTXS.employee, { question: 'איפה ההגדרות והרשאות' });
-  if (/menu\.ad-(?!nwd)|hub\./.test([...emp.allowedIds].join(' '))) errs.push('עובדת רגילה קיבלה יעדי ניהול');
+  const leaked = [...emp.allowedIds].filter((i) => /^(menu\.ad-(?!nwd)|hub\.)/.test(i));
+  if (leaked.length) errs.push(`עובדת רגילה קיבלה יעדי ניהול: ${leaked.slice(0, 5).join(', ')}`);
   if (/הגדרות מערכת \|/.test(emp.text)) errs.push('עובדת רגילה: אינדקס הדפים מכיל את הגדרות המערכת');
   const prog = buildGuideBlock(CTXS.prog, { question: 'משלוחים' });
   if (!prog.allowedIds.has('menu.ad-deliveries')) errs.push('מתכנת עם משלוחים מופעלים: חסר menu.ad-deliveries');

@@ -53,7 +53,7 @@ export default function NedarimPaymentsRecentPage() {
       <NedarimNav current="/admin/nedarim-payments-recent" />
 
       <div style={{ marginBottom: 16 }}>
-        <button type="button" className="btn" disabled={loading} onClick={load}>
+        <button type="button" className="btn" data-guide-id="ned.pay-refresh" disabled={loading} onClick={load}>
           {loading ? 'טוען...' : 'רענן'}
         </button>
         <span className="hint" style={{ marginInlineStart: 8 }}>
@@ -64,7 +64,7 @@ export default function NedarimPaymentsRecentPage() {
       {error && <div className="callout callout-danger" style={{ marginBottom: 16 }}>{error}</div>}
 
       {!loading && !error && (
-        <div className="card card-pad">
+        <div className="card card-pad" data-guide-id="ned.pay-table">
           <table className="data">
             <thead>
               <tr>

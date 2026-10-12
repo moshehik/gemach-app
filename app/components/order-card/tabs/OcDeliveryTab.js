@@ -148,7 +148,7 @@ export function OcDeliveryCards({ oc, ui }) {
 
   return (
     <>
-      <div className={`dhero${on ? '' : ' off'}`}>
+      <div className={`dhero${on ? '' : ' off'}`} data-guide-id="oc.delivery-switch">
         <div className="ico"><OcIcon name="truck" size="lg" /></div>
         <div className="oc-del-hero">
           <div className="trow">
@@ -164,7 +164,7 @@ export function OcDeliveryCards({ oc, ui }) {
 
       <div className={`card dfields${on ? '' : ' off'}`} inert={on ? undefined : true}>
         <div className="card-h"><div className="ico teal"><OcIcon name="arrlr" size="lg" /></div><h2>כיוון</h2></div>
-        <div className="seg pill" id="dirSeg" role="radiogroup" aria-label="כיוון המשלוח" style={{ '--n': 3, '--i': di }}>
+        <div className="seg pill" id="dirSeg" data-guide-id="oc.delivery-direction" role="radiogroup" aria-label="כיוון המשלוח" style={{ '--n': 3, '--i': di }}>
           <span className="pth" aria-hidden="true" />
           {DELIVERY_DIRECTIONS.map(([v, icon]) => (
             <button key={v} type="button" role="radio" aria-checked={dir === v} className={dir === v ? 'on' : ''} data-dir={v}
@@ -178,7 +178,7 @@ export function OcDeliveryCards({ oc, ui }) {
       <div className={`card dfields${on ? '' : ' off'}`} inert={on ? undefined : true}>
         <div className="card-h"><div className="ico teal"><OcIcon name="pin" size="lg" /></div><h2>יעד</h2></div>
         <div className="grid2">
-          <div className="field">
+          <div className="field" data-guide-id="oc.delivery-city">
             <label className="lbl" htmlFor="delCityIn">עיר משלוח{fs.cityRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null}</label>
             <SuggestInput id="delCityIn" name="delcity-nofill" icon="pin" value={order.deliveryCity || ''} options={cityOptions} closed
               placeholder="עיר..." disabled={joined} required={fs.cityRequired} describedBy={fs.cityMsg ? 'oc-del-city-msg' : undefined}
@@ -186,7 +186,7 @@ export function OcDeliveryCards({ oc, ui }) {
             {fs.cityMsg ? <p className="amsg oc-fmsg" id="oc-del-city-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.cityMsg}</p> : null}
           </div>
           {fs.showAddress ? (
-            <div className="field">
+            <div className="field" data-guide-id="oc.delivery-address">
               <label className="lbl" htmlFor="delAddr">כתובת שונה ממגורים{fs.addressRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null} <Tip text="רק אם שונה מכתובת הלקוח" /></label>
               <SuggestInput id="delAddr" name="deladdr-nofill" icon="pin" value={order.deliveryAddress || ''} options={loc.streets}
                 placeholder="רחוב ומספר..." disabled={joined} required={fs.addressRequired} describedBy={fs.addressMsg ? 'oc-del-addr-msg' : undefined}
@@ -197,7 +197,7 @@ export function OcDeliveryCards({ oc, ui }) {
         </div>
         {ds.oneDayBeforeOption ? (
           <div className="row wrap oc-del-one">
-            <button type="button" className={`btn tgl${order.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" aria-pressed={!!order.deliveryOneDayBefore}
+            <button type="button" className={`btn tgl${order.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" data-guide-id="oc.delivery-one-day" aria-pressed={!!order.deliveryOneDayBefore}
               onClick={() => set({ deliveryOneDayBefore: !order.deliveryOneDayBefore })}>
               {order.deliveryOneDayBefore ? <OcIcon name="check" size="sm" className="evck" /> : null}<OcIcon name="truck" size="sm" />יוצא יום לפני האירוע
             </button>

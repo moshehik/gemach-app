@@ -20,6 +20,7 @@ import {
 } from './emailLogsLogic';
 import { STATUS_ICON, STATUS_WORD, typeIcon, typeLabel } from '../../../lib/adminEmailLogs';
 
+// מדריך האתר: guide="eml" מצמיד data-guide-id (eml.back / eml.search / eml.filter / eml.sort / eml.view / eml.export-* ...) - lib/aiGuide/areas/admin.targets.js
 const SLOT_ID = 'a5l-search-eml';
 const ENDPOINT = '/api/admin/email-logs';
 
@@ -135,12 +136,13 @@ function EmailLogs() {
   return (
     <>
       <A5ListPage
-        title="יומן מיילים" backId="emlBack" backLabel="חזרה להגדרות האתר" onBack={() => router.push('/admin/site-settings')}
+        guide="eml" title="יומן מיילים" backId="emlBack" backLabel="חזרה להגדרות האתר" onBack={() => router.push('/admin/site-settings')}
         tools={<PageVariantToggle screen="email_logs" placement="header" systemTip />}
         slotId={SLOT_ID} cardIcon="mail" cardTitle="יומן שליחת מיילים"
       >
         <A5List
           ref={listRef}
+          guide="eml"
           items={rows}
           getId={(r) => r.id}
           texts={{ placeholder: 'חיפוש מייל (נמען, נושא או תוכן)…', countLabel: 'מיילים', emptyText: 'לא נמצאו מיילים התואמים את החיפוש' }}

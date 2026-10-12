@@ -81,7 +81,7 @@ export default function EcHistory({ employeeId, refreshKey = 0 }) {
   useEffect(() => { if (!openInit && rows.length) { setOpenIds(new Set([rows[0].id])); setOpenInit(true); } }, [rows, openInit]);
 
   return (
-    <section className="card ec-hist" aria-labelledby="h-hist">
+    <section className="card ec-hist" data-guide-id="ec.hist" aria-labelledby="h-hist">
       <div className="card-h">
         <div className="ico rose"><Ic id="sn-history" size="lg" /></div><h2 id="h-hist">היסטוריית שינויים</h2>
         <span className="chip gray">{rows.length} תיעודי פעולות</span>

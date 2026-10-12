@@ -15,7 +15,7 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
         <div className="card-head">
           <div className="card-title-row">
             <svg className="icon"><use href="#i-wallet" /></svg>
-            <h3>התפלגות הכנסות לפי אמצעי תשלום</h3>
+            <h3 data-guide-id="dash.chart-methods">התפלגות הכנסות לפי אמצעי תשלום</h3>
           </div>
         </div>
         <div className="card-pad">
@@ -47,7 +47,7 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
         <div className="card-head">
           <div className="card-title-row">
             <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
+            <h3 data-guide-id="dash.chart-daily">הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
           </div>
         </div>
         <div className="card-pad">
@@ -72,7 +72,7 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
         <div className="card-head">
           <div className="card-title-row">
             <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות שבועיות (תקופה אחרונה)</h3>
+            <h3 data-guide-id="dash.chart-weekly">הכנסות שבועיות (תקופה אחרונה)</h3>
           </div>
         </div>
         <div className="card-pad">
@@ -97,7 +97,7 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
         <div className="card-head">
           <div className="card-title-row">
             <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות חודשיות (תקופה אחרונה)</h3>
+            <h3 data-guide-id="dash.chart-monthly">הכנסות חודשיות (תקופה אחרונה)</h3>
           </div>
         </div>
         <div className="card-pad">

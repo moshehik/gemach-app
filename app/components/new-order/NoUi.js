@@ -24,9 +24,11 @@ export function Tip({ t }) {
 
 // שדה של קוביית השלב: <div.field><label.lbl.with-ic>{icon}{label}</label><div.inpw>{children}</div></div>
 // (בעיצוב האייקון עובר מתוך .inpw לשורת התווית; בלי תווית הוא נשאר בתוך השדה עם .ico-in)
-export function Field({ label, icon, htmlFor, children, after, className = 'field', inpwClass = '' }) {
+// מדריך האתר (lib/aiGuide/areas/orders.targets.js): ה-prop guide של Field / SegPill (ושל o.guide באפשרויות SegPill) הוא מזהה יעד מלא מהרישום, למשל no.cust-phone
+// - הוא נכתב כ-data-guide-id על האלמנט (כל המזהים מתחילים ב-no.). אין לזה השפעה על העיצוב או ההתנהגות.
+export function Field({ label, icon, htmlFor, children, after, className = 'field', inpwClass = '', guide }) {
   return (
-    <div className={className}>
+    <div className={className} data-guide-id={guide}>
       {label ? (
         <label className={`lbl${icon ? ' with-ic' : ''}`} htmlFor={htmlFor}>{icon ? <Ic n={icon} c="sm" /> : null}{label}</label>
       ) : null}
@@ -70,7 +72,7 @@ export function OneCard({ children }) {
 }
 
 // בורר גלולה (.seg.pill + .pth) עם הזזת המחוון כמו pillRun בעיצוב
-export function SegPill({ id, options, value, onChange, label }) {
+export function SegPill({ id, options, value, onChange, label, guide }) {
   const ref = useRef(null);
   const idx = Math.max(0, options.findIndex(o => o.v === value));
   const prev = useRef(idx);
@@ -88,10 +90,10 @@ export function SegPill({ id, options, value, onChange, label }) {
     }
   }, [idx, options.length]);
   return (
-    <div className="seg pill" id={id} role="radiogroup" aria-label={label} ref={ref} style={{ '--n': options.length, '--i': idx }} data-to={idx}>
+    <div className="seg pill" id={id} data-guide-id={guide} role="radiogroup" aria-label={label} ref={ref} style={{ '--n': options.length, '--i': idx }} data-to={idx}>
       <span className="pth" aria-hidden="true" />
       {options.map((o) => (
-        <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value} className={o.v === value ? 'on' : ''} data-tip={o.tip} onClick={() => onChange(o.v)}>
+        <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value} className={o.v === value ? 'on' : ''} data-tip={o.tip} data-guide-id={o.guide} onClick={() => onChange(o.v)}>
           {o.icon ? <Ic n={o.icon} c="sm" /> : null}{o.label}
         </button>
       ))}

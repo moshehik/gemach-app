@@ -273,10 +273,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   } else if (!term) {
     list = (
       <>
-        <div className="sn-st" style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="sn-st" data-guide-id="srch.menu-recent" style={{ display: 'flex', alignItems: 'center' }}>
           נצפו לאחרונה
           {nav.view.length > 1 && (
-            <a className="lnk" href="#" style={{ marginInlineStart: 'auto' }} onClick={(e) => { e.preventDefault(); onClearRecents(); }}>נקה</a>
+            <a className="lnk" data-guide-id="srch.menu-recent-clear" href="#" style={{ marginInlineStart: 'auto' }} onClick={(e) => { e.preventDefault(); onClearRecents(); }}>נקה</a>
           )}
         </div>
         {nav.view.length === 0 && <div className="sn-empty">אין היסטוריה זמינה</div>}
@@ -362,6 +362,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
         <input
           ref={inputRef}
           id={`${idPrefix}-q`}
+          data-guide-id="srch.menu-input"
           type="search"
           value={q}
           placeholder="חיפוש עמוד, הזמנה או לקוח…"
@@ -396,7 +397,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
         {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${barcodeDigits}` : ''))}
       </div>
-      {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
+      {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" data-guide-id="srch.menu-results" role={menu ? 'menu' : undefined}>{list}</div>}
       {saved.confirm && <DeleteDialog key={saved.confirm.id} confirm={saved.confirm} onConfirm={saved.confirmDelete} onCancel={saved.cancelDelete} skin="menu" />}
     </>
   );

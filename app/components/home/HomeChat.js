@@ -166,7 +166,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
   }, [chat.length]);
 
   return (
-    <div className="card res-one advp aiw" ref={cardRef}>
+    <div className="card res-one advp aiw" data-guide-id="srch.ai-card" ref={cardRef}>
       <div className="card-h" ref={headRef}>
         <button type="button" className="ibtn" aria-label="סגירת השיחה" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>
         <h2 id="ai-h">חיפוש חכם</h2>
@@ -192,6 +192,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
       </div>
       <form
         className="fu fu-in"
+        data-guide-id="srch.ai-followup"
         aria-label="שאלת המשך"
         onSubmit={(e) => {
           e.preventDefault();

@@ -66,12 +66,12 @@ export default function EcAttendance({ employee, employeeId, showDeleted, onShow
         <div className="card-h"><div className="ico rose"><Ic id="clock" size="lg" /></div><h2 id="h-att">דוח נוכחות וסיכום - {fullName}</h2></div>
         <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
         <div className="ec-tool no-print">
-          <div className="trow"><label className="sw"><input type="checkbox" id="showDel" checked={showDeleted} onChange={(e) => onShowDeleted(e.target.checked)} /><i /></label><label htmlFor="showDel" className="pf-pl">הצג מחוקות</label></div>
+          <div className="trow"><label className="sw"><input type="checkbox" id="showDel" data-guide-id="ec.att-showdel" checked={showDeleted} onChange={(e) => onShowDeleted(e.target.checked)} /><i /></label><label htmlFor="showDel" className="pf-pl">הצג מחוקות</label></div>
           <span className="sp" />
           <Combo id="month" label="חודש" className="sm" value={filterMonth} options={MONTH_NAMES.map((m, i) => [i, m])} onChange={(v) => { setFilterMonth(Number(v)); closeAdd(); }} />
           <Combo id="year" label="שנה" className="sm" value={filterYear} options={YEARS.map((y) => [y, String(y)])} onChange={(v) => { setFilterYear(Number(v)); closeAdd(); }} />
-          <button type="button" className="btn" data-ec="print" onClick={() => window.print()}><Ic id="print" size="sm" />הדפס / ייצא PDF</button>
-          <button type="button" className="btn primary" data-ec="add" disabled={busy} onClick={startAdd}><Ic id="plus" size="sm" />הוסף משמרת</button>
+          <button type="button" className="btn" data-guide-id="ec.att-print" data-ec="print" onClick={() => window.print()}><Ic id="print" size="sm" />הדפס / ייצא PDF</button>
+          <button type="button" className="btn primary" data-guide-id="ec.att-add" data-ec="add" disabled={busy} onClick={startAdd}><Ic id="plus" size="sm" />הוסף משמרת</button>
         </div>
 
         {isAddingShift ? (

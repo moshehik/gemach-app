@@ -164,7 +164,7 @@ export default function InventoryAlertsPage() {
           <p>לא נמצאו חריגות בהזמנות העתידיות.</p>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" data-guide-id="invalert.table">
           <div className="table-scroll">
             <table className="data">
               <thead>

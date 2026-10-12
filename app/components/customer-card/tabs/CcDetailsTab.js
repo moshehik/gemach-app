@@ -14,11 +14,11 @@ import CcIcon from '../CcIcon';
 import { CcEmailInput, CcInput, Tip, ViewRow } from '../CcFields';
 import { isStarred, joinNotes, signatureOrderText, signatureState, splitNotes } from '../customerCardLogic';
 
-function EditBtn({ on, onClick, hidden }) {
+function EditBtn({ on, onClick, hidden, 'data-guide-id': gid }) {
   if (hidden) return null;
   const t = on ? 'סיום עריכה' : 'עריכת פרטי לקוח';
   return (
-    <button type="button" className="ibtn" data-act="editcust" aria-label={t} data-tip={t} aria-pressed={on} onClick={onClick}>
+    <button type="button" className="ibtn" data-act="editcust" {...(gid ? { 'data-guide-id': gid } : null)} aria-label={t} data-tip={t} aria-pressed={on} onClick={onClick}>
       <CcIcon name={on ? 'check' : 'pencil'} />
     </button>
   );
@@ -38,38 +38,38 @@ export default function CcDetailsTab({ cc, ui }) {
   const showConsent = settings.hide_marketing_consent_field !== 'true';
 
   const mailBtn = (
-    <div className="cc-mailrow"><button type="button" className="btn sm" data-act="mail-open" onClick={cc.openMail}><CcIcon name="mail" size="sm" />מייל מהיר</button></div>
+    <div className="cc-mailrow"><button type="button" className="btn sm" data-act="mail-open" data-guide-id="cc.mail-quick" onClick={cc.openMail}><CcIcon name="mail" size="sm" />מייל מהיר</button></div>
   );
 
   const custCard = editCust && !cc.readOnly ? (
     <div className="card dfields">
-      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on onClick={() => setEditCust(false)} /></div>
+      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on onClick={() => setEditCust(false)} data-guide-id="cc.edit-details" /></div>
       <div className="grid2">
-        <CcInput id="cFirst" field="firstName" label="שם פרטי" icon="user" value={cur.firstName} onChange={(v) => setField('firstName', v)} placeholder="שם פרטי..." required={star('firstName')} />
-        <CcInput id="cLast" field="lastName" label="שם משפחה" icon="user" value={cur.lastName} onChange={(v) => setField('lastName', v)} placeholder="שם משפחה..." required={star('lastName')} />
-        <CcInput id="cPhone" field="phone1" label="טלפון" icon="phone" value={cur.phone1} onChange={(v) => setField('phone1', v)} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
-        <CcInput id="cPhone2" field="phone2" label="טלפון נוסף" icon="phone" value={cur.phone2} onChange={(v) => setField('phone2', v)} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
-        <CcEmailInput id="cEmail" value={cur.email} onChange={(v) => setField('email', v)} required={star('email')} />
-        <CcInput id="cStreet" field="street" label="רחוב" icon="pin" value={cur.street} onChange={(v) => setField('street', v)} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
-        <CcInput id="cHouse" field="houseNum" label="מספר בית" icon="pin" value={cur.houseNum} onChange={(v) => setField('houseNum', v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
-        <CcInput id="cCity" field="city" label="עיר" icon="pin" value={cur.city} onChange={(v) => setField('city', v)} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
-        <CcInput id="cId" field="zeout" label="תעודת זהות" icon="file" value={cur.zeout} onChange={(v) => setField('zeout', v)} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
+        <CcInput id="cFirst" data-guide-id="cc.f-first" field="firstName" label="שם פרטי" icon="user" value={cur.firstName} onChange={(v) => setField('firstName', v)} placeholder="שם פרטי..." required={star('firstName')} />
+        <CcInput id="cLast" data-guide-id="cc.f-last" field="lastName" label="שם משפחה" icon="user" value={cur.lastName} onChange={(v) => setField('lastName', v)} placeholder="שם משפחה..." required={star('lastName')} />
+        <CcInput id="cPhone" data-guide-id="cc.f-phone" field="phone1" label="טלפון" icon="phone" value={cur.phone1} onChange={(v) => setField('phone1', v)} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
+        <CcInput id="cPhone2" data-guide-id="cc.f-phone2" field="phone2" label="טלפון נוסף" icon="phone" value={cur.phone2} onChange={(v) => setField('phone2', v)} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
+        <CcEmailInput id="cEmail" data-guide-id="cc.f-email" value={cur.email} onChange={(v) => setField('email', v)} required={star('email')} />
+        <CcInput id="cStreet" data-guide-id="cc.f-street" field="street" label="רחוב" icon="pin" value={cur.street} onChange={(v) => setField('street', v)} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
+        <CcInput id="cHouse" data-guide-id="cc.f-house" field="houseNum" label="מספר בית" icon="pin" value={cur.houseNum} onChange={(v) => setField('houseNum', v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
+        <CcInput id="cCity" data-guide-id="cc.f-city" field="city" label="עיר" icon="pin" value={cur.city} onChange={(v) => setField('city', v)} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
+        <CcInput id="cId" data-guide-id="cc.f-id" field="zeout" label="תעודת זהות" icon="file" value={cur.zeout} onChange={(v) => setField('zeout', v)} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
       </div>
-      <div className="row wrap cc-mt24"><button type="button" className="btn sm" data-act="mail-open" onClick={cc.openMail}><CcIcon name="mail" size="sm" />מייל מהיר</button><Tip text="שליחת מייל ללקוחה עם קבצים מצורפים" /></div>
+      <div className="row wrap cc-mt24"><button type="button" className="btn sm" data-act="mail-open" data-guide-id="cc.mail-quick" onClick={cc.openMail}><CcIcon name="mail" size="sm" />מייל מהיר</button><Tip text="שליחת מייל ללקוחה עם קבצים מצורפים" /></div>
     </div>
   ) : (
     <div className="card cust">
-      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on={false} hidden={cc.readOnly} onClick={() => setEditCust(true)} /></div>
+      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on={false} hidden={cc.readOnly} onClick={() => setEditCust(true)} data-guide-id="cc.edit-details" /></div>
       <div className="kv">
-        <ViewRow icon="user" label="שם פרטי" value={cur.firstName} required={star('firstName')} />
-        <ViewRow icon="user" label="שם משפחה" value={cur.lastName} required={star('lastName')} />
-        <ViewRow icon="phone" label="טלפון" value={cur.phone1} bdi required={star('phone1')} />
-        <ViewRow icon="phone" label="טלפון נוסף" value={cur.phone2} bdi required={star('phone2')} />
-        <ViewRow icon="mail" label="מייל" value={cur.email} bdi required={star('email')} extra={mailBtn} />
-        <ViewRow icon="pin" label="רחוב" value={cur.street} required={star('street')} />
-        <ViewRow icon="pin" label="מספר בית" value={cur.houseNum} required={star('houseNum')} />
-        <ViewRow icon="pin" label="עיר" value={cur.city} required={star('city')} />
-        <ViewRow icon="file" label="תעודת זהות" value={cur.zeout} bdi required={star('zeout')} />
+        <ViewRow icon="user" label="שם פרטי" data-guide-id="cc.f-first" value={cur.firstName} required={star('firstName')} />
+        <ViewRow icon="user" label="שם משפחה" data-guide-id="cc.f-last" value={cur.lastName} required={star('lastName')} />
+        <ViewRow icon="phone" label="טלפון" data-guide-id="cc.f-phone" value={cur.phone1} bdi required={star('phone1')} />
+        <ViewRow icon="phone" label="טלפון נוסף" data-guide-id="cc.f-phone2" value={cur.phone2} bdi required={star('phone2')} />
+        <ViewRow icon="mail" label="מייל" data-guide-id="cc.f-email" value={cur.email} bdi required={star('email')} extra={mailBtn} />
+        <ViewRow icon="pin" label="רחוב" data-guide-id="cc.f-street" value={cur.street} required={star('street')} />
+        <ViewRow icon="pin" label="מספר בית" data-guide-id="cc.f-house" value={cur.houseNum} required={star('houseNum')} />
+        <ViewRow icon="pin" label="עיר" data-guide-id="cc.f-city" value={cur.city} required={star('city')} />
+        <ViewRow icon="file" label="תעודת זהות" data-guide-id="cc.f-id" value={cur.zeout} bdi required={star('zeout')} />
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ export default function CcDetailsTab({ cc, ui }) {
     <div className="card">
       <div className="card-h"><div className="ico gold"><CcIcon name="note" size="lg" /></div><h2>תקנון ועדכונים</h2></div>
       <div className="row wrap cc-gap14">
-        <button type="button" className={`btn tgl${sig.signed ? ' on' : ''}`} id="termsBtn" data-f="hasSignedRegulations" aria-pressed={sig.signed} aria-disabled={sigLocked ? 'true' : undefined}
+        <button type="button" className={`btn tgl${sig.signed ? ' on' : ''}`} id="termsBtn" data-guide-id="cc.terms" data-f="hasSignedRegulations" aria-pressed={sig.signed} aria-disabled={sigLocked ? 'true' : undefined}
           data-tip={sigTip} onClick={toggleSig}>
           {sig.signed ? <CcIcon name="check" size="sm" className="evck" anim={false} /> : null}<CcIcon name="sig" size="sm" />חתמה על התקנון
         </button>
@@ -94,7 +94,7 @@ export default function CcDetailsTab({ cc, ui }) {
       </div>
       {showConsent ? (
         <div className="trow cc-mt24">
-          <label className="sw"><input type="checkbox" id="newsOn" data-f="marketingConsent" checked={!!cur.marketingConsent} disabled={cc.readOnly} onChange={(e) => setField('marketingConsent', e.target.checked)} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
+          <label className="sw"><input type="checkbox" id="newsOn" data-guide-id="cc.consent" data-f="marketingConsent" checked={!!cur.marketingConsent} disabled={cc.readOnly} onChange={(e) => setField('marketingConsent', e.target.checked)} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
           <b>מאשר/ת קבלת דיוורים</b><Tip text="תזכורות ועדכוני מבצעים במייל" />
         </div>
       ) : null}
@@ -115,13 +115,13 @@ export default function CcDetailsTab({ cc, ui }) {
           ))}
         </div>
       ) : null}
-      <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={manual} readOnly={cc.readOnly} onChange={(e) => setField('notes', joinNotes(cc.saved.notes, e.target.value))} aria-label="הערות ללקוחה" />
+      <textarea className="inp" id="notes" data-guide-id="cc.notes" data-f="notes" placeholder="כתבו כאן הערה…" value={manual} readOnly={cc.readOnly} onChange={(e) => setField('notes', joinNotes(cc.saved.notes, e.target.value))} aria-label="הערות ללקוחה" />
       {cc.changes.some((c) => c.field === 'notes') ? <div className="faint sm cc-notes-hint">השינוי בהערות יישמר רק בלחיצה על "שמור" בסיכום</div> : null}
     </div>
   );
 
   const bankCard = !cc.bankEnabled ? null : editCust && !cc.readOnly ? (
-    <div className="card dfields">
+    <div className="card dfields" data-guide-id="cc.bank-card">
       <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2></div>
       <div className="grid2">
         <CcInput id="bkName" field="bankName" label="שם בנק" icon="bank" value={cur.bankName} onChange={(v) => setField('bankName', v)} placeholder="למשל: לאומי" required={star('bankName')} />
@@ -131,7 +131,7 @@ export default function CcDetailsTab({ cc, ui }) {
       </div>
     </div>
   ) : (
-    <div className="card cust cc-bank">
+    <div className="card cust cc-bank" data-guide-id="cc.bank-card">
       <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2><EditBtn on={false} hidden={cc.readOnly} onClick={() => setEditCust(true)} /></div>
       <div className="kv">
         <ViewRow icon="bank" label="שם בנק" value={cur.bankName} required={star('bankName')} />

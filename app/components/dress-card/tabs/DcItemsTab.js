@@ -4,6 +4,7 @@
 // itemsCfg ב-model-card.js: חיפוש, סינון (סטטוס / מיקום / מידה), מיון, שורות / טבלה, פירוט מורחב עם עריכה ופרטים, ייצוא.
 // כל עריכה (מיקום, קרטון, תיקון, לא בשימוש, מחיקה/שחזור, הוספה) נכנסת לעגלה ("שינויים בכרטיס") ונשמרת בלחיצה על "שמור".
 import { useEffect, useMemo, useRef } from 'react';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="dci" ל-A5List / A5ListPage מוסיף data-guide-id dci.search, dci.filter, dci.sort, dci.ai, dci.stats, dci.view, dci.export-excel, dci.export-print (נבנים בתוך a5-list).
 import { A5List, sortItems, findSorter } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
 import { DcAddItemDialog, DcEditItemDialog, DcItemInfoDialog } from '../dialogs/DcItemDialogs';
@@ -136,14 +137,15 @@ export default function DcItemsTab({ dc, ui, active }) {
   ];
 
   return (
-    <div className="card hist items-card">
+    <div className="card hist items-card" data-guide-id="dc.items-card">
       <div className="card-h">
         <div className="ico gold"><OcIcon name="box" size="lg" /></div><h2>פריטים ומלאי</h2>
         {canManage
-          ? <button type="button" className="btn navy" id="dcAddBtn" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>
+          ? <button type="button" className="btn navy" id="dcAddBtn" data-guide-id="dc.item-add" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>
           : <span id="dcItemsRo"><Tip text="צפייה בלבד: הוספה, עריכה ומחיקה של פריטים דורשות הרשאת ניהול פריטי דגם" /></span>}
       </div>
       <A5List
+        guide="dci"
         key={intentKey}
         ref={listRef}
         items={aiS.narrow(cur.items, (it, f) => f.ids.has(String(it.id)) || f.bcs.has(bcFor(it, prefix)))}

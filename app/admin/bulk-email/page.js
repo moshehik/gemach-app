@@ -69,22 +69,22 @@ export default function BulkEmailPage() {
         <div className="form-grid">
           <div className="field">
             <label>מתאריך אירוע</label>
-            <input type="date" className="input" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            <input type="date" data-guide-id="bulk.from" className="input" value={fromDate} onChange={e => setFromDate(e.target.value)} />
           </div>
           <div className="field">
             <label>עד תאריך (אופציונלי)</label>
-            <input type="date" className="input" value={toDate} onChange={e => setToDate(e.target.value)} />
+            <input type="date" data-guide-id="bulk.to" className="input" value={toDate} onChange={e => setToDate(e.target.value)} />
           </div>
         </div>
         <div className="field">
           <label>נושא</label>
-          <input type="text" className="input" value={subject} onChange={e => setSubject(e.target.value)} placeholder="נושא המייל..." />
+          <input type="text" data-guide-id="bulk.subject" className="input" value={subject} onChange={e => setSubject(e.target.value)} placeholder="נושא המייל..." />
         </div>
         <div className="field">
           <label>תוכן</label>
-          <textarea className="textarea" style={{ minHeight: 140 }} value={body} onChange={e => setBody(e.target.value)} placeholder="תוכן ההודעה..." />
+          <textarea className="textarea" data-guide-id="bulk.body" style={{ minHeight: 140 }} value={body} onChange={e => setBody(e.target.value)} placeholder="תוכן ההודעה..." />
         </div>
-        <button type="button" className="btn btn-primary" disabled={sending} onClick={handleSend}>
+        <button type="button" className="btn btn-primary" data-guide-id="bulk.send" disabled={sending} onClick={handleSend}>
           {sending ? 'שולח...' : 'שלח לכל האירועים בטווח'}
         </button>
         {result && (

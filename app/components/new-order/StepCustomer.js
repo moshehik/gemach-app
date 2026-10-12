@@ -11,9 +11,9 @@ import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker 
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 
 const TABS = [
-  { v: 'phone', label: 'לפי טלפון', icon: 'phone' },
-  { v: 'name', label: 'מהרשימה', icon: 'users' },
-  { v: 'new', label: 'לקוח חדש', icon: 'plus' },
+  { v: 'phone', label: 'לפי טלפון', icon: 'phone', guide: 'no.cust-mode-phone' },
+  { v: 'name', label: 'מהרשימה', icon: 'users', guide: 'no.cust-mode-list' },
+  { v: 'new', label: 'לקוח חדש', icon: 'plus', guide: 'no.cust-mode-new' },
 ];
 
 function custSub(c) {
@@ -72,14 +72,14 @@ function PhoneTab({ ctl }) {
   const one = res.length === 1 ? res[0] : null;
   return (
     <>
-      <Field label="מספר טלפון *" icon="phone" htmlFor="noPhoneQ">
+      <Field label="מספר טלפון *" icon="phone" htmlFor="noPhoneQ" guide="no.cust-phone">
         <input className="inp" id="noPhoneQ" type="tel" dir="ltr" inputMode="tel" placeholder="05..." autoComplete="off" {...NO_FILL} autoFocus
           value={ctl.phoneSearchInput} onChange={(e) => ctl.setPhoneSearchInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ctl.handleCheckPhone(); } }} />
         <ClearX show={!!ctl.phoneSearchInput} onClear={() => { ctl.setPhoneSearchInput(''); ctl.setFoundCustomersFromPhone([]); }} />
       </Field>
       <div className="row wrap" style={{ marginTop: 24, gap: 16, alignItems: 'center' }}>
-        <button type="button" className="btn navy" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
+        <button type="button" className="btn navy" data-guide-id="no.cust-phone-check" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
       </div>
       <div id="phoneRes" style={{ marginTop: 16 }}>
         {res.length ? (
@@ -89,7 +89,7 @@ function PhoneTab({ ctl }) {
             {sel ? <MissLine c={sel} ctl={ctl} /> : null}
             {one && ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
             <div className="row wrap" style={{ marginTop: 14, gap: 10 }}>
-              <button type="button" className="btn primary" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
+              <button type="button" className="btn primary" data-guide-id="no.cust-use" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
               {anyMissing && (sel || one) ? (ctl.inlineCustomerEdit
                 ? <button type="button" className="btn" onClick={() => ctl.editCustomerInline(sel || one, 'use')}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
                 : <a className="btn" href={`/customers/${(sel || one).id}`} target="_blank" rel="noreferrer"><Ic n="pencil" c="sm" />עריכת פרטי לקוח</a>) : null}
@@ -107,7 +107,7 @@ function ListTab({ ctl }) {
   const list = ctl.listResults || [];
   return (
     <>
-      <Field label="חיפוש לפי שם, טלפון או עיר" icon="search" htmlFor="noListQ">
+      <Field label="חיפוש לפי שם, טלפון או עיר" icon="search" htmlFor="noListQ" guide="no.cust-search">
         <input className="inp" id="noListQ" placeholder="חפש לקוח לפי שם, טלפון, עיר..." autoComplete="off" {...NO_FILL} readOnly={!!c}
           value={c ? `${getCustomerFullName(c)}${c.phone1 ? ` (${c.phone1})` : ''}` : ctl.listQuery} onChange={(e) => ctl.setListQuery(e.target.value)} />
         {c ? <ClearX show onClear={() => ctl.pickFromList(null)} label="נקה בחירה" tip="נקה בחירה" /> : null}
@@ -164,11 +164,11 @@ function NewTab({ ctl }) {
         </Note>
       ) : null}
       <div className="grid2 col1">
-        <Field label="שם פרטי *" icon="user" htmlFor="noNcFirst"><input id="noNcFirst" {...inp('firstName')} /></Field>
-        <Field label="שם משפחה *" icon="user" htmlFor="noNcLast"><input id="noNcLast" {...inp('lastName')} /></Field>
-        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
+        <Field label="שם פרטי *" icon="user" htmlFor="noNcFirst" guide="no.cust-first"><input id="noNcFirst" {...inp('firstName')} /></Field>
+        <Field label="שם משפחה *" icon="user" htmlFor="noNcLast" guide="no.cust-last"><input id="noNcLast" {...inp('lastName')} /></Field>
+        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" guide="no.cust-phone1" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
         <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
-        <Field label={`אימייל${star(s.require_customer_email === 'true' || isFieldMandatoryFromPicker(s, 'email') || isFieldRequiredByGroup('email', n, ctl.fieldGroups))}`} icon="mail" htmlFor="noNcEmail"
+        <Field label={`אימייל${star(s.require_customer_email === 'true' || isFieldMandatoryFromPicker(s, 'email') || isFieldRequiredByGroup('email', n, ctl.fieldGroups))}`} icon="mail" htmlFor="noNcEmail" guide="no.cust-email"
           after={<>
             {n.email && !n.email.includes('@') ? <div style={{ marginTop: 8 }}><button type="button" className="btn sm" onClick={() => set('email')(`${n.email}@gmail.com`)}><Ic n="mail" c="sm" />השלם ל- @gmail.com</button></div> : null}
             {errFor('email')}
@@ -195,7 +195,7 @@ function NewTab({ ctl }) {
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
       {err && !err.field ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
       <div className="row" style={{ marginTop: 24 }}>
-        <button type="button" className="btn primary" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
+        <button type="button" className="btn primary" data-guide-id="no.cust-save" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
       </div>
     </>
   );
@@ -206,7 +206,7 @@ export default function StepCustomer({ ctl }) {
     <OneCard>
       <Blk>
         <SubH icon="search" tone="rose" title="בחירת לקוח" />
-        <SegPill id="custSeg" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
+        <SegPill id="custSeg" guide="no.cust-modes" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
           onChange={(v) => { ctl.setSearchMode(v); if (v === 'phone') ctl.setFoundCustomersFromPhone([]); }} />
         <div style={{ marginTop: 18 }}>
           {ctl.searchMode === 'phone' ? <PhoneTab ctl={ctl} /> : ctl.searchMode === 'name' ? <ListTab ctl={ctl} /> : <NewTab ctl={ctl} />}

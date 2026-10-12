@@ -168,10 +168,10 @@ export default function CcHistoryTab({ cc, ui, active }) {
       <div className="hf-bar" id="hfBar">
         <div className="hf-s">
           <CcIcon name="search" />
-          <input id="hfQ" type="search" autoComplete="off" placeholder="חיפוש בהיסטוריה" aria-label="חיפוש בהיסטוריה" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape' && q) { e.stopPropagation(); setQ(''); } }} />
+          <input id="hfQ" data-guide-id="cc.hist-search" type="search" autoComplete="off" placeholder="חיפוש בהיסטוריה" aria-label="חיפוש בהיסטוריה" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape' && q) { e.stopPropagation(); setQ(''); } }} />
           <button type="button" className={`hf-cl${q ? ' on' : ''}`} aria-label="ניקוי חיפוש" data-tip="ניקוי חיפוש" onClick={() => setQ('')}><CcIcon name="x" /></button>
           <div className={`hf-sel${popOpen ? ' on' : ''}`} ref={selRef}>
-            <button type="button" className="hf-t" aria-haspopup="listbox" aria-expanded={popOpen} aria-controls="hfList" onClick={() => setPopOpen((v) => !v)}>
+            <button type="button" className="hf-t" data-guide-id="cc.hist-filter" aria-haspopup="listbox" aria-expanded={popOpen} aria-controls="hfList" onClick={() => setPopOpen((v) => !v)}>
               <CcIcon name="sliders" /><span className="hf-lbl">סינון</span><span className={`hf-bdg${sel.length ? ' has' : ''}`}>{sel.length || ''}</span><CcIcon name="chev" className="hf-chv" anim={false} />
             </button>
             <div className="hf-scrim" onClick={() => setPopOpen(false)} />
@@ -195,11 +195,11 @@ export default function CcHistoryTab({ cc, ui, active }) {
       </div>
       <div className="hres-bar">
         <span className="hres-n">תוצאות <b id="hfN">{visible.length}</b></span>
-        <ViewSwitch value={view} onChange={setView} />
+        <ViewSwitch value={view} onChange={setView} data-guide-id="cc.hist-view" />
         <span className="hres-x">
-          <button type="button" className="xlbtn xlg" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההיסטוריה לקובץ Excel" onClick={() => exportX('excel')}><XlGlyph kind="excel" /></button>
-          <button type="button" className="xlbtn xld" aria-label="הורדה" data-tip="הורדת ההיסטוריה כקובץ" onClick={() => exportX('download')}><XlGlyph kind="download" /></button>
-          <button type="button" className="xlbtn xlp" aria-label="הדפסה" data-tip="הדפסת ההיסטוריה" onClick={() => exportX('print')}><XlGlyph kind="print" /></button>
+          <button type="button" className="xlbtn xlg" data-guide-id="cc.hist-excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההיסטוריה לקובץ Excel" onClick={() => exportX('excel')}><XlGlyph kind="excel" /></button>
+          <button type="button" className="xlbtn xld" data-guide-id="cc.hist-download" aria-label="הורדה" data-tip="הורדת ההיסטוריה כקובץ" onClick={() => exportX('download')}><XlGlyph kind="download" /></button>
+          <button type="button" className="xlbtn xlp" data-guide-id="cc.hist-print" aria-label="הדפסה" data-tip="הדפסת ההיסטוריה" onClick={() => exportX('print')}><XlGlyph kind="print" /></button>
         </span>
       </div>
       <div className="hfeed hres" id="hfeed">{feed}</div>

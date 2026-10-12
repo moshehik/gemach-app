@@ -1022,7 +1022,7 @@ export default function CustomerInventoryViewer() {
   // שדה חיפוש דגם קטן, למעלה משמאל: בשלב 1 בשורת הכותרת; בשלב 2 בתוך פס התאריך הדביק (כשהוא דלוק) כדי שיישאר גלוי בגלילה, אחרת בשורת הכותרת.
   const dateBarOn = stickyDate && stage === 2;
   const modelSearchBox = modelSearchOn ? (
-    <div className="ka-model-search" data-agy-id="kiosk_model_search">
+    <div className="ka-model-search" data-agy-id="kiosk_model_search" data-guide-id="kiosk.model-search">
       <svg className="icon"><use href="#i-search" /></svg>
       <input
         data-agy-id="kiosk_model_search_input"
@@ -1063,14 +1063,14 @@ export default function CustomerInventoryViewer() {
             <div>עמדת לקוחות</div>
           </div>
           <div className="ka-stepper">
-            <button type="button" className={`ka-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
+            <button type="button" data-guide-id="kiosk.step-date" className={`ka-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
               <span className="num">
                 {stage > 1 ? <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg> : '1'}
               </span>
               שלב 1 · בחירת תאריך
             </button>
             <div className="ka-step-sep" />
-            <button type="button" className={`ka-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
+            <button type="button" data-guide-id="kiosk.step-catalog" className={`ka-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
               <span className="num">2</span>
               שלב 2 · קטלוג ותוצאות
             </button>
@@ -1115,7 +1115,7 @@ export default function CustomerInventoryViewer() {
                 </form>
               ))}
 
-            <button data-agy-id="toggle_sidebar_btn" type="button" className="ka-btn-soft"
+            <button data-agy-id="toggle_sidebar_btn" data-guide-id="kiosk.filter-btn" type="button" className="ka-btn-soft"
               onClick={() => setSidebarOpen(o => !o)}>
               <svg className="icon"><use href="#ka-i-filter" /></svg>
               סינון ותצוגה
@@ -1151,17 +1151,17 @@ export default function CustomerInventoryViewer() {
             </div>
 
             <div className="ka-action-cluster">
-              <button data-agy-id="exit_to_system_btn" type="button" className="ka-icon-btn"
+              <button data-agy-id="exit_to_system_btn" data-guide-id="kiosk.exit" type="button" className="ka-icon-btn"
                 onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
                 <svg className="icon"><use href="#i-logout" /></svg>
               </button>
               <button data-agy-id="new_search_btn" type="button" className="ka-icon-btn" onClick={() => setStage(1)} title="חיפוש חדש">
                 <svg className="icon"><use href="#i-search" /></svg>
               </button>
-              <button data-agy-id="refresh_inventory_btn" type="button" className="ka-icon-btn" onClick={fetchInventory} title="רענון מלאי">
+              <button data-agy-id="refresh_inventory_btn" data-guide-id="kiosk.refresh" type="button" className="ka-icon-btn" onClick={fetchInventory} title="רענון מלאי">
                 <svg className="icon"><use href="#i-refresh" /></svg>
               </button>
-              <button data-agy-id="print_catalog_btn" type="button" className="ka-icon-btn"
+              <button data-agy-id="print_catalog_btn" data-guide-id="kiosk.print" type="button" className="ka-icon-btn"
                 onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}
                 title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'}>
                 <svg className="icon"><use href="#i-printer" /></svg>
@@ -1172,7 +1172,7 @@ export default function CustomerInventoryViewer() {
                   <svg className="icon"><use href="#i-lock" /></svg>
                 </button>
               ) : (
-                <button data-agy-id="lock_screen_btn" type="button" className="ka-icon-btn danger" onClick={() => {
+                <button data-agy-id="lock_screen_btn" data-guide-id="kiosk.lock" type="button" className="ka-icon-btn danger" onClick={() => {
                   // The orders modal links into staff order pages — never leave it up on a locked kiosk.
                   setShowOrdersModal(false);
                   setIsLocked(true);
@@ -1214,7 +1214,7 @@ export default function CustomerInventoryViewer() {
             {aiEnabled && aiMessages.length > 1 && renderAiChatCard(null)}
 
             <div className="ka-card ka-card-pad">
-              <div className="ka-date-title">
+              <div className="ka-date-title" data-guide-id="kiosk.date-title">
                 <svg className="icon"><use href="#i-calendar" /></svg>
                 מתי האירוע שלכם?
               </div>
@@ -1374,7 +1374,7 @@ export default function CustomerInventoryViewer() {
 
             {/* Sidebar: filters & display settings */}
             {sidebarOpen && (
-              <aside data-agy-id="catalog_sidebar" className="ka-filter-panel">
+              <aside data-agy-id="catalog_sidebar" data-guide-id="kiosk.filters" className="ka-filter-panel">
 
                 <div className="ka-filter-group">
                   <h4><svg className="icon"><use href="#i-search" /></svg>חיפוש</h4>

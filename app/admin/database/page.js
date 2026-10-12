@@ -103,7 +103,7 @@ export default function DatabaseManagement() {
       <div className="card card-pad" style={{ marginBottom: '20px' }}>
         <div className="card-title-row" style={{ marginBottom: '4px' }}>
           <svg className="icon"><use href="#i-upload" /></svg>
-          <h2 style={{ fontSize: '15px', margin: 0 }}>העלאת קובץ אקסס חדש</h2>
+          <h2 style={{ fontSize: '15px', margin: 0 }} data-guide-id="dbadm.import-card">העלאת קובץ אקסס חדש</h2>
         </div>
         <p style={{ color: 'var(--text-3)', margin: '0 0 16px', fontSize: '12.5px', maxWidth: '640px' }}>
           העלה קובץ Access (.accdb) חדש. המערכת תגבה את הנתונים הישנים לקובץ זיפ (ZIP) בתיקיית הגיבויים,
@@ -127,7 +127,7 @@ export default function DatabaseManagement() {
           type="button"
           className="btn btn-primary btn-lg"
           style={{ width: '100%' }}
-          onClick={handleUpload}
+          onClick={handleUpload} data-guide-id="dbadm.import-start"
           disabled={!file || uploading}
         >
           <svg className="icon"><use href="#i-upload" /></svg>
@@ -164,7 +164,7 @@ export default function DatabaseManagement() {
         </p>
 
         <a
-          href="/api/admin/database/export"
+          href="/api/admin/database/export" data-guide-id="dbadm.export"
           download
           className="btn btn-primary btn-lg"
           style={{ width: '100%' }}
@@ -190,7 +190,7 @@ export default function DatabaseManagement() {
           type="button"
           className="btn btn-primary btn-lg"
           style={{ width: '100%' }}
-          onClick={handleSyncOffline}
+          onClick={handleSyncOffline} data-guide-id="dbadm.sync-offline"
           disabled={syncing}
         >
           <svg className="icon"><use href="#i-refresh" /></svg>

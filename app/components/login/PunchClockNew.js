@@ -188,7 +188,7 @@ export default function PunchClockNew({ brand, isAuthenticated = false }) {
           <div className="msg" role="alert"><I n="alert" /><span>{error.message}</span></div>
         ) : null}
 
-        <div className="field">
+        <div className="field" data-guide-id="punch.employee">
           <label className="lbl" htmlFor={IDS.input}>שם עובד</label>
           <EmployeeCombobox
             ref={comboRef}
@@ -204,7 +204,7 @@ export default function PunchClockNew({ brand, isAuthenticated = false }) {
           />
         </div>
 
-        <div className="field">
+        <div className="field" data-guide-id="punch.password">
           <label className="lbl" htmlFor="pc-pass">{trusted ? 'סיסמה או קוד מקוצר (4 תווים)' : 'סיסמה'}</label>
           <PasswordField
             id="pc-pass"
@@ -219,11 +219,11 @@ export default function PunchClockNew({ brand, isAuthenticated = false }) {
         </div>
 
         <div className="pc-actions">
-          <button type="button" className="gbtn" disabled={!!busy} onClick={() => handlePunch(PUNCH_ACTION.IN)}>
+          <button type="button" className="gbtn" data-guide-id="punch.in" disabled={!!busy} onClick={() => handlePunch(PUNCH_ACTION.IN)}>
             {busy === PUNCH_ACTION.IN ? <span className="spin" aria-hidden="true" /> : <I n="check" />}
             <span>כניסה למשמרת</span>
           </button>
-          <button type="button" className="gbtn" disabled={!!busy} onClick={() => handlePunch(PUNCH_ACTION.OUT)}>
+          <button type="button" className="gbtn" data-guide-id="punch.out" disabled={!!busy} onClick={() => handlePunch(PUNCH_ACTION.OUT)}>
             {busy === PUNCH_ACTION.OUT ? <span className="spin" aria-hidden="true" /> : <I n="logout" />}
             <span>יציאה ממשמרת</span>
           </button>
@@ -232,7 +232,7 @@ export default function PunchClockNew({ brand, isAuthenticated = false }) {
       <div className="punch">
         {/* קישור רגיל ולא <Link>: ה-layout הראשי מכריע בשרת אם להציג מעטפת או דף כניסה, ורק טעינה מלאה מריצה אותו מחדש */}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a href="/">
+        <a href="/" data-guide-id="punch.back">
           <I n="back" sm />
           <span>{isAuthenticated ? 'חזרה למערכת' : 'חזרה לכניסה למערכת'}</span>
         </a>

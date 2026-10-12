@@ -41,12 +41,12 @@ function PrintMenu({ dc, ui }) {
   };
   return (
     <>
-      <button ref={btnRef} type="button" className="xlbtn xlp" data-act="menu" aria-label="הדפסה" aria-haspopup="menu" aria-expanded={open} data-tip="הדפסה" onClick={() => setOpen((v) => !v)}>
+      <button ref={btnRef} type="button" className="xlbtn xlp" data-guide-id="dc.tool-print" data-act="menu" aria-label="הדפסה" aria-haspopup="menu" aria-expanded={open} data-tip="הדפסה" onClick={() => setOpen((v) => !v)}>
         <XlGlyph kind="print" />
       </button>
       <div ref={menuRef} className={`menu${open ? ' open' : ''}`} id="pmenu" role="menu" aria-label="הדפסה" onKeyDown={onMenuKey}>
         {PRINT_MENU.map((m) => (
-          <button key={m.act} type="button" role="menuitem" data-act={m.act} onClick={() => { setOpen(false); runDressDoc({ dc, ui, kind: m.kind, which: m.which }); }}>
+          <button key={m.act} type="button" role="menuitem" data-act={m.act} data-guide-id={`dc.pm-${m.act}`} onClick={() => { setOpen(false); runDressDoc({ dc, ui, kind: m.kind, which: m.which }); }}>
             <OcIcon name={m.icon} />{m.label}
           </button>
         ))}
@@ -69,7 +69,7 @@ export default function DcTopbar({ dc, ui }) {
   };
   return (
     <div className="topbar">
-      <button type="button" className="back" data-act="exit" aria-label="חזרה לרשימת הדגמים" data-tip="חזרה לרשימת הדגמים" disabled={dc.saving} onClick={() => dc.exit()}>
+      <button type="button" className="back" data-guide-id="dc.back" data-act="exit" aria-label="חזרה לרשימת הדגמים" data-tip="חזרה לרשימת הדגמים" disabled={dc.saving} onClick={() => dc.exit()}>
         <OcIcon name="back" />
       </button>
       <div className="ttl">
@@ -80,12 +80,12 @@ export default function DcTopbar({ dc, ui }) {
       <div className="tools">
         {ready ? (
           <>
-            <button type="button" className="xlbtn xlg" data-act="export-xl" aria-label="ייצוא ל-Excel" data-tip="ייצוא פריטי הדגם לקובץ Excel" onClick={() => exportItemsXlsx({ dc, ui })}><XlGlyph kind="excel" /></button>
-            <button type="button" className="xlbtn xld" data-act="export-dl" aria-label="הורדה" data-tip="הורדת כרטיס הדגם כקובץ PDF (באותו עיצוב כמו ההדפסה)" onClick={() => runDressDoc({ dc, ui, kind: 'download', which: 'card' })}><XlGlyph kind="download" /></button>
+            <button type="button" className="xlbtn xlg" data-guide-id="dc.tool-excel" data-act="export-xl" aria-label="ייצוא ל-Excel" data-tip="ייצוא פריטי הדגם לקובץ Excel" onClick={() => exportItemsXlsx({ dc, ui })}><XlGlyph kind="excel" /></button>
+            <button type="button" className="xlbtn xld" data-guide-id="dc.tool-pdf" data-act="export-dl" aria-label="הורדה" data-tip="הורדת כרטיס הדגם כקובץ PDF (באותו עיצוב כמו ההדפסה)" onClick={() => runDressDoc({ dc, ui, kind: 'download', which: 'card' })}><XlGlyph kind="download" /></button>
             <PrintMenu dc={dc} ui={ui} />
             {deleted
-              ? <button type="button" className="xlbtn xld" data-act="restore" aria-label="שחזור דגם" data-tip="שחזור דגם" onClick={askRestore}><OcIcon name="refresh" /></button>
-              : <button type="button" className="xlbtn xld" data-act="delete" aria-label="מחיקת דגם" data-tip="מחיקת דגם" onClick={askDelete}><XlGlyph kind="delete" /></button>}
+              ? <button type="button" className="xlbtn xld" data-guide-id="dc.tool-restore" data-act="restore" aria-label="שחזור דגם" data-tip="שחזור דגם" onClick={askRestore}><OcIcon name="refresh" /></button>
+              : <button type="button" className="xlbtn xld" data-guide-id="dc.tool-delete" data-act="delete" aria-label="מחיקת דגם" data-tip="מחיקת דגם" onClick={askDelete}><XlGlyph kind="delete" /></button>}
           </>
         ) : null}
       </div>

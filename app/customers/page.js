@@ -257,6 +257,7 @@ export default function CustomersPage() {
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-secondary btn-icon-only"
             title="חיפוש מתקדם"
+            data-guide-id="cust.list-adv"
           >
             <svg className="icon"><use href="#i-list" /></svg>
           </button>
@@ -279,6 +280,7 @@ export default function CustomersPage() {
           <button
             onClick={() => router.push('/customers/new')}
             className="btn btn-primary"
+            data-guide-id="cust.list-new"
           >
             <svg className="icon"><use href="#i-plus" /></svg>
             לקוח חדש
@@ -323,6 +325,7 @@ export default function CustomersPage() {
             <input
               type="text"
               value={searchInput}
+              data-guide-id="cust.list-search"
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
             />
@@ -332,7 +335,7 @@ export default function CustomersPage() {
                   <svg className="icon"><use href="#i-x" /></svg>
                 </button>
               )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" data-guide-id="cust.list-ai" onClick={toggleAiInputMode}>
                 <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
               </button>
               <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
@@ -351,7 +354,7 @@ export default function CustomersPage() {
       ) : (
         <div className="table-wrap">
           <div className="table-scroll">
-            <table className="data">
+            <table className="data" data-guide-id="cust.list-table">
               <thead>
                 <tr>
                   <th className={sort === 'legacyId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('legacyId')}>

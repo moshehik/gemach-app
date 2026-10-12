@@ -30,7 +30,7 @@ export default function DcScanBar({ dc }) {
     if (inRef.current) inRef.current.focus();
   };
   return (
-    <div className="sbar" id="sbar">
+    <div className="sbar" id="sbar" data-guide-id="dc.scan">
       <div className="inpw">
         <OcIcon name="scan" />
         <input

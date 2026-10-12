@@ -286,6 +286,7 @@ export default function AlterationsPage() {
         <div className="page-actions">
           <button
             type="button"
+            data-guide-id="alt.mark-day"
             onClick={markAllDone}
             disabled={!startDate}
             className="btn btn-primary"
@@ -294,10 +295,10 @@ export default function AlterationsPage() {
             <svg className="icon"><use href="#i-check-circle" /></svg>
             סמן יום כבוצע
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="alt.print" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
             <svg className="icon"><use href="#i-printer" /></svg>
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="מקרא" onClick={() => setIsLegendOpen(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="alt.legend" title="מקרא" onClick={() => setIsLegendOpen(true)}>
             <svg className="icon"><use href="#i-info" /></svg>
           </button>
           <ExportButtons
@@ -337,8 +338,8 @@ export default function AlterationsPage() {
       {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה.
           align-items:stretch + .range-flat: בורר הטווח ושורת החיפוש באותו עיצוב (אותו רדיוס)
           ובאותו גובה/קו — בלי label צף שמושך את הבורר מעל הקו של שורת החיפוש */}
-      <div className="toolbar" style={{ alignItems: 'stretch' }}>
-        <div title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
+      <div className="toolbar" data-guide-id="alt.toolbar" style={{ alignItems: 'stretch' }}>
+        <div data-guide-id="alt.date-range" title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
           <HebrewDateRangePicker
             className="range-flat"
             startDate={startDate}
@@ -409,7 +410,7 @@ export default function AlterationsPage() {
       </div>
 
       {/* סינון סטטוס תיקון: הכל / ממתינים / בוצע */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+      <div className="pill-tabs" data-guide-id="alt.filters" style={{ marginBottom: '20px' }}>
         <button type="button" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
           <svg className="icon"><use href="#i-list" /></svg>
           הכל
@@ -438,7 +439,7 @@ export default function AlterationsPage() {
           </div>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" data-guide-id="alt.table">
           <div className="table-scroll">
             <table className="data">
               <thead>
@@ -508,6 +509,7 @@ export default function AlterationsPage() {
                             <Link
                               href={`/orders/${item.order?.orderId}`}
                               className="btn btn-ghost btn-icon-only btn-sm"
+                              data-guide-id="alt.order-link"
                               title="כרטיס הזמנה"
                             >
                               <svg className="icon"><use href="#i-file" /></svg>
@@ -521,6 +523,7 @@ export default function AlterationsPage() {
                                 type="button"
                                 className="btn btn-ghost btn-icon-only btn-sm"
                                 style={{ color: 'var(--success)' }}
+                                data-guide-id="alt.mark-done"
                                 onClick={() => markDone(item.id)}
                                 title="סמן שבוצע"
                               >

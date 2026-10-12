@@ -45,7 +45,7 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
   }, [msg]);
 
   if (SequencePanel && oc.settings.enableBarcodeSequenceMode) {
-    return <div className="sbar" id="sbar"><SequencePanel oc={oc} ui={ui} /></div>;
+    return <div className="sbar" id="sbar" data-guide-id="oc.scan"><SequencePanel oc={oc} ui={ui} /></div>;
   }
 
   // סריקה שנייה בזמן שהראשונה רצה: השדה מתנקה מיד (הסריקה הבאה לא מצטרפת לטקסט ישן) והקוד נכנס לתור (createScanQueue)
@@ -57,7 +57,7 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
   };
 
   return (
-    <div className="sbar" id="sbar">
+    <div className="sbar" id="sbar" data-guide-id="oc.scan">
       <div className="inpw">
         <OcIcon name="scan" />
         <input

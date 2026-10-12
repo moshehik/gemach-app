@@ -56,7 +56,7 @@ export default function UpdatedSection({ date, branch, onCount, hidden = false }
   const { status, data } = state;
   const rows = (data && data.orders) || [];
   return (
-    <section className="lz-sec" id="st-updated" data-k="updated" style={{ '--pc': 'var(' + UPDATED_META.color + ')', ...(hidden ? { display: 'none' } : null) }} ref={rootRef}>
+    <section className="lz-sec" id="st-updated" data-k="updated" data-guide-id="sched.sec-updated" style={{ '--pc': 'var(' + UPDATED_META.color + ')', ...(hidden ? { display: 'none' } : null) }} ref={rootRef}>
       <div className="lz-hrow">
         <h2 className="adm-h">
           <span className="adm-hi"><ScheduleIcon name={UPDATED_META.icon} /></span>

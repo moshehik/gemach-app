@@ -19,7 +19,7 @@ const REPORT_SELECTOR = '[data-sn-err]';
 function SoonItem({ link }) {
   // שורה כבויה: span (לא <a> ולא <button>), בלי tabindex, בלי href - לעולם לא מובילה לשום מקום.
   return (
-    <span className="sf-soon" aria-disabled="true">
+    <span className="sf-soon" aria-disabled="true" data-guide-id={`home.footer-${link.key}`}>
       <Ic id={LINK_ICON[link.key] || 'file'} size="sm" />{link.label}<span className="sf-badge">בקרוב</span>
     </span>
   );
@@ -31,7 +31,7 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
   const openReport = () => { const b = document.querySelector(REPORT_SELECTOR); if (b) b.click(); };
   const stamp = hebrewVersionStamp(date);
   return (
-    <footer className="site-foot" role="contentinfo">
+    <footer className="site-foot" role="contentinfo" data-guide-id="home.footer">
       <div className="sf-in">
         {groups.filter((g) => g.links.length > 0 || g.privacy).map((g) => (
           <nav key={g.h} className="sf-col" aria-label={g.h}>
@@ -39,15 +39,15 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
             {g.links.map((l) => {
               if (l.action === 'report') {
                 return canReport
-                  ? <button key={l.key} type="button" className="lnk" onClick={openReport}><Ic id={LINK_ICON[l.key]} size="sm" />{l.label}</button>
+                  ? <button key={l.key} type="button" className="lnk" data-guide-id={`home.footer-${l.key}`} onClick={openReport}><Ic id={LINK_ICON[l.key]} size="sm" />{l.label}</button>
                   : <SoonItem key={l.key} link={l} />;
               }
               if (l.soon || !l.href) return <SoonItem key={l.key} link={l} />;
-              if (l.newTab) return <a key={l.key} href={l.href} target="_blank" rel="noopener"><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</a>;
-              return <Link key={l.key} href={l.href}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>;
+              if (l.newTab) return <a key={l.key} href={l.href} target="_blank" rel="noopener" data-guide-id={`home.footer-${l.key}`}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</a>;
+              return <Link key={l.key} href={l.href} data-guide-id={`home.footer-${l.key}`}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>;
             })}
             {g.privacy && (
-              <button type="button" className="lnk" onClick={onPrivacy}><Ic id="shield" size="sm" />מדיניות פרטיות</button>
+              <button type="button" className="lnk" data-guide-id="home.footer-privacy" onClick={onPrivacy}><Ic id="shield" size="sm" />מדיניות פרטיות</button>
             )}
           </nav>
         ))}

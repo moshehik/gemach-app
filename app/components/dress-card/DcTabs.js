@@ -50,7 +50,7 @@ export default function DcTabs({ dc, ui }) {
           const m = markers[t.id];
           const on = dc.tab === t.id;
           return (
-            <button key={t.id} type="button" id={`dc-tab-${t.id}`} className={`tab${on ? ' on' : ''}`} role="tab" aria-selected={on} aria-controls={`p-${t.id}`} tabIndex={on ? 0 : -1} data-tab={t.id} onClick={() => dc.setTab(t.id)}>
+            <button key={t.id} type="button" id={`dc-tab-${t.id}`} className={`tab${on ? ' on' : ''}`} role="tab" aria-selected={on} aria-controls={`p-${t.id}`} tabIndex={on ? 0 : -1} data-tab={t.id} data-guide-id={`dc.tab-${t.id}`} onClick={() => dc.setTab(t.id)}>
               <span className="tico">
                 <OcIcon name={t.icon} />
                 {m ? <span className={`tabmk ${m.cls}${freshNow[m.key] ? ' fresh' : ''}`} data-tip={m.tip} role="img" aria-label={m.tip}><OcIcon name={m.icon} size="sm" /></span> : null}

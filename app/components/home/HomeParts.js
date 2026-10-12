@@ -43,15 +43,16 @@ export function ViewSwitch({ table, onChange }) {
 export function XlButtons({ onExcel, onPrint, onDownload, onPdf }) {
   return (
     <>
-      <button type="button" className="xlbtn xlg" aria-label="ייצוא ל-Excel" data-tip="ייצוא לקובץ Excel" onClick={onExcel}>
+      <button type="button" className="xlbtn xlg" data-guide-id="srch.export-excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא לקובץ Excel" onClick={onExcel}>
         <svg className="xlic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#107C41" /><path d="M5 4.5l6 7M11 4.5l-6 7" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" fill="none" /></svg>
       </button>
-      <button type="button" className="xlbtn xlp" aria-label="הדפסה" data-tip="הדפסת התוצאות" onClick={onPrint}>
+      <button type="button" className="xlbtn xlp" data-guide-id="srch.export-print" aria-label="הדפסה" data-tip="הדפסת התוצאות" onClick={onPrint}>
         <PrintGlyph />
       </button>
       <button
         type="button"
         className="xlbtn xld"
+        data-guide-id="srch.export-pdf"
         aria-label={onPdf ? 'הורדת PDF' : 'הורדה'}
         data-tip={onPdf ? 'הורדת התוצאות כקובץ PDF' : 'הורדת התוצאות כקובץ'}
         onClick={onPdf || onDownload}

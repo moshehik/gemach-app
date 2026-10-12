@@ -20,7 +20,7 @@ export default function OcJournalCard({ nodes, stages, todayKey, canMark, busyKe
   const list = [...(nodes || [])].reverse(); // החדש למעלה (כמו בדגימה)
   const byKey = new Map((stages || []).map((s) => [s.key, s]));
   return (
-    <div className="card proc">
+    <div className="card proc" data-guide-id="oc.journal">
       <div className="card-h">
         <div className="ico teal"><OcIcon name="list" size="lg" /></div>
         <h2>יומן הזמנה <button type="button" className="tip" data-tip="לפי השלבים שהוגדרו במסך הלוז" aria-label="עזרה"><OcIcon name="info" size="sm" /></button></h2>
@@ -37,7 +37,7 @@ function StageMeta({ s, canMark, busy, onMark }) {
   if (s.infoOnly || s.closedByReturn) return null;
   if (markable && !s.done) {
     return (
-      <button type="button" className="btn sm" data-act="prep-mark" disabled={busy} onClick={() => onMark && onMark(s, true)}>
+      <button type="button" className="btn sm" data-act="prep-mark" data-guide-id="oc.prep-mark" disabled={busy} onClick={() => onMark && onMark(s, true)}>
         <OcIcon name="check" size="sm" />סמן הכנה בוצעה
       </button>
     );

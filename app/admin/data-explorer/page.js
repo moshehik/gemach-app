@@ -382,7 +382,7 @@ export default function DataExplorerPage() {
             <div className="field" style={{ gridColumn: 'span 2' }}>
               <label htmlFor="dataExplorerTableSelect">בחר טבלה לבדיקה:</label>
               <select
-                id="dataExplorerTableSelect"
+                id="dataExplorerTableSelect" data-guide-id="dx.table-select"
                 className="select"
                 value={selectedTable}
                 onChange={e => setSelectedTable(e.target.value)}
@@ -401,7 +401,7 @@ export default function DataExplorerPage() {
               className="btn btn-secondary btn-sm"
               disabled={!selectedTable}
               onClick={() => handleDownloadExport(selectedTable, '5000')}
-              title="הורד 5000 אחרונים"
+              title="הורד 5000 אחרונים" data-guide-id="dx.export-5000"
             >
               <svg className="icon"><use href="#i-download" /></svg>
               הורד 5,000 אחרונים
@@ -411,7 +411,7 @@ export default function DataExplorerPage() {
               className="btn btn-primary btn-sm"
               disabled={!selectedTable}
               onClick={() => handleDownloadExport(selectedTable, 'all', 'csv')}
-              title="הורד הכל מלא ל-CSV"
+              title="הורד הכל מלא ל-CSV" data-guide-id="dx.export-csv"
             >
               <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-lock" /></svg>
               <svg className="icon"><use href="#i-download" /></svg>
@@ -557,7 +557,7 @@ export default function DataExplorerPage() {
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={() => { setShowLogModal(true); fetchLogs(); }}
+              onClick={() => { setShowLogModal(true); fetchLogs(); }} data-guide-id="dx.history"
             >
               <svg className="icon"><use href="#i-history" /></svg>
               היסטוריית שאילתות
@@ -577,7 +577,7 @@ export default function DataExplorerPage() {
                   className="input"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="לדוגמה: מחק את כל תיעודי הכניסה הישנים משנת 2024..."
+                  placeholder="לדוגמה: מחק את כל תיעודי הכניסה הישנים משנת 2024..." data-guide-id="dx.ai-prompt"
                   onKeyDown={e => { if (e.key === 'Enter') generateAiQuery(); }}
                 />
                 {aiError && <div className="error-text">{aiError}</div>}
@@ -586,7 +586,7 @@ export default function DataExplorerPage() {
                 type="button"
                 className="btn btn-primary"
                 style={{ whiteSpace: 'nowrap' }}
-                onClick={generateAiQuery}
+                onClick={generateAiQuery} data-guide-id="dx.ai-generate"
                 disabled={isGeneratingAi || !aiPrompt.trim()}
               >
                 {isGeneratingAi ? 'מייצר שאילתה...' : 'צור שאילתה'}
@@ -600,7 +600,7 @@ export default function DataExplorerPage() {
               <span className="hint" style={{ marginInlineStart: '0.5rem', fontWeight: '400' }}>(לחץ Ctrl+Space להשלמה אוטומטית)</span>
             </label>
             <textarea
-              id="dataExplorerSqlQuery"
+              id="dataExplorerSqlQuery" data-guide-id="dx.sql"
               ref={textareaRef}
               className="textarea"
               style={{ minHeight: '150px', direction: 'ltr', textAlign: 'left', fontFamily: 'Consolas, Monaco, monospace' }}
@@ -651,7 +651,7 @@ export default function DataExplorerPage() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={runCustomQuery}
+              onClick={runCustomQuery} data-guide-id="dx.run"
               disabled={loading || !customQuery.trim()}
             >
               <svg className="icon"><use href="#i-play" /></svg>

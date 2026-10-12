@@ -137,12 +137,12 @@ export default function ApiKeysPage() {
       </div>
 
       <div className="card card-pad" style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '15px', margin: '0 0 12px' }}>הנפק מפתח חדש</h2>
+        <h2 style={{ fontSize: '15px', margin: '0 0 12px' }} data-guide-id="apikey.form">הנפק מפתח חדש</h2>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field" style={{ flex: '1 1 220px', marginBottom: 0 }}>
             <label htmlFor="api-key-name">שם למפתח</label>
             <input
-              id="api-key-name"
+              id="api-key-name" data-guide-id="apikey.name"
               className="input"
               type="text"
               value={name}
@@ -153,18 +153,18 @@ export default function ApiKeysPage() {
           </div>
           <div className="field" style={{ flex: '0 1 200px', marginBottom: 0 }}>
             <label htmlFor="api-key-role">הרשאה</label>
-            <select id="api-key-role" className="input" value={roleId} onChange={(e) => setRoleId(Number(e.target.value))}>
+            <select id="api-key-role" data-guide-id="apikey.role" className="input" value={roleId} onChange={(e) => setRoleId(Number(e.target.value))}>
               {roles.map((r) => <option key={r.roleId} value={r.roleId}>{r.label}</option>)}
             </select>
           </div>
           <div className="field" style={{ flex: '0 1 160px', marginBottom: 0 }}>
             <label htmlFor="api-key-expiry">תוקף</label>
-            <select id="api-key-expiry" className="input" value={expiresInDays} onChange={(e) => setExpiresInDays(e.target.value)}>
+            <select id="api-key-expiry" data-guide-id="apikey.expiry" className="input" value={expiresInDays} onChange={(e) => setExpiresInDays(e.target.value)}>
               {expiryOptions.map((d) => <option key={d} value={d}>{d === 1 ? 'יום אחד' : d === 365 ? 'שנה' : `${d} ימים`}</option>)}
               <option value="never">ללא תפוגה</option>
             </select>
           </div>
-          <button type="button" onClick={handleCreate} disabled={creating || !name.trim()} className="btn btn-primary">
+          <button type="button" onClick={handleCreate} disabled={creating || !name.trim()} className="btn btn-primary" data-guide-id="apikey.create">
             <svg className="icon"><use href="#i-shield" /></svg>
             {creating ? 'מנפיק...' : 'הנפק מפתח'}
           </button>
@@ -206,7 +206,7 @@ export default function ApiKeysPage() {
         </div>
       )}
 
-      <h2 className="section-title">מפתחות קיימים</h2>
+      <h2 className="section-title" data-guide-id="apikey.list">מפתחות קיימים</h2>
 
       {keys.length === 0 ? (
         <div className="empty-state">

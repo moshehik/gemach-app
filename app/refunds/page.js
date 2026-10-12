@@ -77,7 +77,7 @@ function DebtsTable({
 
   return (
     <>
-      <div className="toolbar">
+      <div className="toolbar" data-guide-id="ref.debts-search">
         <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
           <svg className="icon"><use href="#i-search" /></svg>
           <input
@@ -107,6 +107,7 @@ function DebtsTable({
                     checked={allSelected}
                     disabled={selectableIds.length === 0}
                     onChange={() => onToggleSelectAll(selectableIds)}
+                    data-guide-id="ref.debts-select-all"
                     title="בחר הכל"
                   />
                 </th>
@@ -186,7 +187,7 @@ function DebtsTable({
               <strong>{selectedIds.size} {selectedIds.size === 1 ? 'הזמנה נבחרה' : 'הזמנות נבחרו'}</strong>
               <span className="spacer" style={{ flex: 1 }} />
               <button type="button" className="btn btn-secondary btn-sm" onClick={onClearSelection}>ביטול בחירה</button>
-              <button type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => onOpenApproveModal(list)}>
+              <button type="button" className="btn btn-primary btn-sm" data-guide-id="ref.approve-selected" disabled={isBusy} onClick={() => onOpenApproveModal(list)}>
                 <svg className="icon"><use href="#i-shield" /></svg>
                 אשר תשלום שנבחרו ({selectedIds.size})
               </button>
@@ -627,7 +628,7 @@ export default function RefundsPage() {
         </div>
         <div className="page-actions">
           {activeTab === 'refunds' && (
-            <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא זיכויים לאקסל (טווח תאריכים מלא)" onClick={() => setShowExportModal(true)}>
+            <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="ref.export" title="ייצוא זיכויים לאקסל (טווח תאריכים מלא)" onClick={() => setShowExportModal(true)}>
               <svg className="icon"><use href="#i-download" /></svg>
             </button>
           )}
@@ -635,15 +636,15 @@ export default function RefundsPage() {
       </div>
 
       <div className="tabs">
-        <button type="button" className={activeTab === 'refunds' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('refunds')}>
+        <button type="button" data-guide-id="ref.tab-refunds" className={activeTab === 'refunds' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('refunds')}>
           <svg className="icon"><use href="#i-coin" /></svg>
           זיכויים
         </button>
-        <button type="button" className={activeTab === 'debts' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('debts')}>
+        <button type="button" data-guide-id="ref.tab-debts" className={activeTab === 'debts' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('debts')}>
           <svg className="icon"><use href="#i-alert-circle" /></svg>
           חובות פתוחים
         </button>
-        <button type="button" className={activeTab === 'approved' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('approved')}>
+        <button type="button" data-guide-id="ref.tab-approved" className={activeTab === 'approved' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('approved')}>
           <svg className="icon"><use href="#i-shield" /></svg>
           הזמנות מאושרות ללא תשלום מלא
         </button>
@@ -651,7 +652,7 @@ export default function RefundsPage() {
 
       {activeTab === 'refunds' && (
         <>
-          <div className="toolbar">
+          <div className="toolbar" data-guide-id="ref.search">
             <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
               <svg className="icon"><use href="#i-search" /></svg>
               <input
@@ -662,7 +663,7 @@ export default function RefundsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="pill-tabs">
+            <div className="pill-tabs" data-guide-id="ref.filters">
               <button type="button" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'}>הכל</button>
               <button type="button" onClick={() => setFilterStatus('pending')} className={filterStatus === 'pending' ? 'pill-tab active' : 'pill-tab'}>ממתינים</button>
               <button type="button" onClick={() => setFilterStatus('executed')} className={filterStatus === 'executed' ? 'pill-tab active' : 'pill-tab'}>בוצעו</button>
@@ -765,16 +766,16 @@ export default function RefundsPage() {
                         <td>
                           <div className="row-actions" style={{ justifyContent: 'center' }}>
                             {!refund.isExecuted && (
-                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => executeRefund(refund.id)} disabled={isProcessing} title="סמן כבוצע">
+                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" data-guide-id="ref.mark-executed" onClick={() => executeRefund(refund.id)} disabled={isProcessing} title="סמן כבוצע">
                                 <svg className="icon"><use href="#i-check-circle" /></svg>
                               </button>
                             )}
                             {refund.isExecuted && (
-                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => undoExecuteRefund(refund.id)} disabled={isProcessing} title="בטל ביצוע">
+                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" data-guide-id="ref.undo-executed" onClick={() => undoExecuteRefund(refund.id)} disabled={isProcessing} title="בטל ביצוע">
                                 <svg className="icon"><use href="#i-refresh" /></svg>
                               </button>
                             )}
-                            <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" onClick={() => cancelRefund(refund.id)} disabled={isProcessing} title="בטל בקשה">
+                            <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" data-guide-id="ref.cancel-request" onClick={() => cancelRefund(refund.id)} disabled={isProcessing} title="בטל בקשה">
                               <svg className="icon"><use href="#i-x-circle" /></svg>
                             </button>
                           </div>

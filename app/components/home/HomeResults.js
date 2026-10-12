@@ -88,7 +88,7 @@ function RowBody({ r, hq }) {
 // ולכן הצ'יפים תמיד קישורים ל-/schedule?date=... (בלי הרשאה לא מגיע כלום).
 function DateChips({ d }) {
   return (
-    <div className="dchips" aria-label="הלו״ז ליום שהוקלד">
+    <div className="dchips" data-guide-id="srch.date-chips" aria-label="הלו״ז ליום שהוקלד">
       <div className="dchips-h">
         <Ic id="cal" size="sm" />
         <b>לו״ז ליום {d.dateHebrew}</b>
@@ -143,7 +143,7 @@ export default function HomeResults({ res, none, table, onTable, onExport, note,
   };
 
   return (
-    <div className="card res-one">
+    <div className="card res-one" data-guide-id="srch.results">
       <div className="card-h">
         <h2 id="rc-a">
           תוצאות <span className="faint">({rows.length})</span>

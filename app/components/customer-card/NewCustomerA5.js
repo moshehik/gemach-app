@@ -100,15 +100,15 @@ function NewBody() {
             <div className="card dfields">
               <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2></div>
               <div className="grid2">
-                <CcInput id="nFirst" field="firstName" label="שם פרטי" icon="user" value={c.firstName} onChange={set('firstName')} placeholder="שם פרטי..." required={star('firstName')} />
-                <CcInput id="nLast" field="lastName" label="שם משפחה" icon="user" value={c.lastName} onChange={set('lastName')} placeholder="שם משפחה..." required={star('lastName')} />
-                <CcInput id="nPhone" field="phone1" label="טלפון" icon="phone" value={c.phone1} onChange={set('phone1')} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
-                <CcInput id="nPhone2" field="phone2" label="טלפון נוסף" icon="phone" value={c.phone2} onChange={set('phone2')} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
-                <CcEmailInput id="nEmail" value={c.email} onChange={set('email')} required={star('email')} />
-                <CcInput id="nStreet" field="street" label="רחוב" icon="pin" value={c.street} onChange={set('street')} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
-                <CcInput id="nHouse" field="houseNum" label="מספר בית" icon="pin" value={c.houseNum} onChange={(v) => set('houseNum')(v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
-                <CcInput id="nCity" field="city" label="עיר" icon="pin" value={c.city} onChange={set('city')} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
-                <CcInput id="nId" field="zeout" label="תעודת זהות" icon="file" value={c.zeout} onChange={set('zeout')} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
+                <CcInput id="nFirst" data-guide-id="cust.new-first" field="firstName" label="שם פרטי" icon="user" value={c.firstName} onChange={set('firstName')} placeholder="שם פרטי..." required={star('firstName')} />
+                <CcInput id="nLast" data-guide-id="cust.new-last" field="lastName" label="שם משפחה" icon="user" value={c.lastName} onChange={set('lastName')} placeholder="שם משפחה..." required={star('lastName')} />
+                <CcInput id="nPhone" data-guide-id="cust.new-phone" field="phone1" label="טלפון" icon="phone" value={c.phone1} onChange={set('phone1')} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
+                <CcInput id="nPhone2" data-guide-id="cust.new-phone2" field="phone2" label="טלפון נוסף" icon="phone" value={c.phone2} onChange={set('phone2')} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
+                <CcEmailInput id="nEmail" data-guide-id="cust.new-email" value={c.email} onChange={set('email')} required={star('email')} />
+                <CcInput id="nStreet" data-guide-id="cust.new-street" field="street" label="רחוב" icon="pin" value={c.street} onChange={set('street')} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
+                <CcInput id="nHouse" data-guide-id="cust.new-house" field="houseNum" label="מספר בית" icon="pin" value={c.houseNum} onChange={(v) => set('houseNum')(v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
+                <CcInput id="nCity" data-guide-id="cust.new-city" field="city" label="עיר" icon="pin" value={c.city} onChange={set('city')} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
+                <CcInput id="nId" data-guide-id="cust.new-id" field="zeout" label="תעודת זהות" icon="file" value={c.zeout} onChange={set('zeout')} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
               </div>
               {groups.length ? (
                 <div className="faint sm cc-mt24">
@@ -117,7 +117,7 @@ function NewBody() {
               ) : null}
               {settings.hide_marketing_consent_field !== 'true' ? (
                 <div className="trow cc-mt24">
-                  <label className="sw"><input type="checkbox" id="newMarketingConsent" data-f="marketingConsent" checked={!!c.marketingConsent} onChange={(e) => setC((p) => ({ ...p, marketingConsent: e.target.checked }))} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
+                  <label className="sw"><input type="checkbox" id="newMarketingConsent" data-guide-id="cust.new-consent" data-f="marketingConsent" checked={!!c.marketingConsent} onChange={(e) => setC((p) => ({ ...p, marketingConsent: e.target.checked }))} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
                   <b>מאשר/ת קבלת דיוורים</b><Tip text="תזכורות ועדכוני מבצעים במייל" />
                 </div>
               ) : null}
@@ -135,10 +135,10 @@ function NewBody() {
             ) : null}
             <div className="card">
               <div className="card-h"><div className="ico plum"><CcIcon name="note" size="lg" /></div><h2>הערות ללקוחה <Tip text="מוצג בחלון ההזמנה ומיועד לצוות בלבד" /></h2></div>
-              <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={c.notes} onChange={(e) => setC((p) => ({ ...p, notes: e.target.value }))} aria-label="הערות ללקוחה" />
+              <textarea className="inp" id="notes" data-guide-id="cust.new-notes" data-f="notes" placeholder="כתבו כאן הערה…" value={c.notes} onChange={(e) => setC((p) => ({ ...p, notes: e.target.value }))} aria-label="הערות ללקוחה" />
             </div>
             <div className="cc-newsave">
-              <button type="submit" className="btn primary lg block" data-act="save" disabled={saving}><CcIcon name="check" />{saving ? 'שומר…' : 'שמירת לקוחה'}</button>
+              <button type="submit" className="btn primary lg block" data-guide-id="cust.new-save" data-act="save" disabled={saving}><CcIcon name="check" />{saving ? 'שומר…' : 'שמירת לקוחה'}</button>
             </div>
           </section>
         </main>

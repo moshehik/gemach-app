@@ -24,6 +24,7 @@ import {
   formatChangeValue, sheetFlatRows,
 } from './dataHistoryLogic';
 
+// מדריך האתר: guide="dhs" מצמיד data-guide-id (dhs.back / dhs.search / dhs.filter / dhs.sort / dhs.view / dhs.export-* ...) - lib/aiGuide/areas/admin.targets.js
 const SLOT_ID = 'a5l-search-dhs';
 const ENDPOINT = '/api/admin/data-history';
 const KNOWN_TYPES = Object.keys(ENTITY_META);
@@ -143,12 +144,13 @@ function DataHistory() {
   return (
     <>
       <A5ListPage
-        title="היסטוריית נתונים" backId="dhsBack" onBack={() => router.push('/admin')} slotId={SLOT_ID}
+        guide="dhs" title="היסטוריית נתונים" backId="dhsBack" onBack={() => router.push('/admin')} slotId={SLOT_ID}
         tools={<PageVariantToggle screen="data_history" placement="header" systemTip />}
         cardIcon="sn-history" cardTitle="יומן שינויים"
       >
         <A5List
           ref={listRef}
+          guide="dhs"
           items={rows}
           getId={(r) => r.id}
           texts={{

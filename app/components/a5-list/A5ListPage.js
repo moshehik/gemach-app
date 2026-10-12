@@ -1,5 +1,6 @@
 'use client';
 
+// מדריך האתר: guide ("ol" / "cl" - lib/aiGuide/areas/ops.targets.js) מוסיף data-guide-id לחץ החזרה (ol.back / cl.back).
 // A5ListPage - כותרת וקליפת הדף האחידה של כל מסכי הרשימות החדשים (11.10.2026, דרישת הבעלים: "כותרת אחידה בכל דפי A5"): אותו מיקום חץ החזרה / h1 / <small> / שדה החיפוש
 // (חצי רוחב מתחת לכותרת) / הכרטיס, בדיוק כמו /admin/orders-list. זו אותה מבנה (.app > .topbar + A5SearchSlot + .layout.one > .main > .panel > .card.hist) שהיה כתוב ידנית
 // בכל דף - עכשיו במקום אחד. בלי CSS משלו: כל העיצוב מ-a5-page.css / הפלטה (המבנה והמחלקות זהים, לכן המידות זהות).
@@ -9,11 +10,11 @@
 import { A5SearchSlot } from './A5Parts';
 import { Ic } from './A5Icon';
 
-export default function A5ListPage({ small = 'ניהול', title, backId, backLabel = 'חזרה למרכז הניהול', onBack, tools = null, slotId, cardIcon, cardTitle, cardAction = null, tabs = null, tabpanel = false, children }) {
+export default function A5ListPage({ small = 'ניהול', title, backId, backLabel = 'חזרה למרכז הניהול', onBack, tools = null, slotId, cardIcon, cardTitle, cardAction = null, tabs = null, tabpanel = false, guide = null, children }) {
   return (
     <div className="app" id="app">
       <div className="topbar">
-        <button type="button" className="back" id={backId} aria-label={backLabel} data-tip={backLabel} onClick={onBack}><Ic id="back" /></button>
+        <button type="button" className="back" id={backId} data-guide-id={guide ? `${guide}.back` : undefined} aria-label={backLabel} data-tip={backLabel} onClick={onBack}><Ic id="back" /></button>
         <div className="ttl"><h1><small>{small}</small>{title}</h1></div>
         {tools ? <div className="a5-tools">{tools}</div> : null}
       </div>

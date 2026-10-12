@@ -37,6 +37,8 @@ const SEARCH_PH = { sys: 'חיפוש הגדרה', site: 'חיפוש הגדרה',
 const COUNT_WORD = { sys: 'הגדרות', site: 'הגדרות', names: 'כיתובים' };
 const simCache = cacheNamespace('settings-sim');
 const deptsCache = cacheNamespace('departments');
+// מזהי "מדריך האתר" (lib/aiGuide/areas/admin.targets.js): לשונית הגדרות = set.cat-<מזהה>, לשונית שינוי שמות = set.names-<מזהה> (קו תחתון הופך למקף)
+const tabGuideId = (isNames, id) => `${isNames ? 'set.names-' : 'set.cat-'}${id.replace(/_/g, '-')}`;
 
 /* ---------------------------------------------------------------- בלוקים מיוחדים */
 
@@ -109,7 +111,7 @@ function LogoBlock({ onDone, onError }) {
         </div>
       </div>
       <div className="row wrap">
-        <button type="button" className="ibtn" aria-label="העלאת לוגו" data-tip="העלאת לוגו" data-ico="plus" onClick={() => inputRef.current && inputRef.current.click()} disabled={busy} data-element-name="כפתור_settings_logo">
+        <button type="button" className="ibtn" aria-label="העלאת לוגו" data-tip="העלאת לוגו" data-ico="plus" onClick={() => inputRef.current && inputRef.current.click()} disabled={busy} data-element-name="כפתור_settings_logo" data-guide-id="set.logo-upload">
           {busy ? <span className="st-spin" aria-hidden="true" /> : <Ic id="plus" plain />}
         </button>
         <small className="faint">{busy ? 'מעלה…' : 'קובץ תמונה (PNG/JPG) שיופיע בראש עמודי המערכת ובהדפסות'}</small>
@@ -129,7 +131,7 @@ function PermissionsRow() {
         <small>קובע מי נכנס לאיזה עמוד ומי רשאי לאשר פעולות. נפתח בעמוד נפרד.</small>
       </div>
       <div className="st-ctl">
-        <Link className="btn ghost sm" href="/admin/permissions" aria-label="פתיחת ניהול הרשאות (עמוד נפרד)" data-element-name="כפתור_settings_permissions">
+        <Link className="btn ghost sm" href="/admin/permissions" aria-label="פתיחת ניהול הרשאות (עמוד נפרד)" data-element-name="כפתור_settings_permissions" data-guide-id="set.permissions-link">
           <Ic id="ext" />פתיחה
         </Link>
       </div>
@@ -191,7 +193,7 @@ function DbModeRow({ root, onToast, dirty, onSwitched }) {
         </div>
         <div className="st-ctl">
           {mode === null && !err ? <small className="faint">טוען מצב נוכחי…</small> : (
-            <div className="seg pill" role="radiogroup" aria-label="סביבת עבודה" style={{ '--n': 2, '--i': idx }}>
+            <div className="seg pill" data-guide-id="set.db-mode" role="radiogroup" aria-label="סביבת עבודה" style={{ '--n': 2, '--i': idx }}>
               <span className="pth" aria-hidden="true" />
               <button type="button" role="radio" aria-checked={mode === 'prod'} className={mode === 'prod' ? 'on' : undefined} disabled={busy} onClick={() => request('prod')}>ייצור</button>
               <button type="button" role="radio" aria-checked={mode === 'test'} className={mode === 'test' ? 'on' : undefined} disabled={busy} onClick={() => request('test')}>בדיקות</button>
@@ -269,7 +271,7 @@ function DeviceDbViewRow({ root }) {
         </div>
         <div className="st-ctl">
           {st === null && !err ? <small className="faint">טוען מצב נוכחי…</small> : st ? (
-            <div className="seg pill" role="radiogroup" aria-label="נתוני גיבוי במחשב הזה" style={{ '--n': 2, '--i': onBackup ? 1 : 0 }}>
+            <div className="seg pill" data-guide-id="set.db-device-mode" role="radiogroup" aria-label="נתוני גיבוי במחשב הזה" style={{ '--n': 2, '--i': onBackup ? 1 : 0 }}>
               <span className="pth" aria-hidden="true" />
               <button type="button" role="radio" aria-checked={!onBackup} className={!onBackup ? 'on' : undefined} disabled={busy} onClick={() => request('real')}>אמיתי</button>
               <button type="button" role="radio" aria-checked={onBackup} className={onBackup ? 'on' : undefined} disabled={busy} onClick={() => request('backup')}>גיבוי</button>
@@ -331,7 +333,7 @@ function NeonRows() {
           </small>
         </div>
         <div className="st-ctl">
-          <button type="button" className="btn ghost sm" onClick={load} disabled={loading} data-element-name="כפתור_settings_neon_refresh"><Ic id="refresh" />{err ? 'נסה שוב' : 'רענון'}</button>
+          <button type="button" className="btn ghost sm" onClick={load} disabled={loading} data-element-name="כפתור_settings_neon_refresh" data-guide-id="set.neon-refresh"><Ic id="refresh" />{err ? 'נסה שוב' : 'רענון'}</button>
         </div>
       </div>
       {rows.map((r) => (
@@ -804,18 +806,18 @@ export default function SettingsSimPage({ view = 'sys' }) {
         </div>
 
         <div className="topbar">
-          <Link className="back" href="/admin" aria-label="חזרה למסך ניהול" data-tip="חזרה למסך ניהול" data-element-name="כפתור_settings_back"><Ic id="back" plain /></Link>
+          <Link className="back" href="/admin" aria-label="חזרה למסך ניהול" data-tip="חזרה למסך ניהול" data-element-name="כפתור_settings_back" data-guide-id="set.back"><Ic id="back" plain /></Link>
           <div className="ttl">
             <h1 className="pg-ttl"><small>הגדרות</small><bdi>{title}</bdi></h1>
             <div className="row wrap st-chips">
               {view === 'site' ? (
                 <>
-                  <Link className="btn ghost sm" href="/admin/site-settings/email-logs" data-element-name="כפתור_settings_email_logs"><Ic id="mail" />יומן מיילים</Link>
+                  <Link className="btn ghost sm" href="/admin/site-settings/email-logs" data-element-name="כפתור_settings_email_logs" data-guide-id="set.email-logs-link"><Ic id="mail" />יומן מיילים</Link>
                   <span className="chip gold">מתכנת בלבד</span>
                 </>
               ) : null}
               {isNames ? (
-                <button type="button" className="btn ghost sm" onClick={() => setAskReset(true)} data-element-name="כפתור_labels_reset"><Ic id="undo" />שחזר ברירת מחדל</button>
+                <button type="button" className="btn ghost sm" onClick={() => setAskReset(true)} data-element-name="כפתור_labels_reset" data-guide-id="set.names-reset"><Ic id="undo" />שחזר ברירת מחדל</button>
               ) : null}
             </div>
           </div>
@@ -824,7 +826,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
         </div>
 
         <div className="hf-bar adm-bar st-bar">
-          <div className="hf-s">
+          <div className="hf-s" data-guide-id="set.search">
             <Ic id="search" />
             <input
               ref={qRef}
@@ -860,7 +862,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
           <div className="layout">
             <aside className="rail" aria-label="מקטעים ושינויים לשמירה">
               <div className="st-sidenav">
-                <nav className="st-stabs" role="tablist" aria-label={title} aria-orientation="vertical" onKeyDown={onTabKey}>
+                <nav className="st-stabs" data-guide-id="set.nav" role="tablist" aria-label={title} aria-orientation="vertical" onKeyDown={onTabKey}>
                   {tabs.map((t) => {
                     const on = t.id === activeTab;
                     const cnt = q ? hits.per[t.id] : tabChanged(t.id);
@@ -877,6 +879,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
                         data-tab={t.id}
                         onClick={() => setTab(t.id)}
                         data-element-name={`כפתור_settings_tab_${t.id}`}
+                        data-guide-id={tabGuideId(isNames, t.id)}
                       >
                         <span className="st-sic"><Ic id={t.icon} plain /></span>
                         <span className="st-slb">{t.label}</span>
@@ -887,7 +890,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
                   })}
                 </nav>
                 {/* הפאנל ופס השמירה תמיד ב-DOM (hidden כשאין שינויים), כמו בעיצוב: בנייד הסרגל התחתון מוסתר לפי .rail:has(.st-saverow[hidden]) */}
-                <div className="st-chgs" hidden={!dirty}>
+                <div className="st-chgs" data-guide-id="set.changes" hidden={!dirty}>
                     <div className="st-chgh"><Ic id="note" /><b>שינויים לשמירה</b><span className="badge st-chgn">{nChanged}</span></div>
                     <div className="cart-list st-chglist">
                       {resetAll ? (
@@ -906,19 +909,19 @@ export default function SettingsSimPage({ view = 'sys' }) {
                       ))}
                     </div>
                     <div className="cart-actions st-chgact">
-                      <button type="button" className="btn primary lg block" data-act="save" onClick={save} disabled={saving || hasErrors} data-element-name="כפתור_settings_save">
+                      <button type="button" className="btn primary lg block" data-act="save" onClick={save} disabled={saving || hasErrors} data-element-name="כפתור_settings_save" data-guide-id="set.save">
                         <Ic id="check" />{saving ? 'שומר…' : hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'}
                       </button>
-                      <button type="button" className="btn ghost block sec" data-act="discard" onClick={() => setAskDiscard(true)} disabled={saving} data-element-name="כפתור_settings_discard">
+                      <button type="button" className="btn ghost block sec" data-act="discard" onClick={() => setAskDiscard(true)} disabled={saving} data-element-name="כפתור_settings_discard" data-guide-id="set.discard">
                         <Ic id="undo" />ביטול השינויים
                       </button>
                     </div>
                   </div>
                 <div className="st-saverow" hidden={!dirty}>
-                    <button type="button" className="st-saveicon" data-act="save" onClick={save} aria-label="שמירת השינויים" data-tip={hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'} disabled={saving || hasErrors}>
+                    <button type="button" className="st-saveicon" data-guide-id="set.save" data-act="save" onClick={save} aria-label="שמירת השינויים" data-tip={hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'} disabled={saving || hasErrors}>
                       <span className="sn-badge st-pendcnt">{nChanged}</span><Ic id="check" plain />
                     </button>
-                    <button type="button" className="st-discardicon" data-act="discard" onClick={() => setAskDiscard(true)} aria-label="ביטול השינויים" data-tip="ביטול השינויים" disabled={saving}>
+                    <button type="button" className="st-discardicon" data-guide-id="set.discard" data-act="discard" onClick={() => setAskDiscard(true)} aria-label="ביטול השינויים" data-tip="ביטול השינויים" disabled={saving}>
                       <Ic id="undo" plain />
                     </button>
                   </div>
@@ -927,12 +930,12 @@ export default function SettingsSimPage({ view = 'sys' }) {
 
             <div className="st-main">
               <div className="st-toptabs">
-                <nav className="tabs" role="tablist" aria-label="מקטעי הגדרות" onKeyDown={onTabKey}>
+                <nav className="tabs" data-guide-id="set.nav" role="tablist" aria-label="מקטעי הגדרות" onKeyDown={onTabKey}>
                   {tabs.map((t) => {
                     const on = t.id === activeTab;
                     const cnt = q ? hits.per[t.id] : tabChanged(t.id);
                     return (
-                      <button key={t.id} type="button" className={`tab${on ? ' on' : ''}`} role="tab" data-ico={t.top} aria-selected={on} aria-controls={on ? panelId : undefined} tabIndex={on ? 0 : -1} data-tab={t.id} onClick={() => setTab(t.id)}>
+                      <button key={t.id} type="button" className={`tab${on ? ' on' : ''}`} role="tab" data-guide-id={tabGuideId(isNames, t.id)} data-ico={t.top} aria-selected={on} aria-controls={on ? panelId : undefined} tabIndex={on ? 0 : -1} data-tab={t.id} onClick={() => setTab(t.id)}>
                         <span className="tico"><Ic id={t.top} plain />{cnt ? <span className="cnt st-cnt">{cnt}</span> : null}</span>{t.label}
                       </button>
                     );

@@ -338,7 +338,7 @@ export default function EmployeeCardA5({ employeeId }) {
     body = (
       <div className="app ec">
         <div className="topbar no-print">
-          <button type="button" className="back" data-ico="back" id="ecBack" aria-label="חזרה" data-tip="חזרה" onClick={() => router.back()}><Ic id="back" /></button>
+          <button type="button" className="back" data-ico="back" id="ecBack" data-guide-id="ec.back" aria-label="חזרה" data-tip="חזרה" onClick={() => router.back()}><Ic id="back" /></button>
           <div className="ttl"><div><h1 id="ecTitle">{fullTitle}</h1></div></div>
         </div>
 
@@ -347,7 +347,7 @@ export default function EmployeeCardA5({ employeeId }) {
             {!isNew ? (
               <nav className="tabs no-print" id="ecTabs" role="tablist" aria-label="כרטיס עובד" onKeyDown={onTabKeys}>
                 {TABS.map(([k, label, icon]) => (
-                  <button key={k} type="button" className={`tab${tab === k ? ' on' : ''}`} role="tab" id={`t-${k}`} aria-selected={tab === k} aria-controls={`p-${k}`} tabIndex={tab === k ? 0 : -1} data-tab={k} onClick={() => setTab(k)}>
+                  <button key={k} type="button" className={`tab${tab === k ? ' on' : ''}`} role="tab" id={`t-${k}`} aria-selected={tab === k} aria-controls={`p-${k}`} tabIndex={tab === k ? 0 : -1} data-tab={k} data-guide-id={`ec.tab-${k}`} onClick={() => setTab(k)}>
                     <span className="tico"><Ic id={icon} /></span>{label}
                   </button>
                 ))}
@@ -366,7 +366,7 @@ export default function EmployeeCardA5({ employeeId }) {
                         {photo
                           ? <div className="pf-av photo" id="ecAv" aria-hidden="true" style={{ backgroundImage: `url("${employee.profileImage}")` }} />
                           : <div className="pf-av" id="ecAv" aria-hidden="true">{initialsOf(employee)}</div>}
-                        <label className={`pf-up${drag ? ' drag' : ''}`} id="ecUp" htmlFor="employee-detail-profileImage" data-tip="לחיצה או גרירת קובץ"
+                        <label className={`pf-up${drag ? ' drag' : ''}`} id="ecUp" data-guide-id="ec.avatar" htmlFor="employee-detail-profileImage" data-tip="לחיצה או גרירת קובץ"
                           onDragEnter={(e) => { e.preventDefault(); setDrag(true); }} onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                           onDragLeave={(e) => { e.preventDefault(); setDrag(false); }}
                           onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) readAvatar(f); }}>
@@ -380,8 +380,8 @@ export default function EmployeeCardA5({ employeeId }) {
                     </div>
                   ) : null}
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-firstName">שם פרטי *</label><input className="inp" type="text" id="employee-detail-firstName" name="firstName" value={employee.firstName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-lastName">שם משפחה *</label><input className="inp" type="text" id="employee-detail-lastName" name="lastName" value={employee.lastName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-firstName">שם פרטי *</label><input className="inp" type="text" id="employee-detail-firstName" data-guide-id="ec.f-first" name="firstName" value={employee.firstName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-lastName">שם משפחה *</label><input className="inp" type="text" id="employee-detail-lastName" data-guide-id="ec.f-last" name="lastName" value={employee.lastName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-fullName">שם מלא (מחושב/לתצוגה)</label><input className="inp" type="text" id="employee-detail-fullName" name="fullName" value={employee.fullName || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-joinDate">תאריך כניסה לארגון</label><div className="inpw dt"><Ic id="cal" size="sm" /><input className="inp" type="date" id="employee-detail-joinDate" name="joinDate" value={joinDateValue(employee.joinDate)} onChange={handleChange} /></div></div>
                   </div>
@@ -390,14 +390,14 @@ export default function EmployeeCardA5({ employeeId }) {
                 <section className="card dfields" aria-labelledby="h-contact">
                   <CardHead icon="phone" id="h-contact">יצירת קשר</CardHead>
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone1">טלפון נייד *</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone1" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone2">טלפון נוסף</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone2" name="phone2" value={employee.phone2 || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone1">טלפון נייד *</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone1" data-guide-id="ec.f-phone1" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone2">טלפון נוסף</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone2" data-guide-id="ec.f-phone2" name="phone2" value={employee.phone2 || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
                     <div className="field wide">
                       <label className="lbl" htmlFor="employee-detail-email">דוא&quot;ל</label>
                       <div className="ec-eml">
-                        <div className="inpw"><Ic id="mail" size="sm" /><input className="inp" type="email" inputMode="email" id="employee-detail-email" name="email" value={employee.email || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                        <div className="inpw"><Ic id="mail" size="sm" /><input className="inp" type="email" inputMode="email" id="employee-detail-email" data-guide-id="ec.f-email" name="email" value={employee.email || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                         {employee.email ? <button type="button" className="ibtn" id="ecCopy" aria-label="העתק כתובת מייל" onClick={copyEmail}><Ic id={copied ? 'check' : 'copy'} /></button> : null}
-                        {employee.email && !isNew ? <button type="button" className="ibtn" id="ecSend" aria-label="שלח מייל" onClick={() => setMailOpen(true)}><Ic id="mail" /></button> : null}
+                        {employee.email && !isNew ? <button type="button" className="ibtn" id="ecSend" data-guide-id="ec.mail-open" aria-label="שלח מייל" onClick={() => setMailOpen(true)}><Ic id="mail" /></button> : null}
                       </div>
                       {needsGmailFill(employee.email) ? (
                         <div className="ec-fill" id="ecFill"><button type="button" className="btn sm" id="ecGmail" onClick={() => setEmployee((p) => ({ ...p, email: withGmail(p.email) }))}>השלם ל- <bdi dir="ltr">@gmail.com</bdi></button></div>
@@ -409,7 +409,7 @@ export default function EmployeeCardA5({ employeeId }) {
                 <section className="card dfields" aria-labelledby="h-address">
                   <CardHead icon="pin" id="h-address">כתובת</CardHead>
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-city">עיר</label><input className="inp" type="text" id="employee-detail-city" name="city" value={employee.city || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-city">עיר</label><input className="inp" type="text" id="employee-detail-city" data-guide-id="ec.f-city" name="city" value={employee.city || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-street">רחוב</label><input className="inp" type="text" id="employee-detail-street" name="street" value={employee.street || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-houseNum">בית</label><input className="inp" type="text" id="employee-detail-houseNum" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                   </div>
@@ -420,7 +420,7 @@ export default function EmployeeCardA5({ employeeId }) {
                   {isNew ? (
                     <div className="field" id="pwNew">
                       <label className="lbl" htmlFor="employee-detail-password">סיסמא לשעון נוכחות</label>
-                      <input className="inp" type="text" id="employee-detail-password" name="password" value={employee.password || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} />
+                      <input className="inp" type="text" id="employee-detail-password" data-guide-id="ec.f-password-new" name="password" value={employee.password || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} />
                     </div>
                   ) : (
                     <div id="pwEdit">
@@ -429,9 +429,9 @@ export default function EmployeeCardA5({ employeeId }) {
                         <div className="inpw"><Ic id="lock" size="sm" /><input className="inp" type="password" id="employee-detail-pwDisplay" value="********" disabled readOnly /></div>
                       </div>
                       <div className="ec-pwact">
-                        <button type="button" className="btn" id="pwOpen" ref={pwBtnRef} aria-expanded={pwOpen} aria-controls="pwBox" onClick={() => setPwOpen(true)}>שינוי סיסמא</button>
-                        <button type="button" className="btn" id="pwReset" onClick={resetPassword}><Ic id="refresh" size="sm" />אפס ושלח למייל</button>
-                        <button type="button" className="btn" id="pwSetOpen" ref={pwSetBtnRef} aria-expanded={pwSetOpen} aria-controls="pwSetBox" onClick={openSetPassword}><Ic id="lock" size="sm" />קבע סיסמה ידנית</button>
+                        <button type="button" className="btn" id="pwOpen" data-guide-id="ec.pw-change" ref={pwBtnRef} aria-expanded={pwOpen} aria-controls="pwBox" onClick={() => setPwOpen(true)}>שינוי סיסמא</button>
+                        <button type="button" className="btn" id="pwReset" data-guide-id="ec.pw-reset" onClick={resetPassword}><Ic id="refresh" size="sm" />אפס ושלח למייל</button>
+                        <button type="button" className="btn" id="pwSetOpen" data-guide-id="ec.pw-set" ref={pwSetBtnRef} aria-expanded={pwSetOpen} aria-controls="pwSetBox" onClick={openSetPassword}><Ic id="lock" size="sm" />קבע סיסמה ידנית</button>
                       </div>
                       <div className="sm faint ec-hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית, או בכרטיס של עובד אחר - הנהלה ראשית / מתכנת באימות הסיסמה שלהם), לאפס ולשלוח סיסמה זמנית לעובד במייל, או שמנהל יקבע סיסמה חדשה ישירות (לעובד בלי מייל שמור, או בלי גישה אליו כרגע).</div>
 
@@ -464,7 +464,7 @@ export default function EmployeeCardA5({ employeeId }) {
                 <section className="card dfields" aria-labelledby="h-dept">
                   <CardHead icon="users" id="h-dept">מחלקה, סטטוס והערות</CardHead>
                   <div className="grid2">
-                    <div className="field" id="deptField">
+                    <div className="field" id="deptField" data-guide-id="ec.f-dept">
                       <label className="lbl" htmlFor="cbt-dept">מחלקה (תפקיד)</label>
                       <Combo id="dept" label="מחלקה (תפקיד)" value={deptVal} options={deptOpts} disabled={deptFailed || departments === null}
                         onChange={(v) => setEmployee((p) => ({ ...p, roleId: v }))} />
@@ -472,30 +472,30 @@ export default function EmployeeCardA5({ employeeId }) {
                     </div>
                   </div>
                   <div className="pf-prefs ec-sw1">
-                    <div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-isActive" name="isActive" checked={!!employee.isActive} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-isActive" className="pf-pl">עובד פעיל במערכת</label></div>
-                    <div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-receiveEmailAlerts" name="receiveEmailAlerts" checked={!!employee.receiveEmailAlerts} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-receiveEmailAlerts" className="pf-pl">קבלת התראות מערכת למייל</label></div>
+                    <div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-isActive" data-guide-id="ec.f-active" name="isActive" checked={!!employee.isActive} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-isActive" className="pf-pl">עובד פעיל במערכת</label></div>
+                    <div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-receiveEmailAlerts" data-guide-id="ec.f-alerts" name="receiveEmailAlerts" checked={!!employee.receiveEmailAlerts} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-receiveEmailAlerts" className="pf-pl">קבלת התראות מערכת למייל</label></div>
                   </div>
-                  <div className="field wide ec-notes"><label className="lbl" htmlFor="employee-detail-notes">הערות</label><textarea className="inp" id="employee-detail-notes" name="notes" rows={4} value={employee.notes || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                  <div className="field wide ec-notes"><label className="lbl" htmlFor="employee-detail-notes">הערות</label><textarea className="inp" id="employee-detail-notes" data-guide-id="ec.f-notes" name="notes" rows={4} value={employee.notes || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
                 </section>
 
                 <section className="card dfields" aria-labelledby="h-pay">
                   <CardHead icon="wallet" id="h-pay">נתוני שכר</CardHead>
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-hourlyWage">שכר לשעה (₪)</label><div className="inpw money"><span className="aff" aria-hidden="true">₪</span><input className="inp" type="number" step="0.01" inputMode="decimal" id="employee-detail-hourlyWage" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-paymentMethod">אופן תשלום</label><div className="inpw"><Ic id="bank" size="sm" /><input className="inp" type="text" id="employee-detail-paymentMethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
-                    <div className="field ec-travel"><span className="lbl" id="ec-travel-l">זכאות לנסיעות</span><div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-travelExpenses" name="travelExpenses" aria-labelledby="ec-travel-l" checked={!!employee.travelExpenses} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-travelExpenses" className="pf-pl">{employee.travelExpenses ? 'זכאי לנסיעות' : 'לא זכאי לנסיעות'}</label></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-hourlyWage">שכר לשעה (₪)</label><div className="inpw money"><span className="aff" aria-hidden="true">₪</span><input className="inp" type="number" step="0.01" inputMode="decimal" id="employee-detail-hourlyWage" data-guide-id="ec.f-wage" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-paymentMethod">אופן תשלום</label><div className="inpw"><Ic id="bank" size="sm" /><input className="inp" type="text" id="employee-detail-paymentMethod" data-guide-id="ec.f-paymethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field ec-travel"><span className="lbl" id="ec-travel-l">זכאות לנסיעות</span><div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-travelExpenses" data-guide-id="ec.f-travel" name="travelExpenses" aria-labelledby="ec-travel-l" checked={!!employee.travelExpenses} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-travelExpenses" className="pf-pl">{employee.travelExpenses ? 'זכאי לנסיעות' : 'לא זכאי לנסיעות'}</label></div></div>
                   </div>
                 </section>
 
                 {!isNew ? (
-                  <section className="card dfields" id="permCard" aria-labelledby="h-perm">
+                  <section className="card dfields" id="permCard" data-guide-id="ec.perm" aria-labelledby="h-perm">
                     <CardHead icon="shield" id="h-perm">הרשאות ספציפיות</CardHead>
                     <p className="pr-intro">מה העובד מורשה, לפי מחלקתו, שורות ההרשאה ב<a href="/admin/permissions" id="permLink">מסך ההרשאות</a> וחריגות אישיות שנקבעות כאן. הכול נשמר מיד ומופיע גם במסך ההרשאות.</p>
                     <div id="permBody"><EcPermissions employeeId={id} refreshKey={permRefresh} /></div>
                   </section>
                 ) : null}
 
-                <div className="ec-save"><button type="submit" className="btn primary lg block" id="ecSave" disabled={saving}>{saving ? 'שומר...' : 'שמור פרטים'}</button></div>
+                <div className="ec-save"><button type="submit" className="btn primary lg block" id="ecSave" data-guide-id="ec.save" disabled={saving}>{saving ? 'שומר...' : 'שמור פרטים'}</button></div>
               </form>
             </section>
 

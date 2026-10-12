@@ -268,11 +268,11 @@ export default function ProfilePage() {
           <main className="main">
             <div className="panel on">
 
-              <section className="card dfields" aria-labelledby="h-personal">
+              <section className="card dfields" data-guide-id="prof.personal" aria-labelledby="h-personal">
                 <CardHead icon="userck" id="h-personal">פרטים אישיים</CardHead>
 
                 {showProfileImage && (
-                  <div className="pf-avwrap">
+                  <div className="pf-avwrap" data-guide-id="prof.avatar">
                     <label className="lbl" htmlFor="profile-avatarInput">תמונת פרופיל (העלאת קובץ)</label>
                     <div className="pf-avrow">
                       {hasPhoto ? (
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                 </div>
               </section>
 
-              <section className="card dfields" aria-labelledby="h-contact">
+              <section className="card dfields" data-guide-id="prof.contact" aria-labelledby="h-contact">
                 <CardHead icon="phone" id="h-contact">יצירת קשר</CardHead>
                 <div className="grid2">
                   <div className="field"><label className="lbl" htmlFor="profile-phone1">טלפון 1</label><div className="inpw"><Ic id="phone" size="sm" /><input data-element-name="שדה_profile_5" className="inp" type="tel" inputMode="tel" id="profile-phone1" name="phone1" value={profile.phone1 || ''} onChange={handleChange} autoComplete="new-password" {...NO_FILL} /></div></div>
@@ -318,7 +318,7 @@ export default function ProfilePage() {
                 </div>
               </section>
 
-              <section className="card dfields" aria-labelledby="h-address">
+              <section className="card dfields" data-guide-id="prof.address" aria-labelledby="h-address">
                 <CardHead icon="pin" id="h-address">כתובת</CardHead>
                 <div className="grid2">
                   <div className="field"><label className="lbl" htmlFor="profile-city">עיר</label><input data-element-name="שדה_profile_8" className="inp" type="text" id="profile-city" name="city" value={profile.city || ''} onChange={handleChange} autoComplete="new-password" {...NO_FILL} /></div>
@@ -331,29 +331,29 @@ export default function ProfilePage() {
                   העדפות עיצוב אישיות (פלטה/מצב/גופן וכו') נמצאות בעמוד
                   "עיצוב ותצוגה" (/display-settings) ונשמרות פר-עובד. */}
 
-              <section className="card dfields" aria-labelledby="h-security">
+              <section className="card dfields" data-guide-id="prof.security" aria-labelledby="h-security">
                 <CardHead icon="lock" id="h-security">אבטחה</CardHead>
                 <div className="field">
                   <label className="lbl" htmlFor="profile-pwDisplay">סיסמא לשעון נוכחות</label>
                   <div className="inpw"><Ic id="lock" size="sm" /><input data-element-name="שדה_profile_11" className="inp" type="password" id="profile-pwDisplay" value="********" disabled readOnly /></div>
                 </div>
                 <div className="pf-pwact">
-                  <button data-element-name="כפתור_profile_pw" ref={pwBtnRef} type="button" className="btn" onClick={() => setShowChangePassword(true)} aria-expanded={showChangePassword} aria-controls="pf-pwbox">שינוי סיסמא</button>
+                  <button data-element-name="כפתור_profile_pw" data-guide-id="prof.pw-change" ref={pwBtnRef} type="button" className="btn" onClick={() => setShowChangePassword(true)} aria-expanded={showChangePassword} aria-controls="pf-pwbox">שינוי סיסמא</button>
                 </div>
 
                 {showChangePassword && (
-                  <div className="pf-pwbox" id="pf-pwbox" onKeyDown={onPasswordKeyDown}>
+                  <div className="pf-pwbox" id="pf-pwbox" data-guide-id="prof.pw-box" onKeyDown={onPasswordKeyDown}>
                     <PasswordField id="profile-oldPassword" label="סיסמא ישנה" dataName="שדה_profile_12" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} shown={showOldPassword} onToggle={() => setShowOldPassword(v => !v)} />
                     <PasswordField id="profile-newPassword" label="סיסמא חדשה" dataName="שדה_profile_13" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} shown={showNewPassword} onToggle={() => setShowNewPassword(v => !v)} />
                     <div className="pf-pwbtns">
                       <button data-element-name="כפתור_profile_pw_cancel" type="button" className="btn ghost" onClick={closePasswordBox}>ביטול</button>
-                      <button data-element-name="כפתור_profile_pw_ok" type="button" className="btn primary" disabled={pwBusy} onClick={handlePasswordConfirm}>אשר שינוי</button>
+                      <button data-element-name="כפתור_profile_pw_ok" data-guide-id="prof.pw-confirm" type="button" className="btn primary" disabled={pwBusy} onClick={handlePasswordConfirm}>אשר שינוי</button>
                     </div>
                   </div>
                 )}
               </section>
 
-              <section className="card dfields" aria-labelledby="h-prefs">
+              <section className="card dfields" data-guide-id="prof.prefs" aria-labelledby="h-prefs">
                 <CardHead icon="sliders" id="h-prefs">העדפות</CardHead>
                 <div className="pf-prefs">
                   <div className="trow">
@@ -366,7 +366,7 @@ export default function ProfilePage() {
               </section>
 
               <div className="pf-save">
-                <button data-element-name="כפתור_profile_save" type="submit" disabled={saving} className="btn primary lg block">
+                <button data-element-name="כפתור_profile_save" data-guide-id="prof.save" type="submit" disabled={saving} className="btn primary lg block">
                   {saving ? 'שומר...' : 'שמירת פרטים'}
                 </button>
               </div>

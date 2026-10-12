@@ -21,7 +21,7 @@ export default function OcDraftBanner({ oc }) {
   return (
     <div className="nb-area oc-banner" data-oc-banner="draft-local">
       <div className="nb-w">
-        <section className="nb nb-warning open" role="status" aria-live="polite" aria-labelledby="oc-draft-t">
+        <section className="nb nb-warning open" role="status" aria-live="polite" aria-labelledby="oc-draft-t" data-guide-id="oc.draft-banner">
           <div className="nb-main">
             <div className="nb-head">
               <span className="nb-ic" aria-hidden="true"><OcIcon name="alert" /></span>
@@ -35,8 +35,8 @@ export default function OcDraftBanner({ oc }) {
                 {rows.map((r, i) => <div className="nb-r" key={i}><i><OcIcon name={r.icon} /></i><span>{r.text}</span></div>)}
                 {stale ? <div className="nb-r"><i><OcIcon name="alert" /></i><span>שים לב: ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו. שחזור ושמירה ידרשו אישור דריסה.</span></div> : null}
                 <div className="oc-banner-acts">
-                  <button type="button" className="nb-go" data-act="draft-restore" data-ico="refresh" onClick={oc.drafts.restore}><OcIcon name="refresh" size="sm" anim className={iconClass('refresh')} /> שחזר את השינויים</button>
-                  <button type="button" className="nb-go" data-act="draft-drop" data-ico="trash" onClick={oc.drafts.discard}><OcIcon name="trash" size="sm" anim className={iconClass('trash')} /> מחק אותם</button>
+                  <button type="button" className="nb-go" data-act="draft-restore" data-guide-id="oc.draft-restore" data-ico="refresh" onClick={oc.drafts.restore}><OcIcon name="refresh" size="sm" anim className={iconClass('refresh')} /> שחזר את השינויים</button>
+                  <button type="button" className="nb-go" data-act="draft-drop" data-guide-id="oc.draft-drop" data-ico="trash" onClick={oc.drafts.discard}><OcIcon name="trash" size="sm" anim className={iconClass('trash')} /> מחק אותם</button>
                 </div>
               </div>
             </div>

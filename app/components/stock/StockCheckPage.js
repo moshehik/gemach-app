@@ -85,7 +85,7 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
   const move = (d) => { if (!shown || !shown.length) return; setAct((a) => (a + d + shown.length) % shown.length); };
 
   return (
-    <div className="field">
+    <div className="field" data-guide-id={`stock.field-${kind}`}>
       <label className="lbl" htmlFor={id}>{label}</label>
       <div className="inpw">
         <Ic id={icon} size="sm" />
@@ -327,14 +327,14 @@ export default function StockCheckPage() {
   })), [results, res, branches]);
 
   const addBtn = (
-    <button type="button" className="inpx" id="stock-add" aria-label="הוספת מידה" data-tip="הוספת המידה לרשימה" onClick={addFromInput}><Ic id="plus" size="sm" /></button>
+    <button type="button" className="inpx" id="stock-add" data-guide-id="stock.size-add" aria-label="הוספת מידה" data-tip="הוספת המידה לרשימה" onClick={addFromInput}><Ic id="plus" size="sm" /></button>
   );
 
   return (
     <div className="gm-ds gm-home stock-page home-bg" ref={rootRef} dir="rtl">
       <HomeSprite />
       <div className="hero-in jshell advonly">
-        <div className="card res-one advp" id="stock-form">
+        <div className="card res-one advp" id="stock-form" data-guide-id="stock.form">
           <div className="card-h">
             <h2 id="stock-h">בדיקת מלאי</h2>
             <button type="button" className="ibtn" data-act="adv-apply" aria-label="בדיקה" onClick={() => run()}><Ic id="search" size="sm" /><span>בדיקה</span></button>
@@ -355,7 +355,7 @@ export default function StockCheckPage() {
           <section className="advs" aria-label="מה לבדוק">
             <div className="advs-h"><span className="advs-i"><Ic id="box" /></span><h3>מה לבדוק</h3></div>
             <div className="advgrid">
-              <div className="stock-datew">
+              <div className="stock-datew" data-guide-id="stock.date">
                 {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
                 {restored && isPastDate(date, getIsraelTodayKey()) && <div className="pg-sub stock-past" id="stock-past-note" role="note">{PAST_DATE_NOTE}</div>}
               </div>
@@ -392,7 +392,7 @@ export default function StockCheckPage() {
               />
             </div>
             {sizes.length > 0 && (
-              <div className="advflags" role="group" aria-label="מידות שנבחרו">
+              <div className="advflags" role="group" data-guide-id="stock.sizes-chosen" aria-label="מידות שנבחרו">
                 {sizes.map((z) => (
                   <button key={z.v} type="button" className="advfl on" data-rm={z.v} aria-label={`הסרת מידה ${z.v}`} onClick={() => removeSize(z.v)}>
                     <span className="advfl-i" aria-hidden="true"><Ic id="x" size="sm" /></span>{z.v}
@@ -402,7 +402,7 @@ export default function StockCheckPage() {
             )}
             <div className="pg-sub">חובה דגם או מידה, או שניהם. עם כמה מידות מוצגים רק דגמים שכולן פנויות בהם באותו תאריך.</div>
           </section>
-          <section className="advs" aria-label="בדיקה גמישה">
+          <section className="advs" data-guide-id="stock.flex" aria-label="בדיקה גמישה">
             <div className="advs-h">
               <span className="advs-i"><Ic id="sliders" /></span>
               <h3>בדיקה גמישה</h3>
@@ -439,15 +439,15 @@ export default function StockCheckPage() {
           </section>
           <div className="advact">
             {/* בזמן טעינה הלחצן נשאר כמו בעיצוב (לא מנוטרל, בלי מסתובב); לחיצה חוזרת פשוט מחליפה את הבקשה (seq) */}
-            <button type="button" className="btn primary lg" id="stock-go" aria-busy={phase === 'loading' || undefined} onClick={() => run()}>
+            <button type="button" className="btn primary lg" id="stock-go" data-guide-id="stock.go" aria-busy={phase === 'loading' || undefined} onClick={() => run()}>
               <Ic id="search" />בדיקת מלאי
             </button>
-            <button type="button" className="lrow" onClick={clearAll}><Ic id="eraser" size="sm" />נקה</button>
+            <button type="button" className="lrow" data-guide-id="stock.clear" onClick={clearAll}><Ic id="eraser" size="sm" />נקה</button>
           </div>
         </div>
       </div>
 
-      <div className="hero-in jshell" id="stock-res" ref={resRef}>
+      <div className="hero-in jshell" id="stock-res" data-guide-id="stock.results" ref={resRef}>
         <div className="card res-one" aria-live="polite">
           {phase === 'idle' && (
             <>

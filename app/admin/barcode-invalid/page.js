@@ -42,7 +42,7 @@ export default function BarcodeInvalidPage() {
           <div className="page-desc">טופל = הועבר להנהלה וסומן. ברקוד שחזר לא תקין נשאר כאן עד סימון.</div>
         </div>
       </div>
-      <div className="card card-pad">
+      <div className="card card-pad" data-guide-id="bcinv.table">
         {loading ? (
           <div>טוען...</div>
         ) : items.length === 0 ? (

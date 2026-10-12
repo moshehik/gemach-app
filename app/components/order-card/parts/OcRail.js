@@ -165,7 +165,7 @@ export default function OcRail({ oc, ui }) {
   }, [pr.kind, showAct]);
 
   const primaryBtn = pr.kind === 'none' ? null : (
-    <button type="button" className="btn primary lg block" data-act={pr.kind === 'pay-now' ? 'pay-now' : pr.kind === 'credit-now' ? 'credit-now' : 'save'} data-ico={pr.icon} disabled={busy} onClick={() => actions.primary()}>
+    <button type="button" className="btn primary lg block" data-guide-id="oc.rail-primary" data-act={pr.kind === 'pay-now' ? 'pay-now' : pr.kind === 'credit-now' ? 'credit-now' : 'save'} data-ico={pr.icon} disabled={busy} onClick={() => actions.primary()}>
       <OcIcon name={pr.icon} anim className={iconClass(pr.icon)} />{pr.text}{pr.amount ? <> <Money n={pr.amount} /></> : null}
     </button>
   );
@@ -174,24 +174,24 @@ export default function OcRail({ oc, ui }) {
     <div className="rcard cart" ref={rootRef}>
       <div className="sec-h"><OcIcon name="list" size="sm" /><span>סיכום</span></div>
       <div className="glance">
-        <button type="button" className={`gl sig ${signed ? 'yes' : 'no'}`} data-act="sig" data-rich="sig" aria-label={`${signed ? 'חתום' : 'לא חתום'} - חתימה על תקנון`} onClick={() => oc.toggleSignature()}>
+        <button type="button" className={`gl sig ${signed ? 'yes' : 'no'}`} data-act="sig" data-guide-id="oc.rail-signature" data-rich="sig" aria-label={`${signed ? 'חתום' : 'לא חתום'} - חתימה על תקנון`} onClick={() => oc.toggleSignature()}>
           <OcIcon name={signed ? 'check' : 'x'} /><span className="gv">{signed ? 'חתום' : 'לא חתום'}</span>
         </button>
         {order && order.isDelivery ? (
           <span className="gl del" role="img" tabIndex={0} data-rich="del" aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
         ) : null}
         <span className="gl itm-c" role="img" tabIndex={0} data-rich="items" aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
-        <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-rich="pay" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
+        <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-guide-id="oc.rail-pay-chip" data-rich="pay" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
           <OcIcon name="card" /><span className="gv">{chip.cls === 'ok' ? chip.label : <>{chip.label} <Money n={chip.amount} /></>}</span>
         </span>
       </div>
       <div className="cart-h">
-        <button type="button" className="cart-t" data-act="cart-toggle" data-oc-focus-fallback="1" aria-expanded={sheet ? open : true} onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="cart-t" data-act="cart-toggle" data-guide-id="oc.rail-changes" data-oc-focus-fallback="1" aria-expanded={sheet ? open : true} onClick={() => setOpen((v) => !v)}>
           <OcIcon name="cart" size="sm" /><b>שינויים בהזמנה</b><span className="badge">{count}</span>
           <span className="cart-sum">{sum ? <Money n={sum.value} signed={sum.signed} /> : null}</span><OcIcon name="chev" size="sm" />
         </button>
         {oc.redoCount ? (
-          <button type="button" className="redo fresh" data-act="redo" data-ico="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" disabled={busy} onClick={oc.redo}>
+          <button type="button" className="redo fresh" data-act="redo" data-guide-id="oc.rail-redo" data-ico="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" disabled={busy} onClick={oc.redo}>
             <OcIcon name="redo" size="sm" anim />{oc.redoCount > 1 ? <i>{oc.redoCount}</i> : null}
           </button>
         ) : null}
@@ -230,7 +230,7 @@ export default function OcRail({ oc, ui }) {
       {showAct ? (
         <div className="cart-actions enter">
           {primaryBtn}
-          {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" data-ico="undo" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" anim className={iconClass('undo')} />בטל שינויים</button> : null}
+          {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" data-guide-id="oc.rail-discard" data-ico="undo" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" anim className={iconClass('undo')} />בטל שינויים</button> : null}
         </div>
       ) : null}
     </div>

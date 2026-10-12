@@ -65,14 +65,14 @@ export default function AiHistoryPage() {
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה
           </Link>
-          <button type="button" onClick={fetchSessions} className="btn btn-secondary" title="רענן">
+          <button type="button" onClick={fetchSessions} className="btn btn-secondary" title="רענן" data-guide-id="aiadm.hist-refresh">
             <svg className="icon"><use href="#i-refresh" /></svg>
             רענן
           </button>
         </div>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-guide-id="aiadm.hist-table">
         <div className="table-scroll">
           <table className="data">
             <thead>

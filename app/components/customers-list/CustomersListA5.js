@@ -138,12 +138,13 @@ function CustomersList() {
   return (
     <>
       <A5ListPage
-        title="לקוחות" backId="cusBack" onBack={() => router.push('/admin')}
+        title="לקוחות" backId="cusBack" guide="cl" onBack={() => router.push('/admin')}
         slotId={SLOT_ID} cardIcon="users" cardTitle="רשימת לקוחות"
-        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/customers/new')}><Ic id="plus" />לקוח חדש</button>}
+        cardAction={<button type="button" className="btn navy" id="btnNew" data-guide-id="cl.new" onClick={() => router.push('/customers/new')}><Ic id="plus" />לקוח חדש</button>}
       >
         <A5List
           ref={listRef}
+          guide="cl"
           items={rows}
           getId={(r) => r.id}
           texts={{ placeholder: 'חיפוש לקוח (שם, טלפון, מייל, עיר)…', aiPlaceholder: 'בקשו מה-AI למצוא לקוחות (למשל: לקוחות מירושלים עם חוב)…', countLabel: 'לקוחות', emptyText: 'לא נמצאו לקוחות התואמים את החיפוש' }}

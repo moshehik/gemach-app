@@ -23,6 +23,7 @@ import {
   visitPairs, visitRow,
 } from './visitLogLogic';
 
+// מדריך האתר: guide="mgh" מצמיד data-guide-id (mgh.back / mgh.search / mgh.filter / mgh.sort / mgh.view / mgh.export-* ...) - lib/aiGuide/areas/admin.targets.js
 const SLOT_ID = 'a5l-search-mgh';
 const ENDPOINT = '/api/admin/management-history';
 const INITIAL_SEL = { types: DEFAULT_TYPES.slice() };
@@ -190,13 +191,13 @@ function ManagementHistory() {
       <div className="hf-sel hf-sort"><button type="button" className="hf-t" onClick={() => { setSelMode(false); setPicked(new Set()); }}><Ic id="x" /><span className="hf-lbl">סיום בחירה</span></button></div>
     </>
   ) : (
-    <div className="hf-sel hf-sort"><button type="button" className="hf-t" onClick={() => setManage(true)} data-tip="מחיקת רשומות מההיסטוריה (דורש קוד מנהל)"><Ic id="trash" /><span className="hf-lbl">ניהול רשומות</span></button></div>
+    <div className="hf-sel hf-sort"><button type="button" className="hf-t" onClick={() => setManage(true)} data-tip="מחיקת רשומות מההיסטוריה (דורש קוד מנהל)" data-guide-id="mgh.manage-records"><Ic id="trash" /><span className="hf-lbl">ניהול רשומות</span></button></div>
   );
 
   return (
     <>
       <A5ListPage
-        title="שאילתות ו-API" backId="mghBack" onBack={() => router.push('/admin')} slotId={SLOT_ID}
+        guide="mgh" title="שאילתות ו-API" backId="mghBack" onBack={() => router.push('/admin')} slotId={SLOT_ID}
         tools={<PageVariantToggle screen="management_history" placement="header" systemTip />}
         cardIcon="online" cardTitle="היסטוריית שאילתות ו-API"
         cardAction={bigLog ? (
@@ -205,6 +206,7 @@ function ManagementHistory() {
       >
         <A5List
           ref={listRef}
+          guide="mgh"
           items={rows}
           getId={(r) => r.id}
           texts={{
