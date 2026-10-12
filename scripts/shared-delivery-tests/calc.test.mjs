@@ -327,3 +327,79 @@ test('סעיף 17 - הגדרות: ריק = ללא הנחה, 0 = ללא עלות,
   assert.equal(C.resolveSharedDiscountPrice({ mode: 'global', globalPrice: '0', city: 'x' }), 0);
   assert.equal(C.resolveSharedDiscountPrice({ mode: 'global', globalPrice: '  ', city: 'x' }), null);
 });
+
+// ---------------------------------------------------------------------------------------------
+// הזמנות "קפואות" (shared_delivery_first_order_id) - קיימות מלפני הפעלת הפיצ'ר: לעולם לא מצורפות / מוזלות
+// ---------------------------------------------------------------------------------------------
+const F = (orderId, orderDateMs, direction = 'הלוך-חזור', extra = {}) => M(orderId, orderDateMs, direction, { frozen: true, ...extra });
+
+test('parseFirstOrderId: מספר שלם חיובי בלבד (מחרוזת או מספר); כל השאר = null (אין קפואות)', () => {
+  assert.equal(C.parseFirstOrderId('26000'), 26000);
+  assert.equal(C.parseFirstOrderId(' 26000 '), 26000);
+  assert.equal(C.parseFirstOrderId(26000), 26000);
+  for (const bad of [undefined, null, '', '   ', 'abc', '12.5', '-4', '0', 0, -1, 12.5, NaN, Infinity, '1e5', '0x10', '123456789012345678901', {}, [], true]) {
+    assert.equal(C.parseFirstOrderId(bad), null, String(bad));
+  }
+});
+
+test('isFrozenOrderId: קטן מההגדרה = קפואה; הגדרה חסרה / לא תקינה = אף אחת לא קפואה; מספר הזמנה שאינו מספר שלם = קפואה (במקום כסף לא נוגעים)', () => {
+  assert.equal(C.isFrozenOrderId(100, 101), true);
+  assert.equal(C.isFrozenOrderId(101, 101), false, 'המספר עצמו הוא הראשון שמשתתף');
+  assert.equal(C.isFrozenOrderId(102, '101'), false);
+  assert.equal(C.isFrozenOrderId('99', '101'), true);
+  for (const none of [null, undefined, '', 'abc', '0', -3]) assert.equal(C.isFrozenOrderId(1, none), false, `first=${none}`);
+  for (const bad of ['abc', null, undefined, NaN, '', 12.5, {}]) assert.equal(C.isFrozenOrderId(bad, 101), true, `orderId=${bad}`);
+  assert.equal(C.isFrozenOrderId('abc', null), false, 'בלי הגדרה אין קפואות גם לנתון פגום (התנהגות כמו קודם)');
+});
+
+test('תכנון עם קפואה: הקפואה ראשית ומשלמת מלא, החדשה מוזלת בשני הצדדים (גם כשהקפואה נרשמה "אחרי" בשעון orderDate)', () => {
+  const p = C.planSharedGroup([M(2000, 1000), F(10, 5000)]); // החדשה נרשמה לפי orderDate "קודם" - מספר ההזמנה הוא הסמן האמין, הקפואה ראשונה
+  assert.equal(p.primaryOrderId, 10);
+  assert.deepEqual(disc(p, 10), []);
+  assert.deepEqual(disc(p, 2000), ['out', 'ret']);
+  assert.equal(p.shared, true);
+  assert.deepEqual(p.perOrder.get(2000).sharedWith, [10]);
+});
+
+test('קבוצה של קפואות בלבד: אין הנחות, shared=false', () => {
+  const p = C.planSharedGroup([F(1, 100), F(2, 200), F(3, 300)]);
+  assert.equal(p.shared, false);
+  for (const id of [1, 2, 3]) { assert.deepEqual(disc(p, id), []); assert.deepEqual(p.perOrder.get(id).sharedWith, []); }
+  assert.equal(p.primaryOrderId, 1);
+});
+
+test('שתי קפואות והזמנה חדשה (ואחריה עוד חדשה): הקפואות נשארות מלאות, כל החדשות מוזלות', () => {
+  const p = C.planSharedGroup([F(1, 100), F(2, 200), M(3000, 300), M(3001, 400)]);
+  assert.deepEqual([disc(p, 1), disc(p, 2), disc(p, 3000), disc(p, 3001)], [[], [], ['out', 'ret'], ['out', 'ret']]);
+  assert.equal(p.primaryOrderId, 1);
+  assert.equal(p.perOrder.get(3000).legPayers.out, 1);
+});
+
+test('סימון ראשי ידני על חדשה לא מנצח קפואה (הקפואה נשארת הראשית); סימון על קפואה כן נשמר', () => {
+  const p = C.planSharedGroup([F(1, 100), F(2, 200, 'הלוך-חזור', { primaryFlag: true }), M(3000, 300, 'הלוך-חזור', { primaryFlag: true })]);
+  assert.equal(p.primaryOrderId, 2);
+  assert.deepEqual(disc(p, 3000), ['out', 'ret']);
+  const q = C.planSharedGroup([F(1, 100), M(3000, 300, 'הלוך-חזור', { primaryFlag: true })]);
+  assert.equal(q.primaryOrderId, 1, 'סימון ישן על חדשה מתעלמים כשיש קפואה');
+  assert.deepEqual(disc(q, 3000), ['out', 'ret']);
+});
+
+test('צדדים: קפואה "חזור" בלבד לא מוזילה / לא מוזלת בצד ההלוך; שתי חדשות בהלוך - ראשונה מלא, שנייה מוזלת, הקפואה לא נוגעים', () => {
+  const p = C.planSharedGroup([F(1, 100, 'חזור'), M(3000, 300, 'הלוך'), M(3001, 400, 'הלוך')]);
+  assert.deepEqual([disc(p, 1), disc(p, 3000), disc(p, 3001)], [[], [], ['out']]);
+  const q = C.planSharedGroup([F(1, 100, 'חזור'), M(3000, 300, 'הלוך-חזור')]);
+  assert.deepEqual([disc(q, 1), disc(q, 3000)], [[], ['ret']], 'חדשה הלוך-חזור מוזלת רק בצד שהקפואה נוסעת בו');
+});
+
+test('compareByRegistration: קפואה קודמת לחדשה גם אם orderDate שלה מאוחר', () => {
+  assert.ok(C.compareByRegistration(F(1, 9000), M(2, 1)) < 0);
+  assert.ok(C.compareByRegistration(M(2, 1), F(1, 9000)) > 0);
+  assert.ok(C.compareByRegistration(F(1, 100), F(2, 50)) > 0, 'בין קפואות - לפי הכלל הרגיל');
+});
+
+test('בלי frozen בכלל: התנהגות זהה לקודם (frozen=undefined / false)', () => {
+  const a = C.planSharedGroup([M(20, 2000), M(10, 1000)]);
+  const b = C.planSharedGroup([M(20, 2000, 'הלוך-חזור', { frozen: false }), M(10, 1000, 'הלוך-חזור', { frozen: false })]);
+  assert.deepEqual([...a.perOrder], [...b.perOrder]);
+  assert.equal(a.primaryOrderId, b.primaryOrderId);
+});

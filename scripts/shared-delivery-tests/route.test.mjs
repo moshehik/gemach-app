@@ -98,3 +98,30 @@ test('GET: canChangePrimary נכבה למי שאין לה הרשאת עריכה;
   globalThis.__AUTH_TOKEN = 'emp-edit';
   assert.deepEqual((await get(2)).__json, { enabled: false });
 });
+
+test('הזמנות קפואות (shared_delivery_first_order_id): POST מחזיר 409 בעברית אל / מקפואה ובקבוצה שיש בה קפואה, בלי שום כתיבה; GET מכבה את הכפתורים', async () => {
+  const MSG = 'הזמנה זו קיימת מלפני הפעלת המשלוח המשותף ואינה משתתפת בהנחה';
+  // הזמנות 1 ו-2 קיימות מלפני ההפעלה (קפואות); 3 ו-4 חדשות באותה כתובת ויום
+  globalThis.__MOCK_DB.systemSetting.push({ key: 'shared_delivery_first_order_id', value: '3' });
+  globalThis.__MOCK_DB.customer.push({ id: 'c3', firstName: 'c3', lastName: 'x', street: 'הנטקה', houseNum: 52, city: 'ירושלים' }, { id: 'c4', firstName: 'c4', lastName: 'x', street: 'הנטקה', houseNum: 52, city: 'ירושלים' });
+  const mk = (orderId, customerId, t) => ({ id: `o${orderId}`, orderId, customerId, totalAmount: null, orderDate: new Date(t), status: 'חדש', isDeleted: false, isDelivery: true, eventDate: EVENT, fromDate: null, deliveryDirection: 'הלוך-חזור', deliveryOneDayBefore: false, deliveryAddress: null, deliveryCity: null });
+  globalThis.__MOCK_DB.order.push(mk(3, 'c3', 3000), mk(4, 'c4', 4000));
+  globalThis.__MOCK_DB.paymentObligation.push({ ...obl(3, 40), description: 'משלוח הלוך-חזור - ירושלים (משלוח משותף - מחיר מוזל)' }, { ...obl(4, 40), description: 'משלוח הלוך-חזור - ירושלים (משלוח משותף - מחיר מוזל)' });
+  Cache.invalidateAllSettingsCache();
+  globalThis.__AUTH_TOKEN = 'emp-edit';
+  const before = JSON.stringify([globalThis.__MOCK_DB.paymentObligation, globalThis.__MOCK_DB.deliveryJoin, globalThis.__MOCK_DB.refund]);
+  for (const [id, target] of [[3, 1], [1, 3], [2, 1], [3, 4], [4, 3]]) {
+    const r = await post(id, { primaryOrderId: target });
+    assert.equal(r.status, 409, `${id}->${target}: ${JSON.stringify(r.__json)}`);
+    assert.equal(r.__json.frozen, true);
+    assert.match(r.__json.error, /קיימת מלפני הפעלת המשלוח המשותף/);
+    if (id === 3 && target === 1) assert.equal(r.__json.error, MSG);
+  }
+  assert.equal(JSON.stringify([globalThis.__MOCK_DB.paymentObligation, globalThis.__MOCK_DB.deliveryJoin, globalThis.__MOCK_DB.refund]), before, 'שום כתיבה');
+  // GET: הכרטיס של החדשה מכבה את כפתורי ההחלפה; הכרטיס של הקפואה לא רלוונטי
+  const g3 = (await get(3)).__json;
+  assert.equal(g3.shared, true); assert.equal(g3.canChangePrimary, false); assert.equal(g3.frozenInGroup, true);
+  assert.deepEqual(g3.members.map((m) => [m.orderId, m.frozen]), [[1, true], [2, true], [3, false], [4, false]]);
+  const g1 = (await get(1)).__json;
+  assert.equal(g1.applicable, false); assert.equal(g1.frozen, true); assert.equal(g1.message, MSG);
+});

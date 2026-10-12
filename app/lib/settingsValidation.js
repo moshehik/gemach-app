@@ -36,6 +36,8 @@ export const POLICY_NUMBER_LIMITS = {
   size_edit_until_days_before_event: { min: 0, max: 365, allowEmpty: true, emptyHint: 'ריק = כבוי' },
   // משלוח משותף: ריק = לא הוגדר מחיר מוזל (אין הנחה); 0 = משלוח מצורף ללא עלות (הוגדר במפורש)
   shared_delivery_price: { min: 0, max: 1000, allowDecimal: true, allowEmpty: true, emptyHint: 'ריק = ללא הנחה, 0 = ללא עלות' },
+  // משלוח משותף: מספר ההזמנה הראשון שחל עליו (נקבע בהדלקה ע"י scripts/seed_shared_delivery_neve.js); ריק = אין הזמנות קפואות
+  shared_delivery_first_order_id: { min: 1, max: 2000000000, allowEmpty: true, emptyHint: 'ריק = כל ההזמנות משתתפות' },
 };
 Object.assign(NUMBER_FIELD_LIMITS, POLICY_NUMBER_LIMITS);
 
