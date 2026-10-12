@@ -20,10 +20,11 @@ import OcAddItemPanel from '../parts/OcAddItemPanel';
 import OcItemEditDialog from '../parts/OcItemEditDialog';
 import OcItemDetailsDialog from '../parts/OcItemDetailsDialog';
 import OcCapacityDialog from '../parts/OcCapacityDialog';
+import { useDeliveryItemRow, DeliveryItemListRow, DeliveryItemTableRow } from '../parts/OcDeliveryItemRow';
 import { OcItemChooserDialog } from '../parts/OcBarcodeRow';
 
 
-function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
+function ItemsTable({ list, mode, order, sort, setSort, altEnabled, deliveryRow }) {
   const cols = altEnabled ? IT_COLS : IT_COLS.filter(([k]) => k !== 'alt');
   const rows = sortItems(list, sort, order, mode);
   return (
@@ -53,6 +54,7 @@ function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
               <td><bdi dir="ltr">{fmtMoney(itemPrice(i))}</bdi></td>
             </tr>
           ))}
+          {deliveryRow ? <DeliveryItemTableRow row={deliveryRow} cols={cols.length} /> : null}
         </tbody>
       </table>
     </div>
@@ -91,6 +93,9 @@ export default function OcItemsTab({ oc, ui }) {
   const del = useMemo(() => items.filter(i => i.isDeleted && (i.id || i._localId)), [items]);
   const mode = sub === 'del' ? 'del' : 'active';
   const list = mode === 'del' ? del : act;
+  // נושא 9 (delivery_as_item_row): המשלוח כשורה אחרי הפריטים - תצוגה בלבד, לא חלק מ-items ולא נספר ב"פריטים N". null כשההגדרה כבויה / אין משלוח.
+  const deliveryRow = useDeliveryItemRow(oc);
+  const showDeliveryRow = mode !== 'del' ? deliveryRow : null;
 
   // יומן הפריט (A11 "פרטי הוספה" + חלון הפרטים) — נטען פעם אחת לפריט, רק כשצריך
   const loadLogs = useCallback((id) => {
@@ -156,10 +161,10 @@ export default function OcItemsTab({ oc, ui }) {
         {del.length || sub === 'del' ? <BarToggle id="delToggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
       </div>
       <div className="hres">
-        {!list.length ? (
+        {!list.length && !showDeliveryRow ? (
           <div className="empty">{mode === 'del' ? 'אין פריטים שנמחקו' : 'אין פריטים פעילים'}</div>
         ) : tbl ? (
-          <ItemsTable list={list} mode={mode} order={oc.order} sort={sort} setSort={setSort} altEnabled={altEnabled} />
+          <ItemsTable list={list} mode={mode} order={oc.order} sort={sort} setSort={setSort} altEnabled={altEnabled} deliveryRow={showDeliveryRow} />
         ) : (
           <div className="hgrp">
             {list.map(item => {
@@ -185,6 +190,7 @@ export default function OcItemsTab({ oc, ui }) {
                 />
               );
             })}
+            {showDeliveryRow ? <DeliveryItemListRow row={showDeliveryRow} /> : null}
           </div>
         )}
       </div>
