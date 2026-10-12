@@ -203,3 +203,37 @@ test('source: the hot legacy routes use only lazy wrappers (barcodeScan / marks 
   assert.match(day, /lastScanOrder\.current = null; setBcTarget\(null\)/, 'a closed dialog forgets the last order');
   assert.match(day, /row\.barcodeInfo && !row\.barcodeInfo\.complete\) \{ openBarcodes/, 'a bare dress scan only re-opens an order that still needs barcodes');
 });
+
+// ---- החלטות הבעלים 12.10.2026 (O9 + O12): החלון הישן והודעות 409 בכרטיס ---------------------------------------------------------------------------
+
+test('source (O9): GET /api/orders/[id] adds barcodeRegisteredAtPrep only when the setting is on; the old modal shows prepared items as "ברקוד נרשם בהכנה – טרם נמסר" and does not count them as pending scans', () => {
+  const route = read('app/api/orders/[id]/route.js');
+  assert.match(route, /if \(await barcodeFeatureFor\(parsedOrderId\)\) \{\s*preppedIds = await registeredByScheduleIds\(/, 'no extra query and no new field with the setting off');
+  assert.match(route, /\.\.\.\(preppedIds\.has\(String\(item\.id\)\) \? \{ barcodeRegisteredAtPrep: true \} : \{\}\)/);
+  const hook = read('components/orders/useRentalReturn.js');
+  assert.match(hook, /const pendingItems = activeItems\.filter\(i => i\.barcode && !i\.isTaken && !i\.barcodeRegisteredAtPrep\);/, 'exit prompts / discard / "save?" only for real pending scans');
+  assert.match(hook, /preppedItems = activeItems\.filter\(i => i\.barcode && !i\.isTaken && i\.barcodeRegisteredAtPrep\)/);
+  assert.match(hook, /ברקוד נרשם בהכנה – טרם נמסר/);
+  const modal = read('components/orders/RentalReturnModal.js');
+  assert.match(modal, /preppedCount > 0 &&/);
+  assert.match(modal, /אשר מסירה/, 'handover from the old modal stays possible, as an explicit button');
+});
+
+test('O9 behaviour: with the flag the item is not "pending" (same filter as the hook), without it nothing changes', () => {
+  // the exact predicate of useRentalReturn.js
+  const pending = (items) => items.filter((i) => i.barcode && !i.isTaken && !i.barcodeRegisteredAtPrep);
+  const prepped = (items) => items.filter((i) => i.barcode && !i.isTaken && i.barcodeRegisteredAtPrep);
+  const items = [{ barcode: '1', isTaken: false }, { barcode: '2', isTaken: false, barcodeRegisteredAtPrep: true }, { barcode: '3', isTaken: true }, { barcode: null }];
+  assert.equal(pending(items).length, 1);
+  assert.equal(prepped(items).length, 1);
+  assert.equal(pending(items.map(({ barcodeRegisteredAtPrep, ...x }) => x)).length, 2, 'setting off => no flag => legacy behaviour');
+});
+
+test('source (O12): both postRent ports show the server reason for the new barcode-entry 409s (and keep the mismatch override flow)', () => {
+  const MSG = 'data.barcodeAlreadyRegistered || data.barcodeElsewhere || data.needBarcode) ? data.error : null';
+  for (const f of ['components/orders/modern/rentalToggle.js', 'app/components/order-card/hooks/useItemActions.js']) {
+    const s = read(f);
+    assert.ok(s.includes(MSG), f);
+    assert.match(s, /const mismatchMsg = describeMismatch\(data\.expected, data\.scanned\)/, f);
+  }
+});

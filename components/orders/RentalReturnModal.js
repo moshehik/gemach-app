@@ -56,6 +56,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     activeItems,
     pendingItems,
     pendingCount,
+    preppedCount,
     hasUnsavedInput,
     hasUnsavedChanges,
     overallStatus,
@@ -228,6 +229,18 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
                   <svg className="icon"><use href="#i-alert-tri" /></svg>
                   <div><strong>הערות להזמנה: </strong>{selectedOrder.orderNotes || selectedOrder.notes}</div>
+                </div>
+              )}
+
+              {preppedCount > 0 && (
+                <div className="callout" style={{ marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <svg className="icon"><use href="#i-info" /></svg>
+                    {preppedCount} פריטים נרשם להם ברקוד בהכנה (מהלו״ז) וטרם נמסרו. אישור המסירה מוסר את כל הפריטים של ההזמנה.
+                  </span>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
+                    {isConfirming ? 'מאשר...' : 'אשר מסירה'}
+                  </button>
                 </div>
               )}
 

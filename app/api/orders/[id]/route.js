@@ -80,6 +80,7 @@ import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
 import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
+import { registeredByScheduleIds } from '@/lib/schedule/barcodeData';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -182,6 +183,13 @@ export async function GET(request, { params }) {
       }
     });
 
+    // ברקוד בלו״ז: פריט שנרשם לו ברקוד בהכנה מהלו״ז ועוד לא נמסר מסומן barcodeRegisteredAtPrep (שדה תוספתי, רק כשההגדרה פעילה להזמנה) - החלון הישן
+    // (RentalReturnModal) מציג אותו "ברקוד נרשם בהכנה – טרם נמסר" ולא כסריקה שממתינה לאישור. כבוי = אין שאילתה ואין שדה.
+    let preppedIds = new Set();
+    if (await barcodeFeatureFor(parsedOrderId)) {
+      preppedIds = await registeredByScheduleIds(items.filter(i => i.barcode && !i.isTaken && !i.takenDate));
+    }
+
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -210,7 +218,8 @@ export async function GET(request, { params }) {
         ...item,
         description: finalDescription,
         isTaken,
-        isReturned
+        isReturned,
+        ...(preppedIds.has(String(item.id)) ? { barcodeRegisteredAtPrep: true } : {})
       };
     });
 
