@@ -17,6 +17,8 @@ import { hasPermission, canOpenAnyPage } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
+import { loadDeliverySection } from '@/lib/orderDeliveryServer';
+
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
@@ -42,6 +44,7 @@ const ICON_SVG = {
   shirt: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
   scissors: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>',
   ruler: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>',
+  truck: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>',
   check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -141,6 +144,8 @@ export async function POST(request, { params }) {
     }
 
     const settingsData = await getAllCachedSettings();
+    // משלוח (נושא 9 - דוחות): בלוק פרטים בכותרת ההזמנה, ושורת פריט אם delivery_as_item_row דלוק. תצוגה בלבד - הסכומים נשארים כפי שהם.
+    const deliverySection = await loadDeliverySection(order, { settings: settingsData });
     const enableAlterations = settingsData.find(s => s.key === 'enable_alterations')?.value !== 'false';
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
@@ -259,6 +264,13 @@ export async function POST(request, { params }) {
             </tr>
           `;
         }).join('');
+
+    // שורת המשלוח בטבלת הפריטים (delivery_as_item_row): לא פריט מלאי - בלי ברקוד/מידה/סטטוס, המחיר נלקח מחיוב המשלוח שכבר נספר בסה"כ.
+    const deliveryRowHtml = deliverySection && deliverySection.itemRow ? `
+            <tr style="background:#f4f4f4;">
+              <td colspan="${colCount - 1}" style="font-weight: 600; color: #333;">${ICON_SVG.truck} ${escapeHtml(deliverySection.itemRow.label)}${deliverySection.itemRow.detail ? `<div style="font-weight:400;font-size:12px;color:#777;margin-top:2px;">${escapeHtml(deliverySection.itemRow.detail)}</div>` : ''}</td>
+              <td style="font-weight: 700; color: #333; white-space: nowrap;">${deliverySection.itemRow.amount !== null && deliverySection.itemRow.amount !== undefined ? `₪${deliverySection.itemRow.amount}` : '-'}</td>
+            </tr>` : '';
 
     // Payment notes formatting - mirrors app/print/order/page.js's formatPaymentNotes so the
     // emailed report shows the same human-readable credit-approval text instead of raw JSON.
@@ -415,6 +427,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
+                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type').map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
                 ${!order.isAbroad ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
@@ -437,6 +450,7 @@ export async function POST(request, { params }) {
             </thead>
             <tbody>
               ${itemsHtml}
+              ${deliveryRowHtml}
             </tbody>
           </table>
 
@@ -546,7 +560,8 @@ export async function POST(request, { params }) {
       eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : ''),
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
-      gmachPhone: printSettings.gmachPhone
+      gmachPhone: printSettings.gmachPhone,
+      delivery: deliverySection
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';

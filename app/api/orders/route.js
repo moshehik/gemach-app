@@ -16,6 +16,8 @@ import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOr
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import { loadDeliverySection } from '@/lib/orderDeliveryServer';
+import { deliveryItemRowText } from '@/lib/orderDelivery';
 import {
   planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
@@ -1118,6 +1120,9 @@ async function POST(request) {
             return sizeText ? `${modelName} (מידה: ${sizeText})` : modelName;
           }).join(', ') || 'ללא פירוט';
 
+          // משלוח (נושא 9 - דוחות): כתובת/מועדים/עלות, ושורת פריט כש-delivery_as_item_row דלוק. תצוגה בלבד - applyDeliveryCharge כבר רץ
+          // למעלה, והחיוב נספר בסכומים שלמטה כמו קודם. null להזמנה שאינה משלוח.
+          const deliverySection = await loadDeliverySection(updatedOrder);
           const totalObligations = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
           const totalPayments = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
           const balance = Math.max(0, totalObligations - totalPayments);
@@ -1126,12 +1131,13 @@ async function POST(request) {
           const { sendSystemEmail } = await import('@/lib/mailer');
           const { renderOrderConfirmationEmailHtml } = await import('@/lib/emailTemplates');
           const { emailSubject } = await import('@/lib/emailCatalog');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}${deliverySection && deliverySection.itemRow ? `, ${deliveryItemRowText(deliverySection)}` : ''}\n${deliverySection ? `${deliverySection.textLines.join('\n')}\n` : ''}סה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
           const html = renderOrderConfirmationEmailHtml({
             customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
             orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
             items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
             totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone,
+            delivery: deliverySection,
           });
           sendSystemEmail({ to: email, subject: emailSubject('orderCreatedAuto', { orderId: updatedOrder.orderId, gmachName }), body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
       }
