@@ -405,7 +405,8 @@ t('קישורי תחתית: כל פריטי העיצוב מופיעים; לא נ
   assert.deepEqual(g.map((x) => x.h), ['ניווט מהיר', 'עזרה', 'החשבון שלי']);
   assert.deepEqual(keys(g[0]), ['orders', 'customers', 'dresses', 'dashboard', 'landing']);
   assert.deepEqual(soonKeys(g[0]), ['dresses', 'dashboard'], 'שמלות (אין הרשאה) וסיכום כספי (לא הנהלה) = בקרוב');
-  assert.equal(g[0].links[0].href, '/orders'); assert.equal(g[0].links[0].soon, undefined);
+  assert.equal(g[0].links[0].href, '/?scope=orders', 'הזמנות בתחתית = החיפוש הראשי בהזמנות'); assert.equal(g[0].links[0].soon, undefined);
+  assert.equal(g[0].links[1].href, '/?scope=customers', 'לקוחות בתחתית = החיפוש הראשי בלקוחות');
   assert.equal(g[0].links[4].href, '/landing'); assert.equal(g[0].links[4].newTab, true, 'דף הנחיתה נפתח בלשונית חדשה'); assert.equal(g[0].links[4].soon, undefined);
   assert.deepEqual(keys(g[1]), ['guide', 'report']);
   assert.equal(g[1].links[0].soon, true, 'מדריך למשתמש: אין דף');

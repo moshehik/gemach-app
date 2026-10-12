@@ -221,7 +221,7 @@
   function footer() {
     const F = (label, key, href, ok) => (ok ? { label, key, href: href || null } : null);
     const hasNav = h => navItems().some(i => i.href === h);
-    const nav = [F('הזמנות', 'orders', '/orders', hasNav('/orders')), F('לקוחות', 'customers', '/customers', hasNav('/customers')),
+    const nav = [F('הזמנות', 'orders', '/?scope=orders', hasNav('/orders')), F('לקוחות', 'customers', '/?scope=customers', hasNav('/customers')),
       F('שמלות', 'dresses', '/dashboard/dresses', hasNav('/dashboard/dresses')), F('סיכום כספי', 'dashboard', '/dashboard', head())].filter(Boolean);
     /* אין באתר עמוד "מדריך למשתמש", ו"דיווח על תקלה" הוא חלון (ErrorReportButton) בלי כתובת עצמאית לפתיחה -
        שני הפריטים מוצגים (href:null) והעמוד מסמן אותם "בקרוב" במקום להסתיר; "דיווח על תקלה" מוצג רק כשההגדרה לא כיבתה אותו */
