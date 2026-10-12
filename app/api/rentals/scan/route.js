@@ -52,12 +52,15 @@ export async function POST(request) {
         const manualOn = allS.find(s => s.key === 'manual_barcode_double_entry')?.value === 'true';
         // itemIdToForce חייב להיות פריט פעיל של ההזמנה הזו שעוד אין לו ברקוד (או שהברקוד שלו הוא זה שנשלח) - אחרת אפשר היה לדרוס ברקוד של
         // כל פריט במערכת (docs/schedule-barcode-plan.md, H4). לקוח תקין תמיד שולח פריט כזה, ולכן אין שינוי התנהגות עבורו.
-        const forceOk = itemIdToForce
-          ? !!(await prisma.orderItem.findFirst({
+        // ההקשחה פעילה **רק כשברקוד בלו"ז דלוק להזמנה הזו** (barcodeFeatureFor); כבוי (ברירת המחדל בשני הגמ"חים) = בדיוק ההתנהגות של origin/main
+        // (סקירת אבטחה 12.10.2026, ממצא 27: אסור לשנות התנהגות בגמ"ח הראשי כשכל הדגלים כבויים).
+        const hardenForce = itemIdToForce ? !!(await barcodeFeatureFor(parseInt(orderId))) : false;
+        const forceOk = !itemIdToForce
+          ? false
+          : (!hardenForce || !!(await prisma.orderItem.findFirst({
               where: { id: String(itemIdToForce), orderId: parseInt(orderId), isDeleted: false, OR: [{ barcode: null }, { barcode: barcode }, { barcodeInvalid: true }] },
               select: { id: true }
-            }))
-          : false;
+            })));
         if (invalidOn && itemIdToForce && forceOk) {
           try {
             await prisma.orderItem.update(auditAs(

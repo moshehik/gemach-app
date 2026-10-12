@@ -137,10 +137,10 @@ test('scan POST (default): the normal assignment is unchanged (barcode set, isTa
   assert.equal(itemOf(6012, 1).barcode, null);
 });
 
-test('scan POST (H4): itemIdToForce must be an active item of THIS order - a foreign / deleted item is never written', async () => {
+test('scan POST (H4, barcode feature ON): itemIdToForce must be an active item of THIS order - a foreign / deleted item is never written', async () => {
   const foreign = it(0, { barcode: '1111111' });
   world({
-    settings: [...SETTINGS_ORG2, { key: 'barcode_invalid_list', value: 'true' }],
+    settings: [...ON('pickup'), { key: 'barcode_invalid_list', value: 'true' }],
     orders: [pickOrder(6013, [it(0)]), pickOrder(6014, [foreign])],
   });
   // 9999999 is not in the dress table => the "invalid barcode" branch; a forged itemIdToForce of another order must not be touched
@@ -153,6 +153,19 @@ test('scan POST (H4): itemIdToForce must be an active item of THIS order - a for
   const ok = await scanRoute.POST(jreq('http://x/api/rentals/scan', { orderId: 6013, barcode: '9999999', itemIdToForce: itemOf(6013, 0).id }));
   assert.equal(ok.status, 404);
   assert.equal(itemOf(6013, 0).barcodeInvalid, true);
+});
+
+test('scan POST (H4, barcode feature OFF = the default): exactly the origin/main behaviour - itemIdToForce is NOT re-validated (review 12.10.2026 #27)', async () => {
+  const foreign = it(0, { barcode: '1111111' });
+  world({
+    settings: [...SETTINGS_ORG2, { key: 'barcode_invalid_list', value: 'true' }],
+    orders: [pickOrder(6017, [it(0)]), pickOrder(6018, [foreign])],
+  });
+  const r = await scanRoute.POST(jreq('http://x/api/rentals/scan', { orderId: 6017, barcode: '9999999', itemIdToForce: foreign.id }));
+  assert.equal(r.status, 404);
+  // as on origin/main: the flagged-invalid write goes to the forced item (the hardening is only active while the barcode feature is on)
+  assert.equal(itemOf(6018, 0).barcodeInvalid, true);
+  assert.ok(calls('orderItem').length > 0);
 });
 
 test('scan POST (H11, setting on): a barcode already registered in another open order is refused; with the setting off the old behaviour stays', async () => {
