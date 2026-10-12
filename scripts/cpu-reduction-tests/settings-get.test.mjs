@@ -19,7 +19,7 @@ const labels = await L('app/api/settings/labels/route.js');
 // ---- the OLD handler, frozen (origin/main before the cache) -------------------------------------------------------------
 async function oldGet() {
   const settings = await prisma.systemSetting.findMany({
-    where: { key: { notIn: ['BRAND_LOGO', 'backup_requested_at'] } },
+    where: { key: { notIn: ['BRAND_LOGO', 'backup_requested_at', 'terms_file_id', 'terms_file_name', 'terms_file_type', 'terms_file_sha256', 'terms_file_uploaded_at', 'terms_file_history'] } },
     orderBy: [{ category: 'asc' }, { id: 'asc' }],
   });
   let masked = settings.map((s) => (SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s));
