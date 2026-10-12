@@ -263,3 +263,38 @@ test('consumers of the two endpoints, mapped: the quick panel (/api/settings/gui
     if (/\/api\/(settings\/guide|a5\/settings\?)/.test(code)) assert.ok(['app/components/SettingQuickPanel.js'].includes(f), `${f}: a new consumer of a values catalog - check which keys it needs`);
   }
 });
+
+// ---- סקירת אבטחה 12.10.2026 (ממצא 4): מרכז המיילים לא נחשף ב-GET /api/settings ----
+const EMAIL_KEYS = ['email_campaign:abc123', 'email_campaign:zzz', 'email_campaign_log', 'email_tpl:orderCreatedAuto', 'email_fixed_fields'];
+const seedEmail = () => {
+  seed();
+  let i = 900;
+  for (const k of EMAIL_KEYS) globalThis.__SETTINGS.push(row(i++, k, `EMAIL-CANARY-${k}`));
+  SC.invalidateSettingsCache();
+};
+
+test('email center keys: hidden from staff and guests; email_campaign:* never in the list (not even for admin); tpl / fixed fields still reach admin', async () => {
+  seedEmail();
+  globalThis.__TIER = 'staff';
+  const s = await get();
+  for (const k of EMAIL_KEYS) assert.ok(!s.text.includes(`EMAIL-CANARY-${k}`), `${k} must not reach a staff reader`);
+  globalThis.__TIER = 'guest';
+  const g = await get();
+  for (const k of EMAIL_KEYS) assert.ok(!g.text.includes(`EMAIL-CANARY-${k}`), `${k} must not reach a guest`);
+  globalThis.__TIER = 'admin';
+  const a = await get();
+  const keys = a.json.map((x) => x.key);
+  assert.ok(!keys.some((k) => k.startsWith('email_campaign:')), 'campaign documents are excluded from the list for everyone (the campaign module reads the DB directly)');
+  assert.ok(keys.includes('email_tpl:orderCreatedAuto') && keys.includes('email_fixed_fields') && keys.includes('email_campaign_log'), 'admin keeps the rest');
+});
+
+test('email center keys: isAdminOnlySettingKey covers the prefixes; the shared all-settings cache (server side) drops campaign documents but keeps tpl / fixed fields for the mailer', async () => {
+  for (const k of EMAIL_KEYS) assert.equal(isAdminOnlySettingKey(k), true, k);
+  assert.equal(isAdminOnlySettingKey('email_link_a'), true);
+  assert.equal(isAdminOnlySettingKey('main_email'), false, 'unrelated email-ish keys stay visible');
+  seedEmail();
+  const all = await SC.getAllCachedSettings();
+  const keys = all.map((x) => x.key);
+  assert.ok(!keys.some((k) => k.startsWith('email_campaign:')));
+  assert.ok(keys.includes('email_tpl:orderCreatedAuto') && keys.includes('email_fixed_fields'), 'lib/emailConfig.js (mailer + /api/admin/email-center) still reads them through the cache');
+});

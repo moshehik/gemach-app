@@ -196,5 +196,8 @@ test('the query is the same as the old handler (exact where/orderBy)', async () 
   await oldGet();
   await route.GET();
   const [a, b] = globalThis.__MOCK_CALLS.filter((c) => c.op === 'findMany');
-  assert.deepEqual(b.args, a.args);
+  // since 12.10.2026 (security review) the list also excludes the email_campaign:* documents (NOT startsWith); the rest is exactly the old query
+  const { NOT, ...whereRest } = b.args.where;
+  assert.deepEqual({ ...b.args, where: whereRest }, a.args);
+  assert.deepEqual(NOT, [{ key: { startsWith: 'email_campaign:' } }]);
 });
