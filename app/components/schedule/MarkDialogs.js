@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import ScheduleIcon from './ScheduleIcon';
-import { MARK_TIPS, subText } from './scheduleMeta';
+import { MARK_TIPS, subText, customerDisplayName } from './scheduleMeta';
 import { LzPortal } from './LzPortal';
 
 // חלון "בטוח?" (S03/S04) והטוסט של סימון "בוצע" - המראה הוא בדיוק של העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html):
@@ -47,7 +47,7 @@ export function confirmEffect(stageKey, { done, outcome, all }, row = null) {
 
 // שורות הפירוט בחלון (detailRows בעיצוב, שורה 2009): לקוחה + טלפון, השלב + היום + שורת הפרטים
 export function DetailRows({ stage, row, dayLabel }) {
-  const name = (row.customer && row.customer.name) || 'לא ידוע';
+  const name = customerDisplayName(row.customer);
   const phone = (row.customer && row.customer.phone1) || '';
   return (
     <div className="lz-det">
