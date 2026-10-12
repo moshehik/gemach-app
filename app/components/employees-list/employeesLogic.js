@@ -47,6 +47,12 @@ export function shiftText(minutes) {
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 }
 
+/** מייל תקין להצגה: חייב חלק לפני ה-@ (בנתונים מ-Access נשמרו הרבה ערכים של "@gmail.com" בלבד - מוסתרים). */
+export function displayEmail(email) {
+  const v = String(email || '').trim();
+  return /^[^@s]+@[^@s]+.[^@s]+$/.test(v) ? v : '';
+}
+
 /** שורת הרשימה מ-Employee (+ נוכחות לפי employeeId). */
 export function employeeRow(e, presence, byRole) {
   const p = (presence && presence[e.id]) || null;
@@ -59,13 +65,14 @@ export function employeeRow(e, presence, byRole) {
     dept,
     roleId: e.roleId == null || e.roleId === '' ? null : Number(e.roleId), // סדר קבוצות המחלקות בהדפסה (a5-print/pkSpecs.js deptOrder)
     phone: e.phone1 || '',
-    email: e.email || '',
+    email: displayEmail(e.email),
     active: e.isActive === undefined ? true : !!e.isActive,
     pwd: !!e.needsPasswordReset,
     conn: !!(p && p.connected),
     shiftMin: p && p.connected ? p.shiftMinutes : null,
     last,
     ts: last || '',
+    site: p && p.lastSite ? p.lastSite : null, // החיבור האחרון לאתר (לא כניסה למשמרת)
   };
 }
 

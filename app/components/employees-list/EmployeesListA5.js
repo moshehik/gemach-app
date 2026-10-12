@@ -33,6 +33,10 @@ function lastTxt(r) {
   return <>{relDay(r.last)} · <bdi>{timeHM(r.last)}</bdi></>;
 }
 const lastPlain = (r) => (r.last ? `${relDay(r.last)} ${timeHM(r.last)}` : '');
+function siteTxt(r) {
+  if (!r.site) return null;
+  return <>{relDay(r.site)} · <bdi>{timeHM(r.site)}</bdi></>;
+}
 
 function ConnMark({ r }) {
   return (
@@ -89,7 +93,8 @@ function EmployeesList() {
     { k: 'name', l: 'שם מלא', i: 'user', get: (r) => r.full },
     { k: 'code', l: 'קוד עובד', i: 'hash', get: (r) => (/^\d+$/.test(r.code) ? Number(r.code) : r.code) },
     { k: 'dept', l: 'מחלקה', i: 'building', get: (r) => r.dept },
-    { k: 'last', l: 'כניסה אחרונה', i: 'clock', get: (r) => r.ts },
+    { k: 'last', l: 'כניסה לעבודה', i: 'clock', get: (r) => r.ts },
+    { k: 'site', l: 'חיבור לאתר', i: 'online', get: (r) => r.site || '' },
     { k: 'phone', l: 'טלפון', i: 'phone', get: (r) => r.phone },
     { k: 'mail', l: 'מייל', i: 'mail', get: (r) => r.email },
     { k: 'status', l: 'סטטוס', i: 'userck', get: (r) => (r.active ? 0 : 1) },
@@ -136,12 +141,14 @@ function EmployeesList() {
   const rowMain = (r, c) => {
     const ico = !r.active ? 'ban' : r.conn ? 'userck' : 'user';
     const lt = lastTxt(r);
+    const st = siteTxt(r);
     return (
       <>
         <div className="ic-b sq"><Ic id={ico} /></div>
         <div className="t"><b>{c.hl(r.full)}</b><span className="ln mi">
           <span className="lni"><Ic id="building" />{r.dept}</span>
-          <span className={`lni${lt ? '' : ' zero'}`}><Ic id="clock" />כניסה אחרונה · {lt || 'אין כניסות'}</span>
+          <span className={`lni${lt ? '' : ' zero'}`}><Ic id="clock" />כניסה לעבודה · {lt || 'אין כניסות'}</span>
+          <span className={`lni${st ? '' : ' zero'}`}><Ic id="online" />חיבור לאתר · {st || 'אין חיבורים'}</span>
           {r.phone ? <span className="lni"><Ic id="phone" /><bdi>{c.hl(r.phone)}</bdi></span> : null}
           {r.email ? <span className="lni mail"><Ic id="mail" /><bdi>{c.hl(r.email)}</bdi></span> : null}
         </span></div>
@@ -158,7 +165,8 @@ function EmployeesList() {
         {row('מחלקה', r.dept)}
         {r.phone ? row('טלפון', <bdi>{r.phone}</bdi>) : null}
         {r.email ? row('מייל', <bdi>{r.email}</bdi>) : null}
-        {row('כניסה אחרונה', r.last ? <>{dayTitle(r.last)} · <bdi>{timeHM(r.last)}</bdi></> : 'אין כניסות רשומות')}
+        {row('כניסה לעבודה', r.last ? <>{dayTitle(r.last)} · <bdi>{timeHM(r.last)}</bdi></> : 'אין כניסות רשומות')}
+        {row('חיבור לאתר', r.site ? <>{dayTitle(r.site)} · <bdi>{timeHM(r.site)}</bdi></> : 'אין חיבורים רשומים')}
         {r.conn ? row('משמרת', <><span className="cdot-inl" />מחובר · במשמרת <bdi>{shiftText(r.shiftMin)}</bdi> שעות</>) : null}
         {row('סטטוס', r.active ? 'פעיל' : 'לא פעיל')}
         {r.pwd ? row('סיסמה', <><Ic id="key" size="sm" />הסיסמה ישנה — יש לעדכן</>) : null}
@@ -177,7 +185,8 @@ function EmployeesList() {
     { k: 'code', t: 'קוד', cell: (r) => <bdi>{r.code}</bdi> },
     { k: 'name', t: 'שם מלא', cell: (r, c) => <span className="tcn"><Ic id={!r.active ? 'ban' : r.conn ? 'userck' : 'user'} /><b>{c.hl(r.full)}</b>{r.pwd ? <span className="pwd" data-tip="יש לעדכן סיסמה"><Ic id="key" /></span> : null}{r.conn ? <ConnMark r={r} /> : null}</span> },
     { k: 'dept', t: 'מחלקה', cell: (r) => <><Ic id="building" />{r.dept}</> },
-    { k: 'last', t: 'כניסה אחרונה', cell: (r) => <><Ic id="clock" />{lastTxt(r) || 'אין כניסות'}</> },
+    { k: 'last', t: 'כניסה לעבודה', cell: (r) => <><Ic id="clock" />{lastTxt(r) || 'אין כניסות'}</> },
+    { k: 'site', t: 'חיבור לאתר', cell: (r) => <><Ic id="online" />{siteTxt(r) || 'אין חיבורים'}</> },
     { k: 'phone', t: 'טלפון', cell: (r, c) => (r.phone ? <><Ic id="phone" /><bdi>{c.hl(r.phone)}</bdi></> : '') },
     { k: 'mail', t: 'מייל', cell: (r, c) => (r.email ? <><Ic id="mail" /><bdi>{c.hl(r.email)}</bdi></> : '') },
     { k: 'status', t: 'סטטוס', cell: (r) => (r.active ? 'פעיל' : 'לא פעיל') },
