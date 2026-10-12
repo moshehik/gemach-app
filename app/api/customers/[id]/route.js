@@ -255,8 +255,8 @@ export async function PUT(request, { params }) {
       }
     }
 
-    const body = sharedDelivery ? { ...updatedCustomer, sharedDelivery } : updatedCustomer;
-    return NextResponse.json(journal.ok ? body : { ...body, consentWarning: 'הלקוחה נשמרה, אך ההסכמות לא נרשמו ביומן ההסכמות - יש לעדכן את מנהל המערכת' });
+    const respBody = sharedDelivery ? { ...updatedCustomer, sharedDelivery } : updatedCustomer;
+    return NextResponse.json(journal.ok ? respBody : { ...respBody, consentWarning: 'הלקוחה נשמרה, אך ההסכמות לא נרשמו ביומן ההסכמות - יש לעדכן את מנהל המערכת' });
   } catch (error) {
     console.error('Error updating customer:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
