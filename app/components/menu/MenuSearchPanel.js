@@ -21,6 +21,7 @@ import { postReturnScan } from '@/components/orders/returnScanClient';
 import { runQuickBarcode } from '@/components/orders/barcodeFlowClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
+import SearchPanel from '../search/SearchPanel';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
 const MIN_CHARS = 2;
@@ -231,6 +232,8 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const isBarcode = !!barcodeDigits;
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
   const [pick, setPick] = useState(null); // הזמנות שמחכות לפריט הפנוי (השכרה מהירה בברקוד, כשיש כמה) - בחירה
+  // פאנל התפוסה / הפריט (ר' search/SearchPanel.js): תצוגה מקדימה תוך כדי הקלדה, מתחת לשורת החיפוש. Enter נשאר אצל החזרה המהירה / חיפוש מלא.
+  const panelTerm = useDebounce(prefixOn ? '' : term, 350);
 
   // ברקוד בן 7 ספרות + Enter (זרימת הברקוד ברצף, components/orders/barcodeFlowClient.js): פריט מושכר -> חלון "השכרה והחזרה" של
   // ההזמנה והברקוד מוחזר בתוכו (הסריקות הבאות נשארות בחלון ועוברות בין הזמנות); פריט פנוי + ההגדרה quick_search_barcode_opens_rental
@@ -327,6 +330,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     const apiOn = term.length >= MIN_CHARS;
     list = (
       <>
+        {panelTerm ? <SearchPanel query={panelTerm} compact onOpen={(url) => onGo(() => nav.navigate(url), true)} /> : null}
         {pages.length > 0 && <div className="sn-st">עמודים</div>}
         {pages.map((p) => (
           <a

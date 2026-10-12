@@ -5,7 +5,7 @@ import { runGlobalSearch } from '@/lib/globalSearch';
 // GET /api/global-search?q=...[&extras=1]
 // החיפוש הראשי של דף הבית, שורת החיפוש העליונה והדף הישן. כל הלוגיקה (שאילתות, תכנית החיפוש, הרשאות השורות הנוספות) ב-lib/globalSearch.js.
 //  - בלי extras: { customers, orders, rentals } בלבד, כמו תמיד (הצרכנים הישנים). orders[].computedStatus נוסף (הסטטוס המחושב); status נשאר כפי שנשמר.
-//  - extras=1 (רק הבית החדש): בנוסף inventory (שורות "מלאי" לברקוד / מילות מפתח), inventoryTruncated ו-dateChips (הלו"ז ליום שהוקלד).
+//  - extras=1 (רק הבית החדש): בנוסף dateChips (הלו"ז ליום שהוקלד).
 // SECURITY: רק עמודות מפורשות בכל SELECT (ר' lib/globalSearch.js ו-scripts/test_search_leak_gate.mjs); כל עובד מחובר יכול לקרוא לנתיב הזה.
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

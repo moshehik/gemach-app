@@ -18,6 +18,7 @@ import { Ic, HomeSprite } from './HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
+import SearchPanel from '../search/SearchPanel';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
@@ -57,7 +58,7 @@ async function getJson(url) {
   return res.json();
 }
 
-// שורת התוצאה הראשונה (קישור או שורת מלאי בלי קישור) - למעבר מקלדת מהשורת חיפוש; false כשאין
+// שורת התוצאה הראשונה (קישור) - למעבר מקלדת מהשורת חיפוש; false כשאין
 function focusFirstResult() {
   const el = document.querySelector('.res-one .lrow');
   if (!el) return false;
@@ -252,7 +253,7 @@ export default function HomeA5() {
     const sc = scopeRef.current;
     if (sc && HOME_SCOPES[sc].via === 'adv') { runScopedAdv(query, sc, my); return; }
     try {
-      // extras=1: שורות "מלאי" (ברקוד / מידה / דגם) וצ'יפים של הלו"ז ליום שהוקלד - רק לבית החדש (הצרכנים האחרים של הנתיב לא מבקשים)
+      // extras=1: צ'יפים של הלו"ז ליום שהוקלד - רק לבית החדש (הצרכנים האחרים של הנתיב לא מבקשים)
       const d = await getJson('/api/global-search?q=' + encodeURIComponent(query) + '&extras=1');
       if (my !== seq.current) return;
       const norm = normalizeSearch(d);
@@ -411,7 +412,7 @@ export default function HomeA5() {
       if (saved && saved.res && Array.isArray(saved.res.customers) && Array.isArray(saved.res.orders) && Array.isArray(saved.res.rentals)) {
         setQ(saved.q || '');
         setResQuery(saved.q || '');
-        setRes({ inventory: [], inventoryTruncated: false, dateChips: null, ...saved.res }); // תשובה ישנה (נשמרה לפני שדות המלאי / הצ'יפים) עדיין תקפה
+        setRes({ dateChips: null, ...saved.res }); // תשובה ישנה (נשמרה לפני שדה הצ'יפים; ייתכן שיש בה שדה inventory ישן - מתעלמים ממנו) עדיין תקפה
         setResKey((k) => k + 1);
         setView(resultsCount(saved.res) ? 'results' : 'none');
       }
@@ -810,6 +811,7 @@ export default function HomeA5() {
               onExport={onExportAdv}
             />
           )}
+          {(view === 'results' && !advRes) || view === 'none' ? <SearchPanel query={resQuery} /> : null}
           {(view === 'results' && !advRes) || view === 'none' ? (
             <HomeResults
               key={resKey}

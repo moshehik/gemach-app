@@ -315,9 +315,6 @@
 .gm-ds.gm-home .res-one .li .t b.rt .stx { margin-inline-start: 0; }
 .gm-ds.gm-home .res-one .li mark { background: transparent; color: var(--gm-gold-d); font-weight: 700; }
 .gm-ds.gm-home .res-one .li.nolink { cursor: default; }
-.gm-ds.gm-home .res-one .li .t .ln.invs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
-.gm-ds.gm-home .res-one .li .t .invd { font-weight: 500; color: var(--gm-ink3); margin-inline-end: 4px; }
-.gm-ds.gm-home .res-one .li .invz b { font-size: inherit; font-weight: 600; color: inherit; }
 .gm-ds.gm-home .res-one .dchips { padding: 4px 4px 14px; }
 .gm-ds.gm-home .res-one .dchips-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: var(--gm-navy-900); }
 .gm-ds.gm-home .res-one .dchips-r { display: flex; flex-wrap: wrap; gap: 8px; }

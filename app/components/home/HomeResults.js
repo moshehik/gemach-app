@@ -32,29 +32,6 @@ function Parts({ items }) {
   return <span className="ln">{shown.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>)}</span>;
 }
 
-function InvBody({ inv }) {
-  const own = inv.size ? <>מידה <bdi>{inv.size}</bdi></> : null;
-  const head = inv.type === 'barcode'
-    ? [inv.barcode ? <>ברקוד <bdi dir="ltr">{inv.barcode}</bdi></> : null, inv.modelCode !== '' ? <>דגם <bdi dir="ltr">{inv.modelCode}</bdi></> : null, own,
-      inv.serial !== '' ? <>מס׳ סידורי <bdi dir="ltr">{inv.serial}</bdi></> : null, inv.location ? <>מיקום <bdi>{inv.location}</bdi></> : null]
-    : [inv.modelCode !== '' ? <>דגם <bdi dir="ltr">{inv.modelCode}</bdi></> : null];
-  return (
-    <>
-      <b>{inv.modelName || 'דגם'}{inv.status ? <span className={`stx ${inv.status === 'מושכר' ? '' : inv.status === 'פנוי' ? 'ok' : 'warn'}`}>{inv.status}</span> : null}</b>
-      <Parts items={head} />
-      {inv.itemMissing ? <span className="ln">הברקוד לא נמצא במלאי; הדגם נקבע לפי קידומת הברקוד</span> : null}
-      <span className="ln invs" aria-label={`זמינות ל${inv.dateLabel}`}>
-        <span className="invd">זמינות ל{inv.dateLabel}:</span>
-        {inv.sizes.length === 0 ? <span className="chip">אין מידות במלאי</span> : inv.sizes.map((s, i) => (
-          <span key={i} className={`chip invz${s.own ? ' gold' : s.available === 0 ? ' rose' : ''}`} data-tip={`סה״כ ${s.total} · מוזמנות ${s.booked} · פנויות ${s.available}`}>
-            <b>{s.size}</b> <bdi>{s.available}/{s.total}</bdi>
-          </span>
-        ))}
-      </span>
-    </>
-  );
-}
-
 function RowBody({ r, hq }) {
   if (r.kind === 'לקוח') {
     return (
@@ -74,7 +51,6 @@ function RowBody({ r, hq }) {
       </>
     );
   }
-  if (r.kind === 'מלאי') return <InvBody inv={r.inv} />;
   // פריט: בדיוק שתי שורות (5.10.2026). כותרת = הברקוד + מצב הפריט; שורה קטנה = הזמנה, שם מלא של הלקוחה, תאריך אירוע עברי. חלק שחסר בנתונים ישנים פשוט לא מוצג.
   return (
     <>

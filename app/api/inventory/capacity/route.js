@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { sizeTextFilter } from '@/lib/sizeSearch';
+import { computeCapacity } from '@/lib/capacity';
 
 export const dynamic = 'force-dynamic';
 
+// GET /api/inventory/capacity?barcodePrefix=&size=&fromDate=&toDate=  ->  { inStock, reserve, occupiedCount, occupiedOrders }
+// החישוב עצמו (כללי מלאי / רזרבה / תפוסה) נמצא ב-lib/capacity.js - מקור אמת יחיד גם לחיפוש המתקדם (app/api/a5/adv-b) ולפאנל התוצאות של
+// החיפוש הראשי והמהיר (lib/searchPanel.js). כאן רק אימות הרשאה ופרמטרים.
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
@@ -19,149 +21,7 @@ export async function GET(request) {
     }
 
     const barcodePrefix = parseInt(barcodePrefixParam, 10);
-    // מידה שקולה בכל כתיב: "2" = "02" = "002" (ובנווה יעקב המידות שמורות בערבוב, ר' lib/searchNormalize.js sizeSpellings), לא 12/20/32.
-    // התאמה מדויקת ב-IN (בלי LIKE); ערך שמור עם רווח מוביל/עוקב נתפס גם הוא. קודם: שוויון מדויק לטקסט שהתקבל (המידות הגיעו מרשימת המידות עצמה).
-    const sizeFilter = sizeTextFilter(size) || size;
-    // Adjust boundaries by 12 hours to safely cover timezone differences (Israel time is UTC+2 or UTC+3)
-    const fromDateLimit = new Date(new Date(fromDateParam).getTime() - 12 * 60 * 60 * 1000);
-    const toDateLimit = new Date(new Date(toDateParam).getTime() + 12 * 60 * 60 * 1000);
-
-    // 1. In Stock (במלאי)
-    // "ללא רזרבה ורק בשימוש" = location != 'רזרבה', notInUse == false, inRepair == false
-    const inStockItems = await prisma.dressItem.findMany({
-      where: {
-        barcodePrefix,
-        sizeText: sizeFilter,
-        isDeleted: false,
-        notInUse: false,
-        inRepair: false,
-        OR: [
-          { location: null },
-          {
-            AND: [
-              { location: { not: { contains: 'מחסן' } } },
-              { location: { not: { contains: 'רזרבה' } } },
-              { location: { not: { contains: 'warehouse' } } },
-              { location: { not: { contains: 'reserve' } } }
-            ]
-          }
-        ]
-      },
-      select: { quantity: true }
-    });
-    const inStock = inStockItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
-
-    // 2. Reserve (רזרבה)
-    const reserveItems = await prisma.dressItem.findMany({
-      where: {
-        barcodePrefix,
-        sizeText: sizeFilter,
-        isDeleted: false,
-        notInUse: false,
-        inRepair: false,
-        OR: [
-          { location: { contains: 'רזרבה' } },
-          { location: { contains: 'reserve' } }
-        ]
-      },
-      select: { quantity: true }
-    });
-    const reserve = reserveItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
-
-    // 3. Occupied (בתפוסה)
-    // Find all OrderItems for this barcode + size where Order date overlaps with requested range
-    const occupiedOrdersList = await prisma.orderItem.findMany({
-      where: {
-        OR: [
-          {
-            barcodePrefix: barcodePrefix,
-            size: sizeFilter
-          },
-          {
-            barcodePrefix: barcodePrefix,
-            sizeText: sizeFilter
-          },
-          {
-            dressItem: {
-              barcodePrefix: barcodePrefix,
-              sizeText: sizeFilter
-            }
-          }
-        ],
-        isDeleted: false,
-        order: {
-          isDeleted: false,
-          eventDate: {
-            lte: toDateLimit, // StartA <= EndB
-          },
-        }
-      },
-      select: {
-        quantity: true,
-        // ברקוד השמלה שיצאה למשפחה (חיפוש מתקדם > תפוסה, דיווח 113e5c37): רק פריט שכבר נלקח (isTaken) ויש לו ברקוד
-        barcode: true,
-        isTaken: true,
-        order: {
-          select: {
-            id: true,
-            orderId: true,
-            eventDate: true,
-            returnDate: true,
-            eventDateHebrew: true,
-            customer: { select: { firstName: true, lastName: true } }
-          }
-        }
-      }
-    });
-
-    // We must manually filter the OR condition for returnDate/eventDate because of the null coalesce logic
-    // StartA <= EndB (eventDate <= toDate) is handled by Prisma.
-    // EndA >= StartB (returnDate || eventDate) >= fromDate:
-    const validOccupiedOrders = occupiedOrdersList.filter(item => {
-      const order = item.order;
-      if (!order) return false;
-      const endDate = order.returnDate || order.eventDate;
-      if (!endDate) return false;
-      return endDate >= fromDateLimit;
-    });
-
-    const occupiedCount = validOccupiedOrders.reduce((acc, item) => acc + (item.quantity || 1), 0);
-
-    // Prepare data for UI (grouped by orderId to sum quantity of identical items in same order)
-    const groupedOrdersMap = new Map();
-    validOccupiedOrders.forEach(item => {
-      const orderId = item.order.orderId;
-      const quantity = item.quantity || 1;
-      const bc = item.isTaken && typeof item.barcode === 'string' ? item.barcode.trim() : '';
-
-      if (groupedOrdersMap.has(orderId)) {
-        const g = groupedOrdersMap.get(orderId);
-        g.quantity += quantity;
-        if (bc && !g.barcodes.includes(bc)) g.barcodes.push(bc);
-      } else {
-        groupedOrdersMap.set(orderId, {
-          id: orderId,
-          orderId: orderId,
-          internalOrderId: item.order.id,
-          customerName: item.order.customer ? `${item.order.customer.firstName || ''} ${item.order.customer.lastName || ''}`.trim() : 'לא ידוע',
-          eventDate: item.order.eventDate,
-          returnDate: item.order.returnDate,
-          eventDateHebrew: item.order.eventDateHebrew,
-          quantity: quantity,
-          barcodes: bc ? [bc] : []
-        });
-      }
-    });
-    
-    const occupiedOrders = Array.from(groupedOrdersMap.values());
-
-    return NextResponse.json({
-      inStock,
-      reserve,
-      occupiedCount,
-      occupiedOrders
-    });
-
+    return NextResponse.json(await computeCapacity({ barcodePrefix, size, fromDate: fromDateParam, toDate: toDateParam }));
   } catch (error) {
     console.error('Error fetching capacity:', error);
     return NextResponse.json({ error: 'Failed to fetch capacity' }, { status: 500 });
