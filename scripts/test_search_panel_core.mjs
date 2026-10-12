@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   eventDayKey, sizeKeySet, rowMatches, rowSizeKeys, stockAndReserve, busyOn, perSize, requiredFor, outRows, returnedRows, pendingRows,
-  buildModelPanel, buildItemPanel, itemStatus, itemFlags, redactPerson, LIST_CAPS,
+  buildModelPanel, buildItemPanel, itemStatus, itemFlags, redactPerson, LIST_CAPS, buildWhere, placeText, whereState, redactWhere, WHERE_CAP,
 } from '../lib/searchPanelCore.js';
 
 let passed = 0;
@@ -250,6 +250,62 @@ t('redactPerson מוחק שם וטלפון מכל הרשימות ומסטטוס 
   assert.ok(red.sections.out.rows[0].orderId > 0);
   assert.equal(red.sections.pending.rows.length, 1);
   assert.ok(JSON.stringify(m).includes('גולד'), 'המקור לא שונה');
+});
+
+console.log('איפה אני? / איפה המידה שלי?');
+const wItem = (bc, extra) => item({ id: 'i' + bc, dressBarcode: bc, serialNumber: Number(bc.slice(-2)), ...extra });
+const W = (p) => buildWhere({ model: { id: 'm1', name: 'ורוד', prefix: P }, lastReturns: new Map(), sizes: [], todayKey: TODAY, rows: [], items: [], ...p });
+t('placeText: סניף · מיקום · מס׳ מיקום · קרטון; בלי שום שדה = לא ידוע', () => {
+  assert.deepEqual(placeText({ location: 'מחסן', locationNum: 19401 }), { text: 'מחסן · מיקום 19401', known: true });
+  assert.deepEqual(placeText({ branch: 'בית שמש', location: 'חנות', cartonNumber: '12' }), { text: 'בית שמש · חנות · קרטון 12', known: true });
+  assert.deepEqual(placeText({ location: null, locationNum: null }), { text: '', known: false });
+  assert.deepEqual(placeText({ location: '  ' }), { text: '', known: false });
+});
+t('whereState: סדר העדיפויות בחוץ > תיקון > לא בשימוש > רזרבה > מחסן > מקום > לא מוגדר', () => {
+  assert.equal(whereState(item({ inRepair: true }), { id: 'r' }), 'out');
+  assert.equal(whereState(item({ inRepair: true, notInUse: true }), null), 'repair');
+  assert.equal(whereState(item({ notInUse: true, location: 'רזרבה' }), null), 'notInUse');
+  assert.equal(whereState(item({ location: 'רזרבה' }), null), 'reserve');
+  assert.equal(whereState(item({ location: 'מחסן' }), null), 'warehouse');
+  assert.equal(whereState(item({ location: 'warehouse' }), null), 'warehouse');
+  assert.equal(whereState(item({ location: 'חנות' }), null), 'place');
+  assert.equal(whereState(item({ location: null }), null), 'unknown');
+  assert.equal(whereState(item({ location: null, cartonNumber: '3' }), null), 'place');
+});
+t('buildWhere: מושכרים קודם (החדש ראשון), אחר כך תיקון/רזרבה/מחסן/מקום/לא מוגדר, בתוך קבוצה לפי מידה ואז סידורי', () => {
+  const items = [wItem('5510602', { location: 'חנות', sizeText: '06' }), wItem('5510401', { location: 'מחסן', locationNum: 5 }), wItem('5510402', { location: null }), wItem('5510403', { inRepair: true }),
+    wItem('5510404', {}), wItem('5510405', { location: 'רזרבה' }), wItem('5510406', { location: 'חנות' })];
+  const rows = [row({ id: 'a', barcode: '5510404', isTaken: true, takenDate: new Date('2026-10-01T00:00:00Z'), lastName: 'לוי' }), row({ id: 'b', barcode: '5510406', isTaken: true, takenDate: new Date('2026-10-09T00:00:00Z'), lastName: 'כץ' })];
+  const w = W({ items, rows });
+  assert.deepEqual(w.rows.map((r) => r.barcode), ['5510406', '5510404', '5510403', '5510405', '5510401', '5510602', '5510402']);
+  assert.deepEqual(w.rows.map((r) => r.state), ['out', 'out', 'repair', 'reserve', 'warehouse', 'place', 'unknown']);
+  assert.ok(w.rows[0].name.startsWith('כץ')); assert.equal(w.rows[0].orderId, rows[1].orderId);
+  assert.deepEqual(w.counts, { out: 2, repair: 1, notInUse: 0, reserve: 1, warehouse: 1, place: 1, unknown: 1 });
+  assert.equal(w.rows.find((r) => r.barcode === '5510401').place, 'מחסן · מיקום 5');
+});
+t('buildWhere: מסנן מידה (4 = 04); השכרה פתוחה בברקוד שאינו פריט במלאי נכנסת כ-orphan; הוחזרה לאחרונה עם תאריך', () => {
+  const items = [wItem('5510401', {}), wItem('5510601', { sizeText: '06' })];
+  const rows = [row({ id: 'o', barcode: '5519999', isTaken: true, sizeText: '04' }), row({ id: 'o2', barcode: '5519998', isTaken: true, sizeText: '06' })];
+  const last = new Map([['5510401', { at: new Date('2026-09-20T10:00:00Z'), orderId: 77 }]]);
+  const w = W({ items, rows, sizes: ['4'], lastReturns: last });
+  assert.deepEqual(w.rows.map((r) => [r.barcode, r.orphan]), [['5519999', true], ['5510401', false]]);
+  const mine = w.rows.find((r) => r.barcode === '5510401');
+  assert.equal(mine.returnedOrderId, 77); assert.ok(mine.returnedAt);
+});
+t('buildWhere: פריטים מחוקים לא מופיעים; השכרה שהוחזרה אינה "בחוץ"; כמה השכרות פתוחות לאותו ברקוד = האחרונה', () => {
+  const items = [wItem('5510401', { isDeleted: true }), wItem('5510402', {})];
+  const rows = [row({ id: 'x', barcode: '5510402', isTaken: true, isReturned: true }), row({ id: 'y', barcode: '5510402', isTaken: true, takenDate: new Date('2026-01-01T00:00:00Z'), lastName: 'ישן' }), row({ id: 'z', barcode: '5510402', isTaken: true, takenDate: new Date('2026-10-01T00:00:00Z'), lastName: 'חדש' })];
+  const w = W({ items, rows });
+  assert.equal(w.rows.length, 1); assert.ok(w.rows[0].name.startsWith('חדש'));
+});
+t('buildWhere: תקרה, ו-redactWhere מוחק שם וטלפון בלבד', () => {
+  const items = Array.from({ length: WHERE_CAP + 5 }, (_, i) => wItem(String(5510000 + i), { serialNumber: i }));
+  const w = W({ items });
+  assert.equal(w.rows.length, WHERE_CAP); assert.equal(w.truncated, true); assert.equal(w.total, WHERE_CAP + 5);
+  const out = W({ items: [wItem('5510401', {})], rows: [row({ barcode: '5510401', isTaken: true, lastName: 'גולד', phone1: '0501112222' })] });
+  const red = redactWhere(out);
+  assert.ok(!JSON.stringify(red).includes('גולד') && !JSON.stringify(red).includes('0501112222'));
+  assert.equal(red.rows[0].state, 'out'); assert.ok(red.rows[0].orderId > 0);
 });
 
 console.log(`\n${passed} passed`);

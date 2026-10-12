@@ -3,7 +3,8 @@ import { checkAuth } from '@/lib/auth';
 import { canOpenAnyPage, canOpenPage } from '@/lib/permissions';
 import { MODEL_CARD_PAGE_KEY, PANEL_PAGE_KEYS, PERSON_PAGE_KEYS, resolvePanel } from '@/lib/searchPanel';
 
-// GET /api/search-panel?q=<מה שהוקלד>[&model=<קידומת דגם>][&size=<מידה>]
+// GET /api/search-panel?q=<מה שהוקלד>[&model=<קידומת דגם>][&size=<מידה>][&view=where]
+// view=where: "איפה אני?" / "איפה המידה שלי?" - שורה לכל ברקוד של הדגם (+מידה) עם המיקום הנוכחי שלו (אצל משפחה / מחסן / רזרבה / תיקון...).
 // פאנל התפוסה / הפריט של החיפוש הראשי והמהיר (docs/search-capacity-embed.md): ברקוד מלא של פריט = סטטוס / פעמים שהושכר / הזמנות שחייבות אותו;
 // קוד דגם / ברקוד חלקי / דגם+מידה(+תאריך) = מלאי / בתפוסה / רזרבה. פענוח הקלט ב-lib/searchIntent.js (אותו קוד בדפדפן ובשרת).
 // קריאה בלבד. הרשאות מוכרעות כאן: בלי page:orders / page:rentals אין פאנל ({ panel: null, reason: 'forbidden' } ולא 403 - הלקוח קורא לנתיב אוטומטית בזמן הקלדה);
@@ -24,7 +25,8 @@ export async function GET(request) {
     const sizeParam = (sp.get('size') || '').trim();
     const size = sizeParam && sizeParam.length <= 12 ? sizeParam : null;
     const [person, modelCard] = await Promise.all([canOpenAnyPage(PERSON_PAGE_KEYS), canOpenPage(MODEL_CARD_PAGE_KEY)]);
-    return json(await resolvePanel(q, { model, size, perms: { person, modelCard } }));
+    const view = sp.get('view') === 'where' ? 'where' : 'panel';
+    return json(await resolvePanel(q, { model, size, view, perms: { person, modelCard } }));
   } catch (error) {
     console.error('GET /api/search-panel error:', error);
     return json({ error: 'שגיאה בפאנל החיפוש' }, 500);

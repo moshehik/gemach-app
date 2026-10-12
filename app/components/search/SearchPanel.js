@@ -16,55 +16,60 @@ import { Ic } from '../menu/menuParts';
 const CACHE_MS = 10 * 1000; // אותה בקשה תוך 10 שניות (למשל פתיחה/סגירה של התפריט) לא יוצאת שוב
 const memo = new Map(); // url -> { at, body }
 
-/**
- * @param {string} query   הטקסט (לא מדובנס - ההשהיה בצד הקורא)
- * @returns {{state: 'idle'|'loading'|'ok'|'empty'|'error', panel: object|null, pickModel: Function, pickSize: Function, sel: object, retry: Function}}
- */
-export function useSearchPanel(query) {
-  const intent = useMemo(() => parseSearchIntent(query), [query]);
-  const sig = intent.signature;
-  const [sel, setSel] = useState({ sig: '', model: null, size: null });
-  const cur = sel.sig === sig ? sel : { sig, model: null, size: null }; // בחירה ידנית תקפה רק לאותה כוונה
-  const [res, setRes] = useState({ url: '', state: 'idle', panel: null });
+/** GET json עם ביטול, שלד טעינה ומטמון קצר. url ריק = לא עושים כלום. */
+function useApi(url) {
+  const [res, setRes] = useState({ url: '', state: 'idle', body: null });
   const [tick, setTick] = useState(0);
-
-  const url = useMemo(() => {
-    if (intent.kind === 'none') return '';
-    const p = new URLSearchParams({ q: String(query || '').trim() });
-    if (cur.model != null) p.set('model', String(cur.model));
-    if (cur.size) p.set('size', cur.size);
-    return '/api/search-panel?' + p.toString();
-  }, [intent.kind, query, cur.model, cur.size]);
-
   useEffect(() => {
     if (!url) return undefined;
     const hit = memo.get(url);
     if (hit && Date.now() - hit.at < CACHE_MS && tick === 0) {
-      setRes({ url, state: hit.body.panel ? 'ok' : 'empty', panel: hit.body.panel || null });
+      setRes({ url, state: hit.body.panel ? 'ok' : 'empty', body: hit.body });
       return undefined;
     }
     const ctl = new AbortController();
-    setRes((r) => ({ url, state: 'loading', panel: r.url === url ? r.panel : null }));
+    setRes((r) => ({ url, state: 'loading', body: r.url === url ? r.body : null }));
     fetch(url, { signal: ctl.signal, cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then((body) => {
         memo.set(url, { at: Date.now(), body });
         if (memo.size > 30) memo.delete(memo.keys().next().value);
-        setRes({ url, state: body.panel ? 'ok' : 'empty', panel: body.panel || null });
+        setRes({ url, state: body.panel ? 'ok' : 'empty', body });
       })
-      .catch((e) => { if (e && e.name === 'AbortError') return; setRes({ url, state: 'error', panel: null }); });
+      .catch((e) => { if (e && e.name === 'AbortError') return; setRes({ url, state: 'error', body: null }); });
     return () => ctl.abort();
   }, [url, tick]);
-
-  if (!url) return { state: 'idle', panel: null, sel: cur, pickModel: () => {}, pickSize: () => {}, retry: () => {} };
+  if (!url) return { state: 'idle', panel: null, retry: () => {} };
   const stale = res.url !== url;
+  return { state: stale ? 'loading' : res.state, panel: stale || !res.body ? null : res.body.panel || null, retry: () => { memo.delete(url); setTick((t) => t + 1); } };
+}
+
+/**
+ * @param {string} query   הטקסט (לא מדובנס - ההשהיה בצד הקורא)
+ * @param {{view?: 'panel'|'where', enabled?: boolean}} [opts]  view=where: "איפה אני?" (נטען רק כשפותחים אותו)
+ * @returns {{state: 'idle'|'loading'|'ok'|'empty'|'error', panel: object|null, pickModel: Function, pickSize: Function, sel: object, intent: object, retry: Function}}
+ */
+export function useSearchPanel(query, { view = 'panel', enabled = true, sel: external = null } = {}) {
+  const intent = useMemo(() => parseSearchIntent(query), [query]);
+  const sig = intent.signature;
+  const [sel, setSel] = useState({ sig: '', model: null, size: null });
+  const own = sel.sig === sig ? sel : { sig, model: null, size: null }; // בחירה ידנית תקפה רק לאותה כוונה
+  const cur = external || own;
+  const url = useMemo(() => {
+    if (intent.kind === 'none' || !enabled) return '';
+    const p = new URLSearchParams({ q: String(query || '').trim() });
+    if (view === 'where') p.set('view', 'where');
+    if (cur.model != null) p.set('model', String(cur.model));
+    if (cur.size) p.set('size', cur.size);
+    return '/api/search-panel?' + p.toString();
+  }, [intent.kind, enabled, view, query, cur.model, cur.size]);
+  const api = useApi(url);
   return {
-    state: stale ? 'loading' : res.state,
-    panel: stale ? null : res.panel,
+    ...api,
     sel: cur,
+    intent,
     pickModel: (prefix) => setSel({ sig, model: prefix, size: null }),
     pickSize: (size) => setSel({ sig, model: cur.model, size }),
-    retry: () => { memo.delete(url); setTick((t) => t + 1); },
   };
 }
 
@@ -87,6 +92,7 @@ function rowChips(r) {
     <>
       {r.late ? <Chip cls="rose">באיחור</Chip> : null}
       {r.draft ? <Chip cls="amber">טיוטה</Chip> : null}
+      {r.alter ? <Chip cls="amber">בהתאמה</Chip> : null}
       {r.requires ? <Chip cls="gold">חייבת את הפריט</Chip> : null}
     </>
   );
@@ -180,6 +186,64 @@ function ItemTiles({ p }) {
   );
 }
 
+const WHERE_CHIP = { out: 'rose', repair: 'amber', notInUse: 'amber', reserve: 'gold', warehouse: '', place: 'ok', unknown: '' };
+
+function WhereRow({ r, compact, onOpen }) {
+  const url = r.state === 'out' && r.orderId ? '/orders/' + r.orderId : '';
+  const head = (
+    <>
+      <bdi dir="ltr">{r.barcode}</bdi>{r.size ? <> · מידה <bdi>{r.size}</bdi></> : null}
+      <Chip cls={WHERE_CHIP[r.state]}>{r.stateLabel}</Chip>
+      {r.late ? <Chip cls="rose">באיחור</Chip> : null}
+      {r.alter ? <Chip cls="amber">בהתאמה</Chip> : null}
+      {r.orphan ? <Chip>לא במלאי</Chip> : null}
+    </>
+  );
+  const parts = [];
+  if (r.state === 'out') {
+    parts.push(r.name ? <>אצל <b>{r.name}</b></> : 'אצל משפחה');
+    if (r.phone) parts.push(<bdi dir="ltr">{r.phone}</bdi>);
+    if (r.orderId) parts.push(<>הזמנה <bdi>#{r.orderId}</bdi></>);
+    if (r.hebDate) parts.push(r.hebDate);
+  } else {
+    parts.push(r.placeKnown ? r.place : 'מיקום לא מוגדר');
+    if (r.returnedHeb) parts.push(<>הוחזר לאחרונה {r.returnedHeb}</>);
+  }
+  const line = parts.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>);
+  if (compact) {
+    const inner = <><span className="sp-rt"><b>{head}</b></span><span className="sp-ln">{line}</span></>;
+    return url
+      ? <a className="sn-link sp-link" href={url} data-sp-where={r.state} onClick={(e) => { if (onOpen) { e.preventDefault(); onOpen(url); } }}>{inner}</a>
+      : <div className="sn-link sp-link" data-sp-where={r.state}>{inner}</div>;
+  }
+  const inner = <div className="t"><b>{head}</b><span className="ln">{line}</span></div>;
+  return url
+    ? <Link className="li rlink lrow" href={url} data-sp-where={r.state}>{inner}<Ic n="chev" cls="go" /></Link>
+    : <div className="li lrow nolink" data-sp-where={r.state}>{inner}</div>;
+}
+
+function WhereView({ w, compact, onOpen }) {
+  const lim = compact ? 6 : 12;
+  const [more, setMore] = useState(false);
+  const rows = more ? w.rows : w.rows.slice(0, lim);
+  const chips = Object.entries(w.counts).filter(([, n]) => n > 0);
+  return (
+    <div className="sp-sec" data-sp-sec="where">
+      <div className="sp-chips" aria-label="סיכום מיקומים">
+        {chips.map(([k, n]) => <Chip key={k} cls={WHERE_CHIP[k]}>{WHERE_LABEL[k]} <bdi>{n}</bdi></Chip>)}
+      </div>
+      {w.rows.length === 0 ? <div className="sp-empty">לא נמצאו ברקודים</div> : (
+        <div className={compact ? 'sp-rows' : 'list sp-rows'} aria-label="מיקום כל ברקוד">
+          {rows.map((r) => <WhereRow key={r.key} r={r} compact={compact} onOpen={onOpen} />)}
+        </div>
+      )}
+      {w.rows.length > lim ? <button type="button" className="sp-more" aria-expanded={more} onClick={() => setMore((v) => !v)}>{more ? 'הצג פחות' : `עוד ${w.rows.length - lim}`}</button> : null}
+      {w.truncated ? <div className="sp-empty">מוצגים {w.rows.length} מתוך {w.total}</div> : null}
+    </div>
+  );
+}
+const WHERE_LABEL = { out: 'מושכרים', repair: 'בתיקון', notInUse: 'לא בשימוש', reserve: 'רזרבה', warehouse: 'מחסן', place: 'במקום', unknown: 'לא מוגדר' };
+
 function Skeleton({ compact }) {
   return (
     <section className={`sp${compact ? ' sp-compact' : ''}`} aria-busy="true" aria-label="טוען תפוסה" data-sp-state="loading">
@@ -197,6 +261,10 @@ function Skeleton({ compact }) {
  */
 export default function SearchPanel({ query, compact = false, onOpen }) {
   const s = useSearchPanel(query);
+  const [whereOpen, setWhereOpen] = useState(false);
+  const sigNow = s.intent.signature + '|' + (s.sel.model ?? '') + '|' + (s.sel.size ?? '');
+  useEffect(() => { setWhereOpen(false); }, [sigNow]);
+  const wh = useSearchPanel(query, { view: 'where', enabled: whereOpen, sel: s.sel });
   if (s.state === 'idle' || s.state === 'empty') return null;
   if (s.state === 'loading' && !s.panel) return <Skeleton compact={compact} />;
   if (s.state === 'error') {
@@ -227,8 +295,20 @@ export default function SearchPanel({ query, compact = false, onOpen }) {
   const T = isItem
     ? { out: 'המקומות בהם הוא מושכר', returned: 'המקומות בהם הוחזר', pending: 'הזמנות שצריכות את הדגם והמידה שלו', outEmpty: 'הפריט לא מושכר כרגע', retEmpty: 'הפריט עוד לא הוחזר מאף הזמנה', pendEmpty: 'אין הזמנות עתידיות שמחכות לדגם ולמידה' }
     : { out: 'בחוץ (מושכרים)', returned: 'הוחזרו (האחרונים)', pending: 'הזמנות שצריכות את הדגם והמידה ועדיין לא נלקחו', outEmpty: 'אין פריטים בחוץ', retEmpty: 'אין פריטים שהוחזרו', pendEmpty: 'אין הזמנות עתידיות שממתינות' };
+  const whereLabel = isItem ? 'איפה המידה שלי?' : 'איפה אני?';
+  const whereSub = isItem ? `המיקום של כל הברקודים בדגם ${p.model.name || p.model.prefix} מידה ${p.item.size}` : `המיקום של כל ברקוד בדגם ${p.model.name || p.model.prefix}${sizeShown ? ' מידה ' + sizeShown : ''}`;
+  const whereBody = !whereOpen ? null : wh.state === 'error'
+    ? <div className="sp-empty">לא ניתן לטעון את המיקומים. <button type="button" className="sp-more" onClick={wh.retry}>נסו שוב</button></div>
+    : !wh.panel ? <div className="sp-skel sp-skel-line" aria-busy="true" /> : <WhereView w={wh.panel} compact={compact} onOpen={onOpen} />;
   return (
     <section className={`sp${compact ? ' sp-compact' : ''}${s.state === 'loading' ? ' sp-refresh' : ''}`} data-sp-state="ok" data-sp-mode={p.mode} aria-label={isItem ? 'פרטי הפריט' : 'תפוסת הדגם'}>
+      <button type="button" className={`sp-where ${compact ? 'sn-link' : 'li lrow'}${whereOpen ? ' on' : ''}`} data-sp-act="where" aria-expanded={whereOpen} onClick={() => setWhereOpen((v) => !v)}>
+        <span className={compact ? 'sp-rt' : 't'}>
+          <b>{whereOpen ? 'חזרה לתפוסה' : whereLabel}</b>
+          <span className={compact ? 'sp-ln' : 'ln'}>{whereOpen ? whereLabel : whereSub}</span>
+        </span>
+        <Ic n={whereOpen ? 'x' : 'chev'} cls="go" />
+      </button>
       <div className="sp-head">
         <b>
           {isItem ? <>ברקוד <bdi dir="ltr">{p.item.barcode}</bdi> · </> : <>דגם <bdi dir="ltr">{p.model.prefix}</bdi> · </>}
@@ -258,9 +338,10 @@ export default function SearchPanel({ query, compact = false, onOpen }) {
         </div>
       ) : null}
       {!isItem && s.sel.size ? <button type="button" className="sp-more" onClick={() => s.pickSize(null)}>חזרה לכל המידות</button> : null}
-      <Section id="out" title={T.out} sec={p.sections.out} compact={compact} onOpen={onOpen} emptyText={T.outEmpty} />
-      <Section id="returned" title={T.returned} sec={p.sections.returned} compact={compact} onOpen={onOpen} emptyText={T.retEmpty} />
-      <Section id="pending" title={T.pending} sec={p.sections.pending} compact={compact} onOpen={onOpen} emptyText={T.pendEmpty} />
+      {whereOpen ? whereBody : null}
+      {whereOpen ? null : <Section id="out" title={T.out} sec={p.sections.out} compact={compact} onOpen={onOpen} emptyText={T.outEmpty} />}
+      {whereOpen ? null : <Section id="returned" title={T.returned} sec={p.sections.returned} compact={compact} onOpen={onOpen} emptyText={T.retEmpty} />}
+      {whereOpen ? null : <Section id="pending" title={T.pending} sec={p.sections.pending} compact={compact} onOpen={onOpen} emptyText={T.pendEmpty} />}
     </section>
   );
 }

@@ -59,3 +59,9 @@
 .gm-ds .sp .sp-skel-num{height:30px;width:40%}
 @keyframes sp-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.gm-ds .sp .sp-skel{animation:none}}
+
+/* פעולת "איפה אני?" / "איפה המידה שלי?" - השורה הראשונה בפאנל. ב-.lrow של הפלטה (חיפוש ראשי) / .sn-link (תפריט) */
+.gm-ds .sp .sp-where{width:100%;text-align:start;cursor:pointer;border:1px solid var(--gm-gold-b,var(--gm-sky-200));background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.gm-ds .sp .sp-where .t,.gm-ds .sp .sp-where .sp-rt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;flex:1 1 auto;min-width:0}
+.gm-ds .sp .sp-where.on{background:var(--gm-sky-100,#f1f4f8)}
+.gm-ds .sp .sp-where:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
