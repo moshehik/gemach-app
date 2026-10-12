@@ -1,0 +1,5 @@
+/* station-analytics.css - מסך "המרות בעמדה הציבורית" (/station-analytics), הרמה של הדף כולו. כל המעטפת מהפלטה ומערכת מסכי ההגדרות (settings-sim.css, היקף .gm-ds.gm-st):
+   topbar / back, באנר nb, הסרגל בימין (st-stab) ולשוניות בנייד (nav.tabs), hf-bar + seg.pill, section + adm-h, card + adm-rows + li, tblw + rtbl, chip, empty + st-state, btn.
+   אין כאן צבע, גודל או רדיוס. מה שנשאר: עמעום המסך בזמן רענון (התצוגה הקודמת נשארת במקומה, בלי הבהוב). הגרפים: station-charts.css. */
+.gm-ds.gm-sa .sa-busy .st-main{opacity:.55;transition:opacity var(--gm-bg-dur)}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-sa .sa-busy .st-main{transition:none}}

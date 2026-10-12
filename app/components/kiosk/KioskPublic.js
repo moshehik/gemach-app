@@ -19,6 +19,7 @@ import KioskRegistration from './KioskRegistration';
 import { KIcon, KioskThumbImg } from './KioskParts';
 import { formatHebrewDate, parshaFooter, tileColor } from './kioskLogic';
 import { HDate } from '@hebcal/core';
+import { trackStationEvent } from './stationEvents';
 
 const PAGE_SIZE = 60;
 const QTY_CAP = 5; // כמו QTY_CAP ב-lib/publicKiosk/catalog.js: "5" = חמש ומעלה
@@ -234,6 +235,14 @@ function PublicInner({ config }) {
   const showRegistration = enabled && !!config.showRegistration;
   const [view, setView] = useState('home'); // home | date | catalog | register
   const [date, setDate] = useState(null);
+
+  // ספירה אנונימית למשפך שבניהול (/station-analytics): ביקור בעמדה, פתיחת קטלוג / בדיקת זמינות, פתיחת טופס הפרטים. ראו stationEvents.js
+  useEffect(() => {
+    if (!enabled) return;
+    trackStationEvent('visit');
+    if (view === 'catalog') trackStationEvent('availability');
+    else if (view === 'register') trackStationEvent('form_start');
+  }, [enabled, view]);
 
   const go = useCallback((v) => {
     setView(v);
