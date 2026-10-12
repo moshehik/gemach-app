@@ -18,7 +18,7 @@ const CAT = await L('lib/emailCatalog.js');
 const outDir = process.argv[2];
 if (!outDir) throw new Error('usage: build-preview.mjs <out dir>');
 
-// ---- הגדרות כמו נווה יעקב אחרי ה-seed (gmach_pickup_address = 'צוקרמן 1, נווה יעקב'); delivery_as_item_row כבוי ברירת מחדל
+// ---- הגדרות כמו נווה יעקב אחרי ה-seed (gmach_pickup_address = 'צוקרמן 1, נווה יעקב'; delivery_as_item_row = true - החלטת הבעלים 12.10.2026)
 const baseSettings = [
   { key: 'gmach_name', value: 'גמ"ח שמלות נווה יעקב' },
   { key: 'gmach_address', value: 'צוקרמן 1 נווה יעקב - גבעת שאול 23. שימו לב: קבלת והחזרת השמלות בסניף נווה יעקב בלבד!' },
@@ -29,8 +29,9 @@ const baseSettings = [
   { key: 'delivery_days_after', value: '0' },
   { key: 'standard_pickup_hours', value: '20:00-21:30' },
   { key: 'standard_return_hour', value: '13:00' },
+  { key: 'delivery_as_item_row', value: 'true' },
 ];
-const withItemRow = [...baseSettings, { key: 'delivery_as_item_row', value: 'true' }];
+const withoutItemRow = baseSettings.filter((s) => s.key !== 'delivery_as_item_row');
 
 const EVENT = new Date('2026-11-18T00:00:00Z'); // יום רביעי
 const get = (settings) => (k) => settings.find((s) => s.key === k)?.value;
@@ -75,10 +76,10 @@ ${cards.map((c) => `<div class="card"><div class="cap"><b>${c.title}</b><br>${c.
 </body></html>`;
 
 const deliveryCards = [
-  build({ title: 'א. משלוח הלוך+חזור (ברירת המחדל - "משלוח כשורת פריט" כבוי)', note: 'אין שורות "קבלת/החזרת השמלות" ואין כתובת איסוף (אין צורך לבוא); בלוק המשלוח, פירוט המשלוח בסיכום התשלום והכיתוב "שימו לב".', settings: baseSettings, order: delivOrder('הלוך-חזור', [{ amount: 120, description: 'משלוח הלוך-חזור - ירושלים' }]) }),
-  build({ title: 'ב. משלוח הלוך+חזור כש"משלוח כשורת פריט" דלוק (החלטה 26 - כבוי כברירת מחדל)', note: 'אותו מייל, עם שורה לכל כיוון ("משלוח הלוך" / "משלוח חזור") ברשימת הפריטים, כל אחת עם הכתובת, היום והמחיר.', settings: withItemRow, order: delivOrder('הלוך-חזור', [{ amount: 120, description: 'משלוח הלוך-חזור - ירושלים' }]) }),
-  build({ title: 'ג. משלוח הלוך בלבד (מחזירים בגמ"ח)', note: 'מוצגת רק שורת ההחזרה + כתובת האיסוף וקישור "פתיחה במפות Google"; אין שורת "קבלת השמלות"; בכיתוב "שימו לב" רק שורת "משלוח הלוך".', settings: baseSettings, order: delivOrder('הלוך', [{ amount: 60, description: 'משלוח הלוך - ירושלים' }]) }),
-  build({ title: 'ד. משלוח חזור בלבד (לוקחים בגמ"ח)', note: 'מוצגת רק שורת "קבלת השמלות" + כתובת האיסוף וקישור המפות; בכיתוב "שימו לב" רק שורת "משלוח חזור".', settings: baseSettings, order: delivOrder('חזור', [{ amount: 60, description: 'משלוח חזור - ירושלים' }]) }),
+  build({ title: 'א. משלוח הלוך+חזור ("משלוח כשורת פריט" דלוק - כפי שיהיה בנווה)', note: 'שורה לכל כיוון ("משלוח הלוך" / "משלוח חזור") ברשימת הפריטים עם כתובת, יום ומחיר; אין שורות "קבלת/החזרת השמלות" ואין כתובת איסוף (אין צורך לבוא); בלוק המשלוח, פירוט המשלוח בסיכום התשלום והכיתוב "שימו לב".', settings: baseSettings, order: delivOrder('הלוך-חזור', [{ amount: 120, description: 'משלוח הלוך-חזור - ירושלים' }]) }),
+  build({ title: 'ב. משלוח הלוך+חזור כש"משלוח כשורת פריט" כבוי (להשוואה)', note: 'אותו מייל בלי שורות המשלוח ברשימת הפריטים - המחיר מופיע רק בפירוט שבסיכום התשלום.', settings: withoutItemRow, order: delivOrder('הלוך-חזור', [{ amount: 120, description: 'משלוח הלוך-חזור - ירושלים' }]) }),
+  build({ title: 'ג. משלוח הלוך בלבד (מחזירים בגמ"ח)', note: 'שורת "משלוח הלוך" בפריטים; מוצגת רק שורת ההחזרה + כתובת האיסוף וקישור "פתיחה במפות Google"; אין שורת "קבלת השמלות"; בכיתוב "שימו לב" רק שורת "משלוח הלוך".', settings: baseSettings, order: delivOrder('הלוך', [{ amount: 60, description: 'משלוח הלוך - ירושלים' }]) }),
+  build({ title: 'ד. משלוח חזור בלבד (לוקחים בגמ"ח)', note: 'שורת "משלוח חזור" בפריטים; מוצגת רק שורת "קבלת השמלות" + כתובת האיסוף וקישור המפות; בכיתוב "שימו לב" רק שורת "משלוח חזור".', settings: baseSettings, order: delivOrder('חזור', [{ amount: 60, description: 'משלוח חזור - ירושלים' }]) }),
 ];
 const pickupCards = [
   build({ title: 'איסוף עצמי (הזמנה בלי משלוח)', note: 'כמו היום: קבלת והחזרת השמלות, כתובת האיסוף "צוקרמן 1, נווה יעקב" וקישור "פתיחה במפות Google". אין בלוק משלוח ואין כיתוב "שימו לב".', settings: baseSettings, order: pickupOrder }),
