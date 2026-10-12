@@ -148,3 +148,9 @@
 - שדה קבוע "כתובת" במרכז המיילים (אם הוגדר) גובר על כתובת האיסוף בטקסט (קישור המפות נגזר תמיד מ-`gmach_pickup_address`); בהזמנת משלוח בלי ביקור בגמ"ח הכתובת בגוף נעלמת גם אם הוגדר שדה קבוע (בכותפת היא נשארת).
 - בדיקות חדשות/מתוקנות: `email-center-tests/confirmation-wiring.test.mjs` (חיווט מלא מול prisma/mailer מדומים, 8 מקרים), `templates-parity` (55), `test_settings_sim` (סדר לשוניות `brand, auto, ord, disp`), `test_admin_hub` (האריח `/admin/email-center` ב-`ADDED_LATER`), `settings-tiers` (`lib/emailRegistry.js` ברשימת NOT_UI - מזכיר `courier_email` כמטא-דאטה בלבד).
 - שאר הקונפליקטים: `orders/[id]/email` (cfg + delivery + pickupMapsUrl בקריאה אחת), `emailSamples`, `version/package.json` (צד integrate).
+
+## 14. feature/branches-2026-10-12
+- קונפליקטים טריוויאליים (שני הצדדים נשמרו): ייבואים ב-`settingsMetadata.js` (`NEW_ORDER_CUSTOMER_FILTERS` + `STAGES`), שורות `special` ב-`SettingsSimPage.js` (תקנון + סניפים + לו"ז), ייבואים ב-`LegacyNewOrderPage.js` (consent/ניווט Enter + `lib/branches`), רשימת הלשוניות ב-`test_settings_sim` (`cfg, brand, auto, ord, inv, disp`).
+- תיקוני בדיקות: `PINNED_BLOBS` של `LegacyNewOrderPage.js` חושב מחדש; `review-fixes.test.mjs` מכיר את `multi_branch_enabled` בתנאי כרטיס "מצב הזמנה" של הטופס הישן.
+- `prisma validate` עבר (עם `DATABASE_URL` דמה). `DressItem.branch` / `locationBeforeRental` + אינדקס: **נדרש DDL לפני הפריסה** (`scripts/branches-ddl.sql`, `scripts/apply_branches_ddl.js`) - ר' runbook.
+- הערת lint קיימת (לא שלנו): `AppShell.js` "This value cannot be modified" (`window.location.hash =`) נכשל גם ב-HEAD לפני המיזוג.
