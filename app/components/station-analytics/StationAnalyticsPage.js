@@ -1,6 +1,6 @@
 'use client';
 
-// StationAnalyticsPage - "המרות בעמדה הציבורית" (/admin/station-analytics): כמה נכנסו לעמדה הציבורית, כמה מילאו פרטים וכמה סגרו הזמנה (בקשת הבעלים, נושא 13).
+// StationAnalyticsPage - "המרות בעמדה הציבורית" (/station-analytics): כמה נכנסו לעמדה הציבורית, כמה מילאו פרטים וכמה סגרו הזמנה (בקשת הבעלים, נושא 13).
 // עיצוב: מסך הגדרות/ניהול A5 (באנר בראש, סרגל ניווט בצד ימין, כרטיסים) - אותו שלד ואותו CSS של מסכי ההגדרות (settings-sim.css, היקף .gm-ds.gm-st) + station-analytics.css
 // לרכיבי הגרפים בלבד. רכיבים: הפלטה (design-system/); הגרפים אינם בפלטה (ר' StationCharts.js). תאריכים: עבריים בלבד.
 // נתונים: GET /api/admin/station-analytics (מצטבר, בלי PII) + GET /api/admin/station-analytics/registrations (שם פרטי + אות, רק עם הרשאת לקוחות).
@@ -10,7 +10,7 @@ import '@/design-system/components.css';
 import '../settings-sim/settings-sim.css';
 import './station-analytics.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import { A5PortalRoot } from '../a5-list/A5Ui';
@@ -99,6 +99,7 @@ function StatusChip({ kind, children }) {
 
 /** preload = { data, list } - נתונים מוכנים לבדיקות רינדור בלי שרת (scripts/station-analytics-tests/ssr.test.mjs); בשימוש רגיל לא מועבר. */
 export default function StationAnalyticsPage({ preload = null }) {
+  const router = useRouter();
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   const [portalRoot, setPortalRoot] = useState(null);
@@ -163,6 +164,9 @@ export default function StationAnalyticsPage({ preload = null }) {
     return () => io.disconnect();
   }, [state.status === 'ok']);
 
+  // הדף נגיש גם למי שאין לה גישה למסך הניהול (הרשאה אישית), לכן "חזרה" חוזרת למקום שממנו הגיעה, ובלי היסטוריה - לדף הבית
+  const goBack = () => { if (typeof window !== 'undefined' && window.history.length > 1) router.back(); else router.push('/'); };
+
   const goSection = (id) => {
     const el = document.getElementById(id);
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setActiveSec(id); }
@@ -202,9 +206,7 @@ export default function StationAnalyticsPage({ preload = null }) {
         <div className="app st-view sa-view">
           <div className="st-banners">
             {ok && !d.linkEnabled ? (
-              <Banner kind="info" icon="info" heading="הקישור הציבורי כבוי בארגון הזה" text={hasData ? 'מוצגים נתונים מהתקופה שבה הוא היה פתוח. אין איסוף חדש כל עוד הוא כבוי.' : 'כל עוד הוא כבוי אין מה למדוד. בהגדרות המערכת אפשר להפעיל אותו.'}>
-                <Link className="btn ghost sm" href="/admin/settings" data-agy-id="station_analytics_settings_link"><Ic id="gear" />להגדרות</Link>
-              </Banner>
+              <Banner kind="info" icon="info" heading="הקישור הציבורי כבוי בארגון הזה" text={hasData ? 'מוצגים נתונים מהתקופה שבה הוא היה פתוח. אין איסוף חדש כל עוד הוא כבוי.' : 'כל עוד הוא כבוי אין מה למדוד. בהגדרות המערכת אפשר להפעיל אותו.'} />
             ) : null}
             {state.status === 'error' ? (
               <Banner kind="warning" icon="alert" heading="לא הצלחנו לטעון את המדדים" text={state.error}>
@@ -214,7 +216,7 @@ export default function StationAnalyticsPage({ preload = null }) {
           </div>
 
           <div className="topbar">
-            <Link className="back" href="/admin" aria-label="חזרה למסך ניהול" data-tip="חזרה למסך ניהול" data-element-name="כפתור_station_analytics_back"><Ic id="back" plain /></Link>
+            <button type="button" className="back" aria-label="חזרה" data-tip="חזרה" data-element-name="כפתור_station_analytics_back" onClick={goBack}><Ic id="back" plain /></button>
             <div className="ttl">
               <h1 className="pg-ttl"><small>ניהול</small><bdi>המרות בעמדה הציבורית</bdi></h1>
             </div>

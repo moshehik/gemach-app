@@ -25,7 +25,7 @@ const rows = () => globalThis.__RAW || [];
 
 beforeEach(() => {
   globalThis.__RAW = []; globalThis.__RAW_SEEN = new Set(); globalThis.__RAW_FAIL = null;
-  globalThis.__CUSTOMERS = []; globalThis.__AUDIT = []; globalThis.__AUTH = true;
+  globalThis.__CUSTOMERS = []; globalThis.__AUDIT = []; globalThis.__AUTH = true; globalThis.__PERM = {};
   setSettings({});
   resetRateLimits(); resetRecentRegistrations();
 });
@@ -186,15 +186,61 @@ test('register via the store kiosk channel is stored with channel=kiosk', async 
   assert.equal(ev[0].params[1], 'kiosk');
 });
 
-// ---- admin API gate
-test('admin metrics API: anonymous / non-management -> 401 and never touches the DB', async () => {
-  globalThis.__AUTH = false;
-  const res = await adminRoute.GET(new Request('http://t.local/api/admin/station-analytics'));
-  assert.equal(res.status, 401);
+// ---- admin API gate (page:station_analytics from the permissions catalog; the registrations list also needs page:customers)
+const regsRoute = await L('app/api/admin/station-analytics/registrations/route.js');
+const adminReq = (path) => new Request(`http://t.local${path}`);
+
+test('admin metrics API: without page:station_analytics -> 403 Hebrew message, regardless of other permissions', async () => {
+  globalThis.__PERM = { 'page:station_analytics': false, 'page:customers': true };
+  const res = await adminRoute.GET(adminReq('/api/admin/station-analytics'));
+  assert.equal(res.status, 403);
+  assert.match((await res.json()).error, /[֐-׿]/);
+  const res2 = await regsRoute.GET(adminReq('/api/admin/station-analytics/registrations'));
+  assert.equal(res2.status, 403);
 });
 
-test('admin metrics API: bad parameters -> 400 with a Hebrew message', async () => {
-  const res = await adminRoute.GET(new Request('http://t.local/api/admin/station-analytics?from=2026-10-13&to=2026-10-12'));
+test('admin metrics API: bad parameters (with the permission) -> 400 with a Hebrew message', async () => {
+  globalThis.__PERM = { 'page:station_analytics': true };
+  const res = await adminRoute.GET(adminReq('/api/admin/station-analytics?from=2026-10-13&to=2026-10-12'));
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /[֐-׿]/);
+});
+
+test('registrations list (names): page:station_analytics alone is not enough - page:customers is required too', async () => {
+  globalThis.__PERM = { 'page:station_analytics': true, 'page:customers': false };
+  const res = await regsRoute.GET(adminReq('/api/admin/station-analytics/registrations?day=2026-10-12'));
+  assert.equal(res.status, 403);
+  assert.match((await res.json()).error, /פרטי לקוחות/);
+  globalThis.__PERM = { 'page:station_analytics': true, 'page:customers': true };
+  const bad = await regsRoute.GET(adminReq('/api/admin/station-analytics/registrations?day=nope'));
+  assert.equal(bad.status, 400); // עברה את שני השערים
+});
+
+test('catalog: page:station_analytics is a REAL (enforced) boolean page item, closed by default for every role (head roles pass via ALWAYS_ALLOWED), not "documentation only"', async () => {
+  const M = await L('lib/permissionsMetadata.js');
+  const item = M.PERMISSION_CATALOG.find((i) => i.key === 'page:station_analytics');
+  assert.ok(item, 'חסר בקטלוג');
+  assert.equal(item.type, 'boolean');
+  assert.equal(item.enforced, true);
+  assert.equal(item.group, 'pages');
+  assert.ok(!item.notConfigurable, 'חייב להיות ניתן להגדרה בממשק ההרשאות');
+  for (const roleId of [0, 1, 2, 3, 4, 5]) assert.equal(item.defaultForRoleId(roleId), false);
+  assert.ok(M.ALWAYS_ALLOWED_ROLE_IDS.includes(0) && M.ALWAYS_ALLOWED_ROLE_IDS.includes(2));
+  assert.ok(!M.PERMISSION_CATALOG.some((i) => i.key === 'page:admin_station_analytics'), 'המפתח התיעודי הישן הוסר');
+});
+
+test('wiring: the page layout is a PageGate on the catalog key, outside /admin; hub tile carries the same key; no hardcoded role array', async () => {
+  const fs = await import('node:fs');
+  const layout = fs.readFileSync(`${process.env.PROJ}/app/station-analytics/layout.js`, 'utf8');
+  assert.ok(/PageGate pageKey="page:station_analytics"/.test(layout));
+  assert.ok(!fs.existsSync(`${process.env.PROJ}/app/admin/station-analytics`));
+  const hub = await L('lib/adminHubCatalog.js');
+  const tile = hub.TOOLS.find((t) => t.id === 'station-analytics');
+  assert.equal(tile.href, '/station-analytics');
+  assert.equal(tile.pageKey, 'page:station_analytics');
+  for (const f of ['app/api/admin/station-analytics/route.js', 'app/api/admin/station-analytics/registrations/route.js']) {
+    const src = fs.readFileSync(`${process.env.PROJ}/${f}`, 'utf8');
+    assert.ok(/canOpenPage\('page:station_analytics'\)/.test(src), f);
+    assert.ok(!/roleId\s*(===|==|\[)|HEAD_MANAGEMENT|checkAuth\('/.test(src), f);
+  }
 });

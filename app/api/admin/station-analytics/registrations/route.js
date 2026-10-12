@@ -1,8 +1,7 @@
 // GET /api/admin/station-analytics/registrations?day=YYYY-MM-DD[&channel=all][&windowDays=14]
 // הרישומים של יום מסוים בעמדה (שם פרטי + אות ראשונה של שם המשפחה, סטטוס אימות, האם סגרה הזמנה). זה הנתון היחיד במסך שהוא PII,
-// ולכן בנוסף לשער ההנהלה נדרשת הרשאת הדף "לקוחות" (page:customers; הנהלה ראשית / מתכנת תמיד עוברות). לא במטמון.
+// ולכן בנוסף להרשאת המסך (page:station_analytics) נדרשת הרשאת הדף "לקוחות" (page:customers; הנהלה ראשית / מתכנת תמיד עוברות). לא במטמון.
 import { NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { getIsraelDateKey } from '@/lib/hebrewDate';
 import { DEFAULT_WINDOW_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, VIEW_CHANNELS } from '@/lib/stationAnalytics/constants';
@@ -11,7 +10,7 @@ import { getDayRegistrations } from '@/lib/stationAnalytics/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  if (!(await checkAuth('הנהלה ראשית'))) return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
+  if (!(await canOpenPage('page:station_analytics'))) return NextResponse.json({ error: 'אין הרשאה לצפות במדדי העמדה הציבורית' }, { status: 403 });
   if (!(await canOpenPage('page:customers'))) return NextResponse.json({ error: 'אין הרשאה לצפות בפרטי לקוחות' }, { status: 403 });
   try {
     const sp = new URL(request.url).searchParams;

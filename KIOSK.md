@@ -130,7 +130,7 @@ Tests (no DB / server): `node scripts/kiosk-public-tests/run.mjs`.
 `kiosk_public_show_registration` off = no "מילוי פרטים אישיים" card (on = `KioskRegistration mode="public"`, `config.registration` -> `rules`).
 
 
-### מדדי המרה (`/admin/station-analytics`)
+### מדדי המרה (`/station-analytics`)
 
 הקישור הציבורי שולח שלוש ספירות אנונימיות (`POST /api/public-kiosk/event`: `visit` / `availability` / `form_start`, מזהה סשן אקראי ב-`sessionStorage`, בלי IP / User-Agent / PII), והרישום (`/register`) כותב אירוע `register` עם `customerId` פנימי.
 הכול נשמר בטבלה `StationEvent` (SQL ידני: `scripts/station_event_table.sql`, **לא הורץ בפרודקשן**; בלעדיה האיסוף מדלג והמסך מסביר). מסך הניהול, ההגדרות המדויקות של "מילאו פרטים" / "סגרו הזמנה", הפרטיות והבדיקות: [docs/station-analytics.md](docs/station-analytics.md).

@@ -135,5 +135,5 @@ test('static: KioskPublic reports events only through trackStationEvent (visit /
 
 test('static: the admin hub registers the screen and the page label exists', () => {
   assert.ok(/station-analytics/.test(read('lib/adminHubCatalog.js')));
-  assert.ok(/'\/admin\/station-analytics'/.test(read('lib/menu/pageLabels.js')));
+  assert.ok(/'\/station-analytics'/.test(read('lib/menu/pageLabels.js')));
 });

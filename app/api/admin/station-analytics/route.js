@@ -1,15 +1,15 @@
 // GET /api/admin/station-analytics?from=YYYY-MM-DD&to=YYYY-MM-DD&channel=public|kiosk|all&windowDays=14[&fresh=1]
-// מדדי ההמרה של העמדה הציבורית (משפך, סדרה יומית, כרטיסי היום): אגרגטים בלבד, בלי PII. שער: הנהלה ראשית / מתכנת (כמו שאר /api/admin/*), והדף עצמו ב-app/admin/layout.js.
+// מדדי ההמרה של העמדה הציבורית (משפך, סדרה יומית, כרטיסי היום): אגרגטים בלבד, בלי PII. שער: ההרשאה page:station_analytics (lib/permissions.js canOpenPage; הנהלה ראשית / מתכנת תמיד, אחרים לפי שורת הרשאה), כמו הדף עצמו (app/station-analytics/layout.js).
 // התאריכים הם ימי לוח בשעון ישראל. מטמון שרת של דקה (fresh=1 עוקף). ההגדרות המלאות: docs/station-analytics.md.
 import { NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/auth';
+import { canOpenPage } from '@/lib/permissions';
 import { parseParams } from '@/lib/stationAnalytics/service';
 import { getStationAnalytics } from '@/lib/stationAnalytics/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  if (!(await checkAuth('הנהלה ראשית'))) return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
+  if (!(await canOpenPage('page:station_analytics'))) return NextResponse.json({ error: 'אין הרשאה לצפות במדדי העמדה הציבורית' }, { status: 403 });
   try {
     const sp = new URL(request.url).searchParams;
     const parsed = parseParams(Object.fromEntries(sp.entries()));

@@ -236,7 +236,7 @@ function PublicInner({ config }) {
   const [view, setView] = useState('home'); // home | date | catalog | register
   const [date, setDate] = useState(null);
 
-  // ספירה אנונימית למשפך שבניהול (/admin/station-analytics): ביקור בעמדה, פתיחת קטלוג / בדיקת זמינות, פתיחת טופס הפרטים. ראו stationEvents.js
+  // ספירה אנונימית למשפך שבניהול (/station-analytics): ביקור בעמדה, פתיחת קטלוג / בדיקת זמינות, פתיחת טופס הפרטים. ראו stationEvents.js
   useEffect(() => {
     if (!enabled) return;
     trackStationEvent('visit');
