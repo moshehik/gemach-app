@@ -360,5 +360,44 @@ eq('three sizes AND: one of them (12) not free -> model dropped', brief(r), []);
 r = await run({ models: ['549'], sizes: ['10', '14', '12'], flexible: ['12'] });
 eq('three sizes AND, 12 flex rescues via 10/14', brief(r), [[549, 1, '10:1', '14:1', '12:2[10=1,14=1]']]);
 
+/* ---------- דגם שיצא מהמאגר (exitDateFromRepo) לא נבדק ולא נספר — נושא 12, החלטת בעלים 12.10.2026 ---------- */
+{
+  reset();
+  const baseline = { s36: brief(await run({ sizes: ['36'] })), all: brief(await run({ models: ['549', '550', '622', '811', '700'] })) };
+  const mk = (id, name, code, exit) => ({ id, name, barcodePrefix: code, isDeleted: false, exitDateFromRepo: exit });
+  const itm = (id, model, code, sizeText, over = {}) => ({ id, dressModelId: model, sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: code, ...over });
+  globalThis.__DB.dressModel.push(
+    mk('xOut', 'שמלה שיצאה', 880, new Date('2024-06-24T00:00:00Z')), // יצא בעבר
+    mk('xFut', 'שמלה שתצא', 881, new Date('2999-01-01T00:00:00Z')), // כל תאריך = יצא (כמו /api/inventory/models: exitDateFromRepo: null)
+    mk('xNull', 'שמלה פעילה חדשה', 882, null), // null = פעיל
+  );
+  globalThis.__DB.dressItem.push(
+    itm('xo1', 'xOut', 880, '36'), itm('xo2', 'xOut', 880, '36'), itm('xo3', 'xOut', 880, '46'), // פריטים פעילים (לא מחוקים/לא בתיקון) בדגם שיצא
+    itm('xf1', 'xFut', 881, '36'),
+    itm('xn1', 'xNull', 882, '36'), itm('xn2', 'xNull', 882, '48'),
+  );
+  let r = await run({ sizes: ['36'] });
+  eq('size 36: exited models (past + future exit date) are not listed and not counted; null-exit model is', brief(r), [...baseline.s36, [882, 1, '36:1']].sort((a, b) => b[1] - a[1] || a[0] - b[0]));
+  r = await run({ sizes: ['46'] });
+  eq('size 46 exists only on an exited model -> no results + the standard "no active model" warning', [brief(r), r.warnings], [[], ['אין דגם עם פריט פעיל במידות שביקשתם']]);
+  r = await run({ sizes: ['48'] });
+  eq('size 48 on the null-exit model is found', brief(r), [[882, 1, '48:1']]);
+  r = await run({ models: ['880'] });
+  eq('model typed by code of an exited model: nothing computed, explicit warning', [brief(r), r.warnings], [[], ['הדגם "880" יצא מהמאגר ולכן לא נבדק']]);
+  r = await run({ models: ['שמלה שיצאה'] });
+  eq('model typed by name of an exited model: same', [brief(r), r.warnings], [[], ['הדגם "שמלה שיצאה" יצא מהמאגר ולכן לא נבדק']]);
+  r = await run({ models: ['881'] });
+  eq('future exit date = exited as well', brief(r), []);
+  r = await run({ models: ['882'] });
+  eq('model with exitDateFromRepo null is checked normally', brief(r), [[882, 2, '36:1', '48:1']]);
+  r = await run({ models: ['549', '550', '622', '811', '700'] });
+  eq('active models: results identical to before the exited models existed (no healthy stock lost)', brief(r), baseline.all);
+  r = await run({ models: ['549', '880'], sizes: ['10'] });
+  eq('mixed tokens: the active model is checked, the exited one only warns', [brief(r).map((x) => x[0]), r.warnings], [[549], ['הדגם "880" יצא מהמאגר ולכן לא נבדק']]);
+  // item-level data is untouched (no deletes/updates), the exited model's items are still there
+  eq('nothing deleted: exited model items still in the DB', globalThis.__DB.dressItem.filter((i) => i.dressModelId === 'xOut').length, 3);
+  globalThis.__DB = null;
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

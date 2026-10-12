@@ -3,7 +3,7 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { compareSizeText, normalizeSizeKey, groupSizeRows, pickSizeMenu } from '@/lib/sizeSort';
-import { STOCK_CHECK_PAGE_KEY } from '@/lib/stockCheck';
+import { STOCK_CHECK_PAGE_KEY, ACTIVE_MODEL_WHERE } from '@/lib/stockCheck';
 
 // GET /api/stock-check/options?key=model|size&typed=<טקסט>
 // רשימות ההצעות (רשימת גלילה) לשדות "דגם" ו"מידה" בדף בדיקת מלאי — החלטת הבעלים Q03 (1.10.2026):
@@ -36,7 +36,7 @@ function prefixRanges(typed) {
 }
 
 async function modelOptions(typed) {
-  const where = { isDeleted: false };
+  const where = { ...ACTIVE_MODEL_WHERE }; // דגם שיצא מהמאגר לא מוצע (כמו בבדיקה עצמה)
   if (typed) {
     where.OR = [{ name: { contains: typed, mode: 'insensitive' } }, ...prefixRanges(typed)];
   }
@@ -76,7 +76,7 @@ async function sizeOptions(typed) {
   // תו שאינו ספרה (lib/sizeSort.js pickSizeMenu). הנתונים והבדיקה עצמה לא משתנים — הקלדה ידנית של "06.1" עדיין נבדקת.
   const rows = await prisma.dressItem.groupBy({
     by: ['sizeText'],
-    where: { isDeleted: false, notInUse: false },
+    where: { isDeleted: false, notInUse: false, dressModelId: { not: null }, dress: { exitDateFromRepo: null } }, // פריטי דגם שיצא לא תורמים מידה (נושא 12)
     _count: { _all: true },
   });
   const groups = groupSizeRows(rows.map((r) => ({ sizeText: r.sizeText, count: (r._count && r._count._all) || 0 })));

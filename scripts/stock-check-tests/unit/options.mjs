@@ -84,6 +84,25 @@ globalThis.__DB.dressItem.push({ id: 'x2', dressModelId: 'mF', sizeText: '99', q
 res = await get('?key=size');
 eq('notInUse item does not add a size', vals(res).includes('99'), false);
 
+/* ---------- דגם שיצא מהמאגר: לא מוצע (דגמים ומידות) — נושא 12 ---------- */
+reset();
+const sizesBefore = vals(await get('?key=size'));
+const modelsBefore = vals(await get('?key=model'));
+globalThis.__DB.dressModel.push({ id: 'xOut', name: 'שמלה שיצאה', barcodePrefix: 880, isDeleted: false, exitDateFromRepo: new Date('2024-06-24T00:00:00Z') }, { id: 'xNull', name: 'שמלה חדשה', barcodePrefix: 882, isDeleted: false, exitDateFromRepo: null });
+const xi = (id, dressModelId, sizeText) => ({ id, dressModelId, sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: dressModelId === 'xOut' ? 880 : 882 });
+globalThis.__DB.dressItem.push(xi('xo1', 'xOut', '58'), xi('xo2', 'xOut', '06.9'), xi('xn1', 'xNull', '60'));
+res = await get('?key=size');
+eq('sizes: a size that exists only on an exited model is not offered; a null-exit model contributes', vals(res), [...sizesBefore, '60']);
+res = await get('?key=size&typed=58');
+eq('sizes typed "58" (exited-only) -> nothing', vals(res), []);
+res = await get('?key=model');
+eq('models: exited model not suggested; null-exit one is', vals(res).filter((v) => v.includes('שמלה שיצאה') || v.includes('שמלה חדשה')), ['שמלה חדשה']);
+res = await get('?key=model&typed=880');
+eq('models typed by the exited model code -> nothing', vals(res), []);
+res = await get('?key=model&typed=882');
+eq('models typed by the active model code -> found', vals(res), ['שמלה חדשה']);
+eq('models: the rest of the list is unchanged', vals(await get('?key=model')).filter((v) => modelsBefore.includes(v)), modelsBefore);
+
 globalThis.__DB = null;
 res = await get('?key=model');
 eq('500 on internal failure, generic message', [res.status, res.__json], [500, { error: 'שגיאה בטעינת ההצעות' }]);
