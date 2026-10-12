@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, autoModelName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
@@ -7,8 +9,6 @@ import { sizeMatches } from '@/lib/searchNormalize';
 import { validateModelInput } from '@/lib/dressInputValidation';
 const TX_OPTS = { timeout: 20000, maxWait: 10000 }; // כל כתיבה מוסיפה שורת היסטוריה (app/lib/prisma.js) וה-DB (Neon) איטי בהתעוררות - ברירת המחדל 5 שניות נפלה
 import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
-import { modelDisplayName, autoModelName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 
 export const dynamic = 'force-dynamic';

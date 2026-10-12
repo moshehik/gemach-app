@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma, { auditAs } from '../../../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../../../lib/auth';
@@ -6,8 +8,6 @@ import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../../../../lib/priceRows';
-import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash

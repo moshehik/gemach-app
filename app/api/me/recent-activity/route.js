@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { canViewOthersActivity, isViewableEmployee } from '@/lib/recentActivityAccess';
 import {
   MY_ACTIVITY_LIMITS as L, MY_ENTITY_TYPES, activitySince, collectRefs, attachOrderNumbers, mergeAuditRows, pickCandidates,

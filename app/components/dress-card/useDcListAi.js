@@ -6,8 +6,8 @@
 //   * stats: StatisticsModal (חלון כהה משותף) עם הקשר הדגם. ההרשאות / ההגבלות נשארות כפי שהנקודות האלה אוכפות (403 -> הודעת שגיאה).
 // which: 'items' | 'rentals' | 'history'. 'rentals' פונה להקשר OrderItem של ה-endpoint (שם חלה הגבלת העמודות הכספיות); השאר להקשר 'dresses'.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import StatisticsModal from '../StatisticsModal';
 import { modelHasRealName } from '@/lib/modelDisplay';
+import StatisticsModal from '../StatisticsModal';
 
 const MAX_PAGES = 10;
 

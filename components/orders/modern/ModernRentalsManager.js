@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import { orderItemModelName } from '../../../lib/modelDisplay';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { postRentalRent } from './rentalToggle';
-import { orderItemModelName } from '../../../lib/modelDisplay';
 
 /**
  * טאב "השכרות והחזרות" בעיצוב "אריג" — פורט מלא של OrderRentalsManager:

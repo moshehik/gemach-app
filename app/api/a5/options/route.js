@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
 import { sizeKey, sizeSpellings } from '@/lib/searchNormalize';
-import { modelDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // הצעות לשדות הטקסט של החיפוש המתקדם ב-/a5. קריאה בלבד.
 // GET /api/a5/options?key=<first|last|name|phone|city|oid|item|model|emp|size|q>&focus=<...>&typed=<טקסט>

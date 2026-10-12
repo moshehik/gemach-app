@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { isPlaceholderModelName } from '../../../lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -13,7 +14,6 @@ import { normalizeGapRule } from '../../../lib/priceRows';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { sortSizeRows } from '../../../lib/sizeSort';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
-import { isPlaceholderModelName } from '../../../lib/modelDisplay';
 import { postRentalRent, postRentalReturn } from './rentalToggle';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים

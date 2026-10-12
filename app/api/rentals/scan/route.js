@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
@@ -6,8 +8,6 @@ import { verifySecret } from '@/lib/passwordAuth';
 import { hasPermission } from '@/lib/permissions';
 import { notifyManagers } from '@/lib/notifyManagers';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
-import { modelDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

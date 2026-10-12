@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { modelDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

@@ -32,8 +32,8 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
-import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { orderItemModelName } from '../../../lib/modelDisplay';
+import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
 // ---------------------------------------------------------------------------------------------

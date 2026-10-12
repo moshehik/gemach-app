@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
+import { withDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { cleanQuery, parseBarcodeDigits } from '@/lib/searchNormalize';
 import { cachedJson } from '@/lib/httpCache';
-import { withDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

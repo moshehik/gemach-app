@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '../../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../../lib/auth';
@@ -6,8 +8,6 @@ import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
 import { verifyManagerPin } from '../../../../../lib/managerAuth';
-import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // See the sibling [itemId] route: only caller-fixable rules should surface as 400, so a
 // genuine server fault is not mistaken for a bad request.

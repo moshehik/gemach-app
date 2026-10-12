@@ -14,10 +14,10 @@
 import {
   bc, block, bcCell, escH, filterLine, heading, plural, table,
 } from './pkCore.js';
+import { modelDisplayName } from '../../../lib/modelDisplay.js';
 import {
   ST_LABEL, addDays, bcFor, compareItems, counts, pad2, stOf,
 } from '../../../lib/dressCardLogic.js';
-import { modelDisplayName } from '../../../lib/modelDisplay.js';
 
 // שם הדגם בהדפסות: שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js); שאר השדות של הדגם נשארים כמו שהם
 const pkModel = (m) => (m ? { ...m, name: modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' }) || '—' } : m);

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
@@ -9,8 +11,6 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 import { sizeTextFilter } from '@/lib/listSearch';
 import { sizeMatches } from '@/lib/searchNormalize';
-import { modelDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // חיפוש מתקדם A5 - תחומי משלוחים / תיקונים / כספים / תפוסה / דגמים / עובדים.
 // קריאה בלבד. אותם כללים כמו העמודים החיים (ר' public/a5/adapters/adv-b.NOTES.md).

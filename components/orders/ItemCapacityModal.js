@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { orderItemModelName } from '@/lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '@/lib/hebrewDate';
-import { orderItemModelName } from '@/lib/modelDisplay';
 import { CapacityCalendar } from '@/components/CapacityCalendar';
 
 export default function ItemCapacityModal({ item, order, isOpen, onClose }) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import PrintWizardModal from '../components/PrintWizardModal';
@@ -12,7 +13,6 @@ import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
 import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP, detailsWithoutMarker } from '@/lib/alterationEstimate';
-import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
 
 // תווית הדגם בשורת תיקון: שם אמיתי + (קוד), או המספר לבדו - לעולם לא "ללא שם" (lib/modelDisplay.js). dressModelName מגיע מהשרת לפי הגדרת useModelNames.
 function alterationDressLabel(item) {

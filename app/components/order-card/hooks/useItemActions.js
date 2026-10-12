@@ -23,12 +23,12 @@
 // rentalToggle.js האמיתי ואת הפורט מול אותו שרת מדומה ומשווה את רצף הבקשות.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { modelDisplayName, isPlaceholderModelName } from '@/lib/modelDisplay';
 import { describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { alterationDoneLabel, estimateOnTake, detailsWithoutMarker } from '@/lib/alterationEstimate';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { modelDisplayName, isPlaceholderModelName } from '@/lib/modelDisplay';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
 import { hebDateOf, newLocalId } from '../orderCardLogic';
 

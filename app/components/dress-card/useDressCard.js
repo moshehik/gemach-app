@@ -8,6 +8,7 @@
 // הדגם בלחצן "שמור". בעיצוב המאושר כל השינויים (גם הפריטים) מופיעים כשורות ב"שינויים בכרטיס" ונשמרים יחד - לכן הם נשמרים כאן יחד,
 // אותם endpoints ואותם payloads, ברצף; צעד שנכשל נשאר בעגלה עם הודעה, השאר נשמרים.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { modelDisplayName, modelHasRealName } from '@/lib/modelDisplay';
 import { useRouter } from 'next/navigation';
 import { cacheNamespace, fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -15,7 +16,6 @@ import { addHistory } from '@/lib/historyManager';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { nextWorkingDay } from '@/lib/businessDays';
 import { israelDayKey, israelTime } from '@/lib/attendance/summary';
-import { modelDisplayName, modelHasRealName } from '@/lib/modelDisplay';
 import DcSummaryDialog from './dialogs/DcSummaryDialog';
 import { DcDiscardDialog, DcSuccessDialog } from './dialogs/DcSimpleDialogs';
 import {

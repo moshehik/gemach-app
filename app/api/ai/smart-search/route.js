@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '../../../../lib/modelDisplay';
+import { getModelDisplayOpts } from '../../../../lib/modelDisplayServer';
 import crypto from 'crypto';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
@@ -17,8 +19,6 @@ import {
   MSG_EMPLOYEES_FORBIDDEN, MSG_EMPLOYEES_LOGIN, MSG_EMPLOYEES_LIMITED, MSG_EMPLOYEES_REJECTED,
 } from '../../../../lib/ai/employeesSearch';
 import { statementTimeoutSql, isStatementTimeout, MSG_NARROWER } from '../../../../lib/adminListGuards';
-import { modelDisplayName } from '../../../../lib/modelDisplay';
-import { getModelDisplayOpts } from '../../../../lib/modelDisplayServer';
 
 // Columns used for "orders" smart-search results when the financial_columns_orders restriction
 // (lib/ai/restrictionsRegistry.js, feature "smart_search") is on for a non-manager - this route

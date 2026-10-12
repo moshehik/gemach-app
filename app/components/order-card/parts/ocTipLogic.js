@@ -6,8 +6,8 @@
 //      שאר הכרטיסים מימין/משמאל לרכיב במסך רחב (>=700), אחרת מעל/מתחת (placeRich, שורות 4175-4198).
 // כאן: ICON_TIP, ההחלטה על טקסט הטולטיפ של לחצן-אייקון, שורות הכרטיסים העשירים של הסרגל (עובדות בלבד - בלי פרטים בדויים), והמיקום (כולל היפוך מתחת לתפריט העליון).
 import { shortHebrew } from './ocHistoryModel';
-import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { orderItemModelName } from '../../../../lib/modelDisplay';
+import { getHebrewDateString } from '../../../../lib/hebrewDate';
 
 // בדיוק כמו ICON_TIP בדמו (שורה 4335)
 export const ICON_TIP = { pencil: 'עריכה', trash: 'מחיקה', chev: 'פרטים', print: 'הדפסה', lock: 'נעילה', back: 'חזרה', x: 'סגירה', swap: 'החלפה', ext: 'פתיחה', bk: 'ביטול השינוי', plus: 'הוספה', check: 'אישור', undo: 'ביטול', mail: 'מייל', card: 'תשלום', cart: 'שינויים' };

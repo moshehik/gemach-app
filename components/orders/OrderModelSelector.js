@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { modelDisplayName } from '../../lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
-import { modelDisplayName } from '../../lib/modelDisplay';
 
 export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId, hasActiveItems = false }) {
   const [query, setQuery] = useState('');

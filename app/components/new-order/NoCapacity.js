@@ -7,8 +7,8 @@
 // אותן הודעות שגיאה. הלוגיקה הטהורה ב-noCapacityLogic.js (נבדקת מול הישן ב-scripts/new-order-tests/capacity.test.mjs).
 // החלון נטען ב-portal לשורש הדף (NoPortal) בתוך DialogFrame - הוא לא חלון עם תשובה (ask) אלא מצב של הבקר (capacityItem / showCapacitySearch).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getIsraelTodayKey } from '../../../lib/hebrewDate';
 import { orderItemModelName, modelDisplayName } from '../../../lib/modelDisplay';
+import { getIsraelTodayKey } from '../../../lib/hebrewDate';
 import { Ic, Note, NoCombo, SegPill } from './NoUi';
 import NoHebrewCalendar, { holidaysOn, parshaOn } from './NoHebrewCalendar';
 import { DialogFrame } from './NoDialogs';

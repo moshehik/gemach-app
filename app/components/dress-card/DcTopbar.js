@@ -3,13 +3,13 @@
 // DcTopbar - שורת הכותרת של כרטיס הדגם (העיצוב: .topbar > .back + .ttl(h1 "דגם #קוד שם") + #sbar + .tools + האייקון ישן/חדש).
 // הכלים: ייצוא Excel · הורדת PDF · הדפסה (תפריט) · מחיקת דגם (בדגם מחוק: שחזור). הטולטיפים ב-data-tip (לא title). קוד הדגם והשם - מהמצב השמור.
 import { useEffect, useRef, useState } from 'react';
+import { modelHasRealName } from '@/lib/modelDisplay';
 import OcIcon, { XlGlyph } from '../order-card/OcIcon';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import DcScanBar from './DcScanBar';
 import { DcDeleteDialog, DcRestoreDialog } from './dialogs/DcSimpleDialogs';
 import { PRINT_MENU, exportItemsXlsx, runDressDoc } from './dcPrint';
 import { counts } from '@/lib/dressCardLogic';
-import { modelHasRealName } from '@/lib/modelDisplay';
 
 function PrintMenu({ dc, ui }) {
   const [open, setOpen] = useState(false);

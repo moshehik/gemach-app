@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { compareSizeText, normalizeSizeKey } from '@/lib/sizeSort';
 import { STOCK_CHECK_PAGE_KEY } from '@/lib/stockCheck';
-import { modelDisplayName } from '@/lib/modelDisplay';
-import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // GET /api/stock-check/options?key=model|size&typed=<טקסט>
 // רשימות ההצעות (רשימת גלילה) לשדות "דגם" ו"מידה" בדף בדיקת מלאי — החלטת הבעלים Q03 (1.10.2026):
