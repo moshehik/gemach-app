@@ -29,6 +29,7 @@ import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from 
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
+import { isSameModelCode } from '@/lib/modelCodeLabel';
 import { hebDateOf, newLocalId } from '../orderCardLogic';
 
 // ---------------------------------------------------------------------------------------------
@@ -454,7 +455,8 @@ export function createItemActions(env) {
   }
 
   // ---- ביטול השכרה / החזרה (MIM :663-693 + חלון האישור :1151-1161) ----
-  const labelOf = (item) => (item ? `"${itemName(item)}"${itemCode(item) ? ` (קוד: ${itemCode(item)})` : ''}` : 'פריט זה');
+  // שם=קוד (נווה: "522") - הקוד לא חוזר בסוגריים
+  const labelOf = (item) => (item ? `"${itemName(item)}"${itemCode(item) && !isSameModelCode(itemName(item), itemCode(item)) ? ` (קוד: ${itemCode(item)})` : ''}` : 'פריט זה');
   async function cancelRent(item, { confirmed = false } = {}) {
     if (!item || !item.id) return { ok: false };
     if (env.get().isLocked) return { ok: false };
