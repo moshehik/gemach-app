@@ -427,7 +427,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type').map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
+                ${deliverySection ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;font-weight:700;">${ICON_SVG.truck} ${escapeHtml(deliverySection.title)}</span><br />${deliverySection.rows.filter(r => r.key !== 'type' && (!deliverySection.itemRow || r.key === 'address')).map(r => `${escapeHtml(r.label)}: ${escapeHtml(r.value)}<br />`).join('')}` : ''}
                 ${!order.isAbroad ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>

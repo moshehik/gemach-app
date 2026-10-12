@@ -409,8 +409,8 @@ export default function PrintOrderPage() {
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
-                  {/* נושא 9: מועדי המשלוח (הלוך/חזור) והעלות - העלות רק כשהמשלוח אינו מוצג כשורת פריט (שם המחיר מופיע) */}
-                  {showDeliveryInPrint && deliverySection && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back' || r.key === 'cost').map(r => (
+                  {/* נושא 9: מועדי המשלוח (הלוך/חזור) והעלות. כשהמשלוח מוצג כשורת פריט (delivery_as_item_row) המועדים והמחיר מופיעים שם, ולא פעמיים */}
+                  {showDeliveryInPrint && deliverySection && !deliverySection.itemRow && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back' || r.key === 'cost').map(r => (
                     <Fragment key={r.key}>{r.label}: {r.value}<br /></Fragment>
                   ))}
                   {!ord.isAbroad ? (
