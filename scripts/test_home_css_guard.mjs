@@ -1292,7 +1292,7 @@ t('שורת תוצאה: .li הוא flex עם align-items:center והעמודה .
   assert.ok(t2 && /flex:\s*1/.test(t2.body) && /min-width:\s*0/.test(t2.body));
 });
 t('המחלקות שרכיבי התוצאות החדשים משתמשים בהן קיימות: בפלטה (chip / btnlike / amber / rose / gold / stx / li / lrow) או ב-home.css (dchips / nolink / rt)', () => {
-  const RES = read('../app/components/home/HomeResults.js');
+  const RES = read('../app/components/home/HomeResults.js') + read('../app/components/home/ResultRow.js'); // שורת התוצאה (nolink / ic-b / rlbl) יושבת ב-ResultRow.js, משותפת עם פאנל התפוסה
   for (const c of ['chip', 'stx', 'li', 'lrow', 'rlink', 'ic-b', 'rlbl']) assert.ok(new RegExp(CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .' + c + ' בפלטה');
   for (const c of ['amber', 'rose', 'gold', 'btnlike']) assert.ok(new RegExp(CLS_PRE + 'chip' + CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .chip.' + c);
   for (const c of ['dchips', 'dchips-h', 'dchips-r', 'nolink', 'rt', 'dchip-al']) {

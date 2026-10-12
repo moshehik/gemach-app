@@ -18,7 +18,7 @@ import { Ic, HomeSprite } from './HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
-import SearchPanel from '../search/SearchPanel';
+import { useSearchPanelModel } from '../search/SearchPanel';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
@@ -595,6 +595,9 @@ export default function HomeA5() {
   /* ---------- תצוגה ---------- */
   const joined = view === 'results' || view === 'none' || view === 'adv' || view === 'ai';
   const advResults = view === 'results' && advRes;
+  // פאנל התפוסה / הפריט: הכותרת והריבועים מעל כרטיס התוצאות; שורותיו (איפה אני? / בחוץ / הוחזרו / ממתינות) נכנסות לרשימת התוצאות עצמה (lead)
+  const panelOn = (view === 'results' && !advRes) || view === 'none';
+  const panel = useSearchPanelModel(resQuery, { enabled: panelOn });
   const noBar = view === 'adv' || view === 'ai' || advResults;
   const compact = view !== 'start';
   const canAi = aiAllowed;
@@ -813,12 +816,13 @@ export default function HomeA5() {
               onExport={onExportAdv}
             />
           )}
-          {(view === 'results' && !advRes) || view === 'none' ? <SearchPanel query={resQuery} /> : null}
+          {panelOn ? panel.head : null}
           {(view === 'results' && !advRes) || view === 'none' ? (
             <HomeResults
               key={resKey}
               res={shownRes}
               query={resQuery}
+              lead={panel.lead}
               none={view === 'none'}
               table={asTable}
               onTable={setAsTable}
