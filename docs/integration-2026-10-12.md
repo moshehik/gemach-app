@@ -229,3 +229,26 @@
 - **`npm run build`** (`prisma generate && next build --webpack`): ירוק, 93 שניות, `.next` 1.1GB (נמחק). אזהרה קיימת: `@prisma/local-client` (הלקוח הלא-מקוון האופציונלי) ב-`app/lib/prisma.js`. נתיבי `/admin/email-center`, `/admin/branches`, `/station`, `/station-analytics`, `/privacy`, `/terms` נבנו.
 - **PINNED_BLOBS** ב-`scripts/test_page_variant_switch.mjs`: חושבו מחדש (`git hash-object`), ללא שינוי - הקבצים הנעולים (`LegacyProfilePage.js`, `LegacyNewOrderPage.js`) לא שונו במיזוג; הבדיקה ירוקה (36).
 - **Ignored Build Step:** הקומיט האחרון נושא `[force-deploy]` ולכן נבנה בכל מקרה; ראו הקומיט האחרון בענף.
+
+---
+
+# תיקוני סקירת האבטחה העצמאית (על `dba61a98`) - שלב ג'
+
+| ממצא | תיקון | commit |
+|---|---|---|
+| 2 - רישום בעמדה נפתח לאינטרנט כש-`kiosk_customer_self_service` דלוק | ערוץ `kiosk` דורש עוגיית עובד תקפה (`getSessionEmployee`) **וגם** ההגדרה; ערוץ ציבורי רק עם `showRegistration` (כולל `linkEnabled`) | `57f463df` |
+| 14 - לוג עם `e.message` בראוטים ציבוריים | נרשם רק `e.code` / `e.name`; בדיקה סטטית | `57f463df`, `064f61d5`, `a7ec5a15` |
+| 4 - `email_campaign:*` (וגם `email_tpl:*`, `email_fixed_fields`) ב-`GET /api/settings` | מסמכי דיוור יוצאים מהמטמון ומהרשימה (סינון בקוד אחרי השליפה); שאר מפתחות המרכז מוסתרים מעובד רגיל (`isAdminOnlySettingKey`) ונשארים לשרת | `4f636c9d`, `67f13905` |
+| 5 - תשובת מדריך האתר ללא אימות תגיות; `[OPEN_LINK]` בלקוח | `finalizeTagsAndText` גם במדריך; `extractSafeOpenLinks` (route פנימי בלבד) | `80f046b4` |
+| 6 - יעדי `set.key-*` הדינמיים בלי הרשאה | `access: { gate: 'head' }`; בדיקה שעובדת רגילה ומנהלת סניף לא מקבלות צעד | `20f23892` |
+| 9 - `ui_variant_kiosk`, `kiosk_splash_screen` | נוספו ל-`PUBLIC_SETTING_KEYS`; `SESSION_BOUND` עודכן | `0ae51ba1` |
+| 27 - `rentals/scan` `forceOk` משנה התנהגות בראשי | ההקשחה רק כשברקוד בלו"ז דלוק להזמנה; כבוי = `origin/main`; בדיקות לשני המצבים | `e4c9fa71` |
+| 21 - `EMAIL_DRY_RUN` בפרודקשן | מתעלמים כש-`VERCEL_ENV=production` (`isDryRun`) | `423462fd` |
+| 3 - כתיבת התקדמות דיוור דורסת ביטול | `persistProgress` - compare-and-swap, איחוד התקדמות אל מסמך מבוטל, גם ב-`done` | `ebcd3ad3` |
+| 7 - מכסה יומית | רזרבה 25 (`sendBudget`, `QUOTA_RESERVE`) | `ebcd3ad3` |
+| 8 - דיוור כפול | דיוור זהה של אותו יוצר תוך 10 דקות נדחה | `ebcd3ad3` |
+| 10 - הסרה מדיוור בלי ראיה | שורת `marketing granted:false` ביומן (`email-unsubscribe`), בנפילה חינני | `eece7bb6` |
+
+לא תוקנו (מתועדים ב-`docs/post-release-followups-2026-10-12.md`): 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26.
+
+**דרכי בדיקה:** סוויטות מלאות (145 משימות) בשלושת אזורי הזמן: אפס כשלים חדשים (נשארו הכשלים הקיימים); `eslint` על 664 קבצים: אותן 11 שגיאות קיימות; `prisma validate` עבר; `npm run build` ירוק (71 שניות; `.next` נמחק); `PINNED_BLOBS` ללא שינוי (קבצי ה-Legacy לא נגעו).
