@@ -171,3 +171,9 @@
 - תיקוני בדיקות: `test_settings_sim` (המפתח `quick_search_barcode_opens_rental` מופה בסעיף "סריקה" + `KEY_UI`), `test_board_page` (חתימת הקריאה ל-`useRentalReturn` במודל הישן).
 - בדיקה חדשה: `scripts/test_rental_return_window_wiring.mjs` (9 בדיקות סטטיות: החוזה של שני החלונות, PopupProvider, החיפוש המהיר, O9 בחלון החדש, התראת הסניף, ההגדרה).
 - לא נבדק בדפדפן: הרכבה מחדש של החלון בהחלפת הזמנה (key remount) ושורת ההודעות.
+
+## 17. feature/main-search-capacity-2026-10-12 (+ patch 04)
+- `MenuSearchPanel.js`: שני הצדדים נשמרו - מצב `pick` של quick-barcode (בחירת הזמנה לפריט פנוי) ופאנל התפוסה/פריט (`SearchPanel` + `panelTerm` בדיבאונס). Enter נשאר אצל הזרימה (החזרה/השכרה מהירה), הפאנל הוא תצוגה מקדימה מתחת לשדה. ה-placeholder "הקלד ברקוד או חפש..." מ-quick-barcode נשמר (גם ב-`HomeA5`).
+- `lib/homeSearchInventory.js`: **שינוי (model-numbers: `modelDisplayName`) מול מחיקה (הענף מסיר את שורות "מלאי" הישנות מהחיפוש הראשי, הפאנל מחליף אותן)** => נמחק. אין לו צרכנים אחרים (`lib/globalSearch.js` בענף כבר לא מייבא אותו; `test_global_search_server` עודכן בענף). כלל השם "אמיתי אחרת מספר" חל על הפאנל דרך patch 04.
+- **patch 04** חל נקי (`SearchPanel.js`, `lib/searchPanel.js`, `lib/searchPanelCore.js`): לא "ללא שם" בכותרות, ברשימת הדגמים התואמים ובפאנל; שם רק כשהוא תיאורי אמיתי (`modelHasRealName`).
+- הרצה: אפס כשלים חדשים.
