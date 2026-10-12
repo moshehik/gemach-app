@@ -7,6 +7,8 @@ import { getCatalogItem } from '@/lib/permissionsMetadata';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { parseApprovalContext, buildApprovalMeta, isLoggableApprovalLevel } from '@/lib/history/orderEvents';
 import approvalTokens from '@/lib/approvalTokens';
+import { validateVerifyPinBody } from '@/lib/authThrottleLogic';
+import { guardPinAttempt, recordPinSuccess, failureOutcome, retryMessageHe } from '@/lib/authThrottle';
 
 // Optional `context: { orderId, reason }` (new order card, D12): a SUCCESSFUL approval is recorded as one
 // MANAGER_APPROVAL row on that order - employeeId = the logged-in employee who asked, meta.approverId = the
@@ -60,11 +62,14 @@ export async function POST(request) {
   }
   try {
     const body = await request.json();
-    const { pin, requiredLevel, employeeId, context } = body;
-
-    if (!pin) {
-      return NextResponse.json({ success: false, error: 'לא סופקה סיסמה' }, { status: 400 });
+    // Types are checked before anything reaches Prisma: a non-string employeeId (e.g. {"contains":""}) used to be
+    // passed straight into `where.id`.
+    const checked = validateVerifyPinBody(body);
+    if (!checked.ok) {
+      return NextResponse.json({ success: false, error: checked.error }, { status: 400 });
     }
+    const { pin, employeeId } = checked.value;
+    const { requiredLevel, context } = body;
 
     const approvalCtx = parseApprovalContext(context);
     if (approvalCtx.present && !approvalCtx.ok) {
@@ -74,6 +79,17 @@ export async function POST(request) {
     // 'עובד' (not checked below at all) or a free string
     if (approvalCtx.present && !isLoggableApprovalLevel(requiredLevel, getCatalogItem)) {
       return NextResponse.json({ success: false, error: 'רמת אישור לא מוכרת לאישור מנהל' }, { status: 400 });
+    }
+
+    // Server-side brute-force limit (docs/verify-pin-rate-limit.md): 5 wrong passwords per employee+IP and 20 per IP
+    // (escalating 429 + Retry-After). The attempt is reserved BEFORE the password check so parallel guesses can't
+    // slip through; a locked caller is refused without touching bcrypt or the employee table.
+    const guard = await guardPinAttempt(request, employeeId);
+    if (!guard.allowed) {
+      return NextResponse.json(
+        { success: false, error: retryMessageHe(guard.retryAfterSec), retryAfterSec: guard.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(guard.retryAfterSec) } }
+      );
     }
 
     // Note: despite the field name, this is the employee's full real password re-entered
@@ -100,8 +116,18 @@ export async function POST(request) {
     }
 
     if (!employee) {
+      // This wrong password may be the one that trips the lock: answer 429 right away instead of one more 401.
+      const lock = failureOutcome(guard.handle);
+      if (lock.locked) {
+        return NextResponse.json(
+          { success: false, error: retryMessageHe(lock.retryAfterSec), retryAfterSec: lock.retryAfterSec },
+          { status: 429, headers: { 'Retry-After': String(lock.retryAfterSec) } }
+        );
+      }
       return NextResponse.json({ success: false, error: 'סיסמה שגויה או משתמש לא פעיל' }, { status: 401 });
     }
+    // The password matched (a later 403 is a role problem, not a guess): clear the counters.
+    await recordPinSuccess(guard.handle);
 
     // Role check
     // Assuming roleId = 1 is Manager (מנהל), roleId = 2 is Programmer (מתכנת).
