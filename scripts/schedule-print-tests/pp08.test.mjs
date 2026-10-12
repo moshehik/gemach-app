@@ -29,9 +29,10 @@ test('one sticker per dress of every prep order; tag, k-of-N, repair flag and PR
   assert.deepEqual(d.labels.map((l) => l.orderId), [...d.labels.map((l) => l.orderId)].sort((a, b) => a - b), 'by order number');
   const o = d.labels.filter((l) => l.orderId === 41011);
   assert.equal(o.length, 2);
-  // 12.10.2026: stickers of one order are in model order (3355 < 4519), not insertion order; k (the barcode number) keeps the dress position in the order
-  assert.deepEqual(o.map((l) => l.code), ['PRP-41011-2', 'PRP-41011-1']);
-  assert.deepEqual(o.map((l) => l.n), [2, 1]);
+  // 12.10.2026: stickers of one order are in model order (3355 < 4519) and k / the barcode follow the PRINTED order, so "dress 1 of N" is always first
+  assert.deepEqual(o.map((l) => l.code), ['PRP-41011-1', 'PRP-41011-2']);
+  assert.deepEqual(o.map((l) => l.n), [1, 2]);
+  assert.match(o[0].model, /3355$/);
   assert.ok(o.every((l) => l.total === 2));
   assert.equal(o[0].tag, 'איסוף · נווה יעקב', 'pickup: branch of the order');
   assert.equal(o[0].delivery, false);

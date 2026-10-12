@@ -40,19 +40,23 @@ test('PP-07: a model name that differs from the number is shown as is (no number
   assert.deepEqual(d.rows[0].dresses.map((x) => [x.model, x.size]), [['תחרה קלאסית', '8'], ['תחרה קלאסית', '12']]);
 });
 
-test('PP-08: stickers per order follow the model/size order but the barcode number k stays the dress position in the order (itemInfo), orders by order id', () => {
+test('PP-08: stickers per order follow the model/size order and k / the barcode follow the printed order (1..N, "dress 1" first), orders by order id; itemInfo only supplies the repair flag', () => {
   const day = sd([{ key: 'prep', items: [prepRow(20, SCRAMBLED), prepRow(19, [it('x2', 522, '10'), it('x1', 522, '8')])] }]);
-  // k per item = its place in the order (ids sorted) as itemInfo gives it
+  // itemInfo.n (DB ordinal, used by REP codes) must NOT influence k any more; only .alt is read
   const itemInfo = { 20: {}, 19: { x2: { n: 1, alt: false }, x1: { n: 2, alt: false } } };
   SCRAMBLED.forEach((x, i) => { itemInfo[20][x.orderItemId] = { n: i + 1, alt: false }; });
   const page = getPrintPage('PP-08');
   const d = PP08.build({ day, page, extras: { itemInfo, orderInfo: {} } });
   assert.deepEqual(d.labels.map((l) => l.orderId), [19, 19, 20, 20, 20, 20, 20, 20, 20]);
-  assert.deepEqual(d.labels.filter((l) => l.orderId === 19).map((l) => [l.size, l.n]), [['8', 2], ['10', 1]], 'sorted by size; k unchanged');
+  assert.deepEqual(d.labels.filter((l) => l.orderId === 19).map((l) => [l.size, l.n]), [['8', 1], ['10', 2]], 'sorted by size; k follows the printed order');
   const o20 = d.labels.filter((l) => l.orderId === 20);
   assert.deepEqual(o20.map((l) => l.size), ['00.5', '6', '06.1', '8', '10', '', '6']);
-  assert.deepEqual(o20.map((l) => l.n), [7, 3, 5, 4, 1, 6, 2]);
-  assert.deepEqual(o20.map((l) => l.code), ['PRP-20-7', 'PRP-20-3', 'PRP-20-5', 'PRP-20-4', 'PRP-20-1', 'PRP-20-6', 'PRP-20-2']);
+  assert.deepEqual(o20.map((l) => l.n), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(o20.map((l) => l.code), [1, 2, 3, 4, 5, 6, 7].map((k) => 'PRP-20-' + k));
+  assert.ok(o20.every((l) => l.total === 7));
+  // without any extras (itemInfo failed to load) the numbering is the same
+  const bare = PP08.build({ day, page, extras: {} });
+  assert.deepEqual(bare.labels.filter((l) => l.orderId === 20).map((l) => l.code), o20.map((l) => l.code));
   // name = number: the sticker says "522" once, never "522 - 522"
   assert.ok(d.labels.every((l) => !/(\d+) - \1\b/.test(l.model)), d.labels.map((l) => l.model).join('|'));
   assert.equal(o20[0].model, '522');
@@ -71,4 +75,13 @@ test('modelLabel: name = number prints once; real name + number "name - number";
 
 test('sizeCompare (PP-03/04): the shared numeric-first order - 10 after 8, empty last', () => {
   assert.deepEqual(['10', '8', '', '06.1', 'XL', '6'].sort(sizeCompare), ['6', '06.1', '8', '10', 'XL', '']);
+});
+
+test('PP-08: identical model+size dresses get a deterministic k (by item id), whatever the fetch order', () => {
+  const page = getPrintPage('PP-08');
+  const mk = (ids) => PP08.build({ day: sd([{ key: 'prep', items: [prepRow(30, ids.map((id) => it(id, 522, '8')))] }]), page, extras: {} });
+  const a = mk(['i3', 'i1', 'i2']);
+  const b = mk(['i2', 'i3', 'i1']);
+  assert.deepEqual(a.labels.map((l) => l.code), b.labels.map((l) => l.code));
+  assert.deepEqual(a.labels.map((l) => l.n), [1, 2, 3]);
 });
