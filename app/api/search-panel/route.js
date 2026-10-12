@@ -8,7 +8,7 @@ import { MODEL_CARD_PAGE_KEY, PANEL_PAGE_KEYS, PERSON_PAGE_KEYS, resolvePanel } 
 // פאנל התפוסה / הפריט של החיפוש הראשי והמהיר (docs/search-capacity-embed.md): ברקוד מלא של פריט = סטטוס / פעמים שהושכר / הזמנות שחייבות אותו;
 // קוד דגם / ברקוד חלקי / דגם+מידה(+תאריך) = מלאי / בתפוסה / רזרבה. פענוח הקלט ב-lib/searchIntent.js (אותו קוד בדפדפן ובשרת).
 // קריאה בלבד. הרשאות מוכרעות כאן: בלי page:orders / page:rentals אין פאנל ({ panel: null, reason: 'forbidden' } ולא 403 - הלקוח קורא לנתיב אוטומטית בזמן הקלדה);
-// שם משפחה וטלפון של לקוחה נשלחים רק למי שיש לה הרשאת לקוחות/הזמנות/השכרות; קישור לכרטיס הדגם רק עם page:dresses_catalog.
+// שם משפחה וטלפון של לקוחה נשלחים לכל מי שמקבלת את הפאנל (page:orders / page:rentals; לא נדרשת הרשאת לקוחות); קישור לכרטיס הדגם רק עם page:dresses_catalog.
 export const dynamic = 'force-dynamic';
 
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });

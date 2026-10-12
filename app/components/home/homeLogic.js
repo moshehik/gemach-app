@@ -110,8 +110,8 @@ export function homeScopeTitle(scope) {
 export function applyScope(res, scope) {
   const def = typeof scope === 'string' && Object.prototype.hasOwnProperty.call(HOME_SCOPES, scope) ? HOME_SCOPES[scope] : null;
   if (!res || !def || def.via !== 'search') return res;
-  // שורות "מלאי" שייכות לפריטים (השכרות); צ'יפים של הלו"ז ושאר הקטגוריות לא נכללים בסינון
-  return { customers: [], orders: [], rentals: [], inventory: def.pick === 'rentals' ? res.inventory || [] : [], dateChips: null, [def.pick]: res[def.pick] || [] };
+  // צ'יפים של הלו"ז ושאר הקטגוריות לא נכללים בסינון
+  return { customers: [], orders: [], rentals: [], dateChips: null, [def.pick]: res[def.pick] || [] };
 }
 
 /**
@@ -179,15 +179,13 @@ export function normalizeSearch(d) {
   }));
   return {
     customers, orders, rentals,
-    inventory: (data.inventory || []).map(normalizeInventoryRow).filter(Boolean),
-    inventoryTruncated: !!data.inventoryTruncated,
     notices: normalizeNotices(data.notices),
     dateChips: normalizeDateChips(data.dateChips),
   };
 }
 
 // הודעות קצרות מהשרת מעל התוצאות (תוצאות נחתכו / ערכים נזרקו / תאריך לא קיים): רשימה סגורה של סוגים, טקסט בלבד (לא HTML)
-const NOTICE_KINDS = new Set(['inventoryTruncated', 'valuesDropped', 'dateInvalid']);
+const NOTICE_KINDS = new Set(['dateInvalid']);
 export function normalizeNotices(list) {
   if (!Array.isArray(list)) return [];
   return list
@@ -196,25 +194,6 @@ export function normalizeNotices(list) {
 }
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-// שורת מלאי מהשרת -> רק שדות תצוגה (רשימה סגורה). link עובר safeInternalRoute: רק נתיב פנימי; בלי קישור = שורה בלי קישור (אין הרשאה לכרטיס הדגם)
-function normalizeInventoryRow(r) {
-  if (!r || typeof r !== 'object') return null;
-  return {
-    type: r.type === 'model' ? 'model' : 'barcode',
-    modelName: str(r.modelName),
-    modelCode: r.modelCode === null || r.modelCode === undefined ? '' : str(r.modelCode),
-    barcode: str(r.barcode),
-    size: str(r.size),
-    status: str(r.status),
-    itemMissing: !!r.itemMissing,
-    dateLabel: str(r.dateLabel),
-    link: safeInternalRoute(r.link),
-    serial: r.serial === null || r.serial === undefined ? '' : str(r.serial),
-    location: str(r.location),
-    sizes: (Array.isArray(r.sizes) ? r.sizes : []).map((s) => ({ size: str(s && s.size), total: num(s && s.total), booked: num(s && s.booked), available: num(s && s.available), own: !!(s && s.own) })),
-  };
-}
 
 function normalizeDateChips(d) {
   if (!d || typeof d !== 'object') return null;
@@ -230,7 +209,7 @@ function normalizeDateChips(d) {
 }
 
 // צ'יפים של הלו"ז נספרים כתוצאה (גם בלי הזמנות ליום ההוא), כדי שהתצוגה לא תהיה "אין תוצאות" מעל צ'יפים
-export const resultsCount = (res) => (res ? res.customers.length + res.orders.length + res.rentals.length + (res.inventory ? res.inventory.length : 0) + (res.dateChips ? 1 : 0) : 0);
+export const resultsCount = (res) => (res ? res.customers.length + res.orders.length + res.rentals.length + (res.dateChips ? 1 : 0) : 0);
 
 // סטטוס הזמנה: הערך המחושב (lib/orderStatus.js calculateOrderStatus - מקור האמת של מסך ההזמנות: הוחזר / הוחזר חלקי / הושכר / הושכר חלקי / בקרוב / עבר / מחוק / טיוטה),
 // ובתשובה ישנה בלי חישוב - Order.status הגולמי; כל מה שלא ברשימה (כולל ריק) = "פעיל". [מחלקה, אייקון]
@@ -264,13 +243,8 @@ export function rentalStatus(label) {
   return s ? { cls: s[0], icon: s[1], label } : null;
 }
 
-// סיכום מלאי לשורה/טבלה: "34: 2/3 · 36: 0/1" (פנויות / סה"כ לכל מידה)
-export function inventorySizesText(inv) {
-  return (inv.sizes || []).map((s) => `${s.size}: ${s.available}/${s.total}`).join(' · ');
-}
-
-// רשימה מאוחדת אחת — כל שורה מציינת מה היא. סדר (החלטת הבעלים 5.10.2026): הזמנה שמספרה זהה בדיוק למה שהוקלד (מס' הזמנה) תמיד ראשונה; אחריה שורות "מלאי"
-// (ברקוד / מילות מפתח); אחר כך הזמנות, לקוחות ופריטים. בחיפוש ברקוד (7 ספרות, או 5-6 ספרות שאחרי מס' הזמנה) הפריטים של הברקוד קודמים להזמנות האחרות -
+// רשימה מאוחדת אחת — כל שורה מציינת מה היא. סדר (החלטת הבעלים 5.10.2026): הזמנה שמספרה זהה בדיוק למה שהוקלד (מס' הזמנה) תמיד ראשונה; אחריה
+// הזמנות, לקוחות ופריטים. בחיפוש ברקוד (7 ספרות, או 5-6 ספרות שאחרי מס' הזמנה) הפריטים של הברקוד קודמים להזמנות האחרות -
 // הם מה שהוקלד. הלקוחות אחרי ההזמנות בכל מקרה, כדי שלקוחות לא ידחפו הזמנות מאחורי "עוד N". query = הטקסט שהוקלד (לזיהוי מס' הזמנה / ברקוד).
 export function unifiedRows(res, query = '') {
   if (!res) return [];
@@ -280,9 +254,6 @@ export function unifiedRows(res, query = '') {
   const orderRows = res.orders.map((x) => ({ key: 'o' + x.uuid + '-' + x.id, kind: 'הזמנה', icon: 'file', title: x.n, url: x.url, orderId: x.id, eventHeb: x.h, status: orderStatus(x.st) }));
   const exact = orderNo === null ? [] : orderRows.filter((r) => Number(r.orderId) === orderNo);
   const otherOrders = exact.length ? orderRows.filter((r) => !exact.includes(r)) : orderRows;
-  const inventory = (res.inventory || []).map((x, i) => ({
-    key: 'i' + i + '-' + (x.barcode || x.modelCode || x.modelName), kind: 'מלאי', icon: 'box', title: x.modelName || (x.modelCode ? 'דגם ' + x.modelCode : 'דגם'), url: x.link || '', inv: x,
-  }));
   const customers = res.customers.map((x) => ({ key: 'c' + x.id, kind: 'לקוח', icon: 'user', title: x.n, url: x.url, phone: x.p, city: x.c }));
   // שורת פריט: הכותרת = הברקוד (+ מצב הפריט בתגית), השורה הקטנה = הזמנה, שם מלא של הלקוחה, תאריך אירוע עברי (בדיוק שתי שורות). שם הדגם והמידה נשארים בטבלה / בייצוא.
   const rentals = res.rentals.map((x, i) => ({
@@ -290,8 +261,8 @@ export function unifiedRows(res, query = '') {
     orderId: x.orderId, customer: x.cn || '', eventHeb: x.h || '', status: rentalStatus(x.rs),
   }));
   return barcodeIntent
-    ? [...exact, ...inventory, ...rentals, ...otherOrders, ...customers]
-    : [...exact, ...inventory, ...otherOrders, ...customers, ...rentals];
+    ? [...exact, ...rentals, ...otherOrders, ...customers]
+    : [...exact, ...otherOrders, ...customers, ...rentals];
 }
 
 // הדגשת מה שהוקלד בתוך טקסט: מערך [מקטע, האם מודגש]. מילה אחת או מחרוזת שלמה; בלי הבדלי אותיות סופיות/גרשיים/רישיות (matchHighlight). מילים של תו אחד לא מודגשות (רעש).
@@ -347,10 +318,6 @@ export function tableRecords(rows) {
   return rows.map((r) => {
     if (r.kind === 'לקוח') return { url: r.url, cells: ['לקוח', r.title, r.phone, r.city, '', '', '', '', ''] };
     if (r.kind === 'הזמנה') return { url: r.url, cells: ['הזמנה', r.title, '', '', '#' + r.orderId, '', '', r.eventHeb, r.status.label] };
-    if (r.kind === 'מלאי') {
-      const inv = r.inv;
-      return { url: r.url, cells: ['מלאי', r.title, '', '', inv.barcode || inv.modelCode || '', '', '', inv.dateLabel, [inv.status, inventorySizesText(inv)].filter(Boolean).join(' · ')] };
-    }
     const st = [r.state, r.size ? 'מידה ' + r.size : ''].filter(Boolean).join(' · ');
     return { url: r.url, cells: ['פריט', r.name, '', '', r.barcode, r.orderId ? '#' + r.orderId : '', r.customer || '', r.eventHeb || '', st] };
   });

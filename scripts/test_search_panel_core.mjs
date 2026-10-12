@@ -1,6 +1,7 @@
 // בדיקות הלוגיקה הטהורה של פאנל התפוסה / הפריט (lib/searchPanelCore.js + lib/capacityRules.js) - מקרי קצה סינתטיים, בלי DB ובלי Next.
 // הרצה: node scripts/test_search_panel_core.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   eventDayKey, sizeKeySet, rowMatches, rowSizeKeys, stockAndReserve, busyOn, perSize, requiredFor, outRows, returnedRows, pendingRows,
   buildModelPanel, buildItemPanel, itemStatus, itemFlags, redactPerson, LIST_CAPS, buildWhere, placeText, whereState, redactWhere, WHERE_CAP,
@@ -306,6 +307,14 @@ t('buildWhere: תקרה, ו-redactWhere מוחק שם וטלפון בלבד', ()
   const red = redactWhere(out);
   assert.ok(!JSON.stringify(red).includes('גולד') && !JSON.stringify(red).includes('0501112222'));
   assert.equal(red.rows[0].state, 'out'); assert.ok(red.rows[0].orderId > 0);
+});
+
+console.log('הרשאות (החלטת הבעלים 12.10.2026)');
+t('שם משפחה וטלפון לכל מי שמקבלת את הפאנל (page:orders / page:rentals); לא נדרשת הרשאת לקוחות', () => {
+  const src = readFileSync(new URL('../lib/searchPanel.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("PANEL_PAGE_KEYS = Object.freeze(['page:orders', 'page:rentals'])"));
+  assert.ok(src.includes('PERSON_PAGE_KEYS = PANEL_PAGE_KEYS'));
+  assert.ok(!src.replace(/\/\/[^\n]*/g, '').includes('page:customers'), 'אין תלות ב-page:customers בקוד');
 });
 
 console.log(`\n${passed} passed`);
