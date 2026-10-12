@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma, { getActingEmployeeId } from '../../../../lib/prisma';
 import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
@@ -224,6 +226,8 @@ export async function POST(request, { params }) {
       });
     }
 
+    // שם הדגם במייל / ב-PDF: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם - N" (lib/modelDisplay.js; נווה useModelNames=false = מספר בלבד)
+    const mOpts = await getModelDisplayOpts();
     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0)
       ? `<tr><td colspan="${colCount}" style="text-align: center; padding: 30px; color: #999;">אין פריטים פעילים בהזמנה זו</td></tr>`
       : sortByModelThenSize(
@@ -246,8 +250,8 @@ export async function POST(request, { params }) {
           // exists but doesn't already contain the model name - so the emailed report
           // never shows less than the in-app print view.
           const itemPrefix = item.dressItem?.dress?.barcodePrefix ?? item.dressItem?.barcodePrefix ?? item.barcodePrefix;
-          const dressName = item.dressItem?.dress?.name || prefixNameMap.get(Number(itemPrefix));
-          let finalDescription = item.description;
+          const dressName = modelDisplayName({ name: item.dressItem?.dress?.name || prefixNameMap.get(Number(itemPrefix)), barcodePrefix: itemPrefix }, { ...mOpts, fallback: '' });
+          let finalDescription = scrubPlaceholderInText(item.description, itemPrefix);
           if (!finalDescription || finalDescription === 'פריט כללי') {
             if (dressName) {
               finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''}`;
@@ -257,7 +261,7 @@ export async function POST(request, { params }) {
               finalDescription = 'פריט כללי';
             }
           } else if (dressName && !finalDescription.includes(dressName)) {
-            finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''} - ${finalDescription}`;
+            finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''} - ${finalDescription}`; // finalDescription כבר מנוקה מ-"ללא שם - N"
           }
           const modelName = stripCodeLabel(finalDescription) || '-';
           const sizeText = item.sizeText || item.dressItem?.sizeText || '-';

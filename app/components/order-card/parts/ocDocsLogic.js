@@ -10,6 +10,7 @@
 // חשבונית/קבלה (אין באתר מסמך קבלה קיים - נבנה אישור תשלומים להדפסה/PDF מתשלומי ההזמנה) ותמונות דגמים (PDF מתמונות הדגמים השמורות, לא ZIP).
 import { hebDateOf } from '../orderCardLogic';
 import { collapseSameCodeLabel } from '../../../../lib/modelCodeLabel';
+import { modelDisplayName, orderItemModelName } from '../../../../lib/modelDisplay';
 import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
 import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_FILES, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
@@ -158,7 +159,7 @@ export function mailSentToast(to, fileCount, driveCount = 0) {
 // ייצוא Excel (A1) - עברית בלבד בכל תאריך (ENG-11); מספרים כמספרים; טלפון/ת״ז כטקסט
 // ---------------------------------------------------------------------------------------------
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-const itemName = (it) => collapseSameCodeLabel(it?.dressItem?.dress?.name || it?.dressModelName || it?.modelName || it?.description || ''); // description נשמר כ-"522 (קוד: 522)"
+const itemName = (it) => collapseSameCodeLabel(orderItemModelName(it) || it?.description || ''); // description נשמר כ-"522 (קוד: 522)"
 const methodOf = (p) => p?.paymentMethod || p?.method || '';
 
 /** גיליונות הקובץ: הזמנה (שדה/ערך), פריטים, חיובים, תשלומים. מקור: מצב השרת האחרון (snapshot) - מה שנשמר. */
@@ -310,7 +311,7 @@ export function modelPhotosOf(items = []) {
     const urls = [dress && dress.imageUrl, dress && dress.thumbnailUrl].filter((u) => typeof u === 'string' && u.trim());
     if (!urls.length) continue;
     const key = String(dress.id || dress.name || urls[0]);
-    if (!byModel.has(key)) byModel.set(key, { key, name: String(dress.name || it.description || 'דגם'), urls, sizes: [] });
+    if (!byModel.has(key)) byModel.set(key, { key, name: String(modelDisplayName(dress, { fallback: '' }) || it.description || 'דגם'), urls, sizes: [] });
     const size = it.sizeText || (it.dressItem && it.dressItem.sizeText);
     const entry = byModel.get(key);
     if (size && !entry.sizes.includes(String(size))) entry.sizes.push(String(size));

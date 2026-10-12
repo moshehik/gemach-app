@@ -11,6 +11,7 @@ import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
 import { stripCodeLabel } from '../../../lib/modelCodeLabel';
+import { orderItemModelName } from '../../../lib/modelDisplay';
 import { sortByModelThenSize } from '../../../lib/sizeSort';
 import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
 import { pickupAddressFromList, pickupMapsUrlFromList } from '../../../lib/gmachContact';
@@ -505,7 +506,7 @@ export default function PrintOrderPage() {
               return (
                 <Fragment key={item.id}>
                   <tr>
-                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
+                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || orderItemModelName(item) || item.dressItem?.dressName) || '-'}</td>
                     <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
                     {enableAlterations && (
                       <td>{renderRepairChips(item)}</td>
