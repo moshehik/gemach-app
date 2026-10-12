@@ -11,7 +11,7 @@ import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
 import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
-import { pickupAddressFromList } from '../../../lib/gmachContact';
+import { pickupAddressFromList, pickupMapsUrlFromList } from '../../../lib/gmachContact';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -134,6 +134,7 @@ export default function PrintOrderPage() {
           footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
           gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
           gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
+          pickupMapsUrl: pickupMapsUrlFromList(settingsData), // קישור "פתיחה במפות Google" - אופט-אין, '' = אין
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
           gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
           returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
@@ -327,6 +328,11 @@ export default function PrintOrderPage() {
     const prepCustomerNotes = prepCustomerNotesSetting && isBatch ? manualCustomerNotes(ord?.customer?.notes) : '';
     // null להזמנה שאינה משלוח / כשהמשלוחים כבויים (הגמ"ח הראשי) - אז כל ההדפסה זהה לקודמת
     const deliverySection = deliveryCfg ? buildDeliverySection(ord, { settings: deliveryCfg }) : null;
+    // החלטה 27: בהזמנת משלוח רק מה שהלקוחה צריכה - הלוך-חזור: בלי קבלה/החזרה/כתובת איסוף; הלוך בלבד: רק החזרה; חזור בלבד: רק קבלה
+    const visits = deliverySection ? deliverySection.visits : null;
+    const showPickupBox = !visits || visits.pickup;
+    const showReturnBox = !visits || visits.ret;
+    const showAddress = !visits || visits.address;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -344,12 +350,12 @@ export default function PrintOrderPage() {
                   לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה.
                   05d34467 (2026-09-22): קבלת השמלות מוצגת לפני פרטי ההחזרה - כרונולוגית
                   קבלת השמלות קודמת לאירוע, וההחזרה אחריו. */}
-              {pickupDate && (
+              {pickupDate && showPickupBox && (
                 <div className="return-details-box">
                   <strong>קבלת השמלות:</strong> ביום {getHebrewWeekdayLabel(pickupDate)} {getHebrewDateString(pickupDate)} בשעה {printSettings?.pickupHours || STANDARD_PICKUP_HOURS} בדיוק.
                 </div>
               )}
-              {returnByDate && (
+              {returnByDate && showReturnBox && (
                 <div className="return-details-box">
                   <strong>{clean ? 'החזרת השמלות:' : 'פרטי החזרה:'}</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
@@ -374,11 +380,15 @@ export default function PrintOrderPage() {
                   <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
                   <div className="company-details">
                     {[
-                      printSettings?.gmachAddress,
+                      showAddress && printSettings?.gmachAddress,
                       printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
                       printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
                     ].filter(Boolean).join(' | ')}
                   </div>
+                  {/* קישור ניווט לכתובת האיסוף (אופט-אין: gmach_pickup_address / gmach_pickup_maps_url) - הכתובת גם כטקסט */}
+                  {showAddress && printSettings?.pickupMapsUrl && printSettings?.gmachAddress && (
+                    <div className="company-details">כתובת האיסוף: {printSettings.gmachAddress} · <a href={printSettings.pickupMapsUrl} target="_blank" rel="noreferrer">פתיחה במפות Google</a></div>
+                  )}
                 </div>
               </div>
 

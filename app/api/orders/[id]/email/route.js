@@ -18,7 +18,7 @@ import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
 import { loadDeliverySection } from '@/lib/orderDeliveryServer';
-import { pickupAddressFromList } from '@/lib/gmachContact';
+import { pickupAddressFromList, pickupMapsUrlFromList } from '@/lib/gmachContact';
 
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
@@ -147,6 +147,13 @@ export async function POST(request, { params }) {
     const settingsData = await getAllCachedSettings();
     // משלוח (נושא 9 - דוחות): בלוק פרטים בכותרת ההזמנה, ושורת פריט אם delivery_as_item_row דלוק. תצוגה בלבד - הסכומים נשארים כפי שהם.
     const deliverySection = await loadDeliverySection(order, { settings: settingsData });
+    // החלטה 27: בהזמנת משלוח רק מה שהלקוחה צריכה - הלוך-חזור: בלי קבלה/החזרה/כתובת איסוף; הלוך בלבד: רק החזרה; חזור בלבד: רק קבלה. null = כמו תמיד
+    const visits = deliverySection ? deliverySection.visits : null;
+    const showPickupBox = !visits || visits.pickup;
+    const showReturnBox = !visits || visits.ret;
+    const showAddress = !visits || visits.address;
+    // קישור "פתיחה במפות Google" (אופט-אין: gmach_pickup_address / gmach_pickup_maps_url); '' = אין קישור
+    const pickupMapsUrl = showAddress ? pickupMapsUrlFromList(settingsData) : '';
     const enableAlterations = settingsData.find(s => s.key === 'enable_alterations')?.value !== 'false';
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
@@ -408,15 +415,16 @@ export async function POST(request, { params }) {
       <body>
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
-          ${pickupDate ? `<div class="return-details-box"><strong>קבלת השמלות:</strong> ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${printSettings.pickupHours} בדיוק.</div>` : ''}
-          ${returnByDate ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${printSettings.returnHour}</div>` : ''}
+          ${pickupDate && showPickupBox ? `<div class="return-details-box"><strong>קבלת השמלות:</strong> ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${printSettings.pickupHours} בדיוק.</div>` : ''}
+          ${returnByDate && showReturnBox ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${printSettings.returnHour}</div>` : ''}
           <div class="print-header">
             <h1>${printSettings.gmachName}</h1>
             <div class="company-details">${[
-              printSettings.gmachAddress,
+              showAddress ? printSettings.gmachAddress : '',
               printSettings.gmachPhone ? `טלפון: ${printSettings.gmachPhone}` : '',
               printSettings.gmachEmail ? `דוא"ל: ${printSettings.gmachEmail}` : ''
             ].filter(Boolean).join(' | ')}</div>
+            ${pickupMapsUrl && printSettings.gmachAddress ? `<div class="company-details">כתובת האיסוף: ${escapeHtml(printSettings.gmachAddress)} · <a href="${escapeHtml(pickupMapsUrl)}" style="color:#1a56b0;">פתיחה במפות Google</a></div>` : ''}
           </div>
 
           <table class="order-details-table">
@@ -563,7 +571,8 @@ export async function POST(request, { params }) {
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
       gmachPhone: printSettings.gmachPhone,
-      delivery: deliverySection
+      delivery: deliverySection,
+      pickupMapsUrl
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';

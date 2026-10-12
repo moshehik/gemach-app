@@ -136,7 +136,7 @@ t('הסדר בתוך סעיף = הסדר בעיצוב (לא סדר ה-DB)', () =
   const rows = [...fakeRows].reverse();
   const sys = L.buildViewModel('sys', rows);
   const org = sys.tabs.find((tb) => tb.id === 'cfg').sections.find((s) => s.id === 'org');
-  assert.deepEqual(org.rows.map((r) => r.key), ['gmach_name', 'gmach_phone', 'main_email', 'gmach_address', 'gmach_pickup_address']);
+  assert.deepEqual(org.rows.map((r) => r.key), ['gmach_name', 'gmach_phone', 'main_email', 'gmach_address', 'gmach_pickup_address', 'gmach_pickup_maps_url']);
 });
 
 console.log('controls (same field classification as legacy)');
