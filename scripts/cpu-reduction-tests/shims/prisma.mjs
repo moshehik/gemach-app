@@ -17,9 +17,6 @@ const prisma = {
       let rows = globalThis.__SETTINGS.map((r) => ({ ...r })); // a real DB hands out fresh objects
       const notIn = args.where && args.where.key && args.where.key.notIn;
       if (notIn) rows = rows.filter((r) => !notIn.includes(r.key));
-      // NOT: [{ key: { startsWith } }] - lib/settingsCache.js excludes the email_campaign:* documents (review 12.10.2026)
-      const notArr = args.where && args.where.NOT ? [].concat(args.where.NOT) : [];
-      for (const n of notArr) if (n && n.key && n.key.startsWith) rows = rows.filter((r) => !String(r.key).startsWith(n.key.startsWith));
       for (const o of [...(args.orderBy || [])].reverse()) {
         const [[field, dir]] = Object.entries(o);
         rows.sort((a, b) => (dir === 'desc' ? -1 : 1) * cmp(a[field] ?? null, b[field] ?? null));
