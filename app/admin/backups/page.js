@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { onActiveInterval } from '@/lib/idleGuard';
+import { useNoFill } from '@/lib/autofillGuard';
 
 const PRESET_HOURS = [6, 12, 24, 48];
 
@@ -74,6 +75,7 @@ function RunRow({ run }) {
 }
 
 export default function BackupsPage() {
+  const nf = useNoFill();
   const [settings, setSettings] = useState(null);
   const [runs, setRuns] = useState(null);
   const [customHours, setCustomHours] = useState('');
@@ -250,6 +252,8 @@ export default function BackupsPage() {
           <label>כתובת מייל לצפייה/הורדה של הגיבויים</label>
           <input
             type="text"
+            inputMode="email"
+            {...nf('backup_owner_email')}
             className="input"
             value={settings.backup_owner_email}
             onChange={(e) => setSettings({ ...settings, backup_owner_email: e.target.value })}

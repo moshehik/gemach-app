@@ -9,6 +9,7 @@
 // Enter = התאמה מדויקת לשם/קוד, "ללא שם" → קוד) ; useSizeRows/SizeButtons ← components/orders/OrderSizeSelector.js (חישוב מקומי
 // ממטמון המלאי, אחרת /api/orders/availability או /api/inventory/sizes; אותו טקסט זמינות, מידה לא זמינה מנוטרלת).
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { calculateDynamicAvailability } from '@/lib/clientInventory';
 import { sortSizeRows } from '@/lib/sizeSort';
@@ -21,6 +22,7 @@ const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore'
 
 // ---------- דגם: שדה עם רשימת הצעות ----------
 export function ModelInput({ id, value, onChange, ui, disabled }) {
+  const nf = useNoFill();
   const [query, setQuery] = useState(value ? displayModelName(value) : '');
   const [models, setModels] = useState([]);
   const [open, setOpen] = useState(false);
@@ -87,7 +89,7 @@ export function ModelInput({ id, value, onChange, ui, disabled }) {
       <input
         className="inp"
         id={id}
-        name={`${id}-nofill`}
+        {...nf(id)}
         inputMode="numeric"
         value={query}
         placeholder="מספר דגם..."
@@ -100,7 +102,6 @@ export function ModelInput({ id, value, onChange, ui, disabled }) {
         onFocus={() => setOpen(true)}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); }}
         onKeyDown={onKey}
-        {...NO_FILL}
       />
       {query ? <button type="button" className="inpx" aria-label="ניקוי" data-tip="ניקוי" onMouseDown={(e) => e.preventDefault()} onClick={clear}><OcIcon name="x" size="sm" /></button> : null}
       {open ? (

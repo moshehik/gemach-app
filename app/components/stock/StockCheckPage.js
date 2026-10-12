@@ -13,6 +13,7 @@ import '@/design-system/components.css';
 import '../home/home.css'; // נטרול הכללים הגלובליים הישנים בתוך .gm-ds.gm-home (כרטיס שקוף במסגרת, גבול זהב לשדות, כותרת טבלה כחולה) - אותו קובץ כמו דף הבית
 import './stock-check.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import Link from 'next/link';
 import { Ic, HomeSprite, ViewSwitch, ResultsTable, Dash } from '../home/HomeParts';
 import { DateField } from '../home/HomeAdvanced';
@@ -51,6 +52,7 @@ function Highlight({ text, q }) {
 // kind='model': ההצעות נטענות לפי מה שהוקלד (שם מכיל / קידומת); בחירה ממלאת את השדה.
 // kind='size':  כל המידות נטענות פעם אחת, מסוננות בלקוח לפי הקטע האחרון שהוקלד ובלי מידות שכבר נבחרו; בחירה מוסיפה מידה.
 function SuggestField({ id, kind, label, icon, placeholder, value, onChange, chosen, onPickSize, onEnter, onKeyDown, invalid, inputRef, trailing, inputMode }) {
+  const nf = useNoFill();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(null); // null = טוען
   const [failed, setFailed] = useState(false);
@@ -93,10 +95,9 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
           ref={inputRef}
           className="inp"
           id={id}
-          name={id + '-nofill'}
+          {...nf(id)}
           value={value}
           placeholder={placeholder}
-          autoComplete="nope"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

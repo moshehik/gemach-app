@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { useNoFill, fieldOf } from '@/lib/autofillGuard';
 import { useRouter } from 'next/navigation';
 import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
@@ -11,6 +12,7 @@ import { requestJson, describeFailure } from '@/lib/employeeCardSave';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function EmployeePage({ params }) {
+  const nf = useNoFill();
   const router = useRouter();
   const { id } = use(params);
   // הודעות מערכת (טוסט) - שגיאה / הצלחה. כל שמירה בכרטיס בודקת res.ok (requestJson) ומציגה את סיבת השרת;
@@ -123,7 +125,8 @@ export default function EmployeePage({ params }) {
   }, [id, router, showDeletedShifts]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { value, type, checked } = e.target;
+    const name = fieldOf(e.target);
     setEmployee(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -369,11 +372,11 @@ export default function EmployeePage({ params }) {
           <div className="form-grid">
             <div className="field">
               <label htmlFor="employee-detail-firstName">שם פרטי *</label>
-              <input data-element-name="שדה_page_6" className="input" type="text" id="employee-detail-firstName" name="firstName" value={employee.firstName || ''} onChange={handleChange} required />
+              <input data-element-name="שדה_page_6" className="input" type="text" id="employee-detail-firstName" {...nf('firstName')} value={employee.firstName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-lastName">שם משפחה *</label>
-              <input data-element-name="שדה_page_7" className="input" type="text" id="employee-detail-lastName" name="lastName" value={employee.lastName || ''} onChange={handleChange} required />
+              <input data-element-name="שדה_page_7" className="input" type="text" id="employee-detail-lastName" {...nf('lastName')} value={employee.lastName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-joinDate">תאריך כניסה לארגון</label>
@@ -381,16 +384,16 @@ export default function EmployeePage({ params }) {
             </div>
             <div className="field">
               <label htmlFor="employee-detail-phone1">טלפון נייד *</label>
-              <input data-element-name="שדה_page_10" className="input" type="text" id="employee-detail-phone1" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required />
+              <input data-element-name="שדה_page_10" className="input" type="text" id="employee-detail-phone1" {...nf('phone1')} value={employee.phone1 || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-phone2">טלפון נוסף</label>
-              <input data-element-name="שדה_page_11" className="input" type="text" id="employee-detail-phone2" name="phone2" value={employee.phone2 || ''} onChange={handleChange} />
+              <input data-element-name="שדה_page_11" className="input" type="text" id="employee-detail-phone2" {...nf('phone2')} value={employee.phone2 || ''} onChange={handleChange} />
             </div>
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="employee-detail-email">דוא&quot;ל</label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', maxWidth: '620px' }}>
-                <input data-element-name="שדה_page_12" className="input" type="email" id="employee-detail-email" name="email" value={employee.email || ''} onChange={handleChange} style={{ flex: 1 }} />
+                <input data-element-name="שדה_page_12" className="input" type="email" id="employee-detail-email" {...nf('email')} value={employee.email || ''} onChange={handleChange} style={{ flex: 1 }} />
                 {employee.email && (
                   <>
                     <button data-element-name="כפתור_page_13" type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" className="btn btn-ghost btn-icon-only">
@@ -419,21 +422,21 @@ export default function EmployeePage({ params }) {
             </div>
             <div className="field">
               <label htmlFor="employee-detail-city">עיר</label>
-              <input data-element-name="שדה_page_18" className="input" type="text" id="employee-detail-city" name="city" value={employee.city || ''} onChange={handleChange} />
+              <input data-element-name="שדה_page_18" className="input" type="text" id="employee-detail-city" {...nf('city')} value={employee.city || ''} onChange={handleChange} />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-street">רחוב</label>
-              <input data-element-name="שדה_page_19" className="input" type="text" id="employee-detail-street" name="street" value={employee.street || ''} onChange={handleChange} />
+              <input data-element-name="שדה_page_19" className="input" type="text" id="employee-detail-street" {...nf('street')} value={employee.street || ''} onChange={handleChange} />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-houseNum">בית</label>
-              <input data-element-name="שדה_page_20" className="input" type="text" id="employee-detail-houseNum" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} />
+              <input data-element-name="שדה_page_20" className="input" type="text" id="employee-detail-houseNum" {...nf('houseNum')} value={employee.houseNum || ''} onChange={handleChange} />
             </div>
 
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="employee-detail-pwDisplay">סיסמא לשעון נוכחות</label>
               {id === 'new' ? (
-                <input data-element-name="שדה_page_21" className="input" type="text" name="password" value={employee.password || ''} onChange={handleChange} style={{ maxWidth: '460px' }} />
+                <input data-element-name="שדה_page_21" className="input" type="text" {...nf('password')} value={employee.password || ''} onChange={handleChange} style={{ maxWidth: '460px' }} />
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: '8px', maxWidth: '620px', flexWrap: 'wrap' }}>
@@ -645,7 +648,7 @@ export default function EmployeePage({ params }) {
              </div>
              <div className="field">
                 <label htmlFor="employee-detail-paymentMethod">אופן תשלום</label>
-                <input data-element-name="שדה_page_35" className="input" type="text" id="employee-detail-paymentMethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} />
+                <input data-element-name="שדה_page_35" className="input" type="text" id="employee-detail-paymentMethod" {...nf('paymentMethod')} value={employee.paymentMethod || ''} onChange={handleChange} />
              </div>
              <div className="field" style={{ justifyContent: 'flex-end' }}>
                 <div className="checkbox-row">

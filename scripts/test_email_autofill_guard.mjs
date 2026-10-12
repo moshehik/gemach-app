@@ -49,10 +49,6 @@ const guarded = (s) => /\{\.\.\.nf\('/.test(s);
 // שדות מייל שפטורים בכוונה (עם סיבה) - כל פטור חייב להיות מתועד כאן ולהיסגר בהחלטה של הבעלים
 const EXEMPT = {
   'app/customer-interface/page.js': 'עמדת הלקוח (קיוסק) - בבעלות סוכן אחר; טופס הרישום בלי name/id בכלל, לדווח בלבד',
-  'app/components/employee-card/EmployeeCardA5.js': 'כרטיס עובד (לא לקוח): name="email" קבוע + מטפל שקורא e.target.name - מחוץ לתחום תיקון הלקוחות',
-  'app/components/profile/ProfilePage.js': 'פרופיל עובד (לא לקוח): name="email" קבוע + autoComplete=new-password - מחוץ לתחום תיקון הלקוחות',
-  'app/employees/[id]/LegacyEmployeeCardPage.js': 'כרטיס עובד ישן קפוא - מחוץ לתחום',
-  'app/profile/LegacyProfilePage.js': 'פרופיל ישן קפוא (נעול ב-test_page_variant_switch) - מחוץ לתחום',
 };
 
 console.log('1. כל שדה מייל בקוד נושא את ההגנה (name אקראי + new-password)');
@@ -103,9 +99,14 @@ const CUSTOMER_FORMS = [
   'app/orders/new/LegacyNewOrderPage.js',
   'app/customers/[id]/LegacyCustomerPage.js',
   'components/customers/modern/ModernCustomerDetailsTab.js',
+  // טפסי עובד / פרופיל (אותו דפוס - החלטת הבעלים 12.10.2026); חייבים להישאר ארבעתם אחרונים (slice(-4) למטה)
+  'app/components/employee-card/EmployeeCardA5.js',
+  'app/components/profile/ProfilePage.js',
+  'app/employees/[id]/LegacyEmployeeCardPage.js',
+  'app/profile/LegacyProfilePage.js',
 ];
 await t('בטפסי הלקוח אף input לא נושא name קבוע (name="email", name="phone1"...) ואף שדה פרטי-לקוח לא נשאר בלי ההגנה', () => {
-  const FIELD = /(?:^|\s)name=(?:"|\{`?)(?:email|firstName|lastName|phone1|phone2|city|street|houseNum|zeout|[A-Za-z]+-nofill)/;
+  const FIELD = /(?:^|\s)name=(?:"|\{`?)(?:email|firstName|lastName|phone1|phone2|city|street|houseNum|zeout|fullName|paymentMethod|password|[A-Za-z]+-nofill)/;
   const bad = [];
   for (const f of CUSTOMER_FORMS) {
     for (const tag of tagsOf(read(f))) {
@@ -130,7 +131,26 @@ await t('מטפלים שקראו e.target.name קוראים עכשיו fieldOf(e
   assert.ok(!se.includes('[e.target.name]'));
 });
 
-console.log('3. ההוק עצמו: בטוח להידרציה, ובלי name בשרת');
+await t('מטפלי הטפסים של עובד / פרופיל קוראים fieldOf(e.target) ולא e.target.name', () => {
+  for (const f of CUSTOMER_FORMS.slice(-4)) {
+    const src = read(f);
+    assert.match(src, /const name = fieldOf\(e\.target\);/, f);
+    assert.ok(!/const \{ name, value, type, checked \} = e\.target/.test(src), f);
+  }
+});
+
+console.log('3. שדות חיפוש / סריקה / סינון: אין name קבוע ("<id>-nofill") בשום input טקסט');
+await t('בכל app/ ו-components/ אין input עם name מסוג "...-nofill" חוץ משדות סיסמה / קוד אישור (type="password") ובוחרי תאריך לקריאה בלבד', () => {
+  const bad = [];
+  for (const f of [...walk('app'), ...walk('components')]) {
+    for (const tag of tagsOf(read(f), ['input', 'Inp'])) {
+      if (/-nofill/.test(tag.text) && !/type="password"|readOnly/.test(tag.text)) bad.push(`${f}:${tag.line}  ${tag.text.slice(0, 100).replace(/\s+/g, ' ')}`);
+    }
+  }
+  assert.deepEqual(bad, [], `name קבוע בשדה חיפוש:\n   ${bad.join('\n   ')}`);
+});
+
+console.log('4. ההוק עצמו: בטוח להידרציה, ובלי name בשרת');
 await t('lib/autofillGuard.js: name נוצר רק ב-useEffect (לא ב-render) ומאפייני new-password + מנהלי סיסמאות', () => {
   const g = read('lib/autofillGuard.js');
   assert.match(g, /useEffect\(\(\) => \{\s*setSalt\(Math\.random\(\)\.toString\(36\)\.slice\(2, 10\)\);\s*\}, \[\]\);/);

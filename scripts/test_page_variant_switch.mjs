@@ -503,6 +503,8 @@ const PINNED_BLOBS = {
   // + מעבר אוטומטי לשדה הבא בשדות באורך קבוע / אחרי בחירת עיר ורחוב (דיווח c89234ec, מאחורי auto_advance_fixed_fields; כבוי = אפס שינוי)
   // + נוסח הסכמת הדיוור המאוחד "מאשר/ת קבלת דיוורים" (R06, PR #249) - טקסט בלבד
   // + שדות הלקוח החדש בלי היסטוריית הצעות של הדפדפן (name אקראי לכל טעינה דרך useNoFill; scripts/test_email_autofill_guard.mjs) - מאפיינים בלבד
+  // LegacyProfilePage.js: נעול כאן ב-hash במקום RESTORED_EXCEPTIONS - אותו תחליף של "שם מלא" (ר' למעלה) + שדות הפרופיל בלי היסטוריית הצעות של הדפדפן (name אקראי דרך useNoFill, המטפל קורא fieldOf; scripts/test_email_autofill_guard.mjs)
+  'app/profile/LegacyProfilePage.js': '21ba42891a5c4ebbfbc6704f8d2de45938fef26e',
   'app/orders/new/LegacyNewOrderPage.js': '5f4718f743a8be434bfa66c6f859a1488d7d595a',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');

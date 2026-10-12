@@ -9,6 +9,7 @@
 // כאן לוגיקת השכרה כפולה. ההבדל מהסריקה הרגילה: שגיאות לא קופצות כטוסט אלא נרשמות ביומן הפאנל (בנווה: במקום alert חוסם).
 // חלון הקשרים (בחירת פריט / "השמלה רשומה בהשכרה אחרת" / אישור מנהל) נשאר חלון - והפוקוס חוזר לשדה כשהוא נסגר.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import useItemActions, { itemName } from '../hooks/useItemActions';
 import { OcItemChooserDialog } from './OcBarcodeRow';
@@ -37,6 +38,7 @@ function beep(kind) {
 }
 
 export default function OcBarcodeSequencePanel({ oc, ui }) {
+  const nf = useNoFill();
   // שגיאות הפעולה (ui.toast('error', ...)) נתפסות כאן ומוצגות ביומן; שאר הטוסטים עוברים כרגיל. הפרוקסי יציב (useMemo) כי useItemActions תלוי ב-ui.
   const errRef = useRef(null);
   const sequenceUi = useMemo(() => ({
@@ -176,7 +178,7 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
           ref={inputRef}
           className="inp"
           id="scanIn"
-          name="barcode-nofill"
+          {...nf('barcode')}
           inputMode="numeric"
           placeholder="רצף ברקודים — השכרה / החזרה"
           aria-label="סריקת ברקוד ברצף"
@@ -184,7 +186,6 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
           value={value}
           onChange={(e) => setValue(cleanBarcode(e.target.value))}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } else if (e.key === 'Escape' && popOpen && (entries.length > 0 || busy || queued > 0)) { e.preventDefault(); closePop(); } }}
-          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

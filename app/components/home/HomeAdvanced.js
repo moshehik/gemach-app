@@ -8,6 +8,7 @@
 // ובהצעות לשדות מועתקת מ-public/a5/index.html.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import { Ic } from './HomeParts';
 import {
   ADV_FOCI, OST, ORD_CHECK, RST, RTN, RCHK, DFLAGS, AFLAGS, MFLAGS, EFLAGS, AST, DST, F,
@@ -48,6 +49,7 @@ function ClearX({ show, onClick }) {
 
 // שדה טקסט עם הצעות מהאתר
 function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
+  const nf = useNoFill();
   const [key, label, icon, ph] = spec;
   const id = idPrefix + key;
   const suggest = OPT_KEYS.includes(key);
@@ -99,10 +101,9 @@ function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
           ref={inputRef}
           className="inp"
           id={id}
-          name={id + '-nofill'}
+          {...nf(id)}
           value={value}
           placeholder={ph}
-          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

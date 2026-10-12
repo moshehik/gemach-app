@@ -8,6 +8,7 @@
 // החזרה, ביטול החזרה ומצב החזרה זמינים (כמו בישן :1023-1040).
 // OcItemChooserDialog — "לאיזה פריט לשייך את הברקוד?" (MIM :1200-1255) כחלון כהה של הכרטיס.
 import { useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder, isItemReturned } from '../hooks/useItemActions';
@@ -16,6 +17,7 @@ const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore'
 
 
 export default function OcBarcodeRow({ item, actions, locked, ui }) {
+  const nf = useNoFill();
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);
   const pending = isPendingItem(item);
@@ -72,7 +74,7 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
           <OcIcon name="scan" size="sm" />
           <input
             className="inp"
-            name="bc-nofill"
+            {...nf('barcode')}
             inputMode="numeric"
             dir="ltr"
             value={val}
@@ -81,7 +83,6 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
             disabled={inputOff}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }}
-            {...NO_FILL}
           />
         </div>
         {item.isTaken && !locked ? (
