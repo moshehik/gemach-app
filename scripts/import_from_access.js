@@ -659,7 +659,10 @@ async function processDressModels() {
     const isNew = !existingByLegacyId.has(legacyId);
     if (isNew) toCreate++; else toUpdate++;
 
-    let name = toStr(m['\u05e9\u05dd_\u05e9\u05de\u05dc\u05d4']) || `\u05dc\u05dc\u05d0 \u05e9\u05dd - ${legacyId}`; // שם_שמלה
+    // שם_שמלה. דגם בלי שם באקסס: מספר הדגם עצמו (בר_קוד_קידומת) - כמו דגמי נווה שיובאו עם שם = קוד - ולא "ללא שם - <קוד_שמלה>" (נושא 11, 12.10.2026).
+    // ה-N בשם הישן הוא המזהה הפנימי של אקסס ולא מספר הדגם. רק דגם בלי שם ובלי קידומת נשאר עם מילוי ייחודי (השם UNIQUE); התצוגה (lib/modelDisplay.js) לעולם לא מציגה אותו.
+    const accessPrefix = toInt(m['\u05d1\u05e8_\u05e7\u05d5\u05d3_\u05e7\u05d9\u05d3\u05d5\u05de\u05ea']); // בר_קוד_קידומת
+    let name = toStr(m['\u05e9\u05dd_\u05e9\u05de\u05dc\u05d4']) || (accessPrefix != null ? String(accessPrefix) : `\u05dc\u05dc\u05d0 \u05e9\u05dd - ${legacyId}`); // שם_שמלה
     const collidingOwner = nameToLegacyId.get(name);
     if (collidingOwner !== undefined && collidingOwner !== legacyId) {
       // Name collides with a DIFFERENT model's existing name. Keep the DB's
