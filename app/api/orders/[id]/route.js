@@ -62,7 +62,7 @@ async function fetchOrderItemsWithDress(orderId) {
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
 import { isDeliveryJoinEnabled, saveDeliveryJoin, releaseOrderJoins } from '../../../../lib/deliveryJoin';
-import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo } from '../../../../lib/sharedDelivery';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo, syncStoredPaymentStatus } from '../../../../lib/sharedDelivery';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -1039,7 +1039,11 @@ async function putOrder(request, { params }, claims) {
       const sharedPostKey = await getSharedGroupKeyForOrder(parsedOrderId);
       if (sharedPreKey || sharedPostKey) {
         const rec = await reconcileSharedDelivery({ groupKeys: [sharedPreKey, sharedPostKey], excludeOrderIds: [parsedOrderId], reason: `שמירת הזמנה #${parsedOrderId}` });
-        if (rec.enabled) sharedDelivery = { notices: rec.notices, self: sharedPostKey ? await getSharedDeliveryInfo(parsedOrderId) : null };
+        if (rec.enabled) {
+          // סטטוס התשלום השמור של ההזמנה הזו עוקב אחרי היתרה אחרי שינוי המשלוח (הזמנות אחרות עודכנו בתוך reconcile)
+          const st = await syncStoredPaymentStatus(parsedOrderId);
+          sharedDelivery = { notices: rec.notices, self: sharedPostKey ? await getSharedDeliveryInfo(parsedOrderId) : null, ...(st.changed ? { selfStatus: { from: st.from, to: st.to } } : {}) };
+        }
       }
     } catch (sharedErr) {
       console.error(`Order ${parsedOrderId}: shared delivery reconcile failed:`, sharedErr);

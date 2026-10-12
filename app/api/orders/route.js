@@ -16,7 +16,7 @@ import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOr
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
-import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo } from '@/lib/sharedDelivery';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo, syncStoredPaymentStatus } from '@/lib/sharedDelivery';
 import {
   planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
@@ -1044,7 +1044,10 @@ async function POST(request) {
       const sharedKey = await getSharedGroupKeyForOrder(order.orderId);
       if (sharedKey) {
         const rec = await reconcileSharedDelivery({ groupKeys: [sharedKey], excludeOrderIds: [order.orderId], reason: `הזמנה חדשה #${order.orderId}` });
-        if (rec.enabled) sharedDelivery = { notices: rec.notices, self: await getSharedDeliveryInfo(order.orderId) };
+        if (rec.enabled) {
+          const st = await syncStoredPaymentStatus(order.orderId);
+          sharedDelivery = { notices: rec.notices, self: await getSharedDeliveryInfo(order.orderId), ...(st.changed ? { selfStatus: { from: st.from, to: st.to } } : {}) };
+        }
       }
     } catch (sharedErr) {
       console.error(`Order ${order.orderId}: shared delivery reconcile failed:`, sharedErr);

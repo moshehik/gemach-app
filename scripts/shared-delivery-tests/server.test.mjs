@@ -573,3 +573,37 @@ test('מחיקה והחזרה של שורת ההזמנה (שמירה אחרי ש
   assert.equal(charge(b.orderId).amount, 40);
   assert.equal(refunds(b.orderId).length, 0);
 });
+
+test('סעיף 16 - סטטוס תשלום שמור: ששולמה והחיוב עלה => "שולם חלקי"; החוב נסגר => חוזר "שולם"; אידמפוטנטי; סטטוס אחר לא נוגעים', async () => {
+  const a = addOrder({ status: 'שולם' }); const b = addOrder({ status: 'שולם' }); const c = addOrder({ status: 'חדש' });
+  for (const o of [a, b, c]) await saveOrder(o.orderId);
+  // הכל ששולם לפי המחירים הנוכחיים: A 80+שמלה, B 40+שמלה
+  for (const o of [a, b, c]) db().paymentObligation.push({ id: `d${o.orderId}`, orderId: o.orderId, amount: 300, quantity: 1, description: 'שמלה', isManual: false, isDeleted: false });
+  pay(a.orderId, 380); pay(b.orderId, 340); pay(c.orderId, 340);
+  const st = (o) => db().order.find((x) => x.orderId === o.orderId).status;
+  // החלפת ראשי ל-B: B עולה ל-80 (חוב 40) => "שולם חלקי"; A יורדת ל-40 (זיכוי 40) => נשארת "שולם"; C ("חדש") לא נוגעים
+  const r = await SD.setSharedDeliveryPrimary(a.orderId, b.orderId);
+  assert.equal(st(b), 'שולם חלקי');
+  assert.equal(st(a), 'שולם');
+  assert.equal(st(c), 'חדש');
+  const nb = r.notices.find((n) => n.orderId === b.orderId);
+  assert.equal(nb.statusTo, 'שולם חלקי'); assert.match(nb.message, /סטטוס התשלום עודכן ל"שולם חלקי"/);
+  // חזרה: החוב של B נסגר => "שולם"
+  await SD.setSharedDeliveryPrimary(a.orderId, a.orderId);
+  assert.equal(st(b), 'שולם');
+  // חישוב חוזר: אפס כתיבות
+  globalThis.__MOCK_CALLS = [];
+  await SD.reconcileSharedDelivery({ groupKeys: [await SD.getSharedGroupKeyForOrder(a.orderId)] });
+  assert.equal(writes().length, 0);
+  // סנכרון ההזמנה הנשמרת עצמה (PUT): שולם במלואו ואז המשלוח עולה
+  db().paymentObligation.find((o) => o.orderId === b.orderId && o.description.includes('משלוח')).amount = 80;
+  assert.deepEqual(await SD.syncStoredPaymentStatus(b.orderId), { changed: true, from: 'שולם', to: 'שולם חלקי' });
+  assert.equal((await SD.syncStoredPaymentStatus(b.orderId)).changed, false);
+  assert.equal((await SD.syncStoredPaymentStatus(c.orderId)).changed, false, '"חדש" לא נוגעים');
+  // סטטוסים אחרים (טיוטה / שמור לחיוב / ריק) לא משתנים לעולם
+  for (const s of ['טיוטה', 'שמור לחיוב', null, 'בוטל']) assert.equal(SD.storedStatusFor(s, 500, 0), s);
+  assert.equal(SD.storedStatusFor('שולם', 500, 0), 'חדש');
+  assert.equal(SD.storedStatusFor('שולם חלקי', 340, 340), 'שולם');
+  assert.equal(SD.storedStatusFor('שולם', 340, 380), 'שולם', 'ממתין לזיכוי נשאר "שולם"');
+  assert.equal(SD.storedStatusFor('שולם', 0, 0), 'חדש');
+});

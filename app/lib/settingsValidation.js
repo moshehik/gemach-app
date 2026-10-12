@@ -31,12 +31,15 @@ export const POLICY_NUMBER_LIMITS = {
   swap_pairing_window_minutes: { min: 0, max: 1440, allowEmpty: true, emptyHint: 'ריק = בלי הגבלה' },
   instant_undo_minutes: { min: 0, max: 10080, allowEmpty: true, emptyHint: 'ריק = כמו זיכוי דמי ביטול' },
   size_edit_until_days_before_event: { min: 0, max: 365, allowEmpty: true, emptyHint: 'ריק = כבוי' },
+  // משלוח משותף: ריק = לא הוגדר מחיר מוזל (אין הנחה); 0 = משלוח מצורף ללא עלות (הוגדר במפורש)
+  shared_delivery_price: { min: 0, max: 1000, allowDecimal: true, allowEmpty: true, emptyHint: 'ריק = ללא הנחה, 0 = ללא עלות' },
 };
 Object.assign(NUMBER_FIELD_LIMITS, POLICY_NUMBER_LIMITS);
 
 // הגדרות בחירה עם רשימה סגורה של ערכים תקינים (ריק חוקי = ברירת המחדל).
 export const SELECT_FIELD_ALLOWED_VALUES = {
   gap_size_price_rule: ['none', 'cheaper'],
+  shared_delivery_price_mode: ['global', 'by_city'],
 };
 
 // Returns null when the value is valid, otherwise a Hebrew error message.

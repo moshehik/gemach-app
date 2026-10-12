@@ -310,3 +310,20 @@ test('computeStoredTotalAfterDeliveryChange: כולל / בלי (תיקון) / ל
   // אגורות
   assert.equal(C.computeStoredTotalAfterDeliveryChange({ storedTotal: 100.1, obligationsSumBefore: 100.1, deliveryOld: 40.05, deliveryNew: 20.02 }).total, 80.07);
 });
+
+test('סעיף 17 - הגדרות: ריק = ללא הנחה, 0 = ללא עלות, ובמסך ההגדרות ריק מול 0 מובחנים (emptyHint) והמצב מוגבל ל-global / by_city', async () => {
+  const V = await import(pathToFileURL(path.join(ROOT, 'app', 'lib', 'settingsValidation.js')).href);
+  assert.equal(V.validateNumericSetting('shared_delivery_price', ''), null, 'ריק חוקי');
+  assert.equal(V.validateNumericSetting('shared_delivery_price', '0'), null, '0 חוקי');
+  assert.equal(V.validateNumericSetting('shared_delivery_price', '12.5'), null);
+  assert.ok(V.validateNumericSetting('shared_delivery_price', '-1'));
+  assert.ok(V.validateNumericSetting('shared_delivery_price', 'abc'));
+  assert.match(V.NUMBER_FIELD_LIMITS.shared_delivery_price.emptyHint, /ריק = ללא הנחה/);
+  assert.match(V.NUMBER_FIELD_LIMITS.shared_delivery_price.emptyHint, /0 = ללא עלות/);
+  assert.equal(V.validateSelectSetting('shared_delivery_price_mode', 'by_city'), null);
+  assert.ok(V.validateSelectSetting('shared_delivery_price_mode', 'zzz'));
+  // ריק לא שווה 0 בחישוב
+  assert.equal(C.resolveSharedDiscountPrice({ mode: 'global', globalPrice: '', city: 'x' }), null);
+  assert.equal(C.resolveSharedDiscountPrice({ mode: 'global', globalPrice: '0', city: 'x' }), 0);
+  assert.equal(C.resolveSharedDiscountPrice({ mode: 'global', globalPrice: '  ', city: 'x' }), null);
+});
