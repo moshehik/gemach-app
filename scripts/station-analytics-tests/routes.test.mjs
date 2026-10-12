@@ -180,7 +180,8 @@ test('register: a failing event write never changes the customer-facing answer (
 
 test('register via the store kiosk channel is stored with channel=kiosk', async () => {
   setSettings({ kiosk_customer_self_service: 'true' });
-  await registerRoute.POST(regReq({ ...FORM, channel: 'kiosk' }));
+  globalThis.__SESSION_EMPLOYEE = { id: 'e1', roleId: 4, isActive: true }; // the store kiosk channel needs a valid employee cookie (security review 12.10.2026)
+  try { await registerRoute.POST(regReq({ ...FORM, channel: 'kiosk' })); } finally { delete globalThis.__SESSION_EMPLOYEE; }
   const ev = rows().filter((r) => /'register'/.test(r.sql));
   assert.equal(ev.length, 1);
   assert.equal(ev[0].params[1], 'kiosk');
