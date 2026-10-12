@@ -5,3 +5,6 @@ export async function getSessionEmployee() { return globalThis.__SESSION_EMPLOYE
 export const HEAD_MANAGEMENT_ROLES = [0, 2];
 export function invalidateRequireLoginCache() {}
 export function readVerifiedSession() { return null; } // imported by lib/permissions.js (settings route chain)
+
+// GET /api/settings reader tier (lib/auth.js getSettingsViewerTier): globalThis.__TIER, else 'guest' when __AUTH === false, else 'admin' (everything, as before)
+export async function getSettingsViewerTier() { return globalThis.__TIER || (globalThis.__AUTH === false ? 'guest' : 'admin'); }

@@ -2,7 +2,7 @@ import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { DEVICE_BACKUP_EMPLOYEES_KEY } from '@/lib/deviceBackupAccess';
-import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee } from '@/lib/auth';
+import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee, getSettingsViewerTier } from '@/lib/auth';
 import { invalidateSettingsCache, getCachedSettingsList } from '@/lib/settingsCache';
 import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
@@ -14,6 +14,7 @@ import { hasPermission } from '@/lib/permissions';
 import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
 import { cachedJson, REFERENCE_CACHE_CONTROL, NO_STORE } from '@/lib/httpCache';
 import { toPublicSettings } from '@/lib/publicSettings';
+import { toStaffSettings } from '@/lib/adminOnlySettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,8 @@ export const dynamic = 'force-dynamic';
 // login wall lifted: the kiosk, the punch clock, global widgets) and only { key, value } of each row. Everything else - contact
 // details, payment/merchant identifiers, drive folder ids, refund/pricing policy, hardening flags, management messages, ... - needs
 // a session (2026-10-12; before this the whole table except three masked secrets was public). Signed-in readers, and every reader
-// while require_login is OFF (open mode: the whole site is open), get exactly what they always got. The auth check fails CLOSED.
+// while require_login is OFF (open mode: the whole site is open), get exactly what they always got - except that a signed-in employee
+// without head-management / programmer role does not receive the "admin only" keys (lib/adminOnlySettings.js). The auth check fails CLOSED.
 // Writing settings is admin-only (see POST below).
 //
 // CPU 5.10.2026: the rows come from a 30s per-instance server cache (lib/settingsCache.js getCachedSettingsList - the SAME
@@ -37,10 +39,13 @@ async function GET(request) {
     const settings = await getCachedSettingsList({ fresh });
     // מחובר = checkAuth() (עוגייה תקפה, או מצב פתוח); נכשל סגור. אורח מקבל רק את הרשימה הלבנה, לפני כל עיבוד אחר - הסודות והערות
     // ימי האי-פעילות (non_working_days_extra) אינם ברשימה ולכן לא יוצאים אליו בכלל; הדף עצמו (/non-working-days) קורא את הערך המלא מ-/api/non-working-days.
-    const signedIn = await checkAuth(undefined, { failClosed: true });
-    const visible = signedIn
-      ? settings.map(s => (SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s))
-      : toPublicSettings(settings);
+    // דרגות (lib/adminOnlySettings.js): guest = הרשימה הלבנה בלבד; staff (עובד מחובר בלי הנהלה ראשית / מתכנת) = הכול פרט למפתחות "ניהול בלבד";
+    // admin (הנהלה ראשית / מתכנת) ו-open (מצב פתוח, בלי זהות) = הכול כמו תמיד. ?fresh=1 (מסכי עריכת הגדרות) בודק את התפקיד מול ה-DB.
+    const tier = await getSettingsViewerTier({ forceDb: fresh });
+    const maskSecret = (s) => (SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s);
+    const visible = tier === 'guest'
+      ? toPublicSettings(settings)
+      : (tier === 'staff' ? toStaffSettings(settings) : settings).map(maskSecret);
     // CPU phase 1B: דפדפן - private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js); ?fresh=1 (מסכי עריכה) = no-store. private + Vary: Cookie כי התשובה
     // תלויה בהתחברות (אורח מקבל רשימה מצומצמת) - לעולם לא מטמון משותף בין משתמשים.
     return cachedJson(request, visible, { cacheControl: fresh ? NO_STORE : REFERENCE_CACHE_CONTROL });

@@ -200,10 +200,12 @@ test('(d) the real checkAuth: { failClosed: true } answers false on an internal 
 
 test('(d) the settings route asks for the fail-closed variant and filters before anything else (static)', () => {
   const src = fs.readFileSync(path.join(PROJ, 'app/api/settings/route.js'), 'utf8');
-  assert.match(src, /checkAuth\(undefined,\s*\{\s*failClosed:\s*true\s*\}\)/);
+  assert.match(src, /getSettingsViewerTier\(/);
   assert.match(src, /toPublicSettings\(settings\)/);
+  const auth = fs.readFileSync(path.join(PROJ, 'lib/auth.js'), 'utf8');
+  assert.match(auth.slice(auth.indexOf('export async function getSettingsViewerTier')), /checkAuth\(undefined,\s*\{\s*failClosed:\s*true\s*\}\)/, 'the tier helper uses the fail-closed login check');
   const get = src.slice(src.indexOf('async function GET('), src.indexOf('export async function POST('));
-  assert.ok(get.indexOf('checkAuth(') < get.indexOf('cachedJson('), 'the auth decision is made before the response is built');
+  assert.ok(get.indexOf('getSettingsViewerTier(') < get.indexOf('cachedJson('), 'the auth decision is made before the response is built');
   assert.ok(!/checkAuth\(\)/.test(get.replace(/\/\/.*$/gm, '')), 'GET has no plain (fail-open) checkAuth() left');
 });
 
