@@ -129,7 +129,7 @@ export default function DcHistoryTab({ dc, ui }) {
           onOpen={null}
           exportSpec={{
             what: 'יומן השינויים',
-            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `יומן שינויים · דגם ${cur.model.code}`, subtitle: cur.model.name, head, rows: rowsOf(vis), base: `יומן-דגם-${cur.model.code}` }),
+            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `יומן שינויים · דגם ${cur.model.code}`, subtitle: modelDisplayName({ name: cur.model.name, barcodePrefix: cur.model.code }, { fallback: '' }), head, rows: rowsOf(vis), base: `יומן-דגם-${cur.model.code}` }),
           }}
         />
         {aiS.modal}
