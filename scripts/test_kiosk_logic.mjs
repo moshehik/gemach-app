@@ -171,6 +171,18 @@ t('הטופס שולח את שדות ההסכמה בשמות המוסכמים', 
 t('כל הגדרות העמדה הקיימות עדיין נקראות', () => {
   for (const k of ['kiosk_customer_self_service', 'kiosk_sticky_date_bar', 'kiosk_model_search', 'kiosk_size_qty_contrast', 'hide_dress_images', 'hide_ai_features', 'enable_ai_specific_employees']) assert.match(kiosk, new RegExp(k));
 });
+t('המסלול הציבורי: רק API ציבורי, בלי נעילה / AI / קוד עובד / התחברות', () => {
+  const pub = read('../app/components/kiosk/KioskPublic.js').split('
+').filter((l) => !l.trim().startsWith('//')).join('
+'); // בלי הערות
+  const station = read('../app/station/page.js');
+  assert.match(pub, /\/api\/public-kiosk\/models/);
+  assert.match(pub, /mode="public"/);
+  for (const forbidden of ['/api/dresses', '/api/settings', '/api/employees', '/api/login', '/api/ai', 'requestFullscreen', 'hide-global-nav']) assert.ok(!pub.includes(forbidden), forbidden);
+  assert.match(station, /loadPublicKioskConfig/);
+  assert.match(station, /KioskPublic/);
+  assert.doesNotMatch(station, /storeSelfService/);
+});
 t('הנעילה: מחלקת הגוף, מסך מלא, שחרור באישור עובד ו-/api/login', () => {
   assert.match(kiosk, /hide-global-nav/);
   assert.match(kiosk, /requestFullscreen/);

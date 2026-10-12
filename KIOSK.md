@@ -120,3 +120,12 @@ Endpoints (`lib/publicKiosk/*`, rate limited per IP, field allow-lists, never co
   `GET /api/customers?kioskPending=1`; `POST /api/customers/[id]/kiosk-verify` clears the mark.
 
 Tests (no DB / server): `node scripts/kiosk-public-tests/run.mjs`.
+
+### Public station `/station` (A5, landing-style)
+
+`app/station/page.js` loads the public flags on the server (`loadPublicKioskConfig`, the same allow-list as `GET /api/public-kiosk/config`) and renders
+`app/components/kiosk/KioskPublic.js` (inside `A5Page`, no site shell - `stationBare` in `app/layout.js`). It uses only the public API
+(`/api/public-kiosk/models`, `/register`) - never `/api/dresses`, `/api/settings`, `/api/employees`, and has no lock / fullscreen / "back to system" / employee code / AI.
+`kiosk_public_link_enabled` off = "העמדה אינה זמינה"; `kiosk_public_show_inventory` off = catalog without dates / availability / quantities;
+`kiosk_public_show_registration` off = no "מילוי פרטים אישיים" card (on = `KioskRegistration mode="public"`, `config.registration` -> `rules`).
+
