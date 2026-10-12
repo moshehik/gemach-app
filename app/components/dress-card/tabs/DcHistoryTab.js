@@ -4,9 +4,9 @@
 // renderInfo / lifeCard / histCfg ב-model-card.js. הנתונים: AuditLog אמיתי (/api/audit לדגם ולפריטים - כמו הלשונית "מידע" הישנה), מנורמל לשורות
 // בעיצוב המאושר ב-lib/dressCardLogic.buildDressHistoryRows (לפני/אחרי מחושבים מהרישומים הקודמים - ר' תיעוד הפונקציה).
 import { useMemo } from 'react';
-import { modelDisplayName } from '@/lib/modelDisplay';
 import { A5List } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
+import { modelDisplayName } from '@/lib/modelDisplay';
 import { runListExport } from '../../a5-list';
 import { sayOf } from '../dcPrint';
 import useDcListAi from '../useDcListAi';
