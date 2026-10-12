@@ -1,5 +1,11 @@
 # System Changes Log
 
+## 2026-10-12: AI assistant answers only about the new interface, and can point at elements ("הצג לי")
+
+- The "how do I / where is / is there" answers of the AI star (and the statistics assistant) now come from a structured registry of the NEW interface (`lib/aiGuide/`, `docs/ai-site-guide.md`) instead of the old hand-written catalog (`lib/howToGuide.js`, removed) that described a side menu. The menu text is derived from the real menu tree of the user (permissions, gemach settings such as deliveries/branches), settings locations from the new settings screen layout.
+- **"הצג לי"**: an answer can include a button that navigates to the page and highlights the element (opens the top-bar menu / tab, scrolls, gold halo + bubble, step 1/3, Esc to close; RTL, mobile, reduced motion). Deep links: `?gm_guide=<ids>`. The model can only name registered ids (server + client validation).
+- `npm run test:ai-guide` fails when a route, menu item, admin tool or `data-guide-id` has no registry entry. Reality-check harness: `scripts/ai-site-guide/` (70 questions with ground truth from the code).
+
 ## 2026-10-08: AI star + search-failed message in the site colors, admin-menu pin
 
 - **AI star (floating button + panel)** in the new shell (A5) now uses the site's navy/gold palette instead of the old burgundy theme color (`ai-a5` class, `app/globals.css`). The old shell is unchanged.
