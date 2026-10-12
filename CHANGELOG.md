@@ -1,5 +1,13 @@
 # System Changes Log
 
+## 2026-10-12: Day schedule - barcode entry at prep or at pickup/delivery (off by default, both gemachs)
+
+- **Two new settings** (טאב "ברקודים"): `barcode_entry_when_delivery` and `barcode_entry_when_local_pickup` - `off` (default, nothing changes) / `prep` / `pickup`. When on, "בוצע" on prep (prep mode) and on pickup/delivery (both modes) is refused until every dress in the order has a scanned barcode; pressing "בוצע" opens a quick scan window (Enter moves to the next barcode, errors do not stop the sequence).
+- **Prep mode:** the barcode is recorded on the item but the item/order stay "not taken" until the pickup/delivery is confirmed (then all items become taken at once). **Pickup mode:** each scan records the barcode and marks the item taken; the last scan marks the order as handed over automatically.
+- **The scan field in the schedule rail now works:** the codes printed on the schedule pages (PRP-/DOT-/PCK-/ALL-... ) mark the stage done (or open the scan window when barcodes are missing); dress barcodes go to the active order. `/schedule?scan=PRP-40113` runs the same action.
+- **Data safety fixes found on the way** (apply to everyone, no setting): a second scan can no longer silently overwrite a barcode written a moment earlier (`rentals/scan`); a forged item id can no longer overwrite another order's barcode; "confirm rental" writes exactly the items it read; with the new setting on, "cancel scans" never wipes barcodes registered from the schedule, a size/model swap cancels the item's un-taken registration, order save never changes a registered barcode, and the same dress cannot be open in two orders.
+- DB: no schema change. Full design, hole map and optional SQL: `docs/schedule-barcode-plan.md`. Seed for the two setting rows (not run): `scripts/seed_barcode_entry_settings.js`.
+
 ## 2026-10-08: AI star + search-failed message in the site colors, admin-menu pin
 
 - **AI star (floating button + panel)** in the new shell (A5) now uses the site's navy/gold palette instead of the old burgundy theme color (`ai-a5` class, `app/globals.css`). The old shell is unchanged.

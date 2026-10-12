@@ -6,7 +6,8 @@ import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 import { autoMarkAlterationForItem, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
-import { barcodeFeatureFor, openElsewhereError, autoMarkHandoverForOrder, autoUnmarkHandoverForOrder } from '@/lib/schedule/barcodeScan';
+import { barcodeFeatureFor, openElsewhereError } from '@/lib/schedule/barcodeFeature';
+import { autoMarkHandoverForOrder, autoUnmarkHandoverForOrder } from '@/lib/schedule/barcodeScan';
 import { isAlterationEstimated, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט

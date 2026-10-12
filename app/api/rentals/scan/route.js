@@ -7,7 +7,7 @@ import { hasPermission } from '@/lib/permissions';
 import { notifyManagers } from '@/lib/notifyManagers';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 import { filterItemsForBarcode, matchesDifferInAlterations } from '@/lib/rentalItemMatch';
-import { barcodeFeatureFor, openElsewhereError } from '@/lib/schedule/barcodeScan';
+import { barcodeFeatureFor, openElsewhereError } from '@/lib/schedule/barcodeFeature';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

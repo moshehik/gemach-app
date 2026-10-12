@@ -79,7 +79,7 @@ import {
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
-import { barcodeFeatureFor } from '@/lib/schedule/barcodeScan';
+import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',

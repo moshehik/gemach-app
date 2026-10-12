@@ -248,3 +248,37 @@ test('cancel (setting on): clears the item and undoes the handover mark; default
   assert.equal(itemOf(6031, 0).isTaken, false);
   assert.equal(calls('scheduleStageMark').length, 0);
 });
+
+// ---- בדיקות מקור (הראוטים האלה כבדים מדי לדמה בזיכרון; נעילת הקוד שמטפל ב-H5 / D11 כדי שלא יימחק בשקט) ---------------------------------------------
+
+import { readFileSync } from 'node:fs';
+const read = (rel) => readFileSync(process.env.PROJ + '/' + rel, 'utf8');
+
+test('source: PUT items/[itemId] cancels a not-yet-taken registration when the model/size changes, inside the same update, with an audit note (H5)', () => {
+  const s = read('app/api/orders/[id]/items/[itemId]/route.js');
+  assert.match(s, /!freshItem\.isTaken && !freshItem\.takenDate && freshItem\.barcode/);
+  assert.match(s, /updateData\.barcode = null/);
+  assert.match(s, /itemChanges\.barcode = \{ from: freshItem\.barcode, to: null \}/);
+  // the clear sits after buildUpdateData and before the audited update of that very transaction
+  assert.ok(s.indexOf('buildUpdateData(itemData, dressItemIdToUse)') < s.indexOf('updateData.barcode = null'));
+  assert.ok(s.indexOf('updateData.barcode = null') < s.indexOf("tx.orderItem.update(auditAs('UPDATE'"));
+});
+
+test('source: PUT orders/[id] never changes a registered barcode from a (possibly stale) card, and cancels an untaken registration on size change / item restore - only when the setting is on (D11)', () => {
+  const s = read('app/api/orders/[id]/route.js');
+  assert.match(s, /const barcodeEntryOn = !!\(await barcodeFeatureFor\(parsedOrderId\)\);/);
+  assert.match(s, /if \(barcodeEntryOn && stored && stored\.barcode/);
+  assert.match(s, /normalizedBarcode = undefined; \/\/ לא משנים ברקוד רשום/);
+  assert.match(s, /item\.sizeText !== stored\.sizeText \|\| \(stored\.isDeleted && !nowDeleted\)/);
+  // the feature lookup happens outside the interactive transaction
+  assert.ok(s.indexOf('barcodeFeatureFor(parsedOrderId)') < s.indexOf('prisma.$transaction(async (tx)'));
+  // the stored items now carry the taken state the guard needs
+  assert.match(s, /barcode: true, isTaken: true, takenDate: true/);
+});
+
+test('source: the legacy routes import the LIGHT feature module (not the schedule marks stack) where they only need the setting check', () => {
+  for (const f of ['app/api/orders/[id]/route.js', 'app/api/rentals/scan/route.js']) {
+    assert.match(read(f), /from '@\/lib\/schedule\/barcodeFeature'/, f);
+    assert.ok(!/from '@\/lib\/schedule\/barcodeScan'/.test(read(f)), f + ' must not pull barcodeScan -> marks -> loaders');
+  }
+});
