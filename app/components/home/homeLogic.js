@@ -602,8 +602,8 @@ export function footerGroups({ navGroups, isHead, authenticated }) {
   // אחרת (דף שלא נבנה / אין הרשאה) — soon:true, כלומר שורה כבויה עם "בקרוב" (בלי href, לא קישור, לא ניתן למיקוד).
   const L = (label, key, href, ok) => (ok ? { label, key, href } : { label, key, soon: true });
   const nav = [
-    L('הזמנות', 'orders', '/orders', hrefs.has('/orders')),
-    L('לקוחות', 'customers', '/customers', hrefs.has('/customers')),
+    L('הזמנות', 'orders', '/?scope=orders', hrefs.has('/orders')), // פותח את החיפוש הראשי בהזמנות (לא את רשימת ההזמנות הישנה); ההרשאה נבדקת לפי עמוד ההזמנות
+    L('לקוחות', 'customers', '/?scope=customers', hrefs.has('/customers')), // פותח את החיפוש הראשי בלקוחות
     L('שמלות', 'dresses', '/dashboard/dresses', hrefs.has('/dashboard/dresses')),
     L('סיכום כספי', 'dashboard', '/dashboard', !!isHead),
     // דף הנחיתה (דוגמית עיצוב מונפשת, נתוני דמה): קובץ סטטי מחוץ ל-Next, נפתח בלשונית חדשה. לכל משתמשת מחוברת
