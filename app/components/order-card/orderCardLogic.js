@@ -188,6 +188,10 @@ export function parseSettings(rows) {
     refreshOnReturn: bool('order_card_refresh_on_return', false),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
+    // credit_bank_prompt_auto: חלון פרטי הבנק קופץ אוטומטית כשנוצר זיכוי בלי פרטי בנק (ברירת מחדל דולק = כמו שהיה תמיד).
+    // credit_bank_details_required: חובה למלא - החלון האוטומטי לא נסגר בלי שמירה והיציאה מההזמנה חסומה עד אז (ברירת מחדל כבוי = אופציונלי).
+    creditBankPromptAuto: notFalse('credit_bank_prompt_auto', true),
+    creditBankRequired: bool('credit_bank_details_required', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),
     enableEditSummaryConfirm: bool('enable_order_edit_summary_confirm', false),
     consolidateManualPaymentCredit: bool('consolidate_manual_payment_credit_ui', false),
