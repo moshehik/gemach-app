@@ -1,0 +1,34 @@
+-- ברקוד בלו״ז (docs/schedule-barcode-plan.md) - הצעות DDL **אופציונליות**. לא נדרשות למימוש: הקוד עובד בלעדיהן
+-- (רישום ברקוד = OrderItem.barcode הקיים; מסירה ברמת הזמנה = ScheduleStageMark הקיימת; מי/מתי = AuditLog).
+-- **אין להריץ** בלי אישור מפורש של הרכז. אין לעדכן את prisma/schema.prisma לפני שה-DDL הורץ בשני ה-DB
+-- (שדה בסכימה בלי עמודה במסד מפיל כל שאילתת OrderItem/Order עם P2022).
+-- אזהרה: אין להריץ `prisma db push` (מוחק ErrorReport.isArchivedByUser - סחף סכימה ידוע).
+-- נוהל: בדיקת זהות לפי gmach_name לכל DB לפני כתיבה; org1 = 'מכובד- השכרת שמלות', org2 = 'גמ"ח שמלות נווה יעקב'.
+
+-- ===== A. בדיקת תנאי מקדים לאינדקס הייחודי (קריאה בלבד - להריץ בכל DB לפני B) =====
+-- ברקודים שמופיעים בשני פריטים **פתוחים** (לא נמחקו, לא הוחזרו, בהזמנה לא מבוטלת). חייב להחזיר 0 שורות.
+-- SELECT oi."barcode", count(*) AS open_rows, array_agg(oi."orderId" ORDER BY oi."orderId") AS orders
+-- FROM "OrderItem" oi
+-- JOIN "Order" o ON o."orderId" = oi."orderId"
+-- WHERE oi."barcode" IS NOT NULL AND oi."barcode" <> ''
+--   AND oi."isDeleted" = false AND oi."isReturned" = false AND o."isDeleted" = false
+-- GROUP BY oi."barcode" HAVING count(*) > 1;
+
+-- ===== B. אינדקס ייחודי חלקי: אותו ברקוד לא יכול להיות פתוח בשתי הזמנות =====
+-- מגן במסד (מעבר לבדיקת הקוד) מפני race של שתי סריקות. אינדקס חלקי על OrderItem בלבד (בלי JOIN), לכן הזמנה
+-- מבוטלת משחררת את הברקוד רק דרך OrderItem."isDeleted" (ביטול הזמנה מסמן את כל הפריטים isDeleted - ר' DELETE /api/orders/[id]).
+-- CONCURRENTLY: לא ניתן בתוך טרנזקציה - להריץ כפקודה נפרדת.
+-- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "OrderItem_barcode_open_uniq"
+--   ON "OrderItem" ("barcode")
+--   WHERE "barcode" IS NOT NULL AND "barcode" <> '' AND "isDeleted" = false AND "isReturned" = false;
+-- ביטול: DROP INDEX CONCURRENTLY IF EXISTS "OrderItem_barcode_open_uniq";
+-- אם ייווצר - הקוד יתפוס P2002 ויחזיר 409 race (הטיפול כבר קיים בלעדיו כ"כתיבה-ואימות").
+
+-- ===== C. עמודות לדוחות / שליפות מהירות (nullable, בלי ברירת מחדל - קוד ישן לא נפגע) =====
+-- ALTER TABLE "OrderItem" ADD COLUMN IF NOT EXISTS "barcodeScannedAt"   TIMESTAMP(3);
+-- ALTER TABLE "OrderItem" ADD COLUMN IF NOT EXISTS "barcodeScannedById" TEXT;
+-- ALTER TABLE "OrderItem" ADD COLUMN IF NOT EXISTS "barcodeScanStage"   TEXT;   -- 'prep' | 'handover'
+-- ALTER TABLE "Order"     ADD COLUMN IF NOT EXISTS "handoverAt"         TIMESTAMP(3);
+-- ALTER TABLE "Order"     ADD COLUMN IF NOT EXISTS "handoverById"       TEXT;
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "Order_handoverAt_idx" ON "Order" ("handoverAt");
+-- אחרי הרצה: להוסיף את השדות ל-model OrderItem / Order ב-prisma/schema.prisma, `prisma migrate diff --from-url <db> --to-schema-datamodel prisma/schema.prisma --script` צריך להיות ריק, ורק אז לפרוס קוד שקורא אותם.

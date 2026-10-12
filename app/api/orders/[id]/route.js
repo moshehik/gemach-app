@@ -82,6 +82,8 @@ import {
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
+import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
+import { registeredByScheduleIds, releaseUntakenBarcodes } from '@/lib/schedule/barcodeData';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -187,6 +189,13 @@ export async function GET(request, { params }) {
 
     // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (barcodePrefix) - לעולם לא "ללא שם" (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד)
     const mOpts = await getModelDisplayOpts();
+    // ברקוד בלו״ז: פריט שנרשם לו ברקוד בהכנה מהלו״ז ועוד לא נמסר מסומן barcodeRegisteredAtPrep (שדה תוספתי, רק כשההגדרה פעילה להזמנה) - החלון הישן
+    // (RentalReturnModal) מציג אותו "ברקוד נרשם בהכנה – טרם נמסר" ולא כסריקה שממתינה לאישור. כבוי = אין שאילתה ואין שדה.
+    let preppedIds = new Set();
+    if (await barcodeFeatureFor(parsedOrderId)) {
+      preppedIds = await registeredByScheduleIds(items.filter(i => i.barcode && !i.isTaken && !i.takenDate));
+    }
+
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -216,7 +225,8 @@ export async function GET(request, { params }) {
         ...item,
         description: finalDescription,
         isTaken,
-        isReturned
+        isReturned,
+        ...(preppedIds.has(String(item.id)) ? { barcodeRegisteredAtPrep: true } : {})
       };
     });
 
@@ -624,7 +634,7 @@ async function putOrder(request, { params }, claims) {
           id: true, cartStatus: true, isDeleted: true,
           sizeText: true, neckAlteration: true, sleeveAlteration: true,
           lengthAlteration: true, alterationDetails: true, alterationDone: true,
-          barcode: true,
+          barcode: true, isTaken: true, takenDate: true, // isTaken/takenDate: ביטול רישום ברקוד שלא נלקח כשהדגם/המידה מוחלפים (docs/schedule-barcode-plan.md H5)
           // לזיהוי הדגם/מידה שהוזמנו - לבדיקת enforce_rental_barcode_match למטה
           barcodePrefix: true,
           dressItem: { select: { barcodePrefix: true, sizeText: true, dress: { select: { barcodePrefix: true } } } }
@@ -637,6 +647,9 @@ async function putOrder(request, { params }, claims) {
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
+    // ברקוד בלו״ז: כשההגדרה פעילה להזמנה, שמירת הזמנה לעולם לא משנה ברקוד שכבר נרשם (עותק ישן בכרטיס פתוח היה דורס רישום מהלו״ז), ורישום שלא נלקח
+    // מתבטל כשהמידה מוחלפת או כשפריט מבוטל משוחזר (כדי שלא יישב בשני פריטים) - docs/schedule-barcode-plan.md. כבוי = ההתנהגות הקודמת בדיוק.
+    const barcodeEntryOn = !!(await barcodeFeatureFor(parsedOrderId));
 
     // enforce_rental_barcode_match (ברירת מחדל כבוי = התנהגות ישנה): שמירת ההזמנה כותבת את
     // ה-barcode שהלקוח שולח, ולכן זה נתיב נוסף שבו ברקוד יכול להגיע לפריט בלי בדיקה. משייכים כאן
@@ -794,7 +807,14 @@ async function putOrder(request, { params }, claims) {
             const normalizedNeck = (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0);
             const normalizedSleeve = (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0);
             const normalizedLength = (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null;
-            const normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
+            let normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
+            if (barcodeEntryOn && stored) {
+              // בהגדרה פעילה הברקוד נקבע רק במסלולי הרישום/הלקיחה (בדיקות כפילות, יומן): שמירת הזמנה לא משנה ברקוד רשום ולא מקצה ברקוד חדש מעותק ישן של הכרטיס
+              const hadRegistered = !!(stored.barcode && String(stored.barcode).trim() !== '');
+              normalizedBarcode = undefined;
+              // רישום שלא נלקח מתבטל גם כשהפריט עצמו מבוטל (שחרור אוטומטי, כמו בביטול הזמנה)
+              if (hadRegistered && !stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted) || (nowDeleted && !stored.isDeleted))) normalizedBarcode = null;
+            }
             // Prisma's @updatedAt stamps this row's updatedAt on *any* update() call, even one
             // that changes nothing - and orderItemEditWindow.js's 15-minute full-edit lock reads
             // that same updatedAt. Every save used to re-touch every item in the order (e.g. on
@@ -1326,6 +1346,16 @@ export async function DELETE(request, { params }) {
         ]
       });
     });
+
+    // ברקוד בלו״ז: ביטול הזמנה משחרר אוטומטית את הברקודים שנרשמו (בהכנה) ועוד לא נלקחו - השמלות חוזרות להיות פנויות להזמנה אחרת, וביומן נרשם מי/למה.
+    // רק כשההגדרה פעילה להזמנה; כשל כאן לא מפיל את הביטול (הפריטים ממילא מחוקים ולכן לא נחשבים מחזיקים בברקוד).
+    try {
+      if (await barcodeFeatureFor(parsedOrderId)) {
+        await releaseUntakenBarcodes({ orderId: parsedOrderId, note: `שוחרר אוטומטית בביטול הזמנה #${parsedOrderId}`, includeDeleted: true });
+      }
+    } catch (releaseFailure) {
+      console.error(`Order ${parsedOrderId}: releasing registered barcodes on cancel failed:`, releaseFailure);
+    }
 
     // R49 (W2b, סקירה סעיף 4): הזמנה שבוטלה יוצאת מהמשלוח - שורת ההצטרפות שלה נמחקת, ואם היא שורש עם מצטרפים הם משוחררים וחיוב
     // המשלוח שלהם מחושב מחדש (מחיר מלא). כשל כאן לא מפיל את הביטול. טבלה חסרה (DDL-1) = no-op.

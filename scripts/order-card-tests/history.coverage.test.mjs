@@ -270,6 +270,8 @@ test('H12 השכרה / החזרה / ביטולן (+ אישורי ברקוד / ה
     approvalRow('feature:barcode_mismatch_override', 'ברקוד שלא תואם'),
     row({ entityType: 'OrderItem', entityId: ITEM, action: 'CONFIRM_RENTAL', changesJson: JSON.stringify({ isTaken: { from: false, to: true }, barcode: { from: null, to: '45120038' }, takenDate: { from: null, to: '2026-10-05T07:00:00.000Z' } }) }),
     row({ entityType: 'OrderItem', entityId: ITEM, action: 'CANCEL_RENTAL', changesJson: JSON.stringify({ isTaken: { from: true, to: false }, note: 'נסרק בטעות' }) }),
+    // ברקוד בלו״ז (docs/schedule-barcode-plan.md): רישום בהכנה, בלי לקיחה
+    row({ entityType: 'OrderItem', entityId: ITEM, action: 'REGISTER_BARCODE', changesJson: JSON.stringify({ barcode: { from: null, to: '45120038' }, stage: 'prep', source: 'schedule_dialog', note: 'רישום בהכנה (חלונית הלו״ז)' }) }),
     approvalRow('feature:early_return_approval', 'החזרה מוקדמת'),
     row({ entityType: 'OrderItem', entityId: ITEM, action: 'RETURN_RENTAL', changesJson: JSON.stringify({ isReturned: { from: false, to: true }, returnedOk: { from: false, to: true } }) }),
     row({ entityType: 'OrderItem', entityId: ITEM, action: 'CANCEL_RETURN', changesJson: JSON.stringify({ isReturned: { from: true, to: false } }) }),
@@ -280,6 +282,9 @@ test('H12 השכרה / החזרה / ביטולן (+ אישורי ברקוד / ה
   assertBucket(r, taken, 'items');
   assert.ok(/תשרי/.test(det(taken, 'תאריך לקיחה')));
   one(r, 'בוטלה ההשכרה: דגם 4512, מידה 38', 'H12');
+  const reg = one(r, 'נרשם ברקוד בהכנה: דגם 4512, מידה 38', 'H12');
+  assertBucket(r, reg, 'items');
+  assert.equal(det(reg, 'ברקוד'), '45120038');
   one(r, 'הוחזר: דגם 4512, מידה 38', 'H12');
   one(r, 'בוטלה ההחזרה: דגם 4512, מידה 38', 'H12');
   one(r, `אישור מנהל: ${MGR.name} · ברקוד שלא תואם להזמנה`, 'H12');

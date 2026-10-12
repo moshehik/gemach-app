@@ -303,3 +303,22 @@
 .gm-ds.gm-lz .lz-rail{display:none}
 .gm-ds.gm-lz .lz-layout{display:block}
 }
+/* ===== חלונית ברקוד (BarcodeDialog.js; docs/schedule-barcode-plan.md) - על רכיבי החלון הקיים lz-cf / lz-det ===== */
+.gm-ds.gm-lz .dlg.lz-bc{max-width:560px}
+.gm-ds.gm-lz .lz-bc-inp{position:relative;margin:14px 0 6px}
+.gm-ds.gm-lz .lz-bc-inp>.ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;color:var(--gold-300);stroke:var(--gold-300);pointer-events:none;z-index:1}
+.gm-ds.gm-lz .lz-bc-inp .inp{width:100%;min-height:46px;padding-inline-start:44px;font-size:18px;letter-spacing:.06em;text-align:start}
+.gm-ds.gm-lz .lz-bc-status{min-height:22px;margin:2px 4px 4px;font-size:14px;text-align:start}
+.gm-ds.gm-lz .lz-bc-err{color:#fa9e84;font-weight:600}
+.gm-ds.gm-lz .lz-bc-ok{color:var(--gold-300)}
+.gm-ds.gm-lz .lz-bc-hint{color:var(--k-faint)}
+.gm-ds.gm-lz .lz-bc-list{max-height:min(46vh,360px);overflow:auto}
+.gm-ds.gm-lz .lz-bc-it.miss{box-shadow:inset -3px 0 0 #fa9e84}
+.gm-ds.gm-lz .lz-bc-it .t{flex:1 1 auto}
+.gm-ds.gm-lz .lz-bc-it .ibtn{flex:none}
+.gm-ds.gm-lz .lz-bc-panel{display:flex;flex-direction:column;gap:8px;margin:8px 0;padding:12px;border-radius:12px;background:rgba(255,255,255,.08);text-align:start}
+.gm-ds.gm-lz .lz-bc-panel small{color:var(--k-faint)}
+.gm-ds.gm-lz .lz-bc-panel .li{cursor:pointer}
+.gm-ds.gm-lz .lz-bc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-lz .lz-bc-chk{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-lz .lz-bc-relall{margin:6px 0 2px;align-self:flex-start}

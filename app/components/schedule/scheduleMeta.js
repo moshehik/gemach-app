@@ -212,6 +212,8 @@ export function subItems(stageKey, row, ctx = {}) {
   const add = (icon, text, tip) => { if (text || icon) items.push({ icon, text: text || '', tip }); };
   const cnt = itemsCountText(row.dressCount);
   const dress = () => { if (cnt) add('dress', cnt, 'פריטים בהזמנה'); };
+  // ברקוד בלו״ז (docs/schedule-barcode-plan.md): "2/3" = כמה מהפריטים הנדרשים כבר נרשם להם ברקוד. רק כשיש barcodeInfo בשורה (הגדרה פעילה).
+  const barcodes = () => { const bi = row.barcodeInfo; if (bi && bi.required) add('scan', bi.registered + '/' + bi.required, 'ברקודים שנסרקו'); };
   const branch = row.branch || '';
   const addr = formatAddress(row.address);
   switch (stageKey) {
@@ -236,15 +238,18 @@ export function subItems(stageKey, row, ctx = {}) {
     case 'prep':
       if (branch) add('pin', branch, 'סניף');
       dress();
+      barcodes();
       return items;
     case 'dout':
       add('truck', addr || 'כתובת חסרה', 'כתובת המשלוח');
       dress();
+      barcodes();
       return items;
     case 'pick': {
       const pb = row.pickupBranch || branch;
       if (pb) add('pin', pb, 'איסוף בסניף'); else add('userck', 'איסוף מקומי', 'איסוף מקומי');
       dress();
+      barcodes();
       return items;
     }
     case 'event':

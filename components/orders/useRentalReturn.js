@@ -139,8 +139,12 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
   }, [selectedOrder, duplicates]);
 
   const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
-  const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
+  // ברקוד נרשם בהכנה מהלו״ז (barcodeRegisteredAtPrep, שדה תוספתי מ-GET /api/orders/[id] רק כשהגדרת הברקוד פעילה): לא "סריקה שממתינה לאישור" -
+  // לא נספר כשינוי שלא נשמר, לא מעורר "לשמור לפני היציאה?" ולא נמחק ב"ביטול סריקות". המסירה שלו היא פעולה מפורשת (preppedItems למטה).
+  const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken && !i.barcodeRegisteredAtPrep);
   const pendingCount = pendingItems.length;
+  const preppedItems = activeItems.filter(i => i.barcode && !i.isTaken && i.barcodeRegisteredAtPrep);
+  const preppedCount = preppedItems.length;
   const hasUnsavedInput = Boolean(modalBarcode) || Object.values(inlineBarcode).some(v => v && v.trim());
   const hasUnsavedChanges = pendingCount > 0 || hasUnsavedInput;
 
@@ -616,6 +620,9 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
     if (item.isTaken) {
       return { text: 'מושכר', tone: 'warning' };
     }
+    if (item.barcode && item.barcodeRegisteredAtPrep) {
+      return { text: 'ברקוד נרשם בהכנה – טרם נמסר', tone: 'neutral' };
+    }
     if (item.barcode) {
       return { text: 'נסרק - ממתין לאישור', tone: 'warning' };
     }
@@ -655,6 +662,8 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui }) {
     activeItems,
     pendingItems,
     pendingCount,
+    preppedItems,
+    preppedCount,
     hasUnsavedInput,
     hasUnsavedChanges,
     overallStatus,

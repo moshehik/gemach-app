@@ -47,7 +47,7 @@ function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
     selectedOrder, setSelectedOrder, loading, enableAlterations, modalBarcode, setModalBarcode, modalBarcodeRef,
     isProcessing, isConfirming, isBusy, duplicates, setDuplicates, itemDetails, setItemDetails, rentingItemId, setRentingItemId,
     inlineBarcode, setInlineBarcode, manualEntryItemId, setManualEntryItemId, manualBarcode1, setManualBarcode1, manualBarcode2,
-    setManualBarcode2, manualSigned, setManualSigned, activeItems, pendingCount, overallStatus, confirmManualEntry, cancelManualEntry,
+    setManualBarcode2, manualSigned, setManualSigned, activeItems, pendingCount, preppedCount, overallStatus, confirmManualEntry, cancelManualEntry,
     selectDuplicate, handleGlobalBarcodeScan, confirmInlineRent, confirmRental, undoReturn, undoRental, showItemDetails, reportIssue,
     markReturnGoodAgain, handleMarkReturnGood, handleMarkReturnBad, handleHeaderSave, handleHeaderCancel, attemptCloseCard,
     handlePrintPreConfirm, getItemStatus,
@@ -142,6 +142,16 @@ function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
                 <div className="lz-banner bd-note" role="note"><Ic name="note" /><span><b>הערות להזמנה: </b>{o.orderNotes || o.notes}</span></div>
               ) : null}
 
+              {preppedCount > 0 ? (
+                <div className="lz-banner bd-pend" role="status">
+                  <Ic name="info" />
+                  <span>{preppedCount} פריטים נרשם להם ברקוד בהכנה (מהלו״ז) וטרם נמסרו. אישור המסירה מוסר את כל הפריטים של ההזמנה.</span>
+                  <button type="button" className="btn primary sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
+                    {isConfirming ? 'מאשר...' : 'אשר מסירה'}
+                  </button>
+                </div>
+              ) : null}
+
               {pendingCount > 0 ? (
                 <div className="lz-banner bd-pend" role="status">
                   <Ic name="alert" />
@@ -183,7 +193,7 @@ function RentalReturnInner({ orderId, onClose, onUpdate, ui }) {
                               {!item.barcode && !item.isTaken && !isRenting ? (
                                 <button type="button" className="btn primary sm" onClick={() => setRentingItemId(item.id)}><Ic name="box" />השכרה</button>
                               ) : null}
-                              {item.barcode && !item.isTaken ? <span className="chip gold bd-wait">ממתין לאישור השכרה</span> : null}
+                              {item.barcode && !item.isTaken && !item.barcodeRegisteredAtPrep ? <span className="chip gold bd-wait">ממתין לאישור השכרה</span> : null}
                               {item.isTaken ? (
                                 <>
                                   <span className="bd-tg" role="group" aria-label="מצב הפריט בהחזרה">

@@ -13,11 +13,13 @@ import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
 import PrintWizard from './print/PrintWizard';
 import { addDays, israelTodayKey, isDateToken as isToken, parseDateParam, resolveDateParam } from './hebrewCalendar';
-import { STAGE_ORDER } from './scheduleMeta';
+import { STAGE_ORDER, STAGE_META } from './scheduleMeta';
 import { useStageMarks } from './useStageMarks';
-import { MarkToast } from './MarkDialogs';
+import { MarkToast, ConfirmDialog, DetailRows, confirmEffect } from './MarkDialogs';
 import ScheduleSettingsDialog from './ScheduleSettingsDialog';
 import { LzPortalRoot } from './LzPortal';
+import BarcodeDialog from './BarcodeDialog';
+import { classifyScan, decideStageScan } from '@/lib/schedule/scanDispatch';
 
 // דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
 // אייקון בורר היום; כלי XL/הורדה/הדפסה בקצה השמאלי של שורת הכותרת; ציר השלבים מימין; בעמודת התוכן מתג שורות/טבלה
@@ -28,7 +30,9 @@ import { LzPortalRoot } from './LzPortal';
 //   בשגיאה, טוסט (MarkDialogs.js). עובר ל-StageSection כאובייקט אחד; החוזה המלא בראש StageSection.js / StageRow.js /
 //   MarkControls.js: onMarkDone(stage, row, { done, outcome: 'ok'|'not_ok' }), doneState(stage, row), onMarkAll(stage).
 // חיבורים לסוכנים האחרים (props בלבד; ה-markup לא משתנה):
-//   onScan(code) לשורת הברקוד (ר' StageRail.js).
+//   onScan(code) לשורת הברקוד (ר' StageRail.js). ברירת המחדל (ברקוד בלו״ז, docs/schedule-barcode-plan.md): קוד שלב מהדף המודפס (PRP-40113 / ALL-PRP-...)
+//   = "בוצע" באותה שורה / שלב (או חלונית הברקוד כשחסר ברקוד); ברקוד שמלה = נרשם להזמנה הפעילה (החלונית הפתוחה / ההזמנה שנסרקה אחרונה).
+//   ?scan=<קוד> בכתובת (למשל מהחיפוש המהיר) מריץ את אותה פעולה אחרי טעינת היום.
 //   הדפסה/הורדה/XL: onExport / onDownload / onPrint / onSettings ({ stageKey, mode }) (ר' ScheduleToolbarSlots.js).
 //   ברירת המחדל (בלי props מבחוץ): שלושת הלחצנים - בכותרת הדף (PageTools) ובכותרת כל שלב (SectionTools) - פותחים את
 //   אשף ההדפסות/ההורדות (./print/PrintWizard.js): הדפסה -> מצב הדפסה, הורדה -> מצב הורדה, XL -> מצב הורדה עם Excel.
@@ -178,7 +182,87 @@ export default function ScheduleDay({
   useRailFit(rootRef);
   // סימון "בוצע" (עדכון אופטימי, החזרה לאחור בשגיאה, טוסט) - הלוגיקה ב-useStageMarks.js
   const refreshDay = useCallback(() => setTick((t) => t + 1), []);
-  const marks = useStageMarks({ data, setData, refresh: refreshDay });
+  // ברקוד בלו״ז: חלונית הברקוד נפתחת מלחצן "בוצע" (שורה שחסר בה ברקוד), מ-409 needBarcodes ומסריקת קוד שלב. dataRef: ה-callback לא תלוי בנתונים.
+  const dataRef = useRef(null);
+  const lastScanOrder = useRef(null);
+  const bcTargetRef = useRef(null);
+  const [bcTarget, setBcTarget] = useState(null);
+  const [scanQueue, setScanQueue] = useState([]);
+  const [scanAsk, setScanAsk] = useState(null); // { stage, row } | { all, stage }
+  const openBarcodes = useCallback((stage, row) => {
+    lastScanOrder.current = { orderId: row.orderId, stageKey: stage.key };
+    setBcTarget({ orderId: row.orderId, stageKey: stage.key, stageLabel: stage.label, customerName: (row.customer && row.customer.name) || '', dayKey: dataRef.current ? dataRef.current.date : null });
+  }, []);
+  const marks = useStageMarks({ data, setData, refresh: refreshDay, onNeedBarcodes: openBarcodes });
+  useEffect(() => { dataRef.current = data; }, [data]);
+  useEffect(() => { bcTargetRef.current = bcTarget; }, [bcTarget]);
+  const marksUi = useMemo(() => ({ ...marks, openBarcodes }), [marks, openBarcodes]);
+  const closeBarcodes = useCallback((changed) => { lastScanOrder.current = null; setBcTarget(null); setScanQueue([]); if (changed) refreshDay(); }, [refreshDay]);
+  const patchBarcodeInfo = marks.patchBarcodeInfo;
+  const onBarcodeProgress = useCallback((info) => {
+    if (!info || !info.summary) return;
+    const s = info.summary;
+    patchBarcodeInfo(info.stageKey, info.orderId, { gate: info.gate, when: info.when, required: s.required, registered: s.registered, taken: s.taken, missing: s.missing, complete: s.complete, allRequiredTaken: !!s.requiredAllTaken });
+  }, [patchBarcodeInfo]);
+  const markReady = useCallback(async (target) => {
+    const d = dataRef.current;
+    const stage = d && d.stages.find((s) => s.key === target.stageKey);
+    const row = stage && stage.items.find((r) => r.orderId === target.orderId);
+    if (!stage || !row) return false;
+    return marks.onMarkDone(stage, row, { done: true });
+  }, [marks]);
+  const consumeScan = useCallback(() => setScanQueue((q) => q.slice(1)), []);
+  const say = marks.say;
+  const handleScan = useCallback((raw) => {
+    const d = dataRef.current;
+    const c = classifyScan(raw);
+    if (c.kind === 'none') { say('הקוד לא מזוהה', c.reason === 'empty' ? 'לא נסרק קוד' : 'סרקו קוד הזמנה מהדף (למשל PRP-40113) או ברקוד שמלה', 'warn'); return; }
+    if (c.kind === 'dress') {
+      // ברקוד שמלה דורש שהזנת ברקוד בלו״ז מופעלת בהגדרות (settings.barcodeEntry נשלח רק אז); אחרת הודעה ברורה ולא רישום
+      if (!(d && d.settings && d.settings.barcodeEntry)) { say('הזנת ברקוד אינה מופעלת בהגדרות', 'בגמ"ח הזה אפשר לסרוק כאן רק קודי שלב מהדף המודפס (למשל PRP-40113)', 'warn'); return; }
+      if (bcTargetRef.current) { setScanQueue((q) => [...q, c.barcode]); return; }
+      const last = lastScanOrder.current;
+      const stage = last && d && d.stages.find((s) => s.key === last.stageKey);
+      const row = stage && stage.items.find((r) => r.orderId === last.orderId);
+      if (stage && row && row.barcodeInfo && !row.barcodeInfo.complete) { openBarcodes(stage, row); setScanQueue([c.barcode]); return; }
+      say('אין הזמנה פעילה לברקוד', 'סרקו קודם את קוד ההזמנה מהדף המודפס (למשל PRP-40113), או לחצו "בוצע" בשורה', 'warn');
+      return;
+    }
+    if (!d) return;
+    if (c.kind === 'stage-day') {
+      const stage = d.stages.find((s) => s.key === c.stageKey);
+      if (c.dayKey !== d.date) { say('קוד של יום אחר', 'הקוד שנסרק שייך ליום ' + c.dayKey + ' - עברו ליום הזה בבורר התאריך', 'warn'); return; }
+      if (!stage || stage.infoOnly) { say('השלב לא מוצג', 'אין שלב כזה ביום הזה', 'warn'); return; }
+      if (!marks.canMarkAll) { say('אין הרשאה', 'אין הרשאה ל"הכל בוצע" - אפשר לסמן שורה-שורה', 'warn'); return; }
+      setScanAsk({ all: true, stage });
+      return;
+    }
+    const decided = decideStageScan(d, c.stageKey, c.orderId);
+    if (decided.action === 'not-shown') { say('ההזמנה לא נמצאה', 'הזמנה #' + c.orderId + ' לא מופיעה בשלב הזה ביום המוצג', 'warn'); return; }
+    if (decided.action === 'info-only') { say('שלב לידיעה בלבד', 'אין "בוצע" בשלב הזה', 'warn'); return; }
+    if (!marks.canMark) { say('אין הרשאה לסמן', 'אין הרשאה לסמן "בוצע" - פנו להנהלה', 'warn'); return; }
+    lastScanOrder.current = { orderId: c.orderId, stageKey: c.stageKey };
+    if (decided.action === 'already') { say('כבר בוצע', decided.stage.label + ' · #' + c.orderId, 'warn'); return; }
+    if (decided.action === 'barcodes') { openBarcodes(decided.stage, decided.row); return; }
+    setScanAsk({ stage: decided.stage, row: decided.row });
+  }, [say, marks.canMarkAll, marks.canMark, openBarcodes]);
+
+  // ?scan=<קוד> (למשל מהחיפוש המהיר): אותה פעולה כמו סריקה בשורת הברקוד, אחרי שהיום נטען; הפרמטר מוסר מהכתובת
+  const pendingScan = useRef(null);
+  useEffect(() => {
+    try { const s = new URLSearchParams(window.location.search).get('scan'); if (s) pendingScan.current = s; } catch { /* אין כתובת */ }
+  }, []);
+  useEffect(() => {
+    if (!data || loading || !pendingScan.current) return;
+    const code = pendingScan.current;
+    pendingScan.current = null;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      p.delete('scan');
+      window.history.replaceState(null, '', window.location.pathname + (p.toString() ? '?' + p.toString() : ''));
+    } catch { /* לא קריטי */ }
+    handleScan(code); // החלטת הבעלים 12.10.2026 (O11): קודי השלב פעילים בכל גמ"ח, גם בלי הגדרת ברקוד
+  }, [data, loading, handleScan]);
   // שורש הדף לחלונות "בטוח?" (LzPortal.js) - כמו L.modal בעיצוב: scrim אח של .app ולא בתוך השורה
   const [portalRoot, setPortalRoot] = useState(null);
   useEffect(() => { setPortalRoot(rootRef.current); }, []);
@@ -331,7 +415,7 @@ export default function ScheduleDay({
         </div>
 
         <div className="lz-layout">
-          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan} updatedCount={updatedCount} />
+          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan || handleScan} updatedCount={updatedCount} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
               <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">
@@ -382,7 +466,7 @@ export default function ScheduleDay({
                         key={s.key}
                         stage={s}
                         view={view}
-                        marks={marks}
+                        marks={marksUi}
                         canMarkAll={allowMarkAll}
                         dayLabel={data.dateHebrew}
                         {...tools}
@@ -404,6 +488,32 @@ export default function ScheduleDay({
       {/* הטוסט אח של .app (#toast בעיצוב, שורה 1654) */}
       <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
       <ScheduleSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={() => refreshDay()} />
+      <BarcodeDialog target={bcTarget} onClose={closeBarcodes} onProgress={onBarcodeProgress} onMarkReady={markReady} scanQueue={scanQueue} onScanConsumed={consumeScan} />
+      {scanAsk && !scanAsk.all ? (
+        <ConfirmDialog
+          open
+          icon="check"
+          heading={'בטוח שהשלב "' + scanAsk.stage.label + '" בוצע?'}
+          sub={'הזמנה #' + scanAsk.row.orderId + (scanAsk.row.customer && scanAsk.row.customer.name ? ' · ' + scanAsk.row.customer.name : '')}
+          effect={confirmEffect(scanAsk.stage.key, { done: true, outcome: 'ok' }, scanAsk.row)}
+          body={<DetailRows stage={{ key: scanAsk.stage.key, label: scanAsk.stage.label, icon: (STAGE_META[scanAsk.stage.key] || STAGE_META.order).icon }} row={scanAsk.row} dayLabel={data && data.dateHebrew} />}
+          yes="כן, סמן כבוצע"
+          onYes={() => { const a = scanAsk; setScanAsk(null); marks.onMarkDone(a.stage, a.row, { done: true, ...(a.stage.key === 'manret' || a.stage.key === 'dback' ? { outcome: 'ok' } : {}) }); }}
+          onNo={() => setScanAsk(null)}
+        />
+      ) : null}
+      {scanAsk && scanAsk.all ? (
+        <ConfirmDialog
+          open
+          icon="check"
+          heading={'בטוח שכל "' + scanAsk.stage.label + '" בוצע?'}
+          sub={scanAsk.stage.items.filter((r) => r.done !== true).length + ' פריטים' + (data && data.dateHebrew ? ' ב' + data.dateHebrew : '') + ' יסומנו כבוצעו'}
+          effect={confirmEffect(scanAsk.stage.key, { done: true, outcome: 'ok', all: true })}
+          yes="כן, סמן הכל כבוצע"
+          onYes={() => { const a = scanAsk; setScanAsk(null); marks.onMarkAll(a.stage); }}
+          onNo={() => setScanAsk(null)}
+        />
+      ) : null}
       <ScrollTopButton />
       {/* האשף בתוך .gm-ds.gm-lz (ה-CSS שלו תחום לשם - print/PrintWizard.css); היום והסניף = מה שמוצג בדף */}
       {wiz ? (

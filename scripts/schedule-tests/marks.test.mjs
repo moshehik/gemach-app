@@ -790,7 +790,7 @@ test('client source: 409 alreadyMarked -> rollback + refresh of the day + a toas
   assert.match(hook, /e\.status === 409 && e\.body && e\.body\.alreadyMarked/);
   assert.match(hook, /refresh\(\)/);
   const page = fs.readFileSync(process.env.PROJ + '/app/components/schedule/ScheduleDay.js', 'utf8');
-  assert.match(page, /useStageMarks\(\{ data, setData, refresh: refreshDay \}\)/);
+  assert.match(page, /useStageMarks\(\{ data, setData, refresh: refreshDay(, onNeedBarcodes: openBarcodes)? \}\)/); // onNeedBarcodes: חלונית הברקוד (docs/schedule-barcode-plan.md)
 });
 
 test('repair (stage 2) undo without a schedule mark: alterations marked on the alterations screen are NOT cleared - unchanged + note, nothing written', async () => {

@@ -34,6 +34,7 @@
 | [KIOSK.md](../KIOSK.md) | עמדת הלקוח: נעילה בתוך האתר ומצב קיוסק של Windows | עדכני |
 | [docs/station-analytics.md](station-analytics.md) | מדדי ההמרה של העמדה הציבורית (`/station-analytics`): הגדרת כל מדד (במיוחד "נפתחה הזמנה"), מה נאסף ומה לא, טבלת `StationEvent` (SQL ידני, לא הורצה), הנתיבים והבדיקות — אחרי מיזוג `feature/station-analytics-2026-10-12` | עדכני (אחרי מיזוג) |
 | [docs/fix-protocol-error-reports.md](fix-protocol-error-reports.md) | פרוטוקול תיקון דיווחי שגיאות + סבבי התיקון (סעיפים ממוספרים, חלקם היסטוריים) | פרוטוקול |
+| [docs/schedule-barcode-plan.md](schedule-barcode-plan.md) | תכנון ברקוד בלו״ז (הכנה / איסוף מקומי / משלוח): הגדרות, מטריצת חסימה, פריט מול הזמנה, מפת חורים בנתונים, שאלות לנווה | תכנון (12.10.2026) |
 | [docs/agent-pending-approval-queue.md](agent-pending-approval-queue.md) | תור ה-PR-ים שהסוכן פתח גם לגמח שלא ביקש, לאישור מרוכז | פרוטוקול |
 | [docs/full-wipe-reimport-protocol.md](full-wipe-reimport-protocol.md) | מחיקה מלאה והעלאה מחדש מ-Access לגמח אחד, כולל המלכודות | פרוטוקול |
 | [.claude/commands/fix-reports.md](../.claude/commands/fix-reports.md) | ההוראות של סוכן התיקון האוטומטי (`/fix-reports`) | פרוטוקול |

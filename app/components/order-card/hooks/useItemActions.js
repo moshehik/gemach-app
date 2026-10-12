@@ -380,7 +380,8 @@ export function createItemActions(env) {
       if (res.ok) return { ok: true };
       let data = null;
       try { data = await res.json(); } catch { /* גוף לא תקין - הודעת ברירת מחדל */ }
-      if (res.status !== 409 || !data?.barcodeMismatch) return { ok: false, message: null };
+      // סירובי 409 של ברקוד בלו״ז (docs/schedule-barcode-plan.md): ברקוד כבר רשום בפריט / פתוח בהזמנה אחרת / חסר ברקוד - מציגים את הסיבה מהשרת
+      if (res.status !== 409 || !data?.barcodeMismatch) return { ok: false, message: res.status === 409 && data && data.error && (data.barcodeAlreadyRegistered || data.barcodeElsewhere || data.needBarcode) ? data.error : null };
       const mismatchMsg = describeMismatch(data.expected, data.scanned);
       const auth = await env.approve('feature:barcode_mismatch_override', `${data.overrideRejected ? `${data.error} ` : `${mismatchMsg}. `}להשכיר בכל זאת? נדרש אישור מנהל.`);
       if (!auth) return { ok: false, message: `${mismatchMsg} - ההשכרה בוטלה.` };

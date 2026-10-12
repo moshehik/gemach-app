@@ -24,7 +24,7 @@ function isTouch(pt) {
   try { return window.matchMedia('(hover:none)').matches; } catch { return false; }
 }
 
-export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
+export function MarkButton({ stage, row, doneState, onMarkDone, onBarcodes, dayLabel }) {
   const [ask, setAsk] = useState(null); // { done, outcome }
   const [pairOpen, setPairOpen] = useState(false);
   const lastPT = useRef('');
@@ -63,7 +63,7 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
         ? (ask.outcome === 'not_ok' ? 'בטוח שהשמלה הוחזרה לא תקינה?' : 'בטוח שהשלב "' + stage.label + '" בוצע' + (rk ? ' (הוחזר תקין)' : '') + '?')
         : 'לבטל את סימון הביצוע?'}
       sub={'הזמנה #' + row.orderId + (name ? ' · ' + name : '')}
-      effect={confirmEffect(stage.key, ask)}
+      effect={confirmEffect(stage.key, ask, row)}
       body={<DetailRows stage={stageInfo} row={row} dayLabel={dayLabel} />}
       yes={ask.done ? (ask.outcome === 'not_ok' ? 'כן, סמן כלא תקין' : 'כן, סמן כבוצע') : 'כן, בטל סימון'}
       onYes={run}
@@ -82,7 +82,9 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
       </>
     );
   }
-  const onMark = confirm(true, rk ? 'ok' : undefined);
+  // ברקוד בלו״ז: שורה שחסר בה ברקוד - "בוצע" פותח את חלונית הברקוד (אחרי הסריקה היא עצמה מסמנת) במקום חלון "בטוח?"
+  const needsBarcodes = !!(row.barcodeInfo && !row.barcodeInfo.complete && onBarcodes);
+  const onMark = needsBarcodes ? () => { if (live) onBarcodes(stage, row); } : confirm(true, rk ? 'ok' : undefined);
   const markBtn = (
     <button
       type="button" className="btn tgl lz-mark" aria-pressed="false" data-tip={rk ? MARK_TIPS.markReturn : MARK_TIPS.mark} disabled={disabled} aria-busy={busy || undefined}

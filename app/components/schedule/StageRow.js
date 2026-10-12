@@ -68,7 +68,7 @@ function Phone({ value }) {
 
 // הרחבת השורה (היסטוריה 26, hdet - המיקום שאושר ב-B05/B06/B07): פירוט הפריטים (דגם / מידה / מיקום / בתיקון),
 // טלפונים, כתובת, הערות. נבנית רק כשהשורה פתוחה.
-function RowDetails({ stage, row }) {
+function RowDetails({ stage, row, onBarcodes }) {
   const items = row.items || [];
   const phones = [row.customer?.phone1, row.customer?.phone2].filter(Boolean);
   const addr = formatAddress(row.address);
@@ -79,6 +79,7 @@ function RowDetails({ stage, row }) {
           <DetailRow key={it.orderItemId} label="שמלה">
             <span className="lz-itm">
               {itemText(it) || 'פריט ללא דגם'}
+              {it.barcode ? <span className="chip gray"><ScheduleIcon name="scan" />ברקוד <bdi dir="ltr">{it.barcode}</bdi>{it.taken ? ' · נלקח' : ''}</span> : null}
               {stage.key === 'repair' && alterationSummary(it) ? <span className="chip gray">תיקון: {alterationSummary(it)}</span> : null}
               {it.location ? <span className="chip gray"><ScheduleIcon name="pin" />מיקום: {it.location}</span> : null}
               {it.inRepair ? <span className="chip red">בתיקון</span> : null}
@@ -98,6 +99,11 @@ function RowDetails({ stage, row }) {
         {stage.showAddress ? <DetailRow label="כתובת">{addr || 'חסרה כתובת'}</DetailRow> : null}
         {stage.key === 'prep' && row.transfers && row.transfers.length ? <DetailRow label="העברה בין סניפים">{transferChip(row).tip}</DetailRow> : null}
         {row.branch ? <DetailRow label="סניף">{row.branch}{row.pickupBranch && row.pickupBranch !== row.branch ? ' · איסוף: ' + row.pickupBranch : ''}</DetailRow> : null}
+        {row.barcodeInfo && onBarcodes ? (
+          <DetailRow label="ברקודים">
+            <button type="button" className="btn ghost" onClick={() => onBarcodes(stage, row)}><ScheduleIcon name="scan" />ניהול ברקודים / שחרור</button>
+          </DetailRow>
+        ) : null}
         {row.notes ? <DetailRow label="הערות">{row.notes}</DetailRow> : null}
         {row.internalNotes ? (
           <DetailRow label="הערה פנימית">
@@ -130,7 +136,7 @@ function rowClass(stage, row, doneState) {
   return 'lz-r' + (!known ? '' : (row.done === true ? ' lz-done' : ' lz-todo')) + (row.alerts && row.alerts.length ? ' lz-late' : '');
 }
 
-function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
+function StageRow({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
   const [open, setOpen] = useState(false);
   const meta = STAGE_META[stage.key] || STAGE_META.order;
   const name = row.customer?.name || 'לא ידוע';
@@ -157,11 +163,11 @@ function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
         <div className="lz-act">
           <AlertChip row={row} />
           <InfoChips stage={stage} row={row} />
-          <MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} />
+          <MarkButton stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneState} dayLabel={dayLabel} />
         </div>
         <GoLink orderId={row.orderId} />
       </div>
-      {open ? <RowDetails stage={stage} row={row} /> : null}
+      {open ? <RowDetails stage={stage} row={row} onBarcodes={onBarcodes} /> : null}
     </article>
   );
 }
@@ -169,11 +175,12 @@ function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
 export default memo(StageRow);
 
 // שורת טבלה (תצוגת "טבלה", trHTML בעיצוב): עמודות הזמנה / לקוחה / פרטים / התראה / ביצוע / כרטיס
-function StageTableRowImpl({ stage, row, onMarkDone, doneState, dayLabel }) {
+function StageTableRowImpl({ stage, row, onMarkDone, onBarcodes, doneState, dayLabel }) {
   const items = row.items || [];
   const itemLines = items.map((it) => {
     const parts = [itemText(it)];
     if (stage.key === 'repair' && alterationSummary(it)) parts.push('תיקון: ' + alterationSummary(it));
+    if (it.barcode) parts.push('ברקוד ' + it.barcode + (it.taken ? ' · נלקח' : ''));
     if (it.location) parts.push('מיקום: ' + it.location);
     if (it.inRepair) parts.push('בתיקון');
     return parts.filter(Boolean).join(' · ');
@@ -192,7 +199,7 @@ function StageTableRowImpl({ stage, row, onMarkDone, doneState, dayLabel }) {
         {row.internalNotes ? <small className="lz-sm">הערה פנימית (הנהלה בלבד): {row.internalNotes}</small> : null}
       </td>
       <td><AlertChip row={row} /><InfoChips stage={stage} row={row} /></td>
-      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} /></div></td>}
+      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkButton stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneState} dayLabel={dayLabel} /></div></td>}
       <td className="tc"><GoLink orderId={row.orderId} /></td>
     </tr>
   );
