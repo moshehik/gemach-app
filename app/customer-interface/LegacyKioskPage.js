@@ -4,7 +4,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
 import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
@@ -292,7 +291,6 @@ function AtelierCalendar({ selectedDate, onSelect }) {
 }
 
 export default function CustomerInventoryViewer() {
-  const router = useRouter();
   const nf = useNoFill(); // טופס הרישום בעמדה: בלי הצעות היסטוריית הקלדה של הדפדפן (שמות / טלפונים / מיילים של לקוחות קודמות)
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1157,7 +1155,7 @@ export default function CustomerInventoryViewer() {
 
             <div className="ka-action-cluster">
               <button data-agy-id="exit_to_system_btn" type="button" className="ka-icon-btn"
-                onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
+                onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } window.location.assign('/'); }} title="חזור למערכת">
                 <svg className="icon"><use href="#i-logout" /></svg>
               </button>
               <button data-agy-id="new_search_btn" type="button" className="ka-icon-btn" onClick={() => setStage(1)} title="חיפוש חדש">

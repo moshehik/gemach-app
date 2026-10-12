@@ -12,7 +12,6 @@
 import './kiosk-a5.css';
 import '@/design-system/components.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { HDate } from '@hebcal/core';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
@@ -142,7 +141,6 @@ export default function KioskA5({ initialSettings = null }) {
 }
 
 function KioskInner({ initialSettings }) {
-  const router = useRouter();
   const a5 = useA5();
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -610,6 +608,10 @@ function KioskInner({ initialSettings }) {
     handleCatalogPrint(model ? [model] : undefined);
   };
 
+  // "חזרה למערכת": ניווט מלא (לא router.push). העמדה מרונדרת בלי שלד האתר (app/layout.js, lib/shellBare.js) וה-layout לא מרונדר מחדש בניווט רך, ולכן רק טעינה
+  // מלאה של דף הבית מחזירה את תפריט הצוות. (במסך נעול הלחצן פותח את חלון אישור העובד - ר' ה-onClick.)
+  const exitToSystem = () => { window.location.assign('/'); };
+
   const lockScreen = () => {
     // חלון ההזמנות מקשר לדפי הצוות - לעולם לא משאירים אותו פתוח על עמדה נעולה
     setShowOrdersModal(false);
@@ -999,7 +1001,7 @@ function KioskInner({ initialSettings }) {
                 ) : (
                   <form className="ks-aipill ks-aipill-sm ai-feature-element" onSubmit={handleAiSubmit} aria-label="שאלה לעוזר החכם">
                     <span className="ks-aipill-ico"><KIcon id="sparkle" size="sm" /></span>
-                    <input data-agy-id="catalog_ai_input" type="text" placeholder="שאלי את ה-AI..." value={aiInput} onChange={(e) => setAiInput(e.target.value)} disabled={aiLoading} autoComplete="off" />
+                    <input data-agy-id="catalog_ai_input" type="text" aria-label="שאלי את העוזר החכם" value={aiInput} onChange={(e) => setAiInput(e.target.value)} disabled={aiLoading} autoComplete="off" />
                   </form>
                 ))}
                 <button type="button" className="btn" data-guide-id="kiosk.filter-btn" data-agy-id="toggle_sidebar_btn" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((o) => !o)}>
@@ -1022,7 +1024,7 @@ function KioskInner({ initialSettings }) {
                 </div>
                 <div className="ks-cluster">
                   <button type="button" className="ibtn" aria-label="חזרה למערכת" data-tip="חזרה למערכת" data-guide-id="kiosk.exit" data-agy-id="exit_to_system_btn"
-                    onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }}><KIcon id="logout" size="sm" /></button>
+                    onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } exitToSystem(); }}><KIcon id="logout" size="sm" /></button>
                   <button type="button" className="ibtn" aria-label="חיפוש חדש" data-tip="חיפוש חדש" data-agy-id="new_search_btn" onClick={() => goStage(1)}><KIcon id="search" size="sm" /></button>
                   <button type="button" className="ibtn" aria-label="רענון מלאי" data-tip="רענון מלאי" data-guide-id="kiosk.refresh" data-agy-id="refresh_inventory_btn" onClick={fetchInventory}><KIcon id="refresh" size="sm" /></button>
                   <button type="button" className="ibtn" aria-label={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-tip={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-guide-id="kiosk.print" data-agy-id="print_catalog_btn" onClick={() => askPrint(null)}><KIcon id="print" size="sm" /></button>
