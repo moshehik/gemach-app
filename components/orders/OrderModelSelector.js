@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { modelDisplayName } from '../../lib/modelDisplay';
 
 export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId, hasActiveItems = false }) {
   const [query, setQuery] = useState('');
@@ -103,11 +104,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
 
   // 9000aab4 (נווה יעקב): כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (יובאו בלי שם
   // תיאורי אמיתי) - עדיף להציג את קוד הדגם, כמו שכבר קורה בעמדת הלקוחות ובפריטי הזמנה.
-  const displayModelName = (model) => {
-    const name = (model?.name || '').trim();
-    if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
-    return name;
-  };
+  const displayModelName = (model) => modelDisplayName(model, { fallback: '' }); // lib/modelDisplay.js: שם אמיתי, אחרת מספר הדגם (השרת כבר מחזיר name מנורמל ל-/api/inventory/models)
 
   const handleSelect = (model) => {
     setQuery(displayModelName(model));

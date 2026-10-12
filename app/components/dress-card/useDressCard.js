@@ -15,6 +15,7 @@ import { addHistory } from '@/lib/historyManager';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { nextWorkingDay } from '@/lib/businessDays';
 import { israelDayKey, israelTime } from '@/lib/attendance/summary';
+import { modelDisplayName, modelHasRealName } from '@/lib/modelDisplay';
 import DcSummaryDialog from './dialogs/DcSummaryDialog';
 import { DcDiscardDialog, DcSuccessDialog } from './dialogs/DcSimpleDialogs';
 import {
@@ -118,7 +119,7 @@ export default function useDressCard(dressId, ui) {
         if (stateRef.current && (diffChanges(stateRef.current.saved, stateRef.current.cur).length > 0)) { setStatus('ready'); return; }
         applyServer(data);
         setStatus('ready');
-        addHistory({ type: 'dress', id: data.id, name: `דגם ${data.barcodePrefix || ''}`.trim(), subtext: data.name || '' });
+        addHistory({ type: 'dress', id: data.id, name: `דגם ${data.barcodePrefix || ''}`.trim(), subtext: modelHasRealName({ name: data.name, barcodePrefix: data.barcodePrefix }) ? data.name : '' });
       })
       .catch((e) => { if (!off) { console.error(e); if (!dressCache.has(dressId)) setStatus('notfound'); } });
     return () => { off = true; };
@@ -277,7 +278,7 @@ export default function useDressCard(dressId, ui) {
     const n = res.okLines;
     const m = stateRef.current.saved.model;
     ui.toast('info', 'כרטיס הדגם נשמר', n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`);
-    const next = await ui.openDialog(DcSuccessDialog, { sub: `דגם · ${m.name || m.code} · ${n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`}` });
+    const next = await ui.openDialog(DcSuccessDialog, { sub: `דגם · ${modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' }) || m.code} · ${n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`}` });
     if (next === 'print') window.open(`/dashboard/dresses/${dressId}/print`, '_blank');
     else if (next === 'list') router.push(LIST_HREF);
     return 'saved';

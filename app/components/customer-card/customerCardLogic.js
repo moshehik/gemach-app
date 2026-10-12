@@ -4,6 +4,7 @@
 // בגוף השמירה / יצירת הלקוח - בזכותה השרת אוכף את customer_required_fields רק לכרטיס החדש.
 
 import { normalizeEmail } from '../../../lib/emailUtils.js';
+import { scrubPlaceholderInText } from '../../../lib/modelDisplay.js';
 import {
   validateCustomerFieldFormats, validateCustomerBankFields, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup,
 } from '../../../lib/customerValidation.js';
@@ -299,7 +300,7 @@ export const orderEventIso = (o) => eventSortDate(o) || null;
 export const orderItemModels = (o) => (o.items || []).filter((i) => !i.isDeleted).map((i) => {
   const prefix = i.barcodePrefix ?? i.dressItem?.barcodePrefix;
   if (prefix !== null && prefix !== undefined && prefix !== '') return `דגם ${prefix}${i.size ? ` מידה ${i.size}` : ''}`;
-  return i.description || i.dressItem?.dressName || '';
+  return scrubPlaceholderInText(i.description || i.dressItem?.dressName || '', i.barcodePrefix ?? i.dressItem?.barcodePrefix);
 }).filter(Boolean);
 export function deliveryText(o) {
   if (!o.isDelivery) return '';

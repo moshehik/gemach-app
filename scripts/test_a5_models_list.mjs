@@ -24,7 +24,9 @@ const R = D.map(modelRow);
 console.log('שורה וסטטוס');
 t('modelRow: מזהים, קוד, שם חלופי, מידות ממוינות מספרית, ספירות', () => {
   assert.equal(R[0].code, 105); assert.equal(R[2].code, null); assert.equal(R[3].name, 'דגם 110');
-  assert.equal(modelRow({ id: 'z' }).name, 'ללא שם');
+  assert.equal(modelRow({ id: 'z' }).name, '—');
+  assert.equal(modelRow({ id: 'p', name: 'ללא שם - 1243', barcodePrefix: 815 }).name, '815', 'שם "ללא שם - N" -> מספר הדגם (לא ה-N של אקסס)');
+  assert.equal(modelRow({ id: 'q', name: 'ורוד', barcodePrefix: 124 }).name, 'ורוד');
   assert.deepEqual(R[0].sizes, [['08', 3], ['10', 5], ['12', 2]]);
   assert.equal(R[0].inactive, 2); assert.equal(R[0].usable, 8); assert.equal(R[0].repair, 1); assert.equal(R[1].delItems, 1); assert.equal(R[0].rentals, 31);
   assert.equal(modelRow({ id: 'y', itemsCount: 5, notInUseCount: 2 }).usable, 3, 'בלי activeItemsCount: items - inactive');

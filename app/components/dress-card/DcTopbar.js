@@ -9,6 +9,7 @@ import DcScanBar from './DcScanBar';
 import { DcDeleteDialog, DcRestoreDialog } from './dialogs/DcSimpleDialogs';
 import { PRINT_MENU, exportItemsXlsx, runDressDoc } from './dcPrint';
 import { counts } from '@/lib/dressCardLogic';
+import { modelHasRealName } from '@/lib/modelDisplay';
 
 function PrintMenu({ dc, ui }) {
   const [open, setOpen] = useState(false);
@@ -73,7 +74,7 @@ export default function DcTopbar({ dc, ui }) {
         <OcIcon name="back" />
       </button>
       <div className="ttl">
-        <h1><small>דגם</small><bdi id="ttlCode">{m ? `#${m.code}` : ''}</bdi>{m && dc.flags.useModelNames && m.name ? <span id="ttlName" className="dc-nm">{m.name}</span> : null}</h1>
+        <h1><small>דגם</small><bdi id="ttlCode">{m ? `#${m.code}` : ''}</bdi>{m && dc.flags.useModelNames && modelHasRealName({ name: m.name, barcodePrefix: m.code }) ? <span id="ttlName" className="dc-nm">{m.name}</span> : null}</h1>
         <span id="hdrChips" className="row wrap" />
       </div>
       {ready ? <DcScanBar dc={dc} ui={ui} /> : null}

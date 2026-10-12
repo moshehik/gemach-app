@@ -17,7 +17,10 @@ import {
 import {
   ST_LABEL, addDays, bcFor, compareItems, counts, pad2, stOf,
 } from '../../../lib/dressCardLogic.js';
+import { modelDisplayName } from '../../../lib/modelDisplay.js';
 
+// שם הדגם בהדפסות: שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js)
+const pkModelName = (m) => modelDisplayName({ name: m && m.name, barcodePrefix: m && m.code }, { fallback: '' }) || '—';
 const num = (n) => `<span class="pk-num">${escH(n)}</span>`;
 const ph = (v) => (v ? `<span class="pk-ph">${escH(v)}</span>` : '<span class="pk-dim">—</span>');
 const dim = '<span class="pk-dim">—</span>';
@@ -73,7 +76,7 @@ export function modelsListDoc(data, ctx) {
   const T = table('mdl', cols);
   const z = (n) => (n ? num(n) : dim);
   const atoms = L.map((m) => {
-    const cells = [m.code == null ? dim : num(m.code), escH(m.name), m.entry ? escH(ctx.hDate(m.entry)) : dim, z(m.items), z(m.inactive), z(m.reserve), z(m.repair), z(m.rentals)];
+    const cells = [m.code == null ? dim : num(m.code), escH(pkModelName(m)), m.entry ? escH(ctx.hDate(m.entry)) : dim, z(m.items), z(m.inactive), z(m.reserve), z(m.repair), z(m.rentals)];
     if (mixed) cells.push(escH(st(m)));
     return T.row(cells);
   });
@@ -152,8 +155,8 @@ export function modelCardDoc(data, ctx) {
   } else atoms.push(block('<div class="pk-note">אין פריטים בדגם</div>'));
   if (rents.length) atoms.push(heading('השכרות ב-12 החודשים האחרונים'), ...rentAtoms(rents, ctx));
   return {
-    kind: 'flow', previewTitle: `הדפסה: כרטיס דגם · ${m.name}`, file: `כרטיס דגם ${m.name}`,
-    head: { chip: 'כרטיס דגם', title: m.name, barcode: m.code }, atoms,
+    kind: 'flow', previewTitle: `הדפסה: כרטיס דגם · ${pkModelName(m)}`, file: `כרטיס דגם ${pkModelName(m)}`,
+    head: { chip: 'כרטיס דגם', title: pkModelName(m), barcode: m.code }, atoms,
   };
 }
 
@@ -164,8 +167,8 @@ export function modelItemsDoc(data) {
   const list = data.list ? data.list.map((i) => byId.get(i.id)).filter((x) => x && !x.del) : savedLive(data.items);
   if (!list.length) return { empty: { title: 'אין פריטים להדפסה', text: 'הרשימה ריקה לפי החיפוש והסינון הנוכחיים' } };
   return {
-    kind: 'flow', previewTitle: `הדפסה: רשימת פריטים · ${m.name}`, file: `רשימת פריטים ${m.name}`,
-    head: { chip: 'רשימת פריטים ומיקומים', title: m.name, sub: data.list ? flt(data, { loc: 'מיקום' }) : '', sum: plural(list.length, 'פריט אחד', 'פריטים') },
+    kind: 'flow', previewTitle: `הדפסה: רשימת פריטים · ${pkModelName(m)}`, file: `רשימת פריטים ${pkModelName(m)}`,
+    head: { chip: 'רשימת פריטים ומיקומים', title: pkModelName(m), sub: data.list ? flt(data, { loc: 'מיקום' }) : '', sum: plural(list.length, 'פריט אחד', 'פריטים') },
     atoms: itemAtoms(list, true, data.prefix),
   };
 }
@@ -176,8 +179,8 @@ export function modelRentalsDoc(data, ctx) {
   const list = data.list ? data.list : rentWindow(data.rentals, ctx.todayKey);
   if (!list.length) return { empty: { title: 'אין השכרות להדפסה', text: data.list ? 'הרשימה ריקה לפי החיפוש והסינון הנוכחיים' : 'לא היו השכרות ב-12 החודשים האחרונים' } };
   return {
-    kind: 'flow', previewTitle: `הדפסה: רשימת השכרות · ${m.name}`, file: `השכרות ${m.name}`,
-    head: { chip: 'השכרות', title: m.name, sub: data.list ? flt(data) : 'ב-12 החודשים האחרונים', sum: plural(list.length, 'השכרה אחת', 'השכרות') },
+    kind: 'flow', previewTitle: `הדפסה: רשימת השכרות · ${pkModelName(m)}`, file: `השכרות ${pkModelName(m)}`,
+    head: { chip: 'השכרות', title: pkModelName(m), sub: data.list ? flt(data) : 'ב-12 החודשים האחרונים', sum: plural(list.length, 'השכרה אחת', 'השכרות') },
     atoms: rentAtoms(list, ctx),
   };
 }
@@ -192,14 +195,14 @@ export function modelLabelsDoc(data) {
   for (let i = 0; i < live.length; i += LABELS_PER_SHEET) {
     const c = live.slice(i, i + LABELS_PER_SHEET);
     pages.push({
-      slim: true, chip: 'מדבקות ברקוד', title: m.name, sum: plural(live.length, 'מדבקה אחת', 'מדבקות'),
+      slim: true, chip: 'מדבקות ברקוד', title: pkModelName(m), sum: plural(live.length, 'מדבקה אחת', 'מדבקות'),
       body: `<div class="pk-lab-grid">${c.map((it) => {
         const code = bcFor(it, data.prefix);
-        return `<div class="pk-lab"><div class="pk-lab-nm">${escH(m.name)}</div><div class="pk-lab-md">מידה <b>${escH(it.size)}</b></div><div class="pk-lab-bc">${bc(code, 10, 0.2)}<small>${escH(code)}</small></div></div>`;
+        return `<div class="pk-lab"><div class="pk-lab-nm">${escH(pkModelName(m))}</div><div class="pk-lab-md">מידה <b>${escH(it.size)}</b></div><div class="pk-lab-bc">${bc(code, 10, 0.2)}<small>${escH(code)}</small></div></div>`;
       }).join('')}</div>`,
     });
   }
-  return { kind: 'pages', previewTitle: `הדפסה: מדבקות ברקוד · ${m.name}`, file: `מדבקות ברקוד ${m.name}`, pages };
+  return { kind: 'pages', previewTitle: `הדפסה: מדבקות ברקוד · ${pkModelName(m)}`, file: `מדבקות ברקוד ${pkModelName(m)}`, pages };
 }
 
 /* ---------------------------------------------------------------- דוח הזמנות / רשימת לקוחות (רשימות הניהול; הגיליון נבנה ב-ordersLogic / customersLogic - docs/a5-staff-models/print-specs.md) */

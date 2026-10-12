@@ -5,6 +5,7 @@
 // בלי '@/' imports - חייב להיטען ב-node רגיל (הבדיקות). ייבוא יחסי מ-lib הטהור (businessDays / lateReturn - בלי prisma) מותר.
 import { parseNonWorkingDaysSetting, addBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnKey } from '../../../lib/lateReturn';
+import { modelDisplayName, modelCodeSuffix as sharedModelCodeSuffix } from '../../../lib/modelDisplay';
 
 // ---------- לקוח ----------
 export const getCustomerFullName = (c) => {
@@ -262,16 +263,12 @@ export const describeAlterations = (item) => [
 export const alterationsChosen = (it) => !!(it.neckAlteration || it.sleeveAlteration || it.lengthAlteration);
 
 // R23: דגם שנשמר בשם הזמני "ללא שם" מוצג לפי הקוד (כמו OrderModelSelector.displayModelName)
-export function displayModelName(model) {
-  const name = String((model && model.name) || '').trim();
-  if (name.startsWith('ללא שם') && model && model.barcodePrefix) return String(model.barcodePrefix);
-  return name;
+export function displayModelName(model, opts) {
+  return modelDisplayName(model, { ...opts, fallback: '' }); // lib/modelDisplay.js: שם אמיתי, אחרת מספר הדגם
 }
 // R23 (הערת הבעלים): בנווה יעקב הקוד והשם זהים - מציגים את הקוד בנפרד רק כשהוא שונה מהשם המוצג
-export function modelCodeSuffix(model) {
-  const code = model && model.barcodePrefix ? String(model.barcodePrefix).trim() : '';
-  if (!code) return '';
-  return code === displayModelName(model) ? '' : code;
+export function modelCodeSuffix(model, opts) {
+  return sharedModelCodeSuffix(model, opts);
 }
 
 export const buildPricingUrl = (dressModelId, sizeText, eventDate) =>

@@ -12,6 +12,7 @@ import useDcListAi from '../useDcListAi';
 import { StatTile } from './DcRentalsTab';
 import { Vf } from '../DcParts';
 import { HISTORY_KINDS, dayTitle, hFull, hShort, kindGroup } from '@/lib/dressCardLogic';
+import { modelDisplayName } from '@/lib/modelDisplay';
 
 function LifeCard({ dc }) {
   return (
@@ -60,7 +61,7 @@ export default function DcHistoryTab({ dc, ui }) {
         <div className="card cust">
           <div className="card-h"><div className="ico gold"><OcIcon name="info" size="lg" /></div><h2>נתוני מערכת</h2></div>
           <div className="kv">
-            {nameShown ? <Vf icon="tag" label="שם דגם" value={m.name} /> : null}
+            {nameShown ? <Vf icon="tag" label="שם דגם" value={modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' })} /> : null}
             <Vf icon="box" label="קידומת ברקוד" value={m.code} bdi />
             <Vf icon="cal" label="נכנס למאגר" value={m.entry ? hFull(m.entry) + (createRow ? ` · ${createRow.ts.slice(11)}` : '') : ''} />
             <Vf icon="clock" label="עודכן לאחרונה" value={lastUpdate && lastUpdate.day ? `${hFull(lastUpdate.day)} · ${lastUpdate.time}` : ''} />

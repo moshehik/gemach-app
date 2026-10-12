@@ -13,6 +13,7 @@ import { normalizeGapRule } from '../../../lib/priceRows';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { sortSizeRows } from '../../../lib/sizeSort';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { isPlaceholderModelName } from '../../../lib/modelDisplay';
 import { postRentalRent, postRentalReturn } from './rentalToggle';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
@@ -764,9 +765,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
     // כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (לא שם תיאורי אמיתי) - עדיף להציג
     // את מספר הדגם, כמו שכבר קורה בעמדת הלקוחות - ר' דיווח org2 df1cdacf.
-    if (cleaned.startsWith('ללא שם')) {
+    if (isPlaceholderModelName(cleaned)) {
       const code = itemCode(item);
-      if (code) return String(code);
+      return code ? String(code) : 'פריט כללי';
     }
     return cleaned;
   };

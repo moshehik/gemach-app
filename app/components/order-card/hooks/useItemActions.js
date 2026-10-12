@@ -28,6 +28,7 @@ import { alterationDoneLabel, estimateOnTake, detailsWithoutMarker } from '@/lib
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { modelDisplayName, isPlaceholderModelName } from '@/lib/modelDisplay';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
 import { hebDateOf, newLocalId } from '../orderCardLogic';
 
@@ -40,9 +41,9 @@ export const itemCode = (item) => item?.dressItem?.dress?.barcodePrefix || item?
 export function itemName(item) {
   const raw = item?.dressItem?.dress?.name || item?.description || item?.dressItem?.dressName || 'פריט כללי';
   const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
-  if (cleaned.startsWith('ללא שם')) {
+  if (isPlaceholderModelName(cleaned)) {
     const code = itemCode(item);
-    if (code) return String(code);
+    return code ? String(code) : 'פריט כללי'; // לעולם לא "ללא שם" (lib/modelDisplay.js)
   }
   return cleaned;
 }
@@ -244,10 +245,8 @@ export function itemRequestBody(item, { forceFullEdit = false, managerAuth = nul
 // עזרים טהורים של רכיבי הלשונית (כאן ולא בקובצי ה-JSX כדי שייבדקו ב-node: items.logic.test.mjs)
 // ---------------------------------------------------------------------------------------------
 // "ללא שם" → קוד הדגם (OrderModelSelector.displayModelName)
-export function displayModelName(model) {
-  const name = (model?.name || '').trim();
-  if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
-  return name;
+export function displayModelName(model, opts) {
+  return modelDisplayName(model, { ...opts, fallback: '' }); // lib/modelDisplay.js
 }
 // טקסט הזמינות של הישן (OrderSizeSelector :104-121) + האם מנוטרלת
 export function sizeInfo(row, order) {

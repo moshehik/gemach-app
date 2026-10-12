@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { orderItemModelName } from '@/lib/modelDisplay';
 import { CapacityCalendar } from '@/components/CapacityCalendar';
 
 export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
@@ -89,7 +90,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
         <div className="modal-head">
           <strong>
             <svg className="icon"><use href="#i-calendar" /></svg>
-            זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
+            זמינות: {orderItemModelName(item) || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
           </strong>
           <button data-agy-id="itemcapacitymodal_button_1" type="button" onClick={onClose} className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה">
             <svg className="icon"><use href="#i-x" /></svg>

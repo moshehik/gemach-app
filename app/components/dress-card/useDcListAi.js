@@ -7,6 +7,7 @@
 // which: 'items' | 'rentals' | 'history'. 'rentals' פונה להקשר OrderItem של ה-endpoint (שם חלה הגבלת העמודות הכספיות); השאר להקשר 'dresses'.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import StatisticsModal from '../StatisticsModal';
+import { modelHasRealName } from '@/lib/modelDisplay';
 
 const MAX_PAGES = 10;
 
@@ -51,7 +52,7 @@ export default function useDcListAi({ dc, ui, which }) {
   /** מצמצם רשימה לתוצאות ה-AI (אם יש חיפוש פעיל). match(row, found) -> boolean */
   const narrow = useCallback((list, match) => (found ? list.filter((r) => match(r, found)) : list), [found]);
 
-  const contextQuery = `המשתמש צופה בכרטיס הדגם ${code}${model.name ? ` (${model.name})` : ''} - barcodePrefix = ${code}. התייחס לדגם הזה בלבד אלא אם נשאל אחרת.`;
+  const contextQuery = `המשתמש צופה בכרטיס הדגם ${code}${modelHasRealName({ name: model.name, barcodePrefix: model.code }) ? ` (${model.name})` : ''} - barcodePrefix = ${code}. התייחס לדגם הזה בלבד אלא אם נשאל אחרת.`;
   const modal = stats ? <StatisticsModal isOpen onClose={() => setStats(false)} pageContext="dresses" contextQuery={contextQuery} position={null} /> : null;
   return {
     ai, onStats: hidden ? null : () => setStats(true), modal, narrow, active: !!found,

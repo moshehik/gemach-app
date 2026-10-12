@@ -122,3 +122,28 @@ t('קוד כמחרוזת; שם אוטומטי = המספר עצמו (כמו דג
 });
 
 console.log(`\n${passed} passed`);
+
+import { orderItemModelName, withDisplayName, scrubPlaceholderInText } from '../lib/modelDisplay.js';
+console.log('orderItemModelName / withDisplayName / scrubPlaceholderInText');
+t('פריט הזמנה: שם מה-dress, מספר מהפריט / השמלה / הפריט הפיזי; מילוי -> מספר', () => {
+  assert.equal(orderItemModelName({ dressItem: { dress: { name: 'ללא שם - 1243', barcodePrefix: 815 } } }), '815');
+  assert.equal(orderItemModelName({ dressItem: { dress: { name: 'שחור כסוף', barcodePrefix: 500 } } }), 'שחור כסוף');
+  assert.equal(orderItemModelName({ barcodePrefix: 559, dressModelName: 'ללא שם - 1235' }), '559');
+  assert.equal(orderItemModelName({ dressItem: { barcodePrefix: 561, dress: { name: null } } }), '561');
+  assert.equal(orderItemModelName({ description: 'פריט כללי' }), '');
+  assert.equal(orderItemModelName(null), '');
+  assert.equal(orderItemModelName({ dressItem: { dress: { name: 'שחור', barcodePrefix: 500 } } }, { useModelNames: false }), '500');
+});
+t('withDisplayName: name מוחלף בשם התצוגה, שאר השדות נשמרים; אין שם ואין מספר -> null', () => {
+  assert.deepEqual(withDisplayName({ id: 'a', name: 'ללא שם - 4', barcodePrefix: 815 }), { id: 'a', name: '815', barcodePrefix: 815 });
+  assert.deepEqual(withDisplayName({ id: 'b', name: 'ורוד', barcodePrefix: 124 }), { id: 'b', name: 'ורוד', barcodePrefix: 124 });
+  assert.deepEqual(withDisplayName({ id: 'c', name: 'ורוד', barcodePrefix: 124 }, { useModelNames: false }), { id: 'c', name: '124', barcodePrefix: 124 });
+  assert.equal(withDisplayName({ id: 'd', name: 'ללא שם - 9', barcodePrefix: null }).name, null);
+  assert.equal(withDisplayName(null), null);
+});
+t('scrubPlaceholderInText: "ללא שם - N" בטקסט פריט -> מספר הדגם; בלי מספר -> "דגם"', () => {
+  assert.equal(scrubPlaceholderInText('ללא שם - 1243 (קוד: 815)', 815), '815 (קוד: 815)');
+  assert.equal(scrubPlaceholderInText('ללא שם - 7', null), 'דגם');
+  assert.equal(scrubPlaceholderInText('שחור כסוף (קוד: 500)', 500), 'שחור כסוף (קוד: 500)');
+});
+console.log(`\n${passed} passed (total)`);

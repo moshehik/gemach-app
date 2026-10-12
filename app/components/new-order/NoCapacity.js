@@ -8,6 +8,7 @@
 // החלון נטען ב-portal לשורש הדף (NoPortal) בתוך DialogFrame - הוא לא חלון עם תשובה (ask) אלא מצב של הבקר (capacityItem / showCapacitySearch).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { orderItemModelName, modelDisplayName } from '../../../lib/modelDisplay';
 import { Ic, Note, NoCombo, SegPill } from './NoUi';
 import NoHebrewCalendar, { holidaysOn, parshaOn } from './NoHebrewCalendar';
 import { DialogFrame } from './NoDialogs';
@@ -212,7 +213,7 @@ export function ItemCapacityDialog({ item, order, currentOrderId, onClose }) {
   }, [item, order && order.eventDate]);
 
   // בישן: dressItem.dress.name / description / 'פריט' - לפריט מהאשף (בלי dressItem) נוסף dressName כדי שהכותרת לא תהיה סתם "פריט"
-  const name = (item.dressItem && item.dressItem.dress && item.dressItem.dress.name) || item.dressName || item.description || 'פריט';
+  const name = orderItemModelName(item) || modelDisplayName({ name: item.dressName }, { fallback: '' }) || item.description || 'פריט'; // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
   return (
     <DialogFrame layer={2} cls="capwin" onBackdrop={onClose}>
       <h2>זמינות: {name} ({item.sizeText || item.size || 'ללא מידה'})</h2>
