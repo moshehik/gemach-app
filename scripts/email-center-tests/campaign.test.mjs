@@ -67,6 +67,8 @@ const CFG = await import('../../lib/emailConfig.js');
 let passed = 0;
 const t = async (name, fn) => { try { await fn(); passed++; console.log('  ok   -', name); } catch (e) { console.error('  FAIL -', name, '\n        ', String(e.stack || e.message).slice(0, 700)); process.exitCode = 1; } };
 
+let __uniq = 0;
+const uniq = () => ({ ...INPUT, bodyText: INPUT.bodyText + ' #' + (++__uniq) }); // since 12.10.2026 an identical campaign (same creator, 10 minutes) is refused - each test makes its own
 const INPUT = { subject: 'שלום {{firstName}}', bodyText: 'היי {{fullName}},\n**מבצע** חדש ב-[האתר](https://example.test/x)', heading: '', buttonLabel: '', buttonUrl: '', attachments: [] };
 const ORIGIN = 'https://gemach.example.test';
 
@@ -135,12 +137,12 @@ await t('sanitizeCampaignInput: דחיית משתנה לא מוכר, תמונה/
 // ---------- יצירה ושליחה ----------
 let campaignId;
 await t('createCampaign: מגביל לנמענים מאושרים, מתזמן רק לעתיד, דורש origin תקין', async () => {
-  assert.equal((await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: 'javascript:1', employeeId: 'e1' })).ok, false);
-  const past = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() - 3600e3) });
+  assert.equal((await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: 'javascript:1', employeeId: 'e1' })).ok, false);
+  const past = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() - 3600e3) });
   assert.equal(past.ok, false);
-  const none = await C.createCampaign({ input: INPUT, filters: { mode: 'city', cities: ['עיר שלא קיימת'] }, origin: ORIGIN, employeeId: 'e1' });
+  const none = await C.createCampaign({ input: uniq(), filters: { mode: 'city', cities: ['עיר שלא קיימת'] }, origin: ORIGIN, employeeId: 'e1' });
   assert.match(none.error, /אין נמענים/);
-  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
   assert.equal(r.ok, true); assert.equal(r.total, 2); campaignId = r.id;
 });
 
@@ -172,7 +174,7 @@ await t('שליחה חוזרת לדיוור שהסתיים לא שולחת שו�
 
 await t('ביטול באמצע + נעילה: דיוור שבוטל לא נשלח', async () => {
   customers.get(U(2)).marketingConsent = true;
-  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
   await C.cancelCampaign(r.id);
   M.clearDryRunOutbox();
   const s = await C.sendCampaignChunk(r.id, { limit: 5 });
@@ -181,7 +183,7 @@ await t('ביטול באמצע + נעילה: דיוור שבוטל לא נשלח
 });
 
 await t('דיוור מתוזמן לעתיד לא נשלח; processDueCampaigns שולח רק את מה שהגיע זמנו', async () => {
-  const future = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() + 3 * 3600e3) });
+  const future = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() + 3 * 3600e3) });
   assert.equal(future.status, 'scheduled');
   M.clearDryRunOutbox();
   const res = await C.processDueCampaigns();
@@ -293,7 +295,7 @@ await t('buildDraftCfg: טיוטה מאומתת כמו שמירה', async () => 
 await t('מתזמן: בלי env מדלגים (המסמך נשאר מתוזמן, exact=false)', async () => {
   delete process.env.EMAIL_SCHEDULER_URL; delete process.env.EMAIL_SCHEDULER_SECRET;
   assert.equal(C.schedulerConfigured(), false);
-  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() + 3600e3) });
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: new Date(Date.now() + 3600e3) });
   assert.equal(r.status, 'scheduled'); assert.equal(r.scheduler.exact, false);
   assert.equal((await C.listCampaigns()).find((c) => c.id === r.id).exact, false);
 });
@@ -306,7 +308,7 @@ await t('מתזמן: עם env נרשם טריגר {schedule,id,runAt,site}; בי
   try {
     assert.equal(C.schedulerConfigured(), true);
     const at = new Date(Date.now() + 2 * 3600e3);
-    const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
     assert.equal(r.scheduler.exact, true);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, 'https://script.google.com/macros/s/TEST/exec');
@@ -317,18 +319,18 @@ await t('מתזמן: עם env נרשם טריגר {schedule,id,runAt,site}; בי
     assert.equal(calls[1].body.action, 'cancel'); assert.equal(calls[1].body.id, r.id);
     // כשל רישום (תשובה לא תקינה) - התזמון נשמר, exact=false + שגיאה
     globalThis.fetch = async () => ({ status: 500, text: async () => '<html>error</html>' });
-    const bad = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    const bad = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
     assert.equal(bad.status, 'scheduled'); assert.equal(bad.scheduler.exact, false); assert.match(bad.scheduler.error, /תשובה לא תקינה/);
     // רשת נפלה
     globalThis.fetch = async () => { throw new Error('network down'); };
-    const down = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
+    const down = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1', mode: 'schedule', scheduledAt: at });
     assert.equal(down.status, 'scheduled'); assert.equal(down.scheduler.exact, false);
   } finally { globalThis.fetch = realFetch; delete process.env.EMAIL_SCHEDULER_URL; delete process.env.EMAIL_SCHEDULER_SECRET; }
 });
 
 await t('claim אטומי: שתי ריצות במקביל על אותו דיוור - כל נמען מקבל פעם אחת', async () => {
   customers.get(U(2)).marketingConsent = true;
-  const r = await C.createCampaign({ input: INPUT, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'e1' });
   M.clearDryRunOutbox();
   const [a, b] = await Promise.all([C.sendCampaignChunk(r.id, { limit: 5 }), C.sendCampaignChunk(r.id, { limit: 5 })]);
   const out = M.getDryRunOutbox();
@@ -345,6 +347,115 @@ await t('שער הסוד של /api/cron/email-campaigns מקבל CRON_SECRET ו�
   assert.ok(src.includes('more') );
 });
 
+// ---------- סקירת אבטחה 12.10.2026: ממצאים 3 / 7 / 8 / 10 (מודול הדיוורים) ----------
+await t('ממצא 8: דיוור זהה (נושא + גוף + פילטר) של אותו יוצר תוך 10 דקות נדחה; יוצר אחר / פילטר אחר / אחרי ביטול - מותר', async () => {
+  customers.get(U(2)).marketingConsent = true;
+  const input = { ...INPUT, bodyText: INPUT.bodyText + ' DUP-TEST' };
+  const first = await C.createCampaign({ input, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupA' });
+  assert.equal(first.ok, true);
+  const again = await C.createCampaign({ input, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupA' });
+  assert.equal(again.ok, false); assert.equal(again.duplicate, true); assert.equal(again.existingId, first.id);
+  assert.equal((await C.createCampaign({ input, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupB' })).ok, true, 'a different creator');
+  assert.equal((await C.createCampaign({ input, filters: { mode: 'city', cities: ['ירושלים'] }, origin: ORIGIN, employeeId: 'dupA' })).ok, true, 'a different filter');
+  assert.equal((await C.createCampaign({ input: { ...input, subject: input.subject + ' שונה' }, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupA' })).ok, true, 'a different subject');
+  await C.cancelCampaign(first.id);
+  assert.equal((await C.createCampaign({ input, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupA' })).ok, true, 'after cancelling the first one');
+  // outside the window: the old campaign no longer blocks
+  const old = await C.createCampaign({ input: { ...input, bodyText: input.bodyText + ' OLD' }, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupC' });
+  const row = store.get('email_campaign:' + old.id);
+  const d = JSON.parse(row.value); d.createdAt = new Date(Date.now() - C.DUPLICATE_WINDOW_MS - 60000).toISOString(); row.value = JSON.stringify(d);
+  assert.equal((await C.createCampaign({ input: { ...input, bodyText: input.bodyText + ' OLD' }, filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'dupC' })).ok, true, 'older than 10 minutes');
+});
+
+await t('ממצא 7: רזרבה של 25 במכסה היומית (sendBudget)', async () => {
+  assert.equal(C.QUOTA_RESERVE, 25);
+  assert.equal(C.sendBudget(5, null), 5, 'unknown quota = the limit');
+  assert.equal(C.sendBudget(5, undefined), 5);
+  assert.equal(C.sendBudget(5, 100), 5);
+  assert.equal(C.sendBudget(5, 28), 3);
+  assert.equal(C.sendBudget(5, 26), 1);
+  assert.equal(C.sendBudget(5, 25), 0, 'exactly the reserve left = nothing for campaigns');
+  assert.equal(C.sendBudget(5, 10), 0);
+  assert.equal(C.sendBudget(5, 0), 0);
+  assert.equal(C.sendBudget(5, -3), 0);
+});
+
+await t('ממצא 3: ביטול שנכתב באמצע שליחה לא נדרס - ההתקדמות מתמזגת למסמך המבוטל והשליחה נעצרת', async () => {
+  customers.get(U(2)).marketingConsent = true;
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'casA' });
+  assert.equal(r.ok, true);
+  M.clearDryRunOutbox();
+  // the cancel lands right after the per-recipient "cancelled?" check (while the first mail is being prepared)
+  const orig = globalThis.__db.prisma.customer.findUnique;
+  let fired = false;
+  globalThis.__db.prisma.customer.findUnique = async (args) => {
+    if (!fired) { fired = true; await C.cancelCampaign(r.id); }
+    return orig(args);
+  };
+  let s;
+  try { s = await C.sendCampaignChunk(r.id, { limit: 5 }); } finally { globalThis.__db.prisma.customer.findUnique = orig; }
+  assert.equal(s.ok, false); assert.match(s.error, /בוטל/);
+  const doc = await C.loadCampaign(r.id);
+  assert.equal(doc.status, 'cancelled', 'the cancellation survived the progress write');
+  assert.equal(doc.progress.sent.length, 1, 'the mail already sent is recorded on the cancelled document');
+  assert.equal(M.getDryRunOutbox().length, 1, 'nothing was sent after the cancel');
+  assert.equal(doc.lock, null);
+});
+
+await t('ממצא 3: גם כתיבת הסיום (done) היא CAS - דיוור שבוטל ביניים נשאר מבוטל', async () => {
+  customers.get(U(2)).marketingConsent = true;
+  const r = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'casB' });
+  const key = 'email_campaign:' + r.id;
+  const claimedValue = store.get(key).value;
+  const doc = JSON.parse(claimedValue);
+  await C.cancelCampaign(r.id); // the store now differs from `claimedValue`
+  doc.status = 'done'; doc.progress.sent = [U(1)];
+  const out = await C.persistProgress(doc, claimedValue);
+  assert.equal(out.cancelled, true);
+  const after = await C.loadCampaign(r.id);
+  assert.equal(after.status, 'cancelled', 'not overwritten by done');
+  assert.deepEqual(after.progress.sent, [U(1)], 'progress merged');
+  // and a plain successful write still works and returns the new expected value
+  const r2 = await C.createCampaign({ input: uniq(), filters: { mode: 'all' }, origin: ORIGIN, employeeId: 'casC' });
+  const base = store.get('email_campaign:' + r2.id).value;
+  const d2 = JSON.parse(base); d2.progress.sent = [U(1)];
+  const ok = await C.persistProgress(d2, base);
+  assert.equal(ok.cancelled, false);
+  assert.equal(store.get('email_campaign:' + r2.id).value, ok.expected);
+});
+
+await t('ממצא 10: הסרה מהדיוור רושמת ביומן ההסכמות marketing granted:false (public / customer_self / email-unsubscribe), ושרשרת הכשל החינני לא מפילה את ההסרה', async () => {
+  const route = await import('../../app/api/email/unsubscribe/route.js');
+  const CC = await import('../../lib/customerConsent.js');
+  assert.ok(CC.CONSENT_SURFACES.includes('email-unsubscribe'));
+  const consents = [];
+  globalThis.__db.prisma.customerConsent = { createMany: async ({ data }) => { consents.push(...data); return { count: data.length }; } };
+  try {
+    customers.get(U(1)).marketingConsent = true;
+    const tok = C.makeUnsubscribeToken(U(1));
+    const req = (ip) => new Request('http://x.test/api/email/unsubscribe?t=' + tok, { method: 'POST', headers: { 'x-forwarded-for': ip } });
+    const res = await route.POST(req('7.7.7.1'));
+    assert.equal(res.status, 200);
+    assert.equal(customers.get(U(1)).marketingConsent, false);
+    assert.equal(consents.length, 1);
+    assert.deepEqual({ k: consents[0].kind, g: consents[0].granted, c: consents[0].channel, m: consents[0].method, s: consents[0].surface, e: consents[0].recordedByEmployeeId, id: consents[0].customerId }, { k: 'marketing', g: false, c: 'public', m: 'customer_self', s: 'email-unsubscribe', e: null, id: U(1) });
+    // idempotent: already off -> no second journal row
+    assert.equal((await route.POST(req('7.7.7.2'))).status, 200);
+    assert.equal(consents.length, 1);
+    // graceful: the table is missing -> the unsubscribe itself still succeeds
+    customers.get(U(1)).marketingConsent = true;
+    globalThis.__db.prisma.customerConsent = { createMany: async () => { const e = new Error('relation "CustomerConsent" does not exist'); e.code = 'P2021'; throw e; } };
+    const origErr = console.error; console.error = () => {};
+    try { assert.equal((await route.POST(req('7.7.7.3'))).status, 200); } finally { console.error = origErr; }
+    assert.equal(customers.get(U(1)).marketingConsent, false);
+    // client without the model at all
+    customers.get(U(1)).marketingConsent = true;
+    delete globalThis.__db.prisma.customerConsent;
+    console.error = () => {};
+    try { assert.equal((await route.POST(req('7.7.7.4'))).status, 200); } finally { console.error = origErr; }
+    assert.equal(customers.get(U(1)).marketingConsent, false);
+  } finally { delete globalThis.__db.prisma.customerConsent; }
+});
 // ---------- סקירת אבטחה 12.10.2026 (ממצא 21): EMAIL_DRY_RUN לא מכובד בפרודקשן ----------
 await t('EMAIL_DRY_RUN=1 מכובד מחוץ לפרודקשן ומתעלמים ממנו כש-VERCEL_ENV=production (גם postToMailer וגם המכסה עוברים דרך isDryRun)', async () => {
   const prev = process.env.VERCEL_ENV;
