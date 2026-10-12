@@ -4,6 +4,8 @@ import prisma from '../../lib/prisma';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { checkAuth } from '@/lib/auth';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // Draft ("טיוטה" - an unfinished order the new-order screen autosaved and the employee
 // never completed) and reservation-placeholder ("שמור לחיוב" - a row that only reserves an
@@ -149,14 +151,18 @@ export async function getStatisticsByModel(startDate, endDate) {
     include: { dressItem: { include: { dress: true } } }
   });
 
+  // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד). מקבצים לפי הדגם עצמו, לא לפי השם המוצג - כדי ששני דגמים בלי שם לא יתמזגו.
+  const mOpts = await getModelDisplayOpts();
   const grouped = {};
   items.forEach(i => {
-    const modelName = i.dressItem?.dress?.name || 'לא ידוע';
-    if (!grouped[modelName]) grouped[modelName] = { name: modelName, count: 0, neck: 0, length: 0, sleeve: 0 };
-    grouped[modelName].count += i.quantity || 1;
-    if (i.neckAlteration > 0) grouped[modelName].neck += 1;
-    if (i.lengthAlteration && i.lengthAlteration.trim() !== '') grouped[modelName].length += 1;
-    if (i.sleeveAlteration > 0) grouped[modelName].sleeve += 1;
+    const dress = i.dressItem?.dress;
+    const modelName = modelDisplayName(dress ? { ...dress, barcodePrefix: dress.barcodePrefix ?? i.barcodePrefix } : { barcodePrefix: i.barcodePrefix }, { ...mOpts, fallback: 'לא ידוע' });
+    const gKey = dress?.id || `n:${modelName}`;
+    if (!grouped[gKey]) grouped[gKey] = { name: modelName, count: 0, neck: 0, length: 0, sleeve: 0 };
+    grouped[gKey].count += i.quantity || 1;
+    if (i.neckAlteration > 0) grouped[gKey].neck += 1;
+    if (i.lengthAlteration && i.lengthAlteration.trim() !== '') grouped[gKey].length += 1;
+    if (i.sleeveAlteration > 0) grouped[gKey].sleeve += 1;
   });
   return Object.values(grouped).sort((a, b) => b.count - a.count);
 }
@@ -259,6 +265,7 @@ export async function getDressConsumptionStats(startDate, endDate) {
     include: { dress: true }
   });
   
+  const mOptsStock = await getModelDisplayOpts();
   // Group stock by dressModelId and sizeText
   const stockMap = {};
   allStock.forEach(item => {
@@ -266,7 +273,7 @@ export async function getDressConsumptionStats(startDate, endDate) {
     if (!stockMap[key]) {
       stockMap[key] = {
         modelId: item.dressModelId,
-        modelName: item.dress?.name || 'לא ידוע',
+        modelName: modelDisplayName(item.dress ? { ...item.dress, barcodePrefix: item.dress.barcodePrefix ?? item.barcodePrefix } : { barcodePrefix: item.barcodePrefix }, { ...mOptsStock, fallback: 'לא ידוע' }),
         barcodePrefix: item.barcodePrefix,
         sizeText: item.sizeText || 'ללא',
         totalStock: 0

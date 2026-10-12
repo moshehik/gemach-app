@@ -504,7 +504,7 @@ export default function StockCheckPage() {
                   records={records}
                   linkCol={1}
                   renderCell={(c, j, rec) => {
-                    if (j === 1) return <>{rec.r.modelName || <span className="faint">ללא שם</span>} <span className="faint"><bdi>#{rec.r.modelCode ?? '—'}</bdi></span></>;
+                    if (j === 1) return <>{rec.r.modelName || <span className="faint">—</span>} <span className="faint"><bdi>#{rec.r.modelCode ?? '—'}</bdi></span></>;
                     if (j === 2) return <SizesText sizes={rec.r.sizes} />;
                     if (j === 3) return <FreeChip n={rec.r.free} />;
                     if (j === 4) return <BranchesText branches={rec.r.branches} />;
@@ -518,7 +518,7 @@ export default function StockCheckPage() {
                       <>
                         <div className="ic-b"><Ic id="dress" /><span className="rlbl">דגם</span></div>
                         <div className="t">
-                          <b>{r.modelName || <span className="faint">ללא שם</span>}</b>
+                          <b>{r.modelName || <span className="faint">—</span>}</b>
                           <span className="ln"><FreeChip n={r.free} /> · דגם <bdi>#{r.modelCode ?? '—'}</bdi></span>
                           <span className="ln">מידות ופנוי בכל אחת: <SizesText sizes={r.sizes} /></span>
                           {branches && <span className="ln">סניפים: <BranchesText branches={r.branches} /></span>}

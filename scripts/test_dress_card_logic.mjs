@@ -148,9 +148,11 @@ t('סימון פעילות בלבד: ACTIVITY_TOGGLE_FIELDS בלבד (מותר �
   plan = buildSavePlan({ saved: s, cur: c, raw: RAW });
   assert.deepEqual(Object.keys(plan[0].req.body), MODEL_FIELDS);
 });
-t('useModelNames=false ושם ריק: שם נגזר מהקוד (כמו הישן)', () => {
+t('useModelNames=false ושם ריק / "ללא שם - N": השם הוא מספר הדגם עצמו (שם = קוד, כמו דגמי נווה)', () => {
   const s = fresh(); const c = clone(s); c.model.name = ''; c.model.inspect = true;
-  assert.equal(buildModelPayload(RAW, c, { useModelNames: false }).name, 'דגם 1142');
+  assert.equal(buildModelPayload(RAW, c, { useModelNames: false }).name, '1142');
+  c.model.name = 'ללא שם - 1243';
+  assert.equal(buildModelPayload(RAW, c, { useModelNames: false }).name, '1142');
 });
 t('פריטים: payloads כמו handlers של הדף הישן (מיקום בלבד / קרטון בלבד / עריכה מלאה / מחיקה / שחזור / הוספה)', () => {
   const s = fresh(); const c = clone(s);

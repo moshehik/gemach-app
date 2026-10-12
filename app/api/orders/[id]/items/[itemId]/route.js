@@ -6,6 +6,8 @@ import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../../../../lib/priceRows';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash
@@ -307,6 +309,8 @@ export async function PUT(request, { params }) {
     ]);
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js)
+    const mOpts = await getModelDisplayOpts();
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -314,12 +318,13 @@ export async function PUT(request, { params }) {
       if (!dressName && prefix) {
         dressName = dressModelMap.get(prefix);
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description || 'פריט כללי';
+      let finalDescription = scrubPlaceholderInText(item.description, prefix) || 'פריט כללי';
       if (dressName) {
         finalDescription = `${dressName} (קוד: ${prefix || ''})`;
       } else if (item.description) {
-        finalDescription = item.description;
+        finalDescription = scrubPlaceholderInText(item.description, prefix);
       }
 
       return {
@@ -339,7 +344,7 @@ export async function PUT(request, { params }) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
              }
              ob.productName = ob.description;
              if (prod) {

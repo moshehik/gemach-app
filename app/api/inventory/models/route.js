@@ -3,6 +3,8 @@ import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { cleanQuery, parseBarcodeDigits } from '@/lib/searchNormalize';
 import { cachedJson } from '@/lib/httpCache';
+import { withDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -40,7 +42,9 @@ export async function GET(request) {
     });
 
     // CPU phase 1B: private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js). בוררי הדגמים של ההזמנה קוראים דרך apiCache (no-store).
-    return cachedJson(request, { models });
+    // שם התצוגה של הדגם (lib/modelDisplay.js): שם אמיתי, אחרת המספר - לעולם לא "ללא שם - N"; נווה (useModelNames=false) = מספר בלבד. הבוררים מציגים name כמו שהוא.
+    const mOpts = await getModelDisplayOpts();
+    return cachedJson(request, { models: models.map((m) => withDisplayName(m, mOpts)) });
   } catch (error) {
     console.error('Error fetching models:', error);
     return NextResponse.json({ error: 'Failed to fetch models' }, { status: 500 });

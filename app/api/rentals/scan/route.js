@@ -6,6 +6,8 @@ import { verifySecret } from '@/lib/passwordAuth';
 import { hasPermission } from '@/lib/permissions';
 import { notifyManagers } from '@/lib/notifyManagers';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -87,7 +89,7 @@ export async function POST(request) {
                   ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
                   : null;
                 const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
-                const dressLabel = manualItem.dressItem?.dress?.name || (manualItem.dressItem?.dress?.barcodePrefix ? `דגם ${manualItem.dressItem.dress.barcodePrefix}` : null);
+                const dressLabel = modelDisplayName(manualItem.dressItem?.dress, { ...(await getModelDisplayOpts()), fallback: '' }) || null; // שם אמיתי, אחרת מספר הדגם
                 await notifyManagers({
                   title: 'הוקלד ברקוד ידנית בהשכרה',
                   content: `${actingName} הקליד/ה ידנית את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} בהזמנה #${order.orderId} (הסריקה הרגילה לא זיהתה את הברקוד).`
@@ -170,7 +172,7 @@ export async function POST(request) {
               ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
               : null;
             const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
-            const dressLabel = dressItem.dress?.name || (dressItem.dress?.barcodePrefix ? `דגם ${dressItem.dress.barcodePrefix}` : null);
+            const dressLabel = modelDisplayName(dressItem.dress, { ...(await getModelDisplayOpts()), fallback: '' }) || null; // שם אמיתי, אחרת מספר הדגם
             await notifyManagers({
               title: 'הושכר פריט רזרבה (אישור אחראית משמרת)',
               content: `${actingName} השכיר/ה מהרזרבה את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} (מיקום "${dressItem.location}") בהזמנה #${order.orderId}.`

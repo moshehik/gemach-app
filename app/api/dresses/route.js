@@ -7,6 +7,8 @@ import { sizeMatches } from '@/lib/searchNormalize';
 import { validateModelInput } from '@/lib/dressInputValidation';
 const TX_OPTS = { timeout: 20000, maxWait: 10000 }; // כל כתיבה מוסיפה שורת היסטוריה (app/lib/prisma.js) וה-DB (Neon) איטי בהתעוררות - ברירת המחדל 5 שניות נפלה
 import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
+import { modelDisplayName, autoModelName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 
 export const dynamic = 'force-dynamic';
@@ -108,6 +110,8 @@ export async function GET(request) {
       orderBy[sortKey] = sortDir;
     }
 
+    // שם הדגם ברשימה / בבוררים: אמיתי, אחרת המספר (lib/modelDisplay.js); נווה (useModelNames=false) = מספר בלבד. כרטיס הדגם (GET /api/dresses/[id]) נשאר גולמי לעריכה.
+    const mOpts = await getModelDisplayOpts();
     let dressModels = [];
     let totalCount = 0;
 
@@ -245,7 +249,7 @@ export async function GET(request) {
 
       const modelFields = {
         id: model.id,
-        name: model.name,
+        name: modelDisplayName(model, { ...mOpts, fallback: '' }) || null,
         barcodePrefix: model.barcodePrefix,
         priceCategory: model.priceCategory,
         notes: model.notes,
@@ -364,9 +368,14 @@ export async function POST(request) {
     const d = v.data;
 
     // DressModel.name הוא UNIQUE (כולל מחוקים רכות): שם שכבר קיים = 400 ברור, לא 500 כללי. השם האפקטיבי - גם השם האוטומטי "דגם <קוד>"
-    attemptedName = d.name || `דגם ${d.barcodePrefix || 'חדש'}`;
-    const nameTaken = await findNameConflict(prisma, attemptedName);
-    if (nameTaken) return NextResponse.json(duplicateNameBody(attemptedName, nameTaken), { status: 400 });
+    // גמ"ח בלי שמות דגמים (useModelNames=false, נווה יעקב): השם נקבע כאן בשרת למספר הדגם עצמו - בדיוק כמו שאר דגמי נווה (שם = קוד) - ולא "ללא שם" / "דגם <קוד>" ולא מה שהלקוח שלח (lib/modelDisplay.js autoModelName).
+    // בגמ"ח עם שמות: כמו תמיד - השם שהוזן, ובהיעדרו "דגם <קוד>".
+    const createOpts = await getModelDisplayOpts();
+    attemptedName = createOpts.useModelNames === false ? autoModelName(d.barcodePrefix) : (d.name || `דגם ${d.barcodePrefix || 'חדש'}`);
+    if (attemptedName) {
+      const nameTaken = await findNameConflict(prisma, attemptedName);
+      if (nameTaken) return NextResponse.json(duplicateNameBody(attemptedName, nameTaken), { status: 400 });
+    }
 
     // בדיקת קוד תפוס + יצירה תחת נעילת advisory לפי הקוד: שתי יצירות מקבילות עם אותו קוד (אין אילוץ unique ב-DB, ושינוי סכמה דורש DDL בשני המסדים) לא יכולות לעבור שתיהן
     const newModel = await prisma.$transaction(async (tx) => {
@@ -377,7 +386,7 @@ export async function POST(request) {
       }
       return tx.dressModel.create({
         data: {
-          name: attemptedName,
+          name: attemptedName || null,
           barcodePrefix: d.barcodePrefix,
           priceCategory: d.priceCategory,
           notes: d.notes,

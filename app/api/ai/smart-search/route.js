@@ -17,6 +17,8 @@ import {
   MSG_EMPLOYEES_FORBIDDEN, MSG_EMPLOYEES_LOGIN, MSG_EMPLOYEES_LIMITED, MSG_EMPLOYEES_REJECTED,
 } from '../../../../lib/ai/employeesSearch';
 import { statementTimeoutSql, isStatementTimeout, MSG_NARROWER } from '../../../../lib/adminListGuards';
+import { modelDisplayName } from '../../../../lib/modelDisplay';
+import { getModelDisplayOpts } from '../../../../lib/modelDisplayServer';
 
 // Columns used for "orders" smart-search results when the financial_columns_orders restriction
 // (lib/ai/restrictionsRegistry.js, feature "smart_search") is on for a non-manager - this route
@@ -390,6 +392,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
           }
         });
 
+        const mOpts = await getModelDisplayOpts(); // שם דגם אמיתי, אחרת המספר - לעולם לא "ללא שם" (lib/modelDisplay.js)
         const uniquePrefixes = new Set();
         fullOrders.forEach(order => {
           order.items.forEach(i => {
@@ -444,6 +447,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
               if (!dressName && prefix) {
                 dressName = dressModelMap.get(prefix);
               }
+              dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
               
               return {
                 id: i.id,

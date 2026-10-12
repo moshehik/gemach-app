@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { canViewOthersActivity, isViewableEmployee } from '@/lib/recentActivityAccess';
 import {
   MY_ACTIVITY_LIMITS as L, MY_ENTITY_TYPES, activitySince, collectRefs, attachOrderNumbers, mergeAuditRows, pickCandidates,
@@ -112,9 +113,10 @@ export async function GET(request) {
           take: L.paymentRows,
         }),
       ]);
+      const recentModelOpts = await getModelDisplayOpts(); // useModelNames=false (נווה): אין "שם הדגם", רק קוד
       const itemsBy = new Map(); const paysBy = new Map();
       for (const r of itemRows) {
-        const it = { id: r.id, sizeText: r.sizeText, description: r.description, prefix: r.dressItem?.dress?.barcodePrefix ?? r.dressItem?.barcodePrefix ?? r.barcodePrefix ?? null, modelName: r.dressItem?.dress?.name || null, isDeleted: r.isDeleted, isTaken: r.isTaken, takenDate: r.takenDate, isReturned: r.isReturned, returnDate: r.returnDate, returnedOk: r.returnedOk };
+        const it = { id: r.id, sizeText: r.sizeText, description: r.description, prefix: r.dressItem?.dress?.barcodePrefix ?? r.dressItem?.barcodePrefix ?? r.barcodePrefix ?? null, modelName: recentModelOpts.useModelNames === false ? null : (r.dressItem?.dress?.name || null), isDeleted: r.isDeleted, isTaken: r.isTaken, takenDate: r.takenDate, isReturned: r.isReturned, returnDate: r.returnDate, returnedOk: r.returnedOk };
         (itemsBy.get(r.orderId) || itemsBy.set(r.orderId, []).get(r.orderId)).push(it);
       }
       for (const p of payRows) (paysBy.get(p.orderId) || paysBy.set(p.orderId, []).get(p.orderId)).push(p);

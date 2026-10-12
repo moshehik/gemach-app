@@ -4,6 +4,8 @@ import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { compareSizeText, normalizeSizeKey } from '@/lib/sizeSort';
 import { STOCK_CHECK_PAGE_KEY } from '@/lib/stockCheck';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // GET /api/stock-check/options?key=model|size&typed=<טקסט>
 // רשימות ההצעות (רשימת גלילה) לשדות "דגם" ו"מידה" בדף בדיקת מלאי — החלטת הבעלים Q03 (1.10.2026):
@@ -47,10 +49,11 @@ async function modelOptions(typed) {
     orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' },
     take: typed ? POOL : LIMIT,
   });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
   const seen = new Set();
   const list = [];
   for (const r of rows) {
-    const v = clean(r.name);
+    const v = clean(modelDisplayName(r, { ...mOpts, fallback: '' }));
     if (!v) continue;
     const key = v + '|' + (r.barcodePrefix ?? '');
     if (seen.has(key)) continue;

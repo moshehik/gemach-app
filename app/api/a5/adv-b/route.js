@@ -9,6 +9,8 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 import { sizeTextFilter } from '@/lib/listSearch';
 import { sizeMatches } from '@/lib/searchNormalize';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // חיפוש מתקדם A5 - תחומי משלוחים / תיקונים / כספים / תפוסה / דגמים / עובדים.
 // קריאה בלבד. אותם כללים כמו העמודים החיים (ר' public/a5/adapters/adv-b.NOTES.md).
@@ -438,12 +440,13 @@ async function models(p, flags, gaps) {
     select: { id: true, name: true, barcodePrefix: true, items: { select: { quantity: true, isDeleted: true, sizeText: true, inRepair: true, dressBarcode: true } } },
   });
   const truncated = list.length > LIMIT;
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
   return {
     rows: list.slice(0, LIMIT).map((m) => {
       // כמות פריטים: פריטים פעילים (או המחוקים כשנבחר "פריט מחוק"), בכפוף לסינון מידה/ברקוד
       const its = m.items.filter((i) => (has(flags, 'md_delitem') ? i.isDeleted : !i.isDeleted)
         && (!size || sizeMatches(i.sizeText, size)) && (!code || (i.dressBarcode || '').includes(code)) && (!has(flags, 'md_repair') || i.inRepair));
-      return { link: `/dashboard/dresses/${m.id}`, cells: [m.name || '', m.barcodePrefix != null ? String(m.barcodePrefix) : '', String(its.reduce((a, i) => a + (i.quantity || 1), 0))] };
+      return { link: `/dashboard/dresses/${m.id}`, cells: [modelDisplayName(m, { ...mOpts, fallback: '' }), m.barcodePrefix != null ? String(m.barcodePrefix) : '', String(its.reduce((a, i) => a + (i.quantity || 1), 0))] };
     }),
     truncated, cols: ['שם', 'קוד', 'כמות פריטים'],
   };

@@ -5,6 +5,8 @@ import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
 import { sizeKey, sizeSpellings } from '@/lib/searchNormalize';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 
 // הצעות לשדות הטקסט של החיפוש המתקדם ב-/a5. קריאה בלבד.
 // GET /api/a5/options?key=<first|last|name|phone|city|oid|item|model|emp|size|q>&focus=<...>&typed=<טקסט>
@@ -91,8 +93,9 @@ async function orderIds(typed) {
 
 async function models(typed) {
   const where = { isDeleted: false, name: typed ? { contains: typed } : { not: null } };
-  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true } });
-  const all = clean(rows.map((r) => r.name));
+  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true, barcodePrefix: true } });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
+  const all = clean(rows.map((r) => modelDisplayName(r, { ...mOpts, fallback: '' })));
   if (!typed) return finish(all);
   const starts = all.filter((n) => n.startsWith(typed));
   return finish(starts.length >= LIMIT ? starts : all);
