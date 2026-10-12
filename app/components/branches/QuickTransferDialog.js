@@ -18,7 +18,7 @@ const MODES = [
   { key: 'to_warehouse', label: 'למחסן', icon: 'box' },
   { key: 'from_warehouse', label: 'מהמחסן', icon: 'home' },
   { key: 'to_reserve', label: 'לרזרבה', icon: 'flag' },
-  { key: 'to_carton', label: 'למחסן + קרטון', icon: 'tag' },
+  { key: 'to_carton', label: 'קרטון', icon: 'tag' },
 ];
 const NEEDS_BRANCH = new Set(['branch', 'from_warehouse']);
 const HINT = {
