@@ -39,7 +39,7 @@ export async function POST(request) {
     if (r.customerId) await recordRegistrationEvent(prisma, { customerId: r.customerId, channel: v.input.channel, outcome: r.outcome });
     return publicJson({ ok: true });
   } catch (e) {
-    console.error('public-kiosk register failed:', e && e.code ? e.code : (e && e.name) || 'error'); // לא e.message: עלול להכיל נתוני לקוחה (ת"ז, טלפון)
+    console.error('public-kiosk register failed:', e && e.code ? e.code : (e && e.name) || 'error'); // בלי הודעת השגיאה: עלולה להכיל נתוני לקוחה (ת"ז, טלפון)
     return publicJson({ ok: false, code: 'server_error', error: 'שגיאה זמנית, נסו שוב' }, 500);
   }
 }
