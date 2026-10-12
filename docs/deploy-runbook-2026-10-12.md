@@ -23,7 +23,7 @@
    - **ד. שמירת פלט כל dry-run לקובץ** (למשל `C:\wt\backups\integrate-2026-10-12\<שם>.txt`) - ובמיוחד לפני `--clear-user-legacy-overrides` (ב1), שמשנה `Employee.themeColor` בלי גיבוי אחר.
    - הניקויים של נווה (סעיף ג') מייצרים גיבוי משלהם.
 4. מצב הענף: `prisma validate` עבר; `prisma migrate diff` בין הסכמה של `origin/main` (9a56d6ab) לסכמה הסופית מניב **בדיוק** את הפער שמכוסה בסעיף א' (ראו שם). בדיקות: 144 משימות, 15 כשלים - כולם הכשלים הקיימים ב-`origin/main` (ר' `docs/integration-2026-10-12.md`).
-5. **משתני סביבה ב-Vercel:** אין חובה להוסיף. אופציונליים (מרכז מיילים, תזמון מדויק של דיוורים בלבד): `EMAIL_SCHEDULER_URL`, `EMAIL_SCHEDULER_SECRET` (Apps Script, `docs/gas-campaign-scheduler.gs`), `EMAIL_SITE_ORIGIN`. **`EMAIL_DRY_RUN` אסור להגדיר בפרודקשן** (מצב יבש - אף מייל לא יוצא).
+5. **משתני סביבה ב-Vercel:** אין חובה להוסיף. אופציונליים (מרכז מיילים, תזמון מדויק של דיוורים בלבד): `EMAIL_SCHEDULER_URL`, `EMAIL_SCHEDULER_SECRET` (Apps Script, `docs/gas-campaign-scheduler.gs`), `EMAIL_SITE_ORIGIN`. **`EMAIL_DRY_RUN` אסור להגדיר בפרודקשן** (מאז סקירת האבטחה הקוד מתעלם ממנו כש-`VERCEL_ENV=production` ומתריע בלוג - אבל עדיין לא מגדירים) (מצב יבש - אף מייל לא יוצא).
 6. **Vercel "Ignored Build Step":** דחיפה ל-`main` שהקומיט האחרון שלה הוא בדיקות/מסמכים בלבד עלולה לא להפעיל פריסה. הקומיט האחרון שנדחף חייב להיות קומיט קוד (בדרך כלל עדכון גרסה) או להכיל `[force-deploy]` (ר' `memory/vercel-ignore-build-step-force-deploy`). מגבלת 100 פריסות ליום - פריסה אחת בלבד.
 
 ---
@@ -155,6 +155,8 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 | `email_tpl:<מזהה>`, `email_fixed_fields`, `email_campaign_log` | מרכז המיילים (עריכת שורות, שדות קבועים, יומן דיוורים) - JSON שנכתב ממסך המרכז | אין שורה = המייל כמו לפני | לפי הצורך | לפי הצורך |
 | `daily_manager_report_enabled`, `manual_barcode_daily_report`, `order_quick_mail_enabled` | מתגי מייל קיימים בקוד שלא הייתה להם שורה (ב8) | כבוי | `false` | `false` |
 
+**הערה על `kiosk_customer_self_service` (עמדת החנות):** רישום עצמי בעמדת החנות (ערוץ `kiosk`) דורש מעכשיו עוגיית עובד תקפה **וגם** את ההגדרה - מחשב העמדה חייב להיות מחובר לעובד/ת. עמדה שרצה בלי התחברות לא תוכל לרשום לקוחות. ההגדרה לבדה כבר לא פותחת רישום לאינטרנט.
+
 **הערה:** בגמ"ח הראשי לא מריצים seeds - עמודת "ראשי" היא ברירת המחדל בקוד כשהשורה חסרה, לא ערך שנכתב.
 
 הרשאות חדשות/רלוונטיות: `/admin/email-center`, `/admin/branches` - הנהלה ראשית; `/station-analytics` - `page:station_analytics`; העברת פריטים בין סניפים - `page:dresses_catalog`.
@@ -179,7 +181,7 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 5. **המתנה לפריסה** בשני הפרויקטים (`gemach-app-uyh4`, `gmach-neve-yaakov`):
    `gh api repos/moshehik/gemach-app/commits/<sha>/status` עד `state: success` בשני ההקשרים; ואז
    `curl https://gemach-app-uyh4-beryl.vercel.app/api/health` ו-`curl https://gmach-neve-yaakov.vercel.app/api/health` (`{"ok":true,"db":"up"}`), ו-`/api/version` בשניהם (הגרסה = הגרסה שנדחפה).
-6. **בדיקות עשן ראשונות (לפני ה-seeds), בשני האתרים:** כניסה; **פתיחת הזמנה קיימת** ו**כרטיס דגם**; קטלוג שמלות נטען (מוכיח ש-DDL של `DressItem` תקין); חיפוש מהיר; לו"ז יומי נטען; `GET /api/settings` **בלי עוגייה** מחזיר רשימה קצרה בלבד, ו**עם עוגיית כניסה** מחזיר את הרשימה המלאה; `/privacy` ו-`/terms` נפתחים בלי התחברות; `/station` מציג "העמדה אינה זמינה" ו-`GET /api/public-kiosk/config` מחזיר `{"enabled":false}`; `/customer-interface` נטען; `/landing` נטען; `/api/version` = הגרסה שנדחפה.
+6. **בדיקות עשן ראשונות (לפני ה-seeds), בשני האתרים:** כניסה; **פתיחת הזמנה קיימת** ו**כרטיס דגם**; קטלוג שמלות נטען (מוכיח ש-DDL של `DressItem` תקין); חיפוש מהיר; לו"ז יומי נטען; `GET /api/settings` **בלי עוגייה** מחזיר רשימה קצרה בלבד, ו**עם עוגיית כניסה** מחזיר את הרשימה המלאה; `/privacy` ו-`/terms` נפתחים בלי התחברות; `/station` מציג "העמדה אינה זמינה" ו-`GET /api/public-kiosk/config` מחזיר `{"enabled":false}`; `/customer-interface` נטען; `/landing` נטען; `/api/version` = הגרסה שנדחפה; `POST /api/public-kiosk/register` עם `channel:"kiosk"` **בלי עוגייה** מחזיר 404 (גם כש-`kiosk_customer_self_service` דלוק); `GET /api/settings` בלי עוגייה כולל `ui_variant_kiosk` ו-`kiosk_splash_screen` ולא כולל `gmach_name`.
 7. **Seeds** (סעיף ב) **בנווה בלבד** לפי הסדר ב1…ב9 (ב4 בלי פרופיל; בראשי לא מריצים seeds). ב3ב רק אחרי אישור הבעלים לדוח.
 8. **ניקויים בנווה** (סעיף ג) - רק אם הרכז ביקש; dry-run, אישור, כתיבה עם גיבוי.
 9. **בדיקות עשן סופיות:**
