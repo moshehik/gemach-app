@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from 'next/server';
 
-import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
+import { recalculateOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
 
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
@@ -115,6 +115,8 @@ export async function POST(request) {
     const perOrderResults = await processInChunks(orderIds, RECALC_CHUNK_SIZE, async (orderId) => {
       try {
         await recalculateOrderObligations(orderId, { dryRun: false, customNote });
+        // ראו הערה ב-items/route.js: החישוב מחדש מוחק את חיוב המשלוח, יוצרים אותו מחדש.
+        try { await applyDeliveryCharge(orderId); } catch (e) { console.error(`Order ${orderId}: delivery charge after recalc failed:`, e); }
         return { orderId, success: true };
       } catch (err) {
         console.error(`Error applying calculation for order ${orderId}:`, err);
