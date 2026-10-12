@@ -158,7 +158,7 @@ export default function OcItemsTab({ oc, ui }) {
         <span className="hres-n">פריטים <b>{list.length}</b></span>
         <OcViewSwitch value={view} onChange={setView} act="view" />
         {altEnabled ? <BarToggle guide="oc.alt-toggle" on={altShow} icon="scissors" act="altshow" onClick={() => setAltShow(v => !v)}>פרטי תיקונים</BarToggle> : null}
-        {del.length || sub === 'del' ? <BarToggle guide="oc.deleted-toggle" id="delToggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
+        {del.length || sub === 'del' ? <BarToggle id="delToggle" guide="oc.deleted-toggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
       </div>
       <div className="hres" data-guide-id="oc.items-list">
         {!list.length && !showDeliveryRows ? (

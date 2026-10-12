@@ -36,7 +36,7 @@ export default function CcTopbar({ cc }) {
           <button type="button" className="xlbtn xlg" data-guide-id="cc.tool-excel" data-act="excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא הלקוחה לקובץ Excel" onClick={cc.exportXlsx}><XlGlyph kind="excel" /></button>
           <button type="button" className="xlbtn xld" data-guide-id="cc.tool-download" data-act="download" aria-label="הורדה" data-tip="הורדת כרטיס הלקוחה כקובץ" onClick={cc.downloadCard}><XlGlyph kind="download" /></button>
           <button type="button" className="xlbtn xlp" data-guide-id="cc.tool-print" data-act="menu" aria-label="הדפסה ומייל" data-tip="הדפסה / מייל" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}><XlGlyph kind="print" /></button>
-          {!cc.readOnly ? <button type="button" className="xlbtn xld" data-guide-id="cc.tool-delete" data-act="delete" aria-label="מחיקת לקוחה" data-tip="מחיקת לקוחה" onClick={cc.deleteCustomer}><XlGlyph kind="delete" /></button> : null}
+          {!cc.readOnly ? <button type="button" className="xlbtn xld" data-act="delete" data-guide-id="cc.tool-delete" aria-label="מחיקת לקוחה" data-tip="מחיקת לקוחה" onClick={cc.deleteCustomer}><XlGlyph kind="delete" /></button> : null}
           <div className={`menu${menu ? ' open' : ''}`} id="pmenu" role="menu">
             <button type="button" role="menuitem" data-guide-id="cc.print-card" data-act="print-card" onClick={pick(() => cc.printDoc('card'))}><CcIcon name="print" />הדפסת כרטיס לקוחה</button>
             <button type="button" role="menuitem" data-guide-id="cc.print-account" data-act="print-account" onClick={pick(() => cc.printDoc('account'))}><CcIcon name="wallet" />דף חשבון</button>
