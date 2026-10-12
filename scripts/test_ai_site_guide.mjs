@@ -264,6 +264,123 @@ check('משימות "איך עושים" תקינות (מזהים, צעדים, י
   return errs;
 });
 
+// --- זרימת המדריך: הקשרים לדוגמה לכל סוג משתמשת (בלי DB) ---
+const { buildMenuTree, deriveLegacyFlags, NAV_PAGE_KEYS, MENU_PAGE_KEYS } = await import('../lib/menu/buildMenuTree.js');
+const { selectHub, accessForRole } = await import('../lib/adminHubCatalog.js');
+const { buildGuideBlock, menuItemIdsOf, describeMenuTree, resolveTokens, indexMenuTree, tokenize } = await import('../lib/aiGuide/knowledge.js');
+const { finalizeGuideTags, LEGACY_PHRASE_RE } = await import('../lib/aiGuide/resolve.js');
+const { collectPermissionKeys, checkAccess } = await import('../lib/aiGuide/access.js');
+
+const ALL_KEYS = [...new Set([...NAV_PAGE_KEYS, ...MENU_PAGE_KEYS, ...collectPermissionKeys({ pages: PAGES, targets: TARGETS, tasks: TASKS })])];
+function makeCtx({ roleId, logged = true, settings = {}, openKeys = null, currentPath = '/' }) {
+  const rows = Object.entries({ require_login: 'true', ...settings }).map(([key, value]) => ({ key, value }));
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const head = roleId === 0 || roleId === 2;
+  const perms = logged ? Object.fromEntries(ALL_KEYS.map((k) => [k, head ? true : (openKeys ? openKeys.includes(k) : false)])) : null;
+  const flags = deriveLegacyFlags({ logged, roleId, permissions: perms, settings: rows });
+  const adminTools = selectHub(accessForRole(roleId, { logged, requireLogin: true }), { nedarimEnabled: map.nedarim_plus_enabled !== 'false', deliveriesEnabled: !!flags.showDeliveries }).tools;
+  const tree = buildMenuTree({ user: logged ? { id: 'u1', roleId } : null, roleId, permissions: perms, settings: rows, flags, homeA5: true, available: { 'order-stock': true }, adminTools });
+  return { logged, roleId, head: !!flags.isHeadManagement, prog: logged && roleId === 2, perms: perms || {}, settings: map, tree, variants: { shell: 'a5' }, currentPath, menuItemIds: menuItemIdsOf(tree), hubToolIds: new Set(adminTools.map((t) => t.id)), rail: tree.rail };
+}
+const OPEN = ['page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:messages', 'page:schedule', 'page:alterations'];
+const CTXS = {
+  head: makeCtx({ roleId: 0 }),
+  prog: makeCtx({ roleId: 2, settings: { enable_deliveries: 'true' } }),
+  branch: makeCtx({ roleId: 1, openKeys: OPEN }),
+  employee: makeCtx({ roleId: 4, openKeys: OPEN }),
+};
+
+check('הידע שנבנה לכל סוג משתמשת: בלי ביטויי ממשק ישן, בלי יעד לא רשום, ובלי דליפת ניהול לעובדת', null, () => {
+  const errs = [];
+  for (const [name, ctx] of Object.entries(CTXS)) {
+    for (const q of ['איך פותחים הזמנה חדשה', 'איפה ההגדרות', 'האם אפשר לשלוח מייל ללקוחה', 'איפה רואים את הלוז של מחר']) {
+      const b = buildGuideBlock(ctx, { question: q });
+      if (LEGACY_PHRASE_RE.test(b.text)) errs.push(`${name}/"${q}": הטקסט שנבנה מכיל ביטוי של ממשק ישן: ${(b.text.match(LEGACY_PHRASE_RE) || [])[0]}`);
+      for (const id of b.allowedIds) if (!TARGETS_BY_ID[id]) errs.push(`${name}: allowedIds מכיל יעד שלא ברישום ${id}`);
+      for (const m of b.text.matchAll(/\[\[guide:([a-z0-9.-]+)\]\]/g)) if (!b.allowedIds.has(m[1])) errs.push(`${name}: בטקסט נשלח למודל יעד לא זמין ${m[1]}`);
+      if (b.stats.chars > 60000) errs.push(`${name}/"${q}": הפרומפט גדול מדי (${b.stats.chars} תווים)`);
+    }
+  }
+  const emp = buildGuideBlock(CTXS.employee, { question: 'איפה ההגדרות והרשאות' });
+  if (/menu\.ad-(?!nwd)|hub\./.test([...emp.allowedIds].join(' '))) errs.push('עובדת רגילה קיבלה יעדי ניהול');
+  if (/הגדרות מערכת \|/.test(emp.text)) errs.push('עובדת רגילה: אינדקס הדפים מכיל את הגדרות המערכת');
+  const prog = buildGuideBlock(CTXS.prog, { question: 'משלוחים' });
+  if (!prog.allowedIds.has('menu.ad-deliveries')) errs.push('מתכנת עם משלוחים מופעלים: חסר menu.ad-deliveries');
+  const head = buildGuideBlock(CTXS.head, { question: 'משלוחים' });
+  if (head.allowedIds.has('menu.ad-deliveries')) errs.push('משלוחים כבויים בארגון אך menu.ad-deliveries הוצג');
+  return errs;
+});
+
+check('finalizeGuideTags: מזהה לא מוכר נזרק, כפילות מצטמצמת, URL/סלקטור חופשי לא עובר, הטקסט מנוקה', null, () => {
+  const errs = [];
+  const ctx = CTXS.head;
+  const b = buildGuideBlock(ctx, { question: 'הזמנה חדשה' });
+  const out = finalizeGuideTags('לחצי על הזמנה חדשה. [[guide:menu.order-new]] [[guide:bogus.id]] [[guide:menu.order-new]] [[guide:javascript:alert(1)]] [[guide:/orders/new]]', { allowedIds: b.allowedIds, ctx });
+  if (out.steps.length !== 1 || out.steps[0].id !== 'menu.order-new') errs.push(`צעדים צפויים [menu.order-new], התקבל ${JSON.stringify(out.steps.map((s) => s.id))}`);
+  if (/\[\[/.test(out.text)) errs.push('התגיות לא הוסרו מהטקסט');
+  if (out.dropped.length < 2) errs.push(`צפוי לזרוק לפחות 2 מזהים לא חוקיים, נזרקו ${out.dropped.length}`);
+  // יעד שאינו זמין לעובדת -> לא מחזירים (אין אב זמין)
+  const emp = finalizeGuideTags('[[guide:menu.ad-settings]]', { allowedIds: buildGuideBlock(CTXS.employee, { question: 'הגדרות' }).allowedIds, ctx: CTXS.employee });
+  if (emp.steps.length) errs.push(`עובדת רגילה קיבלה צעד ניהול: ${emp.steps[0].id}`);
+  if (emp.dropped.length !== 1) errs.push('יעד לא מותר לעובדת היה צריך להיזרק');
+  // מגבלת צעדים
+  const many = finalizeGuideTags(TARGETS.filter((t) => t.route === '*').slice(0, 8).map((t) => `[[guide:${t.id}]]`).join(' '), { allowedIds: new Set(TARGETS.map((t) => t.id)), ctx });
+  if (many.steps.length > 4) errs.push('יותר מ-4 צעדים');
+  // אלמנט בתוך רשומה כשלא נמצאים בדף רשומה => נופל לאב או נזרק
+  const ent = TARGETS.find((t) => t.entity);
+  if (ent) {
+    const r = finalizeGuideTags(`[[guide:${ent.id}]]`, { allowedIds: new Set(TARGETS.map((t) => t.id)), ctx: { ...ctx, currentPath: '/' } });
+    if (r.steps.some((s) => s.id === ent.id)) errs.push(`יעד entity ${ent.id} הוחזר בלי שנמצאים בדף רשומה`);
+    const r2 = finalizeGuideTags(`[[guide:${ent.id}]]`, { allowedIds: new Set(TARGETS.map((t) => t.id)), ctx: { ...ctx, currentPath: ent.route.replace(/:[a-zA-Z]+/g, '123') } });
+    if (!r2.steps.some((s) => s.id === ent.id)) errs.push(`יעד entity ${ent.id} לא הוחזר בתוך דף רשומה`);
+  }
+  return errs;
+});
+
+check('דפים עם reach=auto: יש להם פריט בעץ התפריט של הנהלה (אחרת חובה reach מפורש)', null, () => {
+  const errs = [];
+  const idx = indexMenuTree(makeCtx({ roleId: 2, settings: { enable_deliveries: 'true', branches_enabled: 'true' } }).tree);
+  for (const p of PAGES) {
+    if (onlyArea && areaOfRoute[p.route] !== onlyArea) continue;
+    if (p.reach && p.reach !== 'auto') continue;
+    if (!idx.byPath.has(p.route) && !p.route.includes(':')) errs.push(`${p.route}: אין פריט תפריט לנתיב הזה - הוסיפו reach מפורש (טקסט) לדף`);
+    if (p.route.includes(':') && (!p.reach || p.reach === 'auto')) errs.push(`${p.route}: דף דינמי חייב reach מפורש`);
+  }
+  return errs;
+});
+
+check('אסימוני {{label/path}} במשימות נפתרים לטקסט עברי לא ריק', null, () => {
+  const errs = [];
+  const ctx = CTXS.head;
+  const mi = indexMenuTree(ctx.tree);
+  for (const t of TASKS) {
+    if (onlyArea && !(t.pages || []).some((r) => routeAreaOf(r) === onlyArea)) continue;
+    for (const s of t.steps || []) {
+      const out = resolveTokens(s, ctx, mi);
+      if (/\{\{/.test(out) || /""|"\s+"/.test(out)) errs.push(`${t.id}: צעד עם אסימון לא פתור: ${out.slice(0, 80)}`);
+      if (LEGACY_PHRASE_RE.test(out)) errs.push(`${t.id}: צעד מכיל ביטוי של ממשק ישן: ${out.slice(0, 80)}`);
+    }
+  }
+  return errs;
+});
+
+check('טקסט הרישום (about/can/steps/where) לא מכיל ביטויי ממשק ישן', null, () => {
+  const errs = [];
+  const bad = (s) => typeof s === 'string' && LEGACY_PHRASE_RE.test(s);
+  for (const p of PAGES) for (const f of [p.about, p.reach, p.notes, ...(p.can || []), ...(p.cannot || [])]) if (bad(f)) errs.push(`דף ${p.route}: "${String(f).slice(0, 60)}"`);
+  for (const t of TASKS) for (const f of [t.title, t.notes, ...(t.steps || [])]) if (bad(f)) errs.push(`משימה ${t.id}: "${String(f).slice(0, 60)}"`);
+  for (const t of TARGETS) for (const f of [t.where, t.hint, t.label, ...(t.aliases || [])]) if (bad(f)) errs.push(`יעד ${t.id}: "${String(f).slice(0, 60)}"`);
+  return errs;
+});
+
+check('tokenize: קידומות עבריות ומילות עצירה', null, () => {
+  const t = tokenize('איך מדפיסים את התווית בהזמנה');
+  const errs = [];
+  if (!t.has('הזמנה') || !t.has('זמנה')) errs.push('הקידומת "ב" לא הוסרה');
+  if (t.has('איך')) errs.push('מילת עצירה לא הוסרה');
+  return errs;
+});
+
 // --- תוצאות ---
 if (failures.length) {
   console.error(`\nנכשלו ${failures.length} בדיקות${onlyArea ? ` (אזור ${onlyArea})` : ''}:`);

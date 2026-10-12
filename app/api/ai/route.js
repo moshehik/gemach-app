@@ -18,7 +18,9 @@ import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderRes
 import { assertReadOnlySelect, stripSecretColumns } from '../../../lib/sqlGuard';
 import { assertSqlTables, tablesForTier, aiTierForRole } from '../../../lib/ai/sqlTablePolicy';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
-import { answerSiteQuestion } from '../../../lib/ai/siteGuide';
+import { answerSiteQuestion, pointAtSettings } from '../../../lib/ai/siteGuide';
+import { buildSettingsGuideForNewUi } from '../../../lib/aiGuide/settingsLocation';
+import { appendSettingLocations } from '../../../lib/aiGuide/settingsLocationText';
 import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
 import { prepareAiFiles } from '../../../lib/ai/aiFiles';
 import {
@@ -273,15 +275,15 @@ The system will then give you the verified map of the new interface for this use
     if (settingsGuideMatch) {
       try {
         const settingRows = await getAllCachedSettings();
-        const catalog = buildSettingsGuide(settingRows);
+        const catalog = buildSettingsGuideForNewUi(settingRows);
 
         const followupPrompt = `The user asked: "${prompt}".
 You determined this question is about a system setting and requested the full settings catalog.
-Here is the complete, up-to-date catalog of every configurable system setting in the admin panel ("הגדרות מערכת") - key, Hebrew name, category/tab, location, description, field type, and current value:
+Here is the complete, up-to-date catalog of every configurable system setting in the admin panel ("הגדרות מערכת") - key, Hebrew name, category, location (the screen/tab/section in the NEW settings screen, or null when the setting is not shown on the screen), description, field type, and current value:
 ${JSON.stringify(catalog)}
 
 Answer the user in Hebrew:
-1. Say clearly where the relevant setting is found, copying the EXACT "location" field of that setting from the catalog (e.g. "הגדרות מערכת ← יומן") - never guess or paraphrase the tab name.
+1. Refer to the relevant setting by its Hebrew name. Do NOT write where it is located and do not mention tabs or categories: the system appends the exact location line after your answer. If the setting's "location" is null, say plainly that this setting is not available on the settings screen.
 2. Briefly explain in plain Hebrew what the setting does and its current value.
 3. Do NOT invent a setting key that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
 4. Keep the answer short and conversational. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
@@ -298,7 +300,14 @@ CRITICAL: If you identified one or more specific setting keys that answer the qu
         } catch (e) {}
 
         // אימות בקוד מול הקטלוג: תגית עם מפתח שלא קיים מוסרת, ומיקום ("הגדרות מערכת ← X") מתוקן לקטגוריה האמיתית
-        return NextResponse.json({ response: finalizeAiText(validateSettingTags(finalResponse, catalog), new Date()), data: null, sqlQuery: null });
+        const validated = validateSettingTags(finalResponse, catalog);
+        const settingKeys = [...validated.matchAll(/\[OPEN_SETTING:([^\]]+)\]/g)].map((m) => m[1]);
+        const withLocation = appendSettingLocations(validated, catalog);
+        let pointing = { guide: [], guideHref: null };
+        try {
+          pointing = await pointAtSettings({ keys: settingKeys, who: { employeeId: aiEmployeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' } });
+        } catch (pointErr) { console.error('pointAtSettings failed:', pointErr); }
+        return NextResponse.json({ response: finalizeAiText(withLocation, new Date()), data: null, sqlQuery: null, guide: pointing.guide, guideHref: pointing.guideHref });
       } catch (err) {
         console.error('Settings guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
