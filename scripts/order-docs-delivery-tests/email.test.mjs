@@ -21,30 +21,48 @@ test('confirmation email: no delivery => no mention, and passing null equals not
   const a = confirm(undefined), b = confirm(null);
   assert.equal(a, b);
   assert.ok(!/משלוח/.test(a));
+  assert.ok(!/אין צורך לבוא/.test(a));
+  assert.ok(!/מתוכם/.test(a));
 });
 
-test('confirmation email: delivery block (address, dates, cost) when a section is passed', () => {
+test('confirmation email: delivery block (address, dates) when a section is passed; cost shown per leg in the payment summary', () => {
   const html = confirm(D.buildDeliverySection(order, { settings: ON }));
   const t = strip(html);
   assert.match(t, /הרצל 5, ירושלים/);
   assert.match(t, /מועד המשלוח \(הלוך\)/);
   assert.match(t, /מועד האיסוף \(חזור\)/);
-  assert.match(t, /עלות משלוח/);
-  assert.match(t, /₪\s?120/);
-  assert.ok(!/🚚/.test(html));
+  assert.ok(!html.includes('🚚'));
+  const summary = t.slice(t.indexOf('סיכום תשלום'));
+  assert.match(summary, /מתוכם משלוח הלוך\s*₪\s?60/);
+  assert.match(summary, /מתוכם משלוח חזור\s*₪\s?60/);
 });
 
-test('confirmation email: item-row setting => truck row with price inside the items list, no separate cost row', () => {
+test('confirmation email: item-row setting => one truck row per direction with its price, still the same summary', () => {
   const html = confirm(D.buildDeliverySection(order, { settings: ITEMROW }));
-  assert.match(html, /🚚/);
+  assert.equal(html.split('🚚').length - 1, 2);
   const t = strip(html);
-  assert.match(t, /משלוח הלוך-חזור/);
+  assert.match(t, /משלוח הלוך/);
+  assert.match(t, /משלוח חזור/);
   assert.ok(!/עלות משלוח/.test(t));
-  assert.match(t, /₪\s?120/);
-  // the totals block is untouched by the delivery section
   const totals = (h) => strip(h).match(/סיכום תשלום.*$/)[0];
   assert.equal(totals(confirm(D.buildDeliverySection(order, { settings: ON }))), totals(html));
-  assert.equal(totals(confirm(null)), totals(html));
+});
+
+test('confirmation email: payment summary lists the delivery legs, total includes delivery, notice with the default Neve text', () => {
+  for (const settings of [ON, ITEMROW]) {
+    const t = strip(confirm(D.buildDeliverySection(order, { settings })));
+    assert.match(t.slice(t.indexOf('סיכום תשלום')), /₪\s?420/);
+    assert.match(t, /אין צורך לבוא לגמ/);
+    assert.match(t, /משלוח הלוך: בשעות אחה/);
+    assert.match(t, /משלוח חזור: 10:00–13:00/);
+  }
+});
+
+test('confirmation email: notice shows only the relevant leg line', () => {
+  const o = { ...order, deliveryDirection: 'הלוך', obligations: [{ amount: 60, description: 'משלוח הלוך - ירושלים' }] };
+  const t = strip(confirm(D.buildDeliverySection(o, { settings: ON })));
+  assert.match(t, /משלוח הלוך: בשעות/);
+  assert.ok(!/משלוח חזור: 10/.test(t));
 });
 
 test('accompanying card email: delivery rows only when passed', () => {
@@ -56,10 +74,12 @@ test('accompanying card email: delivery rows only when passed', () => {
   assert.match(t, /עלות משלוח/);
 });
 
-test('city without price + item row: row without a shekel amount, never claims free', () => {
+test('city without price + item rows: rows without a shekel amount, never claims free', () => {
   const o = { ...order, obligations: [] };
   const html = confirm(D.buildDeliverySection(o, { settings: ITEMROW }));
   assert.match(html, /🚚/);
-  const row = strip(html).match(/🚚[^]*?(?=סיכום תשלום)/)[0];
-  assert.ok(!/₪/.test(row));
+  const t = strip(html);
+  assert.ok(!/מתוכם/.test(t));
+  const items = t.slice(t.indexOf('פריטים'), t.indexOf('סיכום תשלום'));
+  assert.ok(!/₪/.test(items));
 });

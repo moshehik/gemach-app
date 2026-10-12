@@ -1,4 +1,5 @@
-// buildDeliverySection: display-only. Cases: delivery / none / self pickup / incomplete address / city without price; setting on/off; main gemach.
+// buildDeliverySection: display-only. Cases: delivery / none / self pickup / incomplete address / city without price; setting on/off; main gemach;
+// item rows per direction; payment-summary breakdown; notice (editable text + hours).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -23,9 +24,9 @@ test('main gemach (enable_deliveries off/missing) => null even for a legacy isDe
   assert.equal(D.buildDeliverySection(base, { settings: [{ key: 'enable_deliveries', value: 'false' }, { key: 'delivery_as_item_row', value: 'true' }] }), null);
 });
 
-test('setting OFF: info rows incl. cost, no item row', () => {
+test('setting OFF: info rows incl. cost, no item rows', () => {
   const s = D.buildDeliverySection(base, { settings: ON });
-  assert.equal(s.itemRow, null);
+  assert.deepEqual(s.itemRows, []);
   assert.equal(s.amount, 120);
   assert.deepEqual(s.rows.map((r) => r.key), ['type', 'address', 'out', 'back', 'cost']);
   assert.equal(s.addressLine, 'הרצל 5, ירושלים');
@@ -33,13 +34,46 @@ test('setting OFF: info rows incl. cost, no item row', () => {
   assert.ok(s.textLines.some((l) => l.includes('עלות משלוח')));
 });
 
-test('setting ON: item row carries the price, cost row is dropped (no duplicate)', () => {
+test('setting ON: one item row per direction with that leg price, cost row dropped (no duplicate)', () => {
   const s = D.buildDeliverySection(base, { settings: ITEMROW });
-  assert.equal(s.itemRow.label, 'משלוח הלוך-חזור');
-  assert.equal(s.itemRow.amount, 120);
-  assert.match(s.itemRow.detail, /הרצל 5, ירושלים/);
+  assert.deepEqual(s.itemRows.map((r) => r.label), ['משלוח הלוך', 'משלוח חזור']);
+  assert.deepEqual(s.itemRows.map((r) => r.amount), [60, 60]);
+  assert.match(s.itemRows[0].detail, /הרצל 5, ירושלים/);
   assert.ok(!s.rows.some((r) => r.key === 'cost'));
-  assert.match(D.deliveryItemRowText(s), /₪120/);
+  assert.match(D.deliveryItemRowsText(s), /משלוח הלוך.*₪60.*משלוח חזור.*₪60/);
+});
+
+test('single direction: one row only', () => {
+  const o = D.buildDeliverySection({ ...base, deliveryDirection: 'הלוך', obligations: [oblig(60, 'משלוח הלוך - ירושלים')] }, { settings: ITEMROW });
+  assert.deepEqual(o.itemRows.map((r) => [r.key, r.amount]), [['out', 60]]);
+  const b = D.buildDeliverySection({ ...base, deliveryDirection: 'חזור', obligations: [oblig(60, 'משלוח חזור - ירושלים')] }, { settings: ITEMROW });
+  assert.deepEqual(b.itemRows.map((r) => [r.key, r.amount]), [['back', 60]]);
+});
+
+test('summaryRows: always (setting off too), per direction, sum equals the charged total (odd cents, per-leg obligations)', () => {
+  const off = D.buildDeliverySection(base, { settings: ON });
+  assert.deepEqual(off.summaryRows.map((r) => [r.label, r.amount]), [['משלוח הלוך', 60], ['משלוח חזור', 60]]);
+  const odd = D.buildDeliverySection({ ...base, obligations: [oblig(0.01)] }, { settings: ON });
+  assert.equal(Math.round(odd.summaryRows.reduce((s, r) => s + r.amount, 0) * 100), 1);
+  const legs = D.buildDeliverySection({ ...base, obligations: [oblig(40, 'משלוח הלוך'), oblig(70, 'משלוח חזור')] }, { settings: ON });
+  assert.deepEqual(legs.summaryRows.map((r) => r.amount), [40, 70]);
+  const oneLeg = D.buildDeliverySection({ ...base, obligations: [oblig(40, 'משלוח הלוך')] }, { settings: ITEMROW });
+  assert.deepEqual(oneLeg.itemRows.map((r) => r.amount), [40, null]);
+});
+
+test('notice: default Neve text + hours, only the relevant direction lines, editable via settings, hidden when emptied', () => {
+  const both = D.buildDeliverySection(base, { settings: ON }).notice;
+  assert.equal(both.text, D.DELIVERY_NOTICE_DEFAULTS.text);
+  assert.deepEqual(both.lines.map((l) => l.text), ['משלוח הלוך: בשעות אחה"צ–ערב.', 'משלוח חזור: 10:00–13:00.']);
+  const out = D.buildDeliverySection({ ...base, deliveryDirection: 'הלוך' }, { settings: ON }).notice;
+  assert.deepEqual(out.lines.map((l) => l.key), ['out']);
+  const back = D.buildDeliverySection({ ...base, deliveryDirection: 'חזור' }, { settings: ON }).notice;
+  assert.deepEqual(back.lines.map((l) => l.key), ['back']);
+  const custom = D.buildDeliverySection(base, { settings: [...ON, { key: 'delivery_notice_text', value: 'טקסט אחר' }, { key: 'delivery_outbound_hours', value: '17:00-21:00' }, { key: 'delivery_return_hours', value: '' }] }).notice;
+  assert.equal(custom.text, 'טקסט אחר');
+  assert.deepEqual(custom.lines.map((l) => l.text), ['משלוח הלוך: 17:00-21:00.']);
+  const none = D.buildDeliverySection(base, { settings: [...ON, { key: 'delivery_notice_text', value: '' }, { key: 'delivery_outbound_hours', value: '' }, { key: 'delivery_return_hours', value: '' }] });
+  assert.equal(none.notice, null);
 });
 
 test('dispatch dates: event Wed 18.11.2026, 1 business day before/after', () => {
@@ -73,14 +107,15 @@ test('incomplete address: falls back to the customer address; none at all => war
   assert.ok(!b.rows.some((r) => r.key === 'address'));
 });
 
-test('city without price (no delivery obligation): no cost, item row shows null amount, never "free"', () => {
+test('city without price (no delivery obligation): no cost, rows without amount, never "free"', () => {
   const o = { ...base, obligations: [{ amount: 300, description: 'שמלה X', orderItemId: 'i1' }] };
   const off = D.buildDeliverySection(o, { settings: ON });
   assert.equal(off.amount, null);
   assert.ok(!off.rows.some((r) => r.key === 'cost'));
   const on = D.buildDeliverySection(o, { settings: ITEMROW });
-  assert.equal(on.itemRow.amount, null);
-  assert.ok(!/₪/.test(D.deliveryItemRowText(on)));
+  assert.ok(on.itemRows.every((r) => r.amount === null));
+  assert.ok(!/₪/.test(D.deliveryItemRowsText(on)));
+  assert.deepEqual(on.summaryRows, []);
 });
 
 test('deleted / refund / item-linked obligations are ignored; two delivery legs are summed', () => {
