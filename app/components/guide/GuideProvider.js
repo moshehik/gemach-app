@@ -18,6 +18,7 @@ import { GUIDE_PARAM, MAX_GUIDE_STEPS, ANY_ROUTE, parseGuideParam, routeMatches 
 import './guide.css';
 
 const FIND_TIMEOUT_MS = 5000;
+const FIND_TIMEOUT_AFTER_NAV_MS = 12000; // אחרי ניווט לדף אחר: הדף עצמו מביא נתונים ומצייר באיחור
 const AUTO_HIDE_MS = 16000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -30,7 +31,8 @@ function isShown(el) {
   if (r.width < 2 || r.height < 2) return false;
   for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
     const cs = window.getComputedStyle(n);
-    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+    // opacity לא נבדק: תפריטי הסרגל מתחילים ב-opacity:0 ונפתחים בהנחתה (ובחלון שלא מצויר היא לא מתקדמת); הנסתר נתפס ע"י visibility:hidden
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
   }
   return true;
 }
@@ -54,7 +56,7 @@ async function revealMenu(tabId) {
   }
   const item = document.querySelector(`.snav .sn-item[data-sn="${CSS.escape(tabId)}"]`);
   if (!item || item.classList.contains('open')) return;
-  const trigger = item.querySelector(':scope > [data-sn-trigger]');
+  const trigger = item.querySelector(':scope > [data-sn-trigger], :scope > .sn-user');
   if (trigger) { trigger.click(); await sleep(260); }
 }
 
@@ -139,6 +141,7 @@ export default function GuideProvider() {
         return;
       }
       sess.pendingRoute = target.route;
+      sess.navigated = true;
       setView({ idx: sess.idx, total, label: target.label, rect: null, missing: false, message: `עוברת אל "${target.label}"...` });
       router.push(targetUrl(target));
       return;
@@ -148,7 +151,7 @@ export default function GuideProvider() {
     // 2) חשיפה + חיפוש (גם לאלמנט שנטען באיחור)
     let el = findEl(id);
     if (!el && target.reveal && target.reveal.length) { await runReveal(target.reveal); if (!alive()) return; }
-    if (!el) el = await waitForEl(id, FIND_TIMEOUT_MS);
+    if (!el) el = await waitForEl(id, sess.navigated ? FIND_TIMEOUT_AFTER_NAV_MS : FIND_TIMEOUT_MS);
     if (!alive()) return;
 
     // 3) נפילה: האלמנט לא נמצא => היעד האב הקרוב

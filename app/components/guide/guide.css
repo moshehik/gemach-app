@@ -37,7 +37,6 @@
   line-height: 1.45;
   font-size: 14px;
   text-align: right;
-  transition: top .18s var(--gm-ease, cubic-bezier(.22,1,.36,1)), left .18s var(--gm-ease, cubic-bezier(.22,1,.36,1));
 }
 .gm-guide-bubble::after {
   content: '';
