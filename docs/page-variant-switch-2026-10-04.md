@@ -132,3 +132,16 @@ node scripts/set-ui-variant.js --screen attendance --value legacy --scope user -
 `departments` (`/admin/departments`), `management_history` (`/management/history`), `data_history` (`/admin/data-history`). כולם `selfSwitch:true` (כל עובד פעיל מחליף לעצמו),
 ברירת מחדל לפי תפקיד: מתכנת חדש, כל השאר ישן. שער הגישה לא משתנה (layout + API); המסכים החדשים מתבססים על ערכת הרשימות `app/components/a5-list` (כמו רשימות ההזמנות / הלקוחות).
 בדיקות: `scripts/test_page_variant_switch.mjs`, `test_ui_variant.mjs`, `test_ui_variant_self_switch.mjs` (רשימות `LOGS_*`), `scripts/set-ui-variant.js` (`--screen`), `lib/pageVariantToggle.js` (כיתובי האייקון).
+
+## נווה יעקב: הממשק החדש כברירת מחדל + "חזרה לממשק החדש" (12.10.2026, ענף feature/neve-new-ui-default-2026-10-12)
+
+בקשת הבעלים: "כל האתר יעלה ויפתח כברירת מחדל לכל העובדות בגמ"ח נווה, ותשאיר את האופציה לחזור לקודם, ושיופיע בכותרת בישן בצורה ברורה לחצן חזרה לחדש".
+
+* **ברירת המחדל = הגדרות ארגון, לא קוד.** `scripts/seed_neve_new_ui_default.js --org=2` כותב `ui_variant_<screen>='a5'` לכל מסך עם שתי גרסאות (נגזר מהרשומה), רק ב-DB של נווה
+  (מסרב ל-org1, host זהה ל-org1, gmach_name בלי "נווה"; כתיבה רק עם `--write --confirm-host <ep-xxxx>`; dry-run כברירת מחדל). הגמ"ח הראשי לא משתנה. סדר ההכרעה נשאר:
+  עקיפה אישית > הגדרת ארגון > ברירת מחדל לפי תפקיד, ולכן עובדת בלי העדפה שמורה מקבלת חדש, ובחירה אישית קיימת נשמרת. `--clear-user-legacy-overrides` (אופציונלי) מסיר עקיפות 'legacy' אישיות.
+* **לחצן "חזרה לממשק החדש"** (`app/components/variant/ReturnToNewDesignButton.js`): לחצן זהב עם טקסט בסרגל העליון של המעטפת הישנה (AppShell; במובייל שורה ברוחב מלא מתחת לכותרת),
+  ובפינה של דף ישן בתוך המעטפת החדשה (VariantFrame). לכל עובד/ת פעיל/ה; לא קיים בממשק החדש. לחיצה: `POST /api/me/ui-variant {value:'a5'}` = עקיפה אישית 'a5' בכל המסכים בכתיבה אחת
+  (`applyUiVariantAllRequest`, אותם כללי הרשאה כמו מעבר של מסך בודד) + טעינה מחדש. אייקון המעבר הישן של המעטפת בלבד הוחלף בלחצן הזה.
+* **"האתר הישן"** בתפריט החדש מחליף עכשיו את *כל* המסכים לישן (אותו API עם `value:'legacy'`), ולא רק את המעטפת.
+* בדיקות: `scripts/test_page_variant_switch.mjs`, `test_ui_variant_self_switch.mjs`, `test_neve_new_ui_seed.mjs`.
