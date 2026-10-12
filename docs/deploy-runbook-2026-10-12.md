@@ -178,6 +178,6 @@ node scripts/clean_placeholder_model_names_rollback.js C:\wt\backups\model-names
 
 1. **קישור ציבורי בנווה:** נשאר כבוי (החלטת הרכז). הסקריפט `seed_kiosk_public_settings.js` שונה בהתאם (המקורי יצר `true` בנווה).
 2. **`delivery_notice` במרכז המיילים:** ברירת המחדל = הנוסח המחושב מההגדרות; עקיפה במרכז מחליפה את כל הבלוק. שדה "כתובת" קבוע במרכז גובר על כתובת האיסוף בטקסט, אך קישור המפות נגזר תמיד מ-`gmach_pickup_address`.
-3. **`AuthThrottle` חסר ב-`lib/ai/sqlTablePolicy.js`** (כשל קיים ב-`test_ai_sql_table_policy`, מ-#273): תיקון בשורה אחת (הוספה ל-`ALL_TABLES` ול-`NEVER_TABLES`) - לא תוקן; להחלטת הרכז.
+3. ~~`AuthThrottle` חסר ב-`lib/ai/sqlTablePolicy.js`~~ - תוקן בשלב ג' (נוסף ל-`ALL_TABLES` ול-`NEVER_TABLES`; `test_ai_sql_table_policy` ירוק).
 4. הוראת הבעלים "ברקוד בלו"ז בנווה" (ב4) מדליקה את הפיצ'ר בנווה בעת ההרצה - לוודא שזה רצוי בלילה הזה, אחרת לדלג על `--profile=neve` ולהריץ בלעדיו (`off`).
 5. ב-`origin/main` הממשק של ההסכמות המפורשות כבוי; בנווה לא מתוכנן להדליק בלילה זה.

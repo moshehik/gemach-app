@@ -199,3 +199,33 @@
 2. `seed_barcode_entry_settings.js --profile=neve` מדליק את הברקוד בלו"ז בנווה (ב4 ב-runbook) - האם בלילה הזה או רק `off`?
 3. הניקויים בנווה (ג1/ג2) - להריץ בלילה? ללא `--include-obligations` אלא אם יתבקש.
 4. בתצוגת כרטיס ה-PDF/מייל: שדה "כתובת" קבוע במרכז המיילים גובר על `gmach_pickup_address` בטקסט (הקישור נשאר נגזר מהכתובת הייעודית) - אם לא רצוי, להסיר את השדה הקבוע בנווה.
+
+
+---
+
+# שלב ג' (מיזוג מדריך האתר של ה-AI, רישום כל החדש, סוויטות, build)
+
+## 19. feature/ai-site-guide-2026-10-12
+- הענף נבנה על בסיס ישן (2519d009, לפני #273-#276 ולפני כל ענפי שלבים א'-ב'), ולכן נוגע ב-204 קבצים. קונפליקטים: `app/version.json` / `package.json` (צד integrate; נוסף חזרה רק הסקריפט `test:ai-guide`), `CHANGELOG.md` (שני הצדדים), `app/api/ai/route.js` ו-`statistics/route.js`, `scripts/test_ai_barcode.mjs`, `app/customer-interface/page.js`, ו-12 קבצי רכיבים.
+- **קבצי רכיבים (backups, DcParts, MnSteps, EcMail, EmployeeCardA5, MenuSearchPanel, StepCustomer/Delivery/Payment, OcItemsTab):** הענף כתב מחדש שורות שלמות בשדות שבהם `main` החליף `name="x-nofill" autoComplete="off" {...NO_FILL}` ב-`{...nf('x')}` (הגנת ההשלמה האוטומטית, `useNoFill`). נשמר הקוד של `main` והתווספו מעליו רק מאפייני `data-guide-id`. חלק מהקבצים שמרו CRLF ב-`main` והענף המיר ל-LF, ולכן מוזגו מחדש עם נרמול סיומות שורה (אין קבצים עם סיומות מעורבות).
+- `app/api/ai/route.js` + `statistics/route.js`: זרימת `answerSiteQuestion` של הענף, אבל קטלוג ההגדרות שמועבר אליה מסונן לפי הרמה של הקורא (`settingsRowsForTier(... getSettingsViewerTier())`, תיקון האבטחה של ענף 1) - מנהל סניף לא מקבל מפתחות "ניהול בלבד". `app/customer-interface/page.js`: נשאר `KioskSwitch` (הדף הישן הוחלף ב-`LegacyKioskPage`); סימוני העמדה הועברו ל-`KioskA5.js`.
+
+## רישום כל מה שחדש במדריך ה-AI (`lib/aiGuide/`)
+הבדיקה `npm run test:ai-guide` נכשלה כמתוכנן על כל פריט שלא נרשם; עכשיו ירוקה (1048 יעדים, 77 דפים, 154 משימות).
+- **דפים:** `/admin/email-center`, `/admin/branches`, `/station-analytics`, `/privacy`, `/terms`, `/station` (מוצג רק כשההגדרה `kiosk_public_link_enabled` דלוקה - העוזר לא יפנה אליו לפני כן).
+- **יעדי הצבעה חדשים (עם `data-guide-id` בקוד):** מרכז המיילים (`emc.*`: לשוניות, רשימה, עורך, נתונים קבועים, דיוורים, בדיקה ויומן), ניהול סניפים (`brn.*`), המרות בעמדה (`sa.*`), כלי ניהול `hub.branches` / `hub.email-center` / `hub.station-analytics`, פריט התפריט `menu.ad-station`, שורת הסריקה בלוז (`sched.scan`), גלגל "הגדרות תהליכים" והחלון שלו (`sched.settings*`), חלונית הברקוד בלוז (`sched.bc-*`), פאנל התפוסה ו"איפה אני?" (`srch.panel*`), "העברה מהירה" בכרטיס הדגם ובחלונית (`dc.quick-transfer`, `qt.*`), העלאת קובץ התקנון והקישורים בהגדרות (`set.terms-*`, `set.branches-link`, `set.schedule-link`, `set.emailcenter-link`), לחצן "חזרה לממשק החדש" (`disp.return-new`), ועמדת הלקוח החדשה בת שלושה שלבים (`kiosk.*` - הרישום הישן תיאר את העמדה הישנה בשני שלבים והוחלף).
+- **משימות "איך עושים" חדשות:** עריכת מייל, נתונים קבועים, שליחת דיוור, הפעלת ריבוי סניפים, צפייה בהמרות בעמדה, סריקה בלוז, ברקוד בהכנה/איסוף/משלוח, הגדרות תהליכים בלוז, פאנל תפוסה בחיפוש, חזרה לממשק החדש, איפה הלקוחה רואה תקנון ופרטיות, העלאת תקנון, הסכמות מפורשות, משלוח משותף, כתובת איסוף ומשלוח כשורת פריט, מסנן בורר הלקוחות, פתיחת הקישור הציבורי לעמדה, העברה מהירה של ברקודים. עודכנו גם משימות ההגדרות הקיימות והחיפוש המהיר (ברקוד והשכרה מהירה).
+- **תיקון רישום שהתיישן בגלל האינטגרציה:** מיילים אוטומטיים חזרו ללשונית "אוטומציה" בהגדרות (בענף הרישום הם תוארו תחת "הודעות") - עודכנו תיאורי הלשוניות והמשימה `task.settings-emails`.
+- בדיקה: `scripts/test_ai_site_guide.mjs` - נוספו שלושת הנתיבים החדשים לרשימת `OPS_ROUTES` (סינון `--area` בלבד).
+- `lib/ai/sqlTablePolicy.js`: `AuthThrottle` (#273) נוסף ל-`ALL_TABLES` ול-`NEVER_TABLES` (כתובות IP ונעילות - אבטחה); `test_ai_sql_table_policy` ירוק (כשל קיים שנסגר).
+
+## בדיקות שנשברו בגלל הסימונים (תוקנו)
+הענף הוסיף `data-guide-id` למאות אלמנטים בלי להריץ את הבדיקות שנועלות טקסט מקור. נשברו 8 קבצים (כ-20 בדיקות): `order-card-tests` (items.static, owner-feedback-2026-10-05, stepper, tooltips), `test_board_page`, `test_non_working_days_page`, `test_home_css_guard`, `customer-card-tests` (7). הפתרון: הבדיקות מסירות מאפייני `data-guide-id` לפני ההשוואה לטקסט המקור (הסימונים אינם חלק מההתנהגות שנעולה), ובשני מקומות הוזז המאפיין בקוד (`OcItemsTab.js` - `guide=` אחרי `id`; `CcTopbar.js`). שום בדיקה לא הושבתה או נמחקה.
+
+## תוצאות שלב ג'
+- **סוויטות (144 משימות)** ב-`Asia/Jerusalem`, `UTC` ו-`America/New_York`: אפס כשלים חדשים. נשארו רק הכשלים הקיימים שבטבלה למעלה (חתימות פנימיות זהות לריצת שלב ב'), וכן: `test_ai_site_guide` נכשל בסקריפט ההרצה הגורף בלבד (כותרת הקובץ מכילה `--no-warnings` לפני `--import`) - ירוק בפקודה הנכונה `npm run test:ai-guide` בשלושת אזורי הזמן; `test_create_log_indexes` ו-`test_scrub_logged_secrets_db` מדלגים/נכשלים רק כשיש כתובת TEST מדומה (בדיקות מול מסד).
+- **eslint** על 663 הקבצים ששונו מול `origin/main`: 11 שגיאות, כולן קיימות גם ב-`origin/main` (AppShell, AttendanceWizard, LegacyOrderPage x2, ChangesChips x2, OrderModelSelector x3, settingsCache x2) - אפס חדשות.
+- **`prisma validate` + `prisma generate`:** עברו (עותק מקומי של `@prisma`, כתובת מסד מדומה).
+- **`npm run build`** (`prisma generate && next build --webpack`): ירוק, 93 שניות, `.next` 1.1GB (נמחק). אזהרה קיימת: `@prisma/local-client` (הלקוח הלא-מקוון האופציונלי) ב-`app/lib/prisma.js`. נתיבי `/admin/email-center`, `/admin/branches`, `/station`, `/station-analytics`, `/privacy`, `/terms` נבנו.
+- **PINNED_BLOBS** ב-`scripts/test_page_variant_switch.mjs`: חושבו מחדש (`git hash-object`), ללא שינוי - הקבצים הנעולים (`LegacyProfilePage.js`, `LegacyNewOrderPage.js`) לא שונו במיזוג; הבדיקה ירוקה (36).
+- **Ignored Build Step:** הקומיט האחרון נושא `[force-deploy]` ולכן נבנה בכל מקרה; ראו הקומיט האחרון בענף.
