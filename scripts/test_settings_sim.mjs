@@ -128,7 +128,7 @@ t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממ�
 });
 t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / מצב מסד / Neon תמיד מוצגים', () => {
   const sys = L.buildViewModel('sys', []);
-  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'ord', 'auto', 'disp']); // 'ord': בלוק העלאת התקנון (special 'terms', customer-consent) מוצג תמיד; 'auto': שורת הקישור למרכז המיילים (special: emailcenter) תמיד מוצגת
+  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'auto', 'ord', 'disp']); // 'ord': בלוק העלאת התקנון (special 'terms', customer-consent) מוצג תמיד; 'auto': שורת הקישור למרכז המיילים (special: emailcenter) תמיד מוצגת
   const site = L.buildViewModel('site', []);
   assert.deepEqual(site.tabs.map((tb) => tb.id), ['db']);
 });

@@ -126,6 +126,7 @@ const NOT_UI = {
   'app/lib/nedarimSettings.js': 'server: resolves the Nedarim institution id from the DB (imported by app/api/admin/nedarim-* only)', 'lib/mailer.js': 'server: sends mail (Apps Script links, drive folder)',
   'lib/emailCatalog.js': 'server: mail catalogue / recipients', 'lib/deviceBackupAccess.js': 'server: reads the setting straight from the DB', 'app/lib/prisma.js': 'server: backup-mode switch',
   'lib/approvalGate.js': 'server: approval hardening flags read straight from the DB', 'lib/agentDigest.js': 'server: digest mail', 'lib/settingsGuide.js': 'server',
+  'lib/emailRegistry.js': 'pure registry of the editable mail lines (feature/email-center): names the setting that gates each mail (e.g. courier_email) as metadata only; consumed by the admin-only mail center',
 };
 function listAll(dir, out = []) {
   const abs = path.join(PROJ, dir);
