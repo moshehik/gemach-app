@@ -88,6 +88,7 @@ export default function DcItemsTab({ dc, ui, active }) {
   };
 
   // "העברה מהירה": חלונית רצף ברקודים - שיוך לסניף / למחסן / ממחסן / לרזרבה / קרטון. כותבת ישר לשרת (לא דרך עגלת השינויים) ומרעננת את הרשימה בסגירה
+  // ההעברה המהירה: הרשאת המלאי (page:dresses_catalog) - אותה הרשאה שפותחת את הכרטיס הזה, והשרת בודק שוב (requireItemTransferAccess); לא תלויה בהרשאת ניהול הפריט
   const quickTransfer = () => ui.openDialog(QuickTransferDialog, { branches: branchNames, defaultBranch: (mainBranch(branchCfg) || {}).name || '', onApplied: () => dc.refreshFromServer() }, { dismissable: true });
 
   // ---------- סריקה: איתור פריט, פתיחת הפירוט וגלילה ----------
@@ -150,7 +151,7 @@ export default function DcItemsTab({ dc, ui, active }) {
     <div className="card hist items-card">
       <div className="card-h">
         <div className="ico gold"><OcIcon name="box" size="lg" /></div><h2>פריטים ומלאי</h2>
-        {canManage && multi && branchNames.length
+        {multi && branchNames.length
           ? <button type="button" className="btn" id="dcQuickBtn" aria-haspopup="dialog" onClick={quickTransfer}><OcIcon name="scan" />העברה מהירה</button>
           : null}
         {canManage

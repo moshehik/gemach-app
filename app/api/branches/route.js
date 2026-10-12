@@ -19,9 +19,8 @@ const SETTING_META = {
   [BRANCHES_CONFIG_KEY]: { name: 'הגדרת הסניפים (JSON)', type: 'text' },
   [BRANCH_LIST_KEY]: { name: 'רשימת סניפים', type: 'text' },
   [BRANCH_SETTING_KEYS.bannerEnabled]: { name: 'פס התראה בראש הדף: להעביר / להחזיר פריטים לסניף אחר', type: 'boolean' },
-  [BRANCH_SETTING_KEYS.bannerDays]: { name: 'פס ההתראה: כמה ימים לפני האירוע', type: 'number' },
   [BRANCH_SETTING_KEYS.bannerScope]: { name: 'פס ההתראה: מה מופיע (להעביר / להחזיר / שניהם)', type: 'text' },
-  [BRANCH_SETTING_KEYS.horizonDays]: { name: 'חישוב צרכים לפי סניף: טווח ימים קדימה', type: 'number' },
+  [BRANCH_SETTING_KEYS.horizonDays]: { name: 'התראת העברה בין סניפים - טווח ימים קדימה', type: 'number' },
   [BRANCH_SETTING_KEYS.returnAlert]: { name: 'התראה בסריקת החזרה על פריט שצריך לעבור לסניף אחר', type: 'boolean' },
   [BRANCH_SETTING_KEYS.reserveAlert]: { name: 'התראה בסריקת החזרה על פריט רזרבה שיצא באישור (להחזיר לרזרבה)', type: 'boolean' },
 };
@@ -98,11 +97,6 @@ export async function PUT(request) {
     if (s.bannerEnabled !== undefined) writes[BRANCH_SETTING_KEYS.bannerEnabled] = s.bannerEnabled ? 'true' : 'false';
     if (s.returnAlert !== undefined) writes[BRANCH_SETTING_KEYS.returnAlert] = s.returnAlert ? 'true' : 'false';
     if (s.reserveAlert !== undefined) writes[BRANCH_SETTING_KEYS.reserveAlert] = s.reserveAlert ? 'true' : 'false';
-    if (s.bannerDays !== undefined) {
-      const n = parseInt(s.bannerDays, 10);
-      if (!Number.isFinite(n) || n < 0 || n > 60) return NextResponse.json({ error: 'ימי הפס חייבים להיות בין 0 ל-60' }, { status: 400 });
-      writes[BRANCH_SETTING_KEYS.bannerDays] = String(n);
-    }
     if (s.horizonDays !== undefined) {
       const n = parseInt(s.horizonDays, 10);
       if (!Number.isFinite(n) || n < 1 || n > 60) return NextResponse.json({ error: 'טווח החישוב חייב להיות בין 1 ל-60 ימים' }, { status: 400 });

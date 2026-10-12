@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '@/app/lib/prisma';
-import { requireDressItemManager } from '@/lib/dressItemAccess';
+import { requireItemTransferAccess } from '@/lib/dressItemAccess';
 import { loadBranchContext } from '@/lib/branchesServer';
 import { activeBranches } from '@/lib/branches';
 import { normalizeBarcode, patchToData, planRelocation, RELOCATE_MODES } from '@/lib/dressRelocate';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // לא יעצור את הרצף (כשל לוגי חוזר כ-200 עם ok:false; רק כשל תשתית / הרשאה הוא קוד שגיאה).
 //   { mode: 'branch'|'to_warehouse'|'from_warehouse'|'to_reserve'|'to_carton', barcode, branch?, carton? }
 //   ביטול: { mode: 'restore', itemId, restore: { location, cartonNumber, branch } }  (המצב שחזר בתשובה הקודמת, "before")
-// הרשאה: אותה הרשאה כמו עריכת מיקום / קרטון בכרטיס הדגם (feature:dress_items_manage). פועל רק כש-multi_branch_enabled='true'.
+// הרשאה: הרשאת המלאי הקיימת page:dresses_catalog ("כל מי שיש לה הרשאות מלאי", החלטת הבעלים 12.10.2026; lib/dressItemAccess.js). פועל רק כש-multi_branch_enabled='true'.
 // היסטוריה: תוסף ה-audit של Prisma (auditAs) - אין כתיבת AuditLog ידנית.
 const ITEM_SELECT = {
   id: true, dressBarcode: true, sizeText: true, location: true, cartonNumber: true, branch: true, isDeleted: true,
@@ -19,7 +19,7 @@ const ITEM_SELECT = {
 };
 
 export async function POST(request) {
-  const denied = await requireDressItemManager();
+  const denied = await requireItemTransferAccess();
   if (denied) return denied;
   try {
     const ctx = await loadBranchContext();

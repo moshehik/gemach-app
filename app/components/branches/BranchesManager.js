@@ -31,7 +31,7 @@ export default function BranchesManager({ compact = false }) {
   const [derived, setDerived] = useState(false);
   const [branches, setBranches] = useState([]);
   const [usage, setUsage] = useState({});
-  const [notice, setNotice] = useState({ bannerEnabled: false, bannerDays: 3, bannerScope: 'both', horizonDays: 14, returnAlert: true, reserveAlert: false });
+  const [notice, setNotice] = useState({ bannerEnabled: false, bannerScope: 'both', horizonDays: 14, returnAlert: true, reserveAlert: false });
   const [dirty, setDirty] = useState(false);
 
   const load = useCallback(async () => {
@@ -48,7 +48,7 @@ export default function BranchesManager({ compact = false }) {
       setUsage(data.usage || {});
       const n = data.notice || {};
       setNotice({
-        bannerEnabled: !!n.bannerEnabled, bannerDays: n.bannerDays ?? 3, bannerScope: n.bannerScope || 'both',
+        bannerEnabled: !!n.bannerEnabled, bannerScope: n.bannerScope || 'both',
         horizonDays: n.horizonDays ?? 14, returnAlert: n.returnAlert !== false, reserveAlert: !!n.reserveAlert,
       });
       setDirty(false);
@@ -200,19 +200,15 @@ export default function BranchesManager({ compact = false }) {
             <Switch id="br-banner" checked={notice.bannerEnabled} label="להציג בראש הדף (מתחת לשורת התפריט) התראה שיש פריטים להעביר או להחזיר לסניף אחר" onChange={(v) => touch(() => setNotice((n) => ({ ...n, bannerEnabled: v })))} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginTop: 14, opacity: notice.bannerEnabled ? 1 : 0.55 }}>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="br-banner-days">להתחיל להציג כמה ימים לפני האירוע</label>
-                <input id="br-banner-days" className="input" type="number" min="0" max="60" value={notice.bannerDays} disabled={!notice.bannerEnabled} onChange={(e) => touch(() => setNotice((n) => ({ ...n, bannerDays: e.target.value })))} />
-              </div>
-              <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="br-banner-scope">מה להציג בהתראה</label>
                 <select id="br-banner-scope" className="select" value={notice.bannerScope} disabled={!notice.bannerEnabled} onChange={(e) => touch(() => setNotice((n) => ({ ...n, bannerScope: e.target.value })))}>
                   {BANNER_SCOPES.map((s) => <option key={s} value={s}>{SCOPE_LABEL[s]}</option>)}
                 </select>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="br-horizon">טווח הזמנות עתידיות לחישוב (ימים קדימה)</label>
+                <label htmlFor="br-horizon">טווח התראת ההעברה (ימים קדימה)</label>
                 <input id="br-horizon" className="input" type="number" min="1" max="60" value={notice.horizonDays} onChange={(e) => touch(() => setNotice((n) => ({ ...n, horizonDays: e.target.value })))} />
-                <span className="hint">גם רשימת ההכנה בלו&quot;ז משתמשת בחישוב הזה.</span>
+                <span className="hint">הגדרה אחת לפס ההתראה, לרשימת ההכנה בלו&quot;ז ולחישוב. אפשר לערוך אותה גם בהגדרות הלו&quot;ז. ברירת מחדל 14.</span>
               </div>
             </div>
             <div style={{ marginTop: 14 }}>

@@ -22,6 +22,8 @@ export const NUMBER_FIELD_LIMITS = {
   // חלונית "הזמנות שלא הוחזרו" בלבד (749aaf87): 0 חוקי (= כבר ביום ההחזרה הצפוי, בשילוב שעה); ריק = כמו late_return_threshold_days
   overdue_popup_threshold_days: { min: 0, max: 90, allowEmpty: true, emptyHint: 'ריק = כמו ימי האיחור הרגילים' },
   overdue_popup_after_hour: { min: 0, max: 23, allowEmpty: true, emptyHint: 'ריק = בלי הגבלת שעה' },
+  // ריבוי סניפים (docs/branches-plan.md): טווח התראת ההעברה בימים; ריק = 14
+  branch_transfer_horizon_days: { min: 1, max: 60, allowEmpty: true, emptyHint: 'ריק = 14 ימים' },
 };
 
 // allowEmpty: ערך ריק (או שורה חסרה) חוקי ומשמעותו "ברירת המחדל הישנה" - חל על הגדרות

@@ -27,7 +27,7 @@ t('התראות: כבוי כשהריבוי כבוי, גם אם הדגלים דו
 });
 t('התראות: ברירות מחדל כשהריבוי דלוק', () => {
   const r = resolveBranchNoticeSettings({ multi_branch_enabled: 'true' });
-  assert.deepEqual([r.bannerEnabled, r.bannerDays, r.bannerScope, r.horizonDays, r.returnAlert, r.reserveAlert], [false, 3, 'both', 14, true, false]);
+  assert.deepEqual([r.bannerEnabled, r.bannerScope, r.horizonDays, r.returnAlert, r.reserveAlert], [false, 'both', 14, true, false]);
 });
 t('התראת רזרבה: לא תלויה בריבוי סניפים, ברירת מחדל כבוי', () => {
   assert.equal(resolveBranchNoticeSettings({}).reserveAlert, false);
@@ -35,8 +35,8 @@ t('התראת רזרבה: לא תלויה בריבוי סניפים, ברירת 
   assert.equal(resolveBranchNoticeSettings({ reserve_return_alert_enabled: 'true' }).enabled, false);
 });
 t('התראות: ערכים חריגים נחתכים', () => {
-  const r = resolveBranchNoticeSettings({ multi_branch_enabled: 'true', branch_transfer_banner_enabled: 'true', branch_transfer_banner_days: '999', branch_transfer_banner_scope: 'zzz', branch_transfer_horizon_days: '0', branch_return_alert_enabled: 'false' });
-  assert.deepEqual([r.bannerEnabled, r.bannerDays, r.bannerScope, r.horizonDays, r.returnAlert], [true, 60, 'both', 1, false]);
+  const r = resolveBranchNoticeSettings({ multi_branch_enabled: 'true', branch_transfer_banner_enabled: 'true', branch_transfer_banner_scope: 'zzz', branch_transfer_horizon_days: '0', branch_return_alert_enabled: 'false' });
+  assert.deepEqual([r.bannerEnabled, r.bannerScope, r.horizonDays, r.returnAlert], [true, 'both', 1, false]);
 });
 
 console.log('פענוח הגדרת הסניפים');

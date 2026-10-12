@@ -183,11 +183,11 @@ export default async function RootLayout({ children }) {
       const sv = (k) => settings.find(s => s.key === k)?.value;
       const notice = resolveBranchNoticeSettings({
         multi_branch_enabled: sv('multi_branch_enabled'), branch_transfer_banner_enabled: sv('branch_transfer_banner_enabled'),
-        branch_transfer_banner_days: sv('branch_transfer_banner_days'), branch_transfer_banner_scope: sv('branch_transfer_banner_scope'),
+        branch_transfer_banner_scope: sv('branch_transfer_banner_scope'),
         branch_return_alert_enabled: sv('branch_return_alert_enabled'), reserve_return_alert_enabled: sv('reserve_return_alert_enabled'),
       });
       if (notice.enabled || notice.reserveAlert) {
-        branchNotices = { multi: notice.enabled, bannerEnabled: notice.bannerEnabled, bannerDays: notice.bannerDays, bannerScope: notice.bannerScope, returnAlert: notice.returnAlert, reserveAlert: notice.reserveAlert };
+        branchNotices = { multi: notice.enabled, bannerEnabled: notice.bannerEnabled, bannerScope: notice.bannerScope, returnAlert: notice.returnAlert, reserveAlert: notice.reserveAlert };
       }
     }
   }

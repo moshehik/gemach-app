@@ -42,11 +42,11 @@ function TransferBanner({ cfg }) {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch(`/api/branches/needs?days=${Math.max(1, cfg.bannerDays)}`, { cache: 'no-store' });
+        const res = await fetch('/api/branches/needs', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !data.enabled) return;
-        const rows = buildBannerRows({ transfers: data.transfers, pendingReturns: data.pendingReturns, scope: cfg.bannerScope, days: cfg.bannerDays });
+        const rows = buildBannerRows({ transfers: data.transfers, pendingReturns: data.pendingReturns, scope: cfg.bannerScope, days: 365 });
         const sig = rows.map((r) => r.key).join('|');
         const dismissedSig = safeGet('sessionStorage', 'branchBannerDismissed');
         const b = barRef.current;
@@ -77,7 +77,7 @@ function TransferBanner({ cfg }) {
     check();
     const stop = onActiveInterval(check, POLL_MS);
     return () => { cancelled = true; stop(); };
-  }, [cfg.bannerDays, cfg.bannerScope]);
+  }, [cfg.bannerScope]);
 
   if (bar || hidden || !legacyRows.length) return null;
   return (
@@ -127,7 +127,7 @@ function MyBranchPrompt() {
   );
 }
 
-/** @param {{ cfg: { multi:boolean, bannerEnabled:boolean, bannerDays:number, bannerScope:string, returnAlert:boolean, reserveAlert:boolean }|null }} props */
+/** @param {{ cfg: { multi:boolean, bannerEnabled:boolean, bannerScope:string, returnAlert:boolean, reserveAlert:boolean }|null }} props */
 export default function BranchNotices({ cfg }) {
   if (!cfg) return null;
   return (
