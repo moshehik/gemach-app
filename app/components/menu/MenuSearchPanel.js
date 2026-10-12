@@ -20,6 +20,7 @@ import { classifyQuery } from '@/lib/searchNormalize';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
+import SearchPanel from '../search/SearchPanel';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
 const MIN_CHARS = 2;
@@ -229,6 +230,8 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const barcodeDigits = termCls.kind === 'barcode' && termCls.barcode && termCls.barcode.complete ? termCls.barcode.digits : '';
   const isBarcode = !!barcodeDigits;
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
+  // פאנל התפוסה / הפריט (ר' search/SearchPanel.js): תצוגה מקדימה תוך כדי הקלדה, מתחת לשורת החיפוש. Enter נשאר אצל החזרה המהירה / חיפוש מלא.
+  const panelTerm = useDebounce(prefixOn ? '' : term, 350);
 
   // החזרה מהירה בברקוד - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
   const quickReturn = async () => {
@@ -300,6 +303,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     const apiOn = term.length >= MIN_CHARS;
     list = (
       <>
+        {panelTerm ? <SearchPanel query={panelTerm} compact onOpen={(url) => onGo(() => nav.navigate(url), true)} /> : null}
         {pages.length > 0 && <div className="sn-st">עמודים</div>}
         {pages.map((p) => (
           <a

@@ -18,6 +18,7 @@ import { Ic, HomeSprite } from './HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
+import SearchPanel from '../search/SearchPanel';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
@@ -809,6 +810,7 @@ export default function HomeA5() {
               onExport={onExportAdv}
             />
           )}
+          {(view === 'results' && !advRes) || view === 'none' ? <SearchPanel query={resQuery} /> : null}
           {(view === 'results' && !advRes) || view === 'none' ? (
             <HomeResults
               key={resKey}

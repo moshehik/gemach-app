@@ -1,0 +1,61 @@
+/* פאנל התפוסה / הפריט בחיפוש (SearchPanel.js) - רק מה שחסר בפלטה. הריבועים (.capstats/.capst/.cs-*) והשורות (.li.rlink.lrow / .sn-link) הם רכיבי הפלטה;
+   כאן: ריבועי ה-stat גם מחוץ לעור דף הבית (בתפריט המהיר הכלל של הפלטה חל רק תחת .gm-ds.gm-home - אותם ערכים בדיוק), כותרת, שבבים, שלד טעינה והצורה הדחוסה.
+   הכול בהיקף .gm-ds .sp. ללא צבעים קשיחים - רק טוקני הפלטה. */
+
+.gm-ds .sp{display:flex;flex-direction:column;gap:10px;margin:8px 0;min-width:0;text-align:start;direction:rtl}
+.gm-ds .sp.sp-refresh{opacity:.65;transition:opacity .15s}
+.gm-ds .sp .sp-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;color:var(--gm-navy-900,var(--gm-navy))}
+.gm-ds .sp .sp-head>b{font-size:17px;font-weight:700;line-height:1.3}
+.gm-ds .sp .sp-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gm-ds .sp .sp-sizes{display:flex;flex-wrap:wrap;gap:6px}
+.gm-ds .sp button.chip.btnlike,.gm-ds .sp a.chip.btnlike{cursor:pointer}
+
+/* ריבועי stat (כמו .gm-ds.gm-home .capstats / .capst בפלטה) */
+.gm-ds .sp .capstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:6px 0}
+.gm-ds .sp .capst{background:#fff;border:1px solid var(--gm-sky-200);border-radius:var(--gm-r);padding:16px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-width:0}
+.gm-ds .sp .capst span{color:var(--gm-ink2);font-size:15px;font-weight:500}
+.gm-ds .sp .capst b{font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.gm-ds .sp .cs-stock b{color:var(--gm-navy)}
+.gm-ds .sp .cs-busy b{color:var(--gm-rose-700)}
+.gm-ds .sp .cs-res b{color:var(--gm-gold-700)}
+.gm-ds .sp .capst b.sp-txt{font-size:20px;line-height:1.2;overflow-wrap:anywhere}
+.gm-ds .sp .capst .sp-sub{color:var(--gm-ink2);font-size:13px;line-height:1.2}
+
+.gm-ds .sp .sp-sec{display:flex;flex-direction:column;gap:4px;min-width:0}
+.gm-ds .sp .sp-sh{color:var(--gm-navy);font-weight:700;font-size:15px;padding:4px 2px}
+.gm-ds .sp .sp-sh .faint{font-weight:500}
+.gm-ds .sp .sp-empty{color:var(--gm-ink2);font-size:14px;padding:2px 4px}
+.gm-ds .sp .sp-more{align-self:flex-start;background:none;border:0;padding:4px 2px;color:var(--gm-rose-500);font-weight:600;font-size:14px;cursor:pointer}
+.gm-ds .sp .sp-more:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+
+/* שורות בתפריט המהיר: שתי שורות (שם + שבבים / פרטים) בתוך .sn-link */
+.gm-ds .sp .sp-rows{display:flex;flex-direction:column}
+.gm-ds .sp .sp-link{flex-direction:column;align-items:stretch;gap:2px;min-height:0;white-space:normal}
+.gm-ds .sp .sp-rt{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.gm-ds .sp .sp-ln{color:var(--gm-ink2);font-size:13px;font-weight:400;line-height:1.35;overflow-wrap:anywhere}
+.gm-ds .sp .li .t b .chip{margin-inline-start:6px}
+
+/* הצורה הדחוסה (תפריט): ריבועים קטנים יותר */
+.gm-ds .sp.sp-compact{gap:6px;padding:4px 4px 2px;margin:2px 0 6px;border-bottom:1px solid var(--gm-sky-200)}
+.gm-ds .sp.sp-compact .sp-head>b{font-size:15px}
+.gm-ds .sp.sp-compact .capstats{gap:8px;margin:2px 0}
+.gm-ds .sp.sp-compact .capst{padding:10px 4px;gap:4px}
+.gm-ds .sp.sp-compact .capst span{font-size:12px}
+.gm-ds .sp.sp-compact .capst b{font-size:24px}
+.gm-ds .sp.sp-compact .capst b.sp-txt{font-size:15px}
+.gm-ds .sp.sp-compact .capst .sp-sub{font-size:11px}
+.gm-ds .sp.sp-compact .sp-sh{font-size:13px;padding:2px}
+
+@media (max-width:640px){
+  .gm-ds .sp .capstats{gap:8px}
+  .gm-ds .sp .capst{padding:12px 4px}
+  .gm-ds .sp .capst b{font-size:26px}
+}
+
+/* שלד טעינה */
+.gm-ds .sp .sp-skel{display:block;border-radius:8px;background:linear-gradient(90deg,var(--gm-sky-200) 25%,#fff 50%,var(--gm-sky-200) 75%);background-size:200% 100%;animation:sp-shimmer 1.2s linear infinite}
+.gm-ds .sp .sp-skel-line{height:14px;width:55%}
+.gm-ds .sp .sp-skel-s{width:50%;height:12px}
+.gm-ds .sp .sp-skel-num{height:30px;width:40%}
+@keyframes sp-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.gm-ds .sp .sp-skel{animation:none}}
