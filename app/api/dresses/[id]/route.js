@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { autoModelName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { duplicateNameBody, findNameConflict, isNameUniqueViolation } from '@/lib/dressNameConflict';
@@ -79,6 +81,13 @@ export async function PUT(request, { params }) {
           return NextResponse.json({ error: 'הקוד כבר בשימוש בדגם פעיל אחר במערכת!' }, { status: 400 });
         }
       }
+    }
+
+    // גמ"ח בלי שמות דגמים (useModelNames=false, נווה): כל שמירה שנושאת שם כותבת את מספר הדגם עצמו (שם = קוד, כמו שאר הדגמים) - כך "ללא שם - N" / "דגם N" ישנים מתנקים בעריכה הבאה (lib/modelDisplay.js)
+    if (body.name !== undefined && typeof body.name === 'string') {
+      const putOpts = await getModelDisplayOpts();
+      const codeName = putOpts.useModelNames === false ? autoModelName(targetBarcode !== undefined && targetBarcode !== null && targetBarcode !== '' ? parseInt(targetBarcode, 10) : null) : null;
+      if (codeName) body.name = codeName;
     }
 
     // שינוי שם לשם שכבר קיים (DressModel.name הוא UNIQUE, כולל מחוקים רכות) = 400 ברור לפני הכתיבה, לא 500 כללי

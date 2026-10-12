@@ -1,0 +1,85 @@
+diff --git a/app/components/search/SearchPanel.js b/app/components/search/SearchPanel.js
+index 175b5738..b00c2525 100644
+--- a/app/components/search/SearchPanel.js
++++ b/app/components/search/SearchPanel.js
+@@ -283,7 +283,7 @@ export default function SearchPanel({ query, compact = false, onOpen }) {
+         <div className="sp-head"><b>נמצאו {p.candidatesTotal} דגמים תואמים - בחרו דגם</b></div>
+         <div className="sp-chips">
+           {p.candidates.map((c) => (
+-            <button type="button" key={c.prefix} className="chip btnlike" onClick={() => s.pickModel(c.prefix)}>{c.name || 'ללא שם'} <bdi dir="ltr">{c.prefix}</bdi></button>
++            <button type="button" key={c.prefix} className="chip btnlike" onClick={() => s.pickModel(c.prefix)}>{c.name ? c.name + ' ' : 'דגם '}<bdi dir="ltr">{c.prefix}</bdi></button>
+           ))}
+         </div>
+       </section>
+@@ -311,8 +311,8 @@ export default function SearchPanel({ query, compact = false, onOpen }) {
+       </button>
+       <div className="sp-head">
+         <b>
+-          {isItem ? <>ברקוד <bdi dir="ltr">{p.item.barcode}</bdi> · </> : <>דגם <bdi dir="ltr">{p.model.prefix}</bdi> · </>}
+-          {p.model.name || 'ללא שם'}
++          {isItem ? <>ברקוד <bdi dir="ltr">{p.item.barcode}</bdi> · </> : <>דגם <bdi dir="ltr">{p.model.prefix}</bdi>{p.model.name ? ' · ' : ''}</>}
++          {p.model.name || (isItem ? `דגם ${p.model.prefix}` : '')}
+         </b>
+         <span className="sp-chips">
+           {sizeShown ? <Chip cls="gold">מידה <bdi>{sizeShown}</bdi></Chip> : null}
+diff --git a/lib/searchPanel.js b/lib/searchPanel.js
+index 859188fa..28cc5802 100644
+--- a/lib/searchPanel.js
++++ b/lib/searchPanel.js
+@@ -14,6 +14,7 @@ import { sizeInList } from '@/lib/sizeSearch';
+ import { capacityWindow } from '@/lib/capacityRules';
+ import { buildItemPanel, buildModelPanel, buildWhere, eventDayKey, redactPerson, redactWhere } from '@/lib/searchPanelCore';
+ import { getHebrewDateString } from '@/lib/hebrewDate';
++import { modelHasRealName } from '@/lib/modelDisplay';
+ import { hebrewDateLabel } from '@/lib/globalSearch';
+ 
+ export const PANEL_PAGE_KEYS = Object.freeze(['page:orders', 'page:rentals']); // מי יכולה לקבל את הפאנל בכלל (תפוסה = page:orders, כמו החיפוש המתקדם; השכרות/החזרות = page:rentals)
+@@ -267,7 +268,7 @@ async function modelPanel(intent, models, { dateKey, todayKey, model, size }) {
+   if (model != null) found = (models.byPrefix.get(Number(model)) || []);
+   if (!found.length) return null;
+   if (found.length > 1) {
+-    return { mode: 'choose', candidates: found.slice(0, 12).map((m) => ({ prefix: m.barcodePrefix, name: m.name || '' })), candidatesTotal: found.length };
++    return { mode: 'choose', candidates: found.slice(0, 12).map((m) => ({ prefix: m.barcodePrefix, name: modelHasRealName(m) ? m.name : '' })), candidatesTotal: found.length };
+   }
+   const m = found[0];
+   const prefix = m.barcodePrefix;
+diff --git a/lib/searchPanelCore.js b/lib/searchPanelCore.js
+index 6dfc1e4f..82144018 100644
+--- a/lib/searchPanelCore.js
++++ b/lib/searchPanelCore.js
+@@ -11,6 +11,7 @@
+ 
+ import { capacityWindow, isReserveLocation, isServiceable, isStockLocation, orderOverlapsWindow, qty } from './capacityRules.js';
+ import { israelDayKey, sizeKey } from './searchNormalize.js';
++import { modelHasRealName } from './modelDisplay.js';
+ import { compareSizeText } from './sizeSort.js';
+ 
+ export const DRAFT_STATUS = 'טיוטה'; // מראה של lib/orderReservation.js DRAFT_ORDER_STATUS (כאן טהור, בלי import של שרת)
+@@ -215,7 +216,8 @@ export function buildModelPanel({ model, items, rows, returned, sizes, dateKey,
+   const ret = returnedRows(returned || [], match, todayKey);
+   return {
+     mode: 'model',
+-    model: { id: model.id, name: model.name || '', prefix },
++    // שם רק כשהוא תיאורי אמיתי (לא ריק / "ללא שם - N" / המספר עצמו) - אחרת '' והלקוח מציג רק את מספר הדגם (lib/modelDisplay.js)
++    model: { id: model.id, name: modelHasRealName({ name: model.name, barcodePrefix: prefix }) ? model.name : '', prefix },
+     sizes: sizes || [],
+     dateKey, todayKey,
+     tiles: { stock, busy, reserve, free: Math.max(0, stock - busy) },
+@@ -277,7 +279,7 @@ export function buildItemPanel({ model, item, barcode, sizeText, rentals, rentCo
+   const pending = pendingRows(rows, (r) => rowMatches(r, prefix, keySet), todayKey).map((r) => ({ ...r, requires: req.ids.has(r.rowId) }));
+   return {
+     mode: 'item',
+-    model: { id: model.id, name: model.name || '', prefix },
++    model: { id: model.id, name: modelHasRealName({ name: model.name, barcodePrefix: prefix }) ? model.name : '', prefix },
+     item: item ? { barcode, size: trim(item.sizeText), serial: item.serialNumber == null ? null : item.serialNumber, location: trim(item.location) } : { barcode, size: trim(sizeText), serial: null, location: '' },
+     itemMissing: !item,
+     flags: itemFlags(item),
+@@ -381,7 +383,7 @@ export function buildWhere({ model, items, rows, lastReturns, sizes, todayKey })
+     || compareSizeText(a.size, b.size) || (a.serial ?? 0) - (b.serial ?? 0) || a.barcode.localeCompare(b.barcode));
+   const counts = Object.fromEntries(WHERE_ORDER.map((s) => [s, 0]));
+   for (const r of out) counts[r.state]++;
+-  return { mode: 'where', model: { id: model.id, name: model.name || '', prefix }, sizes: sizes || [], total: out.length, counts, rows: out.slice(0, WHERE_CAP), truncated: out.length > WHERE_CAP };
++  return { mode: 'where', model: { id: model.id, name: modelHasRealName({ name: model.name, barcodePrefix: prefix }) ? model.name : '', prefix }, sizes: sizes || [], total: out.length, counts, rows: out.slice(0, WHERE_CAP), truncated: out.length > WHERE_CAP };
+ }
+ 
+ /** הסרת פרטי לקוחה משורות "איפה אני?" (כמו redactPerson). */

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import PrintWizardModal from '../components/PrintWizardModal';
@@ -12,6 +13,14 @@ import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
 import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP, detailsWithoutMarker } from '@/lib/alterationEstimate';
+
+// תווית הדגם בשורת תיקון: שם אמיתי + (קוד), או המספר לבדו - לעולם לא "ללא שם" (lib/modelDisplay.js). dressModelName מגיע מהשרת לפי הגדרת useModelNames.
+function alterationDressLabel(item) {
+  const code = item.dressPrefix ?? item.dressItem?.dress?.barcodePrefix ?? item.dressItem?.barcodePrefix ?? item.barcodePrefix;
+  const name = item.dressModelName || modelDisplayName(item.dressItem?.dress, { fallback: '' }) || (code != null ? String(code) : '');
+  if (name) return code != null && name !== String(code) ? `${name} (קוד: ${code})` : name;
+  return scrubPlaceholderInText(item.description || item.dressItem?.dressName, code);
+}
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const alterationsCache = cacheNamespace('alterations');
@@ -231,9 +240,7 @@ export default function AlterationsPage() {
         ...item,
         orderId: item.order?.orderId,
         customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-        dressName: item.dressItem?.dress?.name
-          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-          : (item.description || item.dressItem?.dressName),
+        dressName: alterationDressLabel(item),
         eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
         alterationStatus: alterationDoneLabel(item) || 'ממתין',
         neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
@@ -305,9 +312,7 @@ export default function AlterationsPage() {
               ...item,
               orderId: item.order?.orderId,
               customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-              dressName: item.dressItem?.dress?.name
-                ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                : (item.description || item.dressItem?.dressName),
+              dressName: alterationDressLabel(item),
               eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
               alterationStatus: alterationDoneLabel(item) || 'ממתין',
               neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
@@ -480,9 +485,7 @@ export default function AlterationsPage() {
                         <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
                         <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
                         <td>
-                          {item.dressItem?.dress?.name
-                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                            : (item.description || item.dressItem?.dressName)}
+                          {alterationDressLabel(item)}
                         </td>
                         <td>
                           <span className="badge badge-neutral">{item.sizeText || item.size}</span>

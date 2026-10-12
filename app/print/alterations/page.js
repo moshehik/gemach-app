@@ -123,11 +123,12 @@ export default function PrintAlterationsPage() {
   // is resolved through the barcode prefix (dressModelName from the API) so
   // it prints even when no physical item was assigned yet.
   const dressLabelOf = (item) => {
+    // dressModelName מהשרת = שם אמיתי או מספר הדגם (lib/modelDisplay.js); הגיבוי הגולמי רק כשהשרת לא החזיר (לא אמור לקרות)
     const name = item.dressModelName || item.dressItem?.dress?.name || item.dressItem?.dressName || item.description || '';
     const prefix = item.dressPrefix ?? item.dressItem?.dress?.barcodePrefix ?? item.barcodePrefix;
-    if (name && prefix != null) return `${name} - ${prefix}`;
+    if (name && prefix != null) return name === String(prefix) ? name : `${name} - ${prefix}`; // שם = מספר: פעם אחת
     if (name) return name;
-    if (prefix != null) return `דגם ${prefix}`;
+    if (prefix != null) return String(prefix);
     return '-';
   };
   const sizeLabelOf = (item) => (item.sizeText || item.size || item.dressItem?.sizeText || '-').toString();

@@ -3,6 +3,7 @@
 // DcTopbar - שורת הכותרת של כרטיס הדגם (העיצוב: .topbar > .back + .ttl(h1 "דגם #קוד שם") + #sbar + .tools + האייקון ישן/חדש).
 // הכלים: ייצוא Excel · הורדת PDF · הדפסה (תפריט) · מחיקת דגם (בדגם מחוק: שחזור). הטולטיפים ב-data-tip (לא title). קוד הדגם והשם - מהמצב השמור.
 import { useEffect, useRef, useState } from 'react';
+import { modelHasRealName } from '@/lib/modelDisplay';
 import OcIcon, { XlGlyph } from '../order-card/OcIcon';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import DcScanBar from './DcScanBar';
@@ -73,7 +74,7 @@ export default function DcTopbar({ dc, ui }) {
         <OcIcon name="back" />
       </button>
       <div className="ttl">
-        <h1><small>דגם</small><bdi id="ttlCode">{m ? `#${m.code}` : ''}</bdi>{m && dc.flags.useModelNames && m.name ? <span id="ttlName" className="dc-nm">{m.name}</span> : null}</h1>
+        <h1><small>דגם</small><bdi id="ttlCode">{m ? `#${m.code}` : ''}</bdi>{m && dc.flags.useModelNames && modelHasRealName({ name: m.name, barcodePrefix: m.code }) ? <span id="ttlName" className="dc-nm">{m.name}</span> : null}</h1>
         <span id="hdrChips" className="row wrap" />
       </div>
       {ready ? <DcScanBar dc={dc} ui={ui} /> : null}

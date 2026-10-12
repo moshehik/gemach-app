@@ -6,6 +6,7 @@
 //      שאר הכרטיסים מימין/משמאל לרכיב במסך רחב (>=700), אחרת מעל/מתחת (placeRich, שורות 4175-4198).
 // כאן: ICON_TIP, ההחלטה על טקסט הטולטיפ של לחצן-אייקון, שורות הכרטיסים העשירים של הסרגל (עובדות בלבד - בלי פרטים בדויים), והמיקום (כולל היפוך מתחת לתפריט העליון).
 import { shortHebrew } from './ocHistoryModel';
+import { orderItemModelName } from '../../../../lib/modelDisplay';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 
 // בדיוק כמו ICON_TIP בדמו (שורה 4335)
@@ -38,7 +39,7 @@ export function railRichRows(kind, arg, ctx = {}) {
   } else if (kind === 'items') {
     const out = !!order.isDelivery && order.deliveryDirection !== 'חזור';
     for (const i of (ctx.items || []).filter((x) => x && !x.isDeleted)) {
-      const name = i.dressItem?.dress?.name || i.dressItem?.dressName || i.description || i.dressItem?.dress?.barcodePrefix || i.barcodePrefix || '';
+      const name = orderItemModelName(i) || i.dressItem?.dressName || i.description || ''; // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
       rows.push({ icon: i.isReturned ? 'check' : i.isTaken ? (out ? 'truck' : 'bag') : 'clock', text: `דגם ${name} · מידה ${i.sizeText || '—'}` });
     }
   } else if (kind === 'pay') {

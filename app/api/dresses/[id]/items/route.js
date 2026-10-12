@@ -1,5 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { autoModelName, isPlaceholderModelName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { requireDressItemManager } from '@/lib/dressItemAccess';
 import { validateItemInput } from '@/lib/dressInputValidation';
 
@@ -29,6 +31,11 @@ export async function POST(request, { params }) {
     if (v.error) return NextResponse.json({ error: v.error, ...(v.field ? { field: v.field } : {}) }, { status: 400 });
     const d = v.data;
 
+    const itemOpts = await getModelDisplayOpts();
+    const itemDressName = itemOpts.useModelNames === false
+      ? (autoModelName(model.barcodePrefix) ?? d.dressName)
+      : (d.dressName && isPlaceholderModelName(d.dressName) ? autoModelName(model.barcodePrefix) : d.dressName);
+
     // כפילות ברקוד נבדקת מול פריטים פעילים בלבד (פריט מחוק רכות לא חוסם שימוש חוזר בברקוד), תחת נעילת advisory לפי הברקוד נגד מרוץ
     const newItem = await prisma.$transaction(async (tx) => {
       if (d.dressBarcode) {
@@ -51,7 +58,8 @@ export async function POST(request, { params }) {
           notInUseSince: d.notInUseSince,
           entryDateToRepo: d.entryDateToRepo,
           // legacy compatibility: הקידומת תמיד מהדגם האב (לא מהגוף - פריט לא יכול לשאת קידומת שונה מהדגם שלו)
-          dressName: d.dressName,
+          // שדה ישן (שם הדגם בזמן יצירת הפריט): לעולם לא "ללא שם - N"; בגמ"ח בלי שמות דגמים (useModelNames=false) = מספר הדגם (lib/modelDisplay.js)
+          dressName: itemDressName,
           barcodePrefix: model.barcodePrefix,
         },
       });

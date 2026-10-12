@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
@@ -92,8 +94,9 @@ async function orderIds(typed) {
 
 async function models(typed) {
   const where = { isDeleted: false, name: typed ? { contains: typed } : { not: null } };
-  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true } });
-  const all = clean(rows.map((r) => r.name));
+  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true, barcodePrefix: true } });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
+  const all = clean(rows.map((r) => modelDisplayName(r, { ...mOpts, fallback: '' })));
   if (!typed) return finish(all);
   const starts = all.filter((n) => n.startsWith(typed));
   return finish(starts.length >= LIMIT ? starts : all);

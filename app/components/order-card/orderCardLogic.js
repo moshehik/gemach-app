@@ -32,6 +32,7 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { orderItemModelName } from '../../../lib/modelDisplay';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
@@ -563,7 +564,7 @@ export function hebDateOf(value) {
 
 export function itemLabel(it) {
   if (!it) return '';
-  const model = it.dressItem?.dress?.name || it.dressModelName || it.modelName || it.description || '';
+  const model = orderItemModelName(it) || it.description || ''; // שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js)
   const size = it.sizeText || it.size || '';
   return `${model ? `דגם ${model}` : 'פריט'}${size ? `, מידה ${size}` : ''}`;
 }

@@ -52,7 +52,7 @@ export async function load(url, ctx, next) {
   if (url === 'mock:auth') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const checkAuth=(r)=>T.checkAuth(r); export const getSessionEmployee=async()=>T.sessionEmployee(); export const readVerifiedSession=()=>null;' };
   if (url === 'mock:authTokens') return { format: 'module', shortCircuit: true, source: 'export const getVerifiedAuthCookie=()=>null;' };
   if (url === 'mock:dbMode') return { format: 'module', shortCircuit: true, source: 'export const currentDbModeTag=()=>"test"; export const isDeviceBackupRequest=()=>false;' };
-  if (url === 'mock:settingsCache') return { format: 'module', shortCircuit: true, source: 'export const getCachedSetting=async()=>null; export const getAllCachedSettings=async()=>[];' };
+  if (url === 'mock:settingsCache') return { format: 'module', shortCircuit: true, source: 'export const getCachedSetting=async(k)=>{const v=(globalThis.__T.settings||{})[k]; return v===undefined?null:{key:k,value:v};}; export const getAllCachedSettings=async()=>[];' };
   if (url === 'mock:next-server') return { format: 'module', shortCircuit: true, source: 'export class NextResponse { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"Content-Type":"application/json"} }); } }' };
   if (url === 'mock:next-headers') return { format: 'module', shortCircuit: true, source: 'export const cookies=async()=>({get(){return undefined}});' };
   return next(url, ctx);
@@ -571,6 +571,48 @@ await t('לקוחות: האשף החדש מציג את ההודעה ליד שד�
   for (const f of ['app/components/dress-card/useDressCard.js', 'app/components/dress-card/tabs/DcItemsTab.js', 'app/components/dress-new/useModelNewController.js', 'app/components/dress-new/MnSteps.js']) {
     assert.ok(!/(?:^|[^\w.])(?:window\.)?(?:alert|confirm|prompt)\(/m.test(code(read(f))), `${f}: חלון דפדפן`);
   }
+});
+
+// ---- נושא 11 (12.10.2026): גמ"ח בלי שמות דגמים (useModelNames=false, נווה יעקב) - השרת כותב את מספר הדגם כשם, לעולם לא "ללא שם" / "דגם <קוד>" ----
+await t('POST useModelNames=false: השם הוא מספר הדגם גם אם הלקוח שלח "דגם 623" / "ללא שם" / שם אחר, וגם בלי שם', async () => {
+  for (const sent of [{ name: 'דגם 623' }, { name: 'ללא שם' }, { name: 'שם שהוקלד' }, {}]) {
+    reset(); asHead(); T.settings = { useModelNames: 'false' };
+    const r = await J(await post({ ...sent, barcodePrefix: 623, priceCategory: 'A' }));
+    assert.equal(r.status, 200, JSON.stringify(sent)); assert.equal(r.body.name, '623', JSON.stringify(sent));
+  }
+  T.settings = {};
+});
+await t('POST useModelNames=true / לא מוגדר: בלי שינוי - השם שהוזן, ובהיעדרו "דגם <קוד>"', async () => {
+  reset(); asHead(); T.settings = { useModelNames: 'true' };
+  assert.equal((await J(await post({ name: 'ורד', barcodePrefix: 111 }))).body.name, 'ורד');
+  assert.equal((await J(await post({ barcodePrefix: 112 }))).body.name, 'דגם 112');
+  T.settings = {}; reset(); asHead();
+  assert.equal((await J(await post({ barcodePrefix: 113 }))).body.name, 'דגם 113');
+});
+await t('POST useModelNames=false: השם = מספר שכבר תפוס כשם של דגם אחר -> 400 ברור (field:"name"), בלי יצירה', async () => {
+  reset(); asHead(); T.settings = { useModelNames: 'false' };
+  tbl('dressModel').push({ id: 'dm1', name: '623', barcodePrefix: 999, isDeleted: false });
+  const r = await J(await post({ barcodePrefix: 623 }));
+  assert.equal(r.status, 400); assert.equal(r.body.field, 'name'); assert.equal(T.writes.length, 0);
+  T.settings = {};
+});
+await t('PUT useModelNames=false: כל שמירה עם שם כותבת את מספר הדגם ("ללא שם - N" ו-"דגם N" מתנקים); בלי שם בבקשה - השם לא משתנה', async () => {
+  reset(); asHead(); T.settings = { useModelNames: 'false' };
+  tbl('dressModel').push({ id: 'dm1', name: 'ללא שם - 1243', barcodePrefix: 815, isDeleted: false }, { id: 'dm2', name: 'דגם 567', barcodePrefix: 567, isDeleted: false });
+  assert.equal((await putModel('dm1', { name: 'ללא שם - 1243', notes: 'x' })).status, 200);
+  assert.equal(tbl('dressModel').find((m) => m.id === 'dm1').name, '815');
+  assert.equal((await putModel('dm2', { name: 'דגם 567' })).status, 200);
+  assert.equal(tbl('dressModel').find((m) => m.id === 'dm2').name, '567');
+  assert.equal((await putModel('dm2', { notes: 'n' })).status, 200);
+  assert.equal(tbl('dressModel').find((m) => m.id === 'dm2').name, '567');
+  T.settings = {};
+});
+await t('PUT useModelNames=true: שם שנשלח נכתב כמו שהוא (בגמ"ח הראשי אין שינוי התנהגות)', async () => {
+  reset(); asHead(); T.settings = { useModelNames: 'true' };
+  tbl('dressModel').push({ id: 'dm1', name: 'A', barcodePrefix: 815, isDeleted: false });
+  assert.equal((await putModel('dm1', { name: 'ורד' })).status, 200);
+  assert.equal(tbl('dressModel').find((m) => m.id === 'dm1').name, 'ורד');
+  T.settings = {};
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

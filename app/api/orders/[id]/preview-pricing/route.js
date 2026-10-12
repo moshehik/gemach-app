@@ -33,7 +33,8 @@ const SETTING_KEYS = [
   'enable_delivery_join',
   'delivery_join_price',
   'enable_rental_extension',
-  'delivery_charge_customer_city_fallback'
+  'delivery_charge_customer_city_fallback',
+  'useModelNames' // שם הדגם בתיאורי החיוב (lib/modelDisplay.js): false = מספר בלבד
 ];
 
 /**

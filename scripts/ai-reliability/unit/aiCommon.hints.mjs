@@ -96,7 +96,7 @@ for (const row of HMT) for (const alias of row.aliases) {
   ok('table month "' + alias + '" resolves to a hint', out.includes('HEBREW_DATE(10,'), { text, out });
 }
 const rules = m.buildSharedSqlRules({ draftStatus: 'טיוטה', reservedStatus: 'שמור לחיוב' });
-for (const id of ['S16', 'S17', 'S18', 'S19', 'S20']) ok('rules: ' + id + ' present', rules.includes('\n' + id + '. '), id);
+for (const id of ['S16', 'S17', 'S18', 'S19', 'S20', 'S21']) ok('rules: ' + id + ' present', rules.includes('\n' + id + '. '), id);
 ok('S16: barcode = model prefix + 2-digit size + 2-digit serial, with the worked example', /LAST 2 digits are the serial/.test(rules) && rules.includes('6323401 = model 632, size 34, serial 01') && rules.includes('"DressItem"."dressBarcode"') && rules.includes('"OrderItem"."barcode"'));
 ok('S17: a 7-digit number is a barcode and is never called an order number', rules.includes('NEVER treat a 7-digit number as an order number') && rules.includes('NEVER write "מספר הזמנה"'));
 ok('S17: 5-6 digits = order first, 1-4 digits = order, the word הזמנה forces an order, 9-10 digits from 0 = phone', /5-6 digits \("Order"\."orderId"\)/.test(rules) && rules.includes('order number FIRST') && rules.includes('1-4 digits is an order number') && rules.includes('before any number it is an order number') && rules.includes('9-10 digit number that starts with 0'));

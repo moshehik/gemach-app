@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
@@ -438,12 +440,13 @@ async function models(p, flags, gaps) {
     select: { id: true, name: true, barcodePrefix: true, items: { select: { quantity: true, isDeleted: true, sizeText: true, inRepair: true, dressBarcode: true } } },
   });
   const truncated = list.length > LIMIT;
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
   return {
     rows: list.slice(0, LIMIT).map((m) => {
       // כמות פריטים: פריטים פעילים (או המחוקים כשנבחר "פריט מחוק"), בכפוף לסינון מידה/ברקוד
       const its = m.items.filter((i) => (has(flags, 'md_delitem') ? i.isDeleted : !i.isDeleted)
         && (!size || sizeMatches(i.sizeText, size)) && (!code || (i.dressBarcode || '').includes(code)) && (!has(flags, 'md_repair') || i.inRepair));
-      return { link: `/dashboard/dresses/${m.id}`, cells: [m.name || '', m.barcodePrefix != null ? String(m.barcodePrefix) : '', String(its.reduce((a, i) => a + (i.quantity || 1), 0))] };
+      return { link: `/dashboard/dresses/${m.id}`, cells: [modelDisplayName(m, { ...mOpts, fallback: '' }), m.barcodePrefix != null ? String(m.barcodePrefix) : '', String(its.reduce((a, i) => a + (i.quantity || 1), 0))] };
     }),
     truncated, cols: ['שם', 'קוד', 'כמות פריטים'],
   };

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { generateChatTitle } from '../../../lib/ai/chatTitle';
@@ -363,7 +365,9 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
         
         const allModels = await prisma.dressModel.findMany();
         const modelMap = {};
-        allModels.forEach(m => modelMap[m.id] = m.name);
+        // שם הדגם בטבלת הזמינות: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם - N" ולא ה-UUID (lib/modelDisplay.js)
+        const mdOpts = await getModelDisplayOpts();
+        allModels.forEach(m => modelMap[m.id] = modelDisplayName(m, { ...mdOpts, fallback: '' }));
 
         // זיהוי דגמים בקוד: לפי מזהה פנימי, לפי מספר דגם (barcodePrefix) או לפי שם. בבדיקת האמינות
         // ה-AI העביר את הדגם כמספר (551) ואף דגם לא התאים (מפתחות הזמינות הם UUID), הטבלה חזרה ריקה

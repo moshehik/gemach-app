@@ -5,6 +5,7 @@
 import { useMemo } from 'react';
 import { A5List } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
+import { modelDisplayName } from '@/lib/modelDisplay';
 import { runListExport } from '../../a5-list';
 import { runDressDoc, sayOf } from '../dcPrint';
 import useDcListAi from '../useDcListAi';
@@ -110,7 +111,7 @@ export default function DcRentalsTab({ dc, ui }) {
             what: 'רשימת ההשכרות',
             onPrint: (vis, state) => runDressDoc({ dc, ui, kind: 'print', which: 'rentals', list: vis, state, filters }),
             onDownload: (vis, state) => runDressDoc({ dc, ui, kind: 'download', which: 'rentals', list: vis, state, filters }),
-            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `השכרות · דגם ${cur.model.code}`, subtitle: cur.model.name, head, rows: rowsOf(vis), base: `השכרות-דגם-${cur.model.code}` }),
+            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `השכרות · דגם ${cur.model.code}`, subtitle: modelDisplayName({ name: cur.model.name, barcodePrefix: cur.model.code }, { fallback: '' }), head, rows: rowsOf(vis), base: `השכרות-דגם-${cur.model.code}` }),
           }}
         />
         {aiS.modal}

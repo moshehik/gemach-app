@@ -14,10 +14,13 @@
 import {
   bc, block, bcCell, escH, filterLine, heading, plural, table,
 } from './pkCore.js';
+import { modelDisplayName } from '../../../lib/modelDisplay.js';
 import {
   ST_LABEL, addDays, bcFor, compareItems, counts, pad2, stOf,
 } from '../../../lib/dressCardLogic.js';
 
+// שם הדגם בהדפסות: שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js); שאר השדות של הדגם נשארים כמו שהם
+const pkModel = (m) => (m ? { ...m, name: modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' }) || '—' } : m);
 const num = (n) => `<span class="pk-num">${escH(n)}</span>`;
 const ph = (v) => (v ? `<span class="pk-ph">${escH(v)}</span>` : '<span class="pk-dim">—</span>');
 const dim = '<span class="pk-dim">—</span>';
@@ -129,7 +132,7 @@ export function rentWindow(rentals, todayKey) {
 /* ---------------------------------------------------------------- כרטיס דגם (A4 לאורך) */
 /** data = { model, items (השמורים), rentals (כל ההשכרות), prefix } */
 export function modelCardDoc(data, ctx) {
-  const m = data.model;
+  const m = pkModel(data.model);
   const cn = counts(data.items || []);
   const live = savedLive(data.items);
   const rents = rentWindow(data.rentals, ctx.todayKey);
@@ -159,7 +162,7 @@ export function modelCardDoc(data, ctx) {
 
 /** data = { model, items (השמורים), prefix, list? (השורות שבלשונית, בסדר המסך), state?, filters? } */
 export function modelItemsDoc(data) {
-  const m = data.model;
+  const m = pkModel(data.model);
   const byId = new Map((data.items || []).map((i) => [i.id, i]));
   const list = data.list ? data.list.map((i) => byId.get(i.id)).filter((x) => x && !x.del) : savedLive(data.items);
   if (!list.length) return { empty: { title: 'אין פריטים להדפסה', text: 'הרשימה ריקה לפי החיפוש והסינון הנוכחיים' } };
@@ -172,7 +175,7 @@ export function modelItemsDoc(data) {
 
 /** data = { model, rentals (כולם), list? (השורות שבלשונית), state?, filters? } */
 export function modelRentalsDoc(data, ctx) {
-  const m = data.model;
+  const m = pkModel(data.model);
   const list = data.list ? data.list : rentWindow(data.rentals, ctx.todayKey);
   if (!list.length) return { empty: { title: 'אין השכרות להדפסה', text: data.list ? 'הרשימה ריקה לפי החיפוש והסינון הנוכחיים' : 'לא היו השכרות ב-12 החודשים האחרונים' } };
   return {
@@ -185,7 +188,7 @@ export function modelRentalsDoc(data, ctx) {
 /** מדבקות ברקוד: 18 לגיליון (3 x 6), כותרת צרה, בלי עימוד מדוד */
 export const LABELS_PER_SHEET = 18;
 export function modelLabelsDoc(data) {
-  const m = data.model;
+  const m = pkModel(data.model);
   const live = savedLive(data.items);
   if (!live.length) return { empty: { title: 'אין פריטים למדבקות', text: '' } };
   const pages = [];

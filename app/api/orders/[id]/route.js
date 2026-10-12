@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
@@ -95,7 +97,8 @@ const RECALC_SETTING_KEYS = [
   'refund_tiers_at_deletion_time',
   'swap_pairing_window_minutes',
   'instant_undo_minutes',
-  'gap_size_price_rule'
+  'gap_size_price_rule',
+  'useModelNames' // שם הדגם בתיאורי החיוב (lib/modelDisplay.js): false = מספר בלבד
 ];
 
 export async function GET(request, { params }) {
@@ -181,6 +184,8 @@ export async function GET(request, { params }) {
       }
     });
 
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (barcodePrefix) - לעולם לא "ללא שם" (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד)
+    const mOpts = await getModelDisplayOpts();
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -188,8 +193,9 @@ export async function GET(request, { params }) {
       if (!dressName && prefix !== null && prefix !== undefined) {
         dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description;
+      let finalDescription = scrubPlaceholderInText(item.description, prefix);
       if (!finalDescription || finalDescription === 'פריט כללי') {
         if (dressName) {
           finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
@@ -199,7 +205,7 @@ export async function GET(request, { params }) {
           finalDescription = 'פריט כללי';
         }
       } else if (dressName && !finalDescription.includes(dressName)) {
-        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${scrubPlaceholderInText(item.description, prefix)}`;
       }
 
       const isTaken = item.isTaken || item.takenDate !== null;
@@ -223,7 +229,7 @@ export async function GET(request, { params }) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {
@@ -1071,6 +1077,8 @@ async function putOrder(request, { params }, claims) {
       }
     });
     
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (barcodePrefix) - לעולם לא "ללא שם" (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד)
+    const mOpts = await getModelDisplayOpts();
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -1078,8 +1086,9 @@ async function putOrder(request, { params }, claims) {
       if (!dressName && prefix !== null && prefix !== undefined) {
         dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description;
+      let finalDescription = scrubPlaceholderInText(item.description, prefix);
       if (!finalDescription || finalDescription === 'פריט כללי') {
         if (dressName) {
           finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
@@ -1089,7 +1098,7 @@ async function putOrder(request, { params }, claims) {
           finalDescription = 'פריט כללי';
         }
       } else if (dressName && !finalDescription.includes(dressName)) {
-        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${scrubPlaceholderInText(item.description, prefix)}`;
       }
 
       const isTaken = item.isTaken || item.takenDate !== null;
@@ -1113,7 +1122,7 @@ async function putOrder(request, { params }, claims) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {

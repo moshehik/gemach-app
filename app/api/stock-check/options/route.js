@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
@@ -46,10 +48,11 @@ async function modelOptions(typed) {
     orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' },
     take: typed ? POOL : LIMIT,
   });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
   const seen = new Set();
   const list = [];
   for (const r of rows) {
-    const v = clean(r.name);
+    const v = clean(modelDisplayName(r, { ...mOpts, fallback: '' }));
     if (!v) continue;
     const key = v + '|' + (r.barcodePrefix ?? '');
     if (seen.has(key)) continue;
