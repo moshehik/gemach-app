@@ -27,13 +27,14 @@ function Delta({ info, label }) {
  * אריח סיכום: ערך ראשי + שתי שורות השוואה (אתמול / ממוצע שבועי). unmeasured = השלב לא נמדד בערוץ הזה (מוצג "—" והסבר, לא 0).
  * kind: 'count' | 'rate'.
  */
-export function StatTile({ icon, label, value, yesterday, weekAvg, kind = 'count', unmeasured = false, note = '' }) {
+export function StatTile({ icon, label, value, yesterday, weekAvg, kind = 'count', unmeasured = false, note = '', extra = '' }) {
   const fmt = kind === 'rate' ? fmtPct : fmtInt;
   const fmtAvgFn = kind === 'rate' ? fmtPct : fmtAvg;
   return (
     <div className={`card sa-tile${unmeasured ? ' sa-off' : ''}`} role="group" aria-label={label}>
       <div className="sa-tile-h"><span className="sa-tile-ic"><Ic id={icon} /></span><span className="sa-tile-l">{label}</span></div>
       <div className="sa-tile-v" dir="ltr"><bdi>{unmeasured ? '—' : fmt(value)}</bdi></div>
+      {extra && !unmeasured ? <small className="sa-tile-x">{extra}</small> : null}
       {unmeasured ? <small className="sa-tile-n">{note || 'נמדד רק בקישור הכללי'}</small> : (
         <div className="sa-tile-c">
           <span className="sa-cmp"><span className="sa-cmp-l">אתמול</span> <b><bdi>{fmt(yesterday)}</bdi></b> <Delta info={deltaInfo(value, yesterday, kind)} label="" /></span>

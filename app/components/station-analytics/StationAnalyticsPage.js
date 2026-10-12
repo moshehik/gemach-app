@@ -1,10 +1,10 @@
 'use client';
 
-// StationAnalyticsPage - "המרות בעמדה הציבורית" (/station-analytics): כמה נכנסו לעמדה הציבורית, כמה מילאו פרטים וכמה סגרו הזמנה (בקשת הבעלים, נושא 13).
+// StationAnalyticsPage - "המרות בעמדה הציבורית" (/station-analytics): כמה נכנסו לעמדה הציבורית, כמה מילאו פרטים וכמה נפתחה להן הזמנה (בקשת הבעלים, נושא 13).
 // עיצוב: מסך הגדרות/ניהול A5 (באנר בראש, סרגל ניווט בצד ימין, כרטיסים) - אותו שלד ואותו CSS של מסכי ההגדרות (settings-sim.css, היקף .gm-ds.gm-st) + station-analytics.css
 // לרכיבי הגרפים בלבד. רכיבים: הפלטה (design-system/); הגרפים אינם בפלטה (ר' StationCharts.js). תאריכים: עבריים בלבד.
 // נתונים: GET /api/admin/station-analytics (מצטבר, בלי PII) + GET /api/admin/station-analytics/registrations (שם פרטי + אות, רק עם הרשאת לקוחות).
-// ההגדרות המלאות של כל מדד ("סגרה הזמנה" וכו'): docs/station-analytics.md.
+// ההגדרות המלאות של כל מדד ("הזמנה נפתחה" / "הזמנה אושרה" וכו'): docs/station-analytics.md.
 
 import '@/design-system/components.css';
 import '../settings-sim/settings-sim.css';
@@ -40,7 +40,7 @@ const SECTIONS = [
   { id: 'sa-daily', label: 'לאורך זמן', icon: 'cal' },
   { id: 'sa-regs', label: 'הרישומים', icon: 'users' },
 ];
-const PARENT_LABELS = { visits: 'הנכנסים', availability: 'מי שבדקו זמינות', formStart: 'מי שפתחו את הטופס', registered: 'מי שמילאו פרטים' };
+const PARENT_LABELS = { visits: 'הנכנסים', availability: 'מי שבדקו זמינות', formStart: 'מי שפתחו את הטופס', registered: 'מי שמילאו פרטים', opened: 'מי שנפתחה להן הזמנה' };
 const VERIFY_LABEL = { pending: 'ממתינה לאימות', repeat: 'רישום חוזר, ממתינה לאימות', verified: 'אומתה' };
 
 function Banner({ kind = 'info', icon, heading, text, children }) {
@@ -189,11 +189,11 @@ export default function StationAnalyticsPage({ preload = null }) {
 
   const tableCols = [
     { key: 'day', label: 'יום' }, { key: 'visits', label: 'נכנסו' }, { key: 'availability', label: 'בדקו זמינות' }, { key: 'formStart', label: 'פתחו טופס' },
-    { key: 'registered', label: 'מילאו פרטים' }, { key: 'verified', label: 'אומתו' }, { key: 'closed', label: 'סגרו הזמנה' },
+    { key: 'registered', label: 'מילאו פרטים' }, { key: 'verified', label: 'אומתו' }, { key: 'opened', label: 'נפתחה הזמנה' }, { key: 'approved', label: 'הזמנה אושרה או שולמה' },
   ];
   const tableRows = ok ? [...d.daily].reverse().map((r) => ({
     id: r.day,
-    cells: { day: dayTitle(r.day), visits: topMeasured ? fmtInt(r.visits) : '—', availability: topMeasured ? fmtInt(r.availability) : '—', formStart: topMeasured ? fmtInt(r.formStart) : '—', registered: fmtInt(r.registered), verified: fmtInt(r.verified), closed: fmtInt(r.closedInWindow) },
+    cells: { day: dayTitle(r.day), visits: topMeasured ? fmtInt(r.visits) : '—', availability: topMeasured ? fmtInt(r.availability) : '—', formStart: topMeasured ? fmtInt(r.formStart) : '—', registered: fmtInt(r.registered), verified: fmtInt(r.verified), opened: fmtInt(r.openedInWindow), approved: fmtInt(r.approvedInWindow) },
   })) : [];
   const funnelRows = ok ? d.funnel.map((s) => ({ id: s.key, cells: { stage: s.label, count: typeof s.count === 'number' ? fmtInt(s.count) : '—', parent: s.parent && s.rateFromParent !== null ? `${fmtPct(s.rateFromParent)} מתוך ${PARENT_LABELS[s.parent]}` : '—', visits: s.rateFromVisits !== null ? fmtPct(s.rateFromVisits) : '—' } })) : [];
 
@@ -276,7 +276,8 @@ export default function StationAnalyticsPage({ preload = null }) {
                       <dt>נכנסו</dt><dd>כל כניסה לעמדה בקישור הכללי, פעם אחת ליום לכל מכשיר ולשונית. בלי שמות ובלי כתובות.</dd>
                       <dt>מילאו פרטים</dt><dd>לקוחות שהשלימו את הטופס, כל לקוחה פעם אחת. גם לקוחה קיימת שמילאה שוב. לקוחה שנמחקה לא נספרת.</dd>
                       <dt>אומתו</dt><dd>מי שהעובדת סימנה אצלה &quot;אומתה&quot; בכרטיס הלקוחה.</dd>
-                      <dt>סגרו הזמנה</dt><dd>למילאות פרטים יש הזמנה אמיתית שנוצרה אחרי המילוי, עד {d.range.windowDays} ימים (כולל יום המילוי). טיוטה, הזמנה מבוטלת, והזמנה שנשמרה בלי תשלום ובלי אישור מנהל אינן נספרות.</dd>
+                      <dt>נפתחה הזמנה</dt><dd>הלקוחה בעמדה לא מזמינה בעצמה, והעובדת ממשיכה איתה להזמנה. נספרת הזמנה אמיתית שנפתחה אחרי המילוי, עד {d.range.windowDays} ימים (כולל יום המילוי), גם אם נשמרה בלי תשלום. טיוטה והזמנה מבוטלת אינן נספרות. זה המדד העיקרי.</dd>
+                      <dt>הזמנה אושרה או שולמה</dt><dd>המדד המחמיר: אותה הזמנה, כשהשמלה כבר נתפסה סופית (שולם משהו, יציאה באישור מנהל, או שאין מה לשלם).</dd>
                     </dl>
                   </div>
                 </div>
@@ -288,13 +289,15 @@ export default function StationAnalyticsPage({ preload = null }) {
                   <div className="sa-tiles" data-agy-id="sa_tiles">
                     <StatTile icon="eye" label="נכנסו לעמדה" value={cards.today.visits} yesterday={cards.yesterday.visits} weekAvg={cards.weekAvg && cards.weekAvg.visits} unmeasured={!topMeasured} />
                     <StatTile icon="user" label="מילאו פרטים" value={cards.today.registered} yesterday={cards.yesterday.registered} weekAvg={cards.weekAvg && cards.weekAvg.registered} />
-                    <StatTile icon="cart" label="סגרו הזמנה" value={cards.today.closed} yesterday={cards.yesterday.closed} weekAvg={cards.weekAvg && cards.weekAvg.closed} />
+                    <StatTile icon="cart" label="נפתחה הזמנה" value={cards.today.opened} yesterday={cards.yesterday.opened} weekAvg={cards.weekAvg && cards.weekAvg.opened} />
+                    <StatTile icon="check" label="הזמנה אושרה או שולמה" value={cards.today.approved} yesterday={cards.yesterday.approved} weekAvg={cards.weekAvg && cards.weekAvg.approved} />
                     <StatTile icon="sig" label="אחוז מהנכנסים שמילאו פרטים" kind="rate" value={cards.today.visitToRegistered} yesterday={cards.yesterday.visitToRegistered} weekAvg={cards.weekAvg && cards.weekAvg.visitToRegistered} unmeasured={!topMeasured} />
-                    <StatTile icon="check" label="אחוז ממילאות הפרטים שסגרו הזמנה" kind="rate" value={cards.today.registeredToClosed} yesterday={cards.yesterday.registeredToClosed} weekAvg={cards.weekAvg && cards.weekAvg.registeredToClosed} />
+                    <StatTile icon="sparkle" label="אחוז ממילאות הפרטים שנפתחה להן הזמנה" kind="rate" value={cards.today.registeredToOpened} yesterday={cards.yesterday.registeredToOpened} weekAvg={cards.weekAvg && cards.weekAvg.registeredToOpened}
+                      extra={`בהגדרה המחמירה (אושרה או שולמה): ${fmtPct(cards.today.registeredToApproved)}`} />
                   </div>
                   <p className="st-note sa-foot">
                     {!topMeasured ? 'ההשוואה לאתמול ולממוצע השבועי חלה על הערוץ שנבחר. כניסות נמדדות רק בקישור הכללי. ' : ''}
-                    &quot;סגרו הזמנה&quot; של היום כולל רק הזמנות שנסגרו עד עכשיו. הערך עוד יכול לעלות עד {d.range.windowDays} ימים.
+                    &quot;נפתחה הזמנה&quot; של היום כולל רק הזמנות שנפתחו עד עכשיו. הערך עוד יכול לעלות עד {d.range.windowDays} ימים.
                   </p>
                 </Section>
 
@@ -306,8 +309,8 @@ export default function StationAnalyticsPage({ preload = null }) {
                     )}
                     {!hasData ? <p className="st-note" role="status">עדיין אין נתונים בטווח הזה. ברגע שלקוחות ייכנסו למסך, יתחילו להופיע כאן מספרים.</p> : null}
                     <ul className="sa-notes">
-                      {d.totals.windowStillOpen > 0 ? <li><Ic id="clock" />{fmtInt(d.totals.windowStillOpen)} מהנרשמות עדיין בתוך חלון ההמרה, ולכן &quot;סגרו הזמנה&quot; עוד יכול לעלות.{d.rates.registeredToClosedMatured !== null ? ` מבין מי שהחלון שלהן הסתיים: ${fmtPct(d.rates.registeredToClosedMatured)} סגרו הזמנה (${fmtInt(d.totals.closedInWindowMatured)} מתוך ${fmtInt(d.totals.maturedRegistered)}).` : ''}</li> : null}
-                      {d.totals.savedUnpaid > 0 ? <li><Ic id="note" />{fmtInt(d.totals.savedUnpaid)} שמרו הזמנה בלי שולם ובלי אישור מנהל. הן לא נספרות כסגורות.</li> : null}
+                      {d.totals.windowStillOpen > 0 ? <li><Ic id="clock" />{fmtInt(d.totals.windowStillOpen)} מהנרשמות עדיין בתוך חלון ההמרה, ולכן &quot;נפתחה הזמנה&quot; עוד יכול לעלות.{d.rates.registeredToOpenedMatured !== null ? ` מבין מי שהחלון שלהן הסתיים: ${fmtPct(d.rates.registeredToOpenedMatured)} נפתחה להן הזמנה (${fmtInt(d.totals.openedInWindowMatured)} מתוך ${fmtInt(d.totals.maturedRegistered)}), ו-${fmtPct(d.rates.registeredToApprovedMatured)} אושרה או שולמה.` : ''}</li> : null}
+                      {d.totals.openedNotApproved > 0 ? <li><Ic id="note" />{fmtInt(d.totals.openedNotApproved)} נפתחה להן הזמנה שעדיין לא אושרה או שולמה (נשמרה בלי תשלום ובלי אישור מנהל). הן נספרות ב&quot;נפתחה הזמנה&quot; ולא ב&quot;אושרה או שולמה&quot;.</li> : null}
                       {d.totals.droppedDeleted > 0 ? <li><Ic id="trash" />{fmtInt(d.totals.droppedDeleted)} רישומים של לקוחות שנמחקו לא נספרו.</li> : null}
                       {d.range.channel !== 'public' ? <li><Ic id="info" />נתוני הכניסות נאספים רק בקישור הכללי, ולכן שלבי הפתיחה לא מוצגים בערוץ הזה.</li> : null}
                       <li><Ic id="users" />חלוקה בטווח: קישור כללי <b>{fmtInt(d.totals.registeredByChannel.public)}</b>, עמדת חנות <b>{fmtInt(d.totals.registeredByChannel.kiosk)}</b> לקוחות.</li>
@@ -327,12 +330,12 @@ export default function StationAnalyticsPage({ preload = null }) {
                             series={[{ key: 'visits', label: 'נכנסו', slot: 1, values: d.daily.map((r) => r.visits) }]} />
                         </ChartCard>
                       ) : null}
-                      <ChartCard title="מילאו פרטים וסגרו הזמנה בכל יום" sub="לחיצה על יום מציגה את הרישומים שלו בטבלה למטה">
-                        <DayColumns days={dayItems} ariaLabel="מילאו פרטים וסגרו הזמנה בכל יום" emptyText="אין רישומים בטווח הזה" picked={listDay}
+                      <ChartCard title="מילאו פרטים ונפתחה להן הזמנה בכל יום" sub="לחיצה על יום מציגה את הרישומים שלו בטבלה למטה. הזמנות שאושרו מופיעות בתצוגת הטבלה">
+                        <DayColumns days={dayItems} ariaLabel="מילאו פרטים ונפתחה להן הזמנה בכל יום" emptyText="אין רישומים בטווח הזה" picked={listDay}
                           onPick={(day) => { setListDay(day); goSection('sa-regs'); }}
                           series={[
                             { key: 'registered', label: 'מילאו פרטים', slot: 2, values: d.daily.map((r) => r.registered) },
-                            { key: 'closed', label: 'סגרו הזמנה', slot: 1, values: d.daily.map((r) => r.closedInWindow) },
+                            { key: 'opened', label: 'נפתחה הזמנה', slot: 1, values: d.daily.map((r) => r.openedInWindow) },
                           ]} />
                       </ChartCard>
                       {topMeasured ? (
@@ -365,7 +368,7 @@ export default function StationAnalyticsPage({ preload = null }) {
                                 <td><bdi>{r.name}</bdi>{r.outcome && r.outcome !== 'created' ? <small className="sa-rep"> רישום חוזר</small> : null}</td>
                                 <td>{r.channel === 'kiosk' ? 'עמדת חנות' : 'קישור כללי'}</td>
                                 <td>{r.verification === 'verified' ? <StatusChip kind="green"><Ic id="userck" />{VERIFY_LABEL.verified}</StatusChip> : r.verification ? <StatusChip kind="amber">{VERIFY_LABEL[r.verification]}</StatusChip> : <span className="faint">—</span>}</td>
-                                <td>{r.closed ? <StatusChip kind="green"><Ic id="check" />{r.closedSameDay ? 'סגרה היום' : 'סגרה הזמנה'}</StatusChip> : r.savedUnpaid ? <StatusChip kind="amber">שמרה בלי שולם</StatusChip> : <span className="faint">עדיין לא</span>}</td>
+                                <td>{r.approved ? <StatusChip kind="green"><Ic id="check" />{r.approvedSameDay ? 'הזמנה אושרה היום' : 'הזמנה אושרה'}</StatusChip> : r.opened ? <StatusChip kind="amber">{r.openedSameDay ? 'נפתחה הזמנה היום, עוד לא אושרה' : 'נפתחה הזמנה, עוד לא אושרה'}</StatusChip> : <span className="faint">עדיין לא</span>}</td>
                               </tr>
                             ))}
                           </tbody>

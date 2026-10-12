@@ -51,9 +51,9 @@ function sample({ withData = true, channel = 'public', linkEnabled = true } = {}
 const LIST = {
   status: 'ok',
   rows: [
-    { customerId: 'a', name: 'שרה כ.', at: NOW.toISOString(), channel: 'public', outcome: 'created', verification: 'verified', closedSameDay: true, closed: true, savedUnpaid: false },
-    { customerId: 'b', name: 'רחל ל.', at: NOW.toISOString(), channel: 'kiosk', outcome: 'existing-marked', verification: 'repeat', closedSameDay: false, closed: false, savedUnpaid: true },
-    { customerId: 'c', name: 'לאה מ.', at: NOW.toISOString(), channel: 'public', outcome: 'created', verification: 'pending', closedSameDay: false, closed: false, savedUnpaid: false },
+    { customerId: 'a', name: 'שרה כ.', at: NOW.toISOString(), channel: 'public', outcome: 'created', verification: 'verified', opened: true, openedSameDay: true, approved: true, approvedSameDay: true, openedNotApproved: false },
+    { customerId: 'b', name: 'רחל ל.', at: NOW.toISOString(), channel: 'kiosk', outcome: 'existing-marked', verification: 'repeat', opened: true, openedSameDay: false, approved: false, approvedSameDay: false, openedNotApproved: true },
+    { customerId: 'c', name: 'לאה מ.', at: NOW.toISOString(), channel: 'public', outcome: 'created', verification: 'pending', opened: false, openedSameDay: false, approved: false, approvedSameDay: false, openedNotApproved: false },
   ],
 };
 const render = (preload) => renderToString(h(Page, { preload }));
@@ -66,7 +66,7 @@ test('full screen with data: renders, no NaN / undefined / Infinity / [object Ob
   assert.ok(html.includes('dir="rtl"'));
   for (const id of ['sa-sum', 'sa-funnel', 'sa-daily', 'sa-regs']) assert.ok(html.includes(`id="${id}"`), id);
   assert.ok(html.includes('המרות בעמדה הציבורית'));
-  assert.equal((html.match(/class="card sa-tile/g) || []).length, 5);
+  assert.equal((html.match(/class="card sa-tile/g) || []).length, 6);
 });
 
 test('visible text is Hebrew only (no English words) and shows no Gregorian date', () => {
@@ -83,13 +83,14 @@ test('funnel bars carry the real totals and conversion rates', () => {
   const html = render({ data, list: LIST });
   const t = textOf(html);
   assert.ok(t.includes(`${data.totals.visits}`));
-  assert.ok(t.includes('נכנסו לעמדה') && t.includes('מילאו פרטים') && t.includes('סגרו הזמנה') && t.includes('אומתו על ידי עובדת'));
+  assert.ok(t.includes('נכנסו לעמדה') && t.includes('מילאו פרטים') && t.includes('נפתחה להן הזמנה') && t.includes('הזמנה אושרה או שולמה') && t.includes('אומתו על ידי עובדת'));
   assert.ok(/מתוך מי שפתחו את הטופס/.test(t));
   const bars = [...html.matchAll(/class="sa-fbar" style="width:([\d.]+)%"/g)].map((m) => parseFloat(m[1]));
-  assert.equal(bars.length, 6);
+  assert.equal(bars.length, 7);
   assert.equal(bars[0], 100); // הגדול ביותר = נכנסו
   assert.ok(bars.every((b) => b >= 0 && b <= 100));
   assert.ok(bars[3] > 0 && bars[3] < bars[0]);
+  assert.ok(bars[5] >= bars[6]); // נפתחה >= אושרה
 });
 
 test('summary tiles: today / yesterday / weekly average with comparison arrows', () => {
@@ -101,11 +102,11 @@ test('summary tiles: today / yesterday / weekly average with comparison arrows',
 test('daily columns chart: one hit band per day, 7 bands, RTL order (first day at the right edge), tooltips accessible via aria-label', () => {
   const data = sample();
   const days = data.daily.map((r) => ({ day: r.day, label: r.day.slice(5), title: `יום ${r.day}` }));
-  const html = renderToStaticMarkup(h(Charts.DayColumns, { days, ariaLabel: 'בדיקה', emptyText: 'ריק', series: [{ key: 'a', label: 'מילאו פרטים', slot: 2, values: data.daily.map((r) => r.registered) }, { key: 'b', label: 'סגרו הזמנה', slot: 1, values: data.daily.map((r) => r.closedInWindow) }] }));
+  const html = renderToStaticMarkup(h(Charts.DayColumns, { days, ariaLabel: 'בדיקה', emptyText: 'ריק', series: [{ key: 'a', label: 'מילאו פרטים', slot: 2, values: data.daily.map((r) => r.registered) }, { key: 'b', label: 'נפתחה הזמנה', slot: 1, values: data.daily.map((r) => r.approvedInWindow) }] }));
   const hits = [...html.matchAll(/<rect class="sa-hit" x="([\d.]+)"/g)].map((m) => parseFloat(m[1]));
   assert.equal(hits.length, 7);
   assert.ok(hits[0] > hits[6], 'היום הראשון אמור להיות בימין (x גדול)');
-  assert.ok((html.match(/aria-label="יום [^"]*מילאו פרטים \d+, סגרו הזמנה \d+"/g) || []).length === 7);
+  assert.ok((html.match(/aria-label="יום [^"]*מילאו פרטים \d+, נפתחה הזמנה \d+"/g) || []).length === 7);
   assert.ok(html.includes('sa-legend'));
   assert.ok(!/NaN|Infinity/.test(html));
   assert.ok(!html.includes('sa-empty-over'));
@@ -166,7 +167,7 @@ test('registrations table: shortened names only, verification + order chips, cha
   const html = render({ data: sample(), list: LIST });
   const t = textOf(html);
   for (const n of ['שרה כ.', 'רחל ל.', 'לאה מ.']) assert.ok(t.includes(n), n);
-  assert.ok(t.includes('אומתה') && t.includes('ממתינה לאימות') && t.includes('סגרה היום') && t.includes('שמרה בלי שולם') && t.includes('עדיין לא') && t.includes('רישום חוזר'));
+  assert.ok(t.includes('אומתה') && t.includes('ממתינה לאימות') && t.includes('הזמנה אושרה היום') && t.includes('נפתחה הזמנה, עוד לא אושרה') && t.includes('עדיין לא') && t.includes('רישום חוזר'));
   assert.ok(t.includes('עמדת חנות') && t.includes('קישור כללי'));
   const forb = render({ data: sample(), list: { status: 'forbidden', rows: [] } });
   assert.ok(textOf(forb).includes('מורשה לצפות בפרטי לקוחות'));

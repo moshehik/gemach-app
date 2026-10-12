@@ -34,6 +34,7 @@
 .gm-ds.gm-sa .sa-delta.sa-down .sa-arr{color:var(--gm-gold-d)}
 .gm-ds.gm-sa .sa-delta-l{display:none}
 .gm-ds.gm-sa .sa-tile.sa-off .sa-tile-v{color:var(--gm-ink3)}
+.gm-ds.gm-sa .sa-tile-x{color:var(--gm-ink2);font-size:13px;line-height:1.4;font-weight:500}
 .gm-ds.gm-sa .sa-tile-n{color:var(--gm-ink3);font-size:13px;line-height:1.4}
 .gm-ds.gm-sa .sa-foot{padding-top:14px}
 

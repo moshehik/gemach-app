@@ -86,23 +86,23 @@ try {
   const oldDay = getIsraelDateKey(oldReg);
 
   // --- הלקוחות והתרחישים (הצפי לכל אחת מוצהר ידנית; בהמשך מושווה גם ל-SQL עצמאי)
-  const S = {}; // id -> { closed, ... }
+  const S = {}; // id -> { opened, approved, ... }
   const sc = async (id, opts, expect) => { await addCustomer(id, opts); S[id] = expect; };
-  await sc('sa-c-01', { notes: `${KIOSK_REG_VERIFIED_TAG} (אומתה)` }, { closed: true, verified: true });                 // נרשמה ואומתה, הזמנה מאושרת אחרי
-  await sc('sa-c-02', {}, { closed: false });                                                                             // טיוטה
-  await sc('sa-c-03', {}, { closed: false });                                                                             // הזמנה מחוקה
-  await sc('sa-c-04', {}, { closed: false });                                                                             // הזמנה מאושרת אבל לפני הרישום
-  await sc('sa-c-05', {}, { closed: true });                                                                              // נרשמה פעמיים (אותו יום) + הזמנה
+  await sc('sa-c-01', { notes: `${KIOSK_REG_VERIFIED_TAG} (אומתה)` }, { opened: true, approved: true, verified: true });                 // נרשמה ואומתה, הזמנה מאושרת אחרי
+  await sc('sa-c-02', {}, { approved: false });                                                                             // טיוטה
+  await sc('sa-c-03', {}, { approved: false });                                                                             // הזמנה מחוקה
+  await sc('sa-c-04', {}, { approved: false });                                                                             // הזמנה מאושרת אבל לפני הרישום
+  await sc('sa-c-05', {}, { opened: true, approved: true });                                                                              // נרשמה פעמיים (אותו יום) + הזמנה
   await sc('sa-c-06', { deleted: true }, { excluded: true });                                                             // לקוחה מחוקה
-  await sc('sa-c-07', {}, { closed: false, savedUnpaid: true });                                                          // סטטוס NULL, פריט ממתין (לא שולם)
-  await sc('sa-c-08', {}, { closed: false });                                                                             // שמור לחיוב (placeholder)
-  await sc('sa-c-09', {}, { closed: false });                                                                             // כל הפריטים נמחקו
-  await sc('sa-c-10', { notes: `${KIOSK_REG_PENDING_TAG} 1.1.2026` }, { closed: true, channel: 'kiosk' });               // עמדת חנות, הזמנה
-  await sc('sa-c-11', { notes: `${KIOSK_REG_REPEAT_TAG} 1.1.2026` }, { closed: false });                                  // רישום חוזר; הזמנה ישנה בלבד
-  await sc('sa-c-12', {}, { closed: true, old: true });                                                                   // רישום לפני 20 יום; הזמנה ביום 14 בדיוק
-  await sc('sa-c-13', {}, { closed: false, old: true });                                                                  // רישום לפני 20 יום; הזמנה ביום 15
-  await sc('sa-c-14', {}, { closed: false });                                                                             // בלי הזמנה בכלל
-  await sc('sa-c-15', {}, { closed: true });                                                                              // הזמנה בסטטוס "חדש" עם פריט confirmed
+  await sc('sa-c-07', {}, { opened: true, approved: false, openedNotApproved: true });                                                          // סטטוס NULL, פריט ממתין (לא שולם)
+  await sc('sa-c-08', {}, { approved: false });                                                                             // שמור לחיוב (placeholder)
+  await sc('sa-c-09', {}, { approved: false });                                                                             // כל הפריטים נמחקו
+  await sc('sa-c-10', { notes: `${KIOSK_REG_PENDING_TAG} 1.1.2026` }, { opened: true, approved: true, channel: 'kiosk' });               // עמדת חנות, הזמנה
+  await sc('sa-c-11', { notes: `${KIOSK_REG_REPEAT_TAG} 1.1.2026` }, { approved: false });                                  // רישום חוזר; הזמנה ישנה בלבד
+  await sc('sa-c-12', {}, { opened: true, approved: true, old: true });                                                                   // רישום לפני 20 יום; הזמנה ביום 14 בדיוק
+  await sc('sa-c-13', {}, { approved: false, old: true });                                                                  // רישום לפני 20 יום; הזמנה ביום 15
+  await sc('sa-c-14', {}, { approved: false });                                                                             // בלי הזמנה בכלל
+  await sc('sa-c-15', {}, { opened: true, approved: true });                                                                              // הזמנה בסטטוס "חדש" עם פריט confirmed
   for (const id of ['sa-c-01', 'sa-c-02', 'sa-c-03', 'sa-c-04', 'sa-c-05', 'sa-c-06', 'sa-c-07', 'sa-c-08', 'sa-c-09', 'sa-c-11', 'sa-c-14', 'sa-c-15']) await addRegister(id, regAt);
   await addRegister('sa-c-05', new Date(regAt.getTime() + 5 * MIN), { outcome: 'existing-marked' });
   await addRegister('sa-c-10', regAt, { channel: 'kiosk' });
@@ -146,7 +146,7 @@ try {
 
   // --- צפי ידני
   const regs = Object.entries(S).filter(([, v]) => !v.excluded);
-  const expClosed = regs.filter(([, v]) => v.closed).length;
+  const expApproved = regs.filter(([, v]) => v.approved).length;
   const expVerified = regs.filter(([, v]) => v.verified).length;
   const publicRegs = regs.filter(([, v]) => v.channel !== 'kiosk');
   check('מילאו פרטים (ציבורי): 13 לקוחות שונות, בלי המחוקה ובלי עמדת החנות, בלי לספור פעמיים את sa-c-05', () => {
@@ -175,6 +175,12 @@ try {
                         AND (o."status" IS NULL OR o."status" NOT IN ('טיוטה','שמור לחיוב'))
                         AND o."orderDate" >= r.first_at
                         AND ((o."orderDate" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Jerusalem')::date <= (r.first_day::date + 14)
+                        AND EXISTS (SELECT 1 FROM "OrderItem" i WHERE i."orderId" = o."orderId" AND NOT i."isDeleted")) AS is_opened,
+             EXISTS (SELECT 1 FROM "Order" o
+                      WHERE o."customerId" = r."customerId" AND NOT o."isDeleted"
+                        AND (o."status" IS NULL OR o."status" NOT IN ('טיוטה','שמור לחיוב'))
+                        AND o."orderDate" >= r.first_at
+                        AND ((o."orderDate" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Jerusalem')::date <= (r.first_day::date + 14)
                         AND EXISTS (SELECT 1 FROM "OrderItem" i WHERE i."orderId" = o."orderId" AND NOT i."isDeleted" AND i."cartStatus" = 'confirmed')) AS is_closed,
              EXISTS (SELECT 1 FROM "Order" o
                       WHERE o."customerId" = r."customerId" AND NOT o."isDeleted"
@@ -184,19 +190,24 @@ try {
                         AND EXISTS (SELECT 1 FROM "OrderItem" i WHERE i."orderId" = o."orderId" AND NOT i."isDeleted" AND i."cartStatus" = 'confirmed')) AS same_day
         FROM reg r)
     SELECT (SELECT count(*)::int FROM reg) AS registered,
+           (SELECT count(*)::int FROM closed WHERE is_opened) AS opened,
            (SELECT count(*)::int FROM closed WHERE is_closed) AS closed,
            (SELECT count(*)::int FROM closed WHERE same_day) AS same_day`, from, todayKey);
   const d = direct[0];
   check('SQL עצמאי (אזור זמן ב-Postgres): נרשמו = מה שהמודול מחשב', () => assert.equal(res.totals.registered, d.registered));
-  check('SQL עצמאי: סגרו הזמנה בחלון 14 ימים = מה שהמודול מחשב', () => assert.equal(res.totals.closedInWindow, d.closed));
-  check('SQL עצמאי: סגרו באותו יום = מה שהמודול מחשב', () => assert.equal(res.totals.closedSameDay, d.same_day));
+  check('SQL עצמאי: נפתחה הזמנה בחלון 14 ימים (כל הזמנה אמיתית, גם בלי תשלום) = מה שהמודול מחשב', () => assert.equal(res.totals.openedInWindow, d.opened));
+  check('SQL עצמאי: הזמנה אושרה או שולמה בחלון 14 ימים = מה שהמודול מחשב', () => assert.equal(res.totals.approvedInWindow, d.closed));
+  check('SQL עצמאי: אושרה באותו יום = מה שהמודול מחשב', () => assert.equal(res.totals.approvedSameDay, d.same_day));
   check('צפי ידני: sa-c-01/05/10(קיוסק-לא)/12/15 סגרו - 4 בערוץ הציבורי (01, 05, 12, 15)', () => {
-    const exp = publicRegs.filter(([, v]) => v.closed).length;
+    const exp = publicRegs.filter(([, v]) => v.approved).length;
+    const expOpened = publicRegs.filter(([, v]) => v.opened).length;
+    assert.equal(expOpened, 5); // 01, 05, 07 (שמורה בלי תשלום), 12, 15
+    assert.equal(res.totals.openedInWindow, expOpened);
     assert.equal(exp, 4);
-    assert.equal(res.totals.closedInWindow, exp);
+    assert.equal(res.totals.approvedInWindow, exp);
   });
-  void expClosed;
-  check('הזמנה שנשמרה ללא תשלום (פריט ממתין, סטטוס NULL) מדווחת כ-savedUnpaid ולא כסגורה', () => assert.equal(res.totals.savedUnpaid, 1));
+  void expApproved;
+  check('הזמנה שנשמרה ללא תשלום (פריט ממתין, סטטוס NULL) נספרת כנפתחה (לא אושרה) ומדווחת כ-openedNotApproved', () => assert.equal(res.totals.openedNotApproved, 1));
   check('חלון שטרם הסתיים: 12 נרשמות מהיום עדיין בחלון; 2 ישנות (לפני 20 יום) הבשילו', () => {
     assert.equal(res.totals.maturedRegistered, 2);
     assert.equal(res.totals.windowStillOpen, publicRegs.length - 2);
@@ -208,20 +219,21 @@ try {
   });
   check('שיעורים: ביקור->מילאו פרטים = נרשמו/ביקורים; נרשמו->הזמנה = סגרו/נרשמו', () => {
     assert.equal(res.rates.visitToRegistered, res.totals.registered / 65);
-    assert.equal(res.rates.registeredToClosed, res.totals.closedInWindow / res.totals.registered);
+    assert.equal(res.rates.registeredToApproved, res.totals.approvedInWindow / res.totals.registered);
+    assert.equal(res.rates.registeredToOpened, res.totals.openedInWindow / res.totals.registered);
   });
 
   // ערוץ עמדת חנות: top null, לקוחה אחת שסגרה
   const kiosk = await computeStationAnalytics(dbSvc, { from, to: todayKey, channel: 'kiosk', windowDays: 14 }, { now: NOW });
   check('ערוץ עמדת חנות: לקוחה אחת, סגרה, ושלבי הפתיחה לא נמדדים (null)', () => {
     assert.equal(kiosk.totals.registered, 1);
-    assert.equal(kiosk.totals.closedInWindow, 1);
+    assert.equal(kiosk.totals.approvedInWindow, 1);
     assert.equal(kiosk.funnel[0].count, null);
   });
 
   // חלון ארוך מ-14 יום: sa-c-13 (הזמנה ביום 15) נכנסת בחלון 30
   const w30 = await computeStationAnalytics(dbSvc, { from, to: todayKey, channel: 'public', windowDays: 30 }, { now: NOW });
-  check('חלון 30 יום: ההזמנה של sa-c-13 (יום 15) נספרת, כך שיש סגירה אחת יותר', () => assert.equal(w30.totals.closedInWindow, res.totals.closedInWindow + 1));
+  check('חלון 30 יום: ההזמנה של sa-c-13 (יום 15) נספרת, כך שיש הזמנה אחת יותר נפתחה ואושרה', () => { assert.equal(w30.totals.approvedInWindow, res.totals.approvedInWindow + 1); assert.equal(w30.totals.openedInWindow, res.totals.openedInWindow + 1); });
 
   // טווח שלא כולל את הרישומים: אפסים, שיעורים null
   const empty = await computeStationAnalytics(dbSvc, { from: addDaysToDateKey(todayKey, -400), to: addDaysToDateKey(todayKey, -380), channel: 'public', windowDays: 14 }, { now: NOW });
@@ -245,9 +257,12 @@ try {
     const r1 = list.rows.find((r) => r.customerId === 'sa-c-01');
     assert.equal(r1.name, 'בדיקה א.');
     assert.equal(r1.verification, 'verified');
-    assert.equal(r1.closed, true);
+    assert.equal(r1.approved, true);
+    assert.equal(r1.opened, true);
     assert.equal(list.rows.find((r) => r.customerId === 'sa-c-11').verification, 'repeat');
-    assert.equal(list.rows.find((r) => r.customerId === 'sa-c-14').closed, false);
+    assert.equal(list.rows.find((r) => r.customerId === 'sa-c-14').opened, false);
+    assert.equal(list.rows.find((r) => r.customerId === 'sa-c-07').opened, true);
+    assert.equal(list.rows.find((r) => r.customerId === 'sa-c-07').approved, false);
     assert.ok(!JSON.stringify(list).includes('אוטומטית'));
   });
 

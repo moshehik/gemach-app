@@ -19,7 +19,7 @@ const ord = (customerId, iso, extra = {}) => ({ customerId, orderId: ++seq, orde
 const ev = (dayKey, type, count, channel = 'public') => ({ dayKey, type, channel, count });
 const run = (o) => C.buildAnalytics({ from: '2026-10-12', to: '2026-10-12', channel: 'public', windowDays: 14, now: NOW, ...o });
 
-test('funnel: counts and rates along the stages (visit -> form -> registered -> verified / closed)', () => {
+test('funnel: counts and rates along the stages (visit -> form -> registered -> verified / opened -> approved)', () => {
   const customers = new Map([['a', cust({ state: 'verified' })], ['b', cust({ state: 'verified' })], ['c', cust()], ['d', cust()]]);
   const r = run({
     events: [ev('2026-10-12', 'visit', 100), ev('2026-10-12', 'availability', 40), ev('2026-10-12', 'form_start', 8)],
@@ -33,17 +33,22 @@ test('funnel: counts and rates along the stages (visit -> form -> registered -> 
   assert.equal(f.formStart.count, 8);
   assert.equal(f.registered.count, 4);
   assert.equal(f.verified.count, 2);
-  assert.equal(f.closed.count, 2); // a (אותו יום) + c (למחרת, בתוך החלון)
-  assert.equal(r.totals.closedSameDay, 1);
+  assert.equal(f.opened.count, 2); // a (אותו יום) + c (למחרת, בתוך החלון)
+  assert.equal(f.approved.count, 2);
+  assert.equal(r.totals.approvedSameDay, 1);
   assert.equal(r.rates.visitToRegistered, 0.04);
   assert.equal(r.rates.formToRegistered, 0.5);
   assert.equal(r.rates.registeredToVerified, 0.5);
-  assert.equal(r.rates.registeredToClosed, 0.5);
-  assert.equal(r.rates.visitToClosed, 0.02);
+  assert.equal(r.rates.registeredToOpened, 0.5);
+  assert.equal(r.rates.registeredToApproved, 0.5);
+  assert.equal(r.rates.visitToOpened, 0.02);
+  assert.equal(r.rates.visitToApproved, 0.02);
+  assert.equal(r.rates.openedToApproved, 1);
   assert.equal(f.availability.rateFromParent, 0.4);
   assert.equal(f.registered.rateFromParent, 0.5); // מ-form_start
-  assert.equal(f.closed.rateFromParent, 0.5); // מ-registered
-  assert.equal(f.closed.rateFromVisits, 0.02);
+  assert.equal(f.opened.rateFromParent, 0.5); // מ-registered
+  assert.equal(f.opened.rateFromVisits, 0.02);
+  assert.equal(f.approved.rateFromParent, 1); // מ-opened
 });
 
 test('same customer registered twice on one day counts once (earliest event), per day and in the range', () => {
@@ -65,8 +70,8 @@ test('same customer on two days: each day shows her, the range counts her once (
   assert.deepEqual(r.daily.map((d) => d.registered), [1, 0, 1]);
   assert.equal(r.totals.registered, 1);
   assert.equal(r.totals.registeredDaySum, 2);
-  assert.equal(r.totals.closedInWindow, 1);
-  assert.deepEqual(r.daily.map((d) => d.closedInWindow), [1, 0, 0]); // ההזמנה אחרי הרישום של ה-10, לפני הרישום החוזר של ה-12
+  assert.equal(r.totals.approvedInWindow, 1);
+  assert.deepEqual(r.daily.map((d) => d.approvedInWindow), [1, 0, 0]); // ההזמנה אחרי הרישום של ה-10, לפני הרישום החוזר של ה-12
 });
 
 test('deleted customer registration is not counted (reported as droppedDeleted); missing customer row too', () => {
@@ -84,38 +89,38 @@ test('order created BEFORE the registration never counts (even earlier the same 
     customers: new Map([['a', cust({ state: 'repeat' })]]),
     orders: [ord('a', '2026-10-12T05:59:59Z'), ord('a', '2026-10-01T10:00:00Z')],
   });
-  assert.equal(r.totals.closedInWindow, 0);
-  assert.equal(r.totals.closedSameDay, 0);
-  assert.equal(r.rates.registeredToClosed, 0);
+  assert.equal(r.totals.approvedInWindow, 0);
+  assert.equal(r.totals.approvedSameDay, 0);
+  assert.equal(r.rates.registeredToApproved, 0);
 });
 
 test('order at the very same instant as the registration counts; one millisecond before does not', () => {
   const at = '2026-10-12T06:00:00.000Z';
   const a = run({ registrations: [reg('a', at)], customers: new Map([['a', cust()]]), orders: [ord('a', at)] });
-  assert.equal(a.totals.closedInWindow, 1);
+  assert.equal(a.totals.approvedInWindow, 1);
   const b = run({ registrations: [reg('a', at)], customers: new Map([['a', cust()]]), orders: [ord('a', '2026-10-12T05:59:59.999Z')] });
-  assert.equal(b.totals.closedInWindow, 0);
+  assert.equal(b.totals.approvedInWindow, 0);
 });
 
-test('saved-but-not-confirmed order (cancelled cart / unpaid hold) is not a closed order; reported separately as savedUnpaid', () => {
+test('saved-but-not-confirmed order (unpaid hold) COUNTS as opened but not as approved; reported as openedNotApproved', () => {
   const r = run({
     registrations: [reg('a', '2026-10-12T05:00:00Z'), reg('b', '2026-10-12T05:00:00Z')],
     customers: new Map([['a', cust()], ['b', cust()]]),
     orders: [ord('a', '2026-10-12T06:00:00Z', { confirmed: false, hasItem: true }), ord('b', '2026-10-12T06:00:00Z', { confirmed: false, hasItem: true }), ord('b', '2026-10-12T06:30:00Z')],
   });
-  assert.equal(r.totals.closedInWindow, 1); // b בלבד
-  assert.equal(r.totals.savedUnpaid, 1); // a בלבד (ל-b יש גם הזמנה סגורה)
+  assert.equal(r.totals.approvedInWindow, 1); // b בלבד
+  assert.equal(r.totals.openedNotApproved, 1); // a בלבד (ל-b יש גם הזמנה סגורה)
 });
 
 test('conversion window: day N after the registration day counts, day N+1 does not (calendar days, Israel)', () => {
   const regIso = '2026-09-20T07:00:00Z'; // 10:00 ישראל
   const base = { from: '2026-09-20', to: '2026-09-20', registrations: [reg('a', regIso)], customers: new Map([['a', cust()]]), windowDays: 14 };
   const lastDay = run({ ...base, orders: [ord('a', '2026-10-04T20:59:00Z')] }); // 23:59 ישראל ביום ה-4.10 (יום 14)
-  assert.equal(lastDay.totals.closedInWindow, 1);
+  assert.equal(lastDay.totals.approvedInWindow, 1);
   const tooLate = run({ ...base, orders: [ord('a', '2026-10-04T21:00:00Z')] }); // 00:00 ב-5.10 (יום 15)
-  assert.equal(tooLate.totals.closedInWindow, 0);
+  assert.equal(tooLate.totals.approvedInWindow, 0);
   const w7 = run({ ...base, windowDays: 7, orders: [ord('a', '2026-09-28T07:00:00Z')] }); // יום 8
-  assert.equal(w7.totals.closedInWindow, 0);
+  assert.equal(w7.totals.approvedInWindow, 0);
 });
 
 test('Israel midnight boundary: 23:59 and 00:00 local fall on different days (summer, UTC+3)', () => {
@@ -128,16 +133,16 @@ test('Israel midnight boundary: 23:59 and 00:00 local fall on different days (su
     orders: [ord('a', '2026-10-11T21:30:00Z')], // 00:30 ב-12.10
   });
   assert.deepEqual(r.daily.map((d) => d.registered), [1, 0]);
-  assert.equal(r.totals.closedInWindow, 1);
-  assert.equal(r.totals.closedSameDay, 0); // ההזמנה כבר ביום הבא בישראל
+  assert.equal(r.totals.approvedInWindow, 1);
+  assert.equal(r.totals.approvedSameDay, 0); // ההזמנה כבר ביום הבא בישראל
 });
 
 test('DST fall-back (Israel 25.10.2026): window end and day keys stay correct across the extra hour', () => {
   assert.equal(C.dayOf(new Date('2026-10-25T21:30:00Z')), '2026-10-25'); // 23:30 IST
   assert.equal(C.dayOf(new Date('2026-10-25T22:00:00Z')), '2026-10-26'); // 00:00 IST
   const base = { from: '2026-10-24', to: '2026-10-24', registrations: [reg('a', '2026-10-24T08:00:00Z')], customers: new Map([['a', cust()]]), windowDays: 1, now: new Date('2026-11-30T10:00:00Z') };
-  assert.equal(run({ ...base, orders: [ord('a', '2026-10-25T21:59:00Z')] }).totals.closedInWindow, 1); // 23:59 ב-25.10 = יום 1
-  assert.equal(run({ ...base, orders: [ord('a', '2026-10-25T22:00:00Z')] }).totals.closedInWindow, 0); // 00:00 ב-26.10 = יום 2
+  assert.equal(run({ ...base, orders: [ord('a', '2026-10-25T21:59:00Z')] }).totals.approvedInWindow, 1); // 23:59 ב-25.10 = יום 1
+  assert.equal(run({ ...base, orders: [ord('a', '2026-10-25T22:00:00Z')] }).totals.approvedInWindow, 0); // 00:00 ב-26.10 = יום 2
 });
 
 test('window maturity: recent registrations are flagged still-open; rate on matured ones is separate', () => {
@@ -150,14 +155,14 @@ test('window maturity: recent registrations are flagged still-open; rate on matu
   assert.equal(r.totals.registered, 3);
   assert.equal(r.totals.windowStillOpen, 1);
   assert.equal(r.totals.maturedRegistered, 2);
-  assert.equal(r.totals.closedInWindowMatured, 1);
-  assert.equal(r.rates.registeredToClosedMatured, 0.5);
+  assert.equal(r.totals.approvedInWindowMatured, 1);
+  assert.equal(r.rates.registeredToApprovedMatured, 0.5);
 });
 
 test('empty days and empty data: zeros, null rates, no NaN / Infinity anywhere', () => {
   const r = run({ from: '2026-10-01', to: '2026-10-12' });
   assert.equal(r.daily.length, 12);
-  assert.ok(r.daily.every((d) => d.visits === 0 && d.registered === 0 && d.closedInWindow === 0));
+  assert.ok(r.daily.every((d) => d.visits === 0 && d.registered === 0 && d.approvedInWindow === 0));
   for (const v of Object.values(r.rates)) assert.equal(v, null);
   for (const s of r.funnel) { assert.ok(s.count === 0); assert.equal(s.rateFromParent, null); }
   assert.ok(!/NaN|Infinity/.test(JSON.stringify(r)));
@@ -166,9 +171,9 @@ test('empty days and empty data: zeros, null rates, no NaN / Infinity anywhere',
 test('divide by zero: registrations with zero recorded visits -> visit conversion is null, registration->order still defined', () => {
   const r = run({ registrations: [reg('a', '2026-10-12T05:00:00Z')], customers: new Map([['a', cust()]]), orders: [ord('a', '2026-10-12T06:00:00Z')] });
   assert.equal(r.rates.visitToRegistered, null);
-  assert.equal(r.rates.visitToClosed, null);
+  assert.equal(r.rates.visitToApproved, null);
   assert.equal(r.rates.formToRegistered, null);
-  assert.equal(r.rates.registeredToClosed, 1);
+  assert.equal(r.rates.registeredToApproved, 1);
 });
 
 test('registrations can exceed form_start (events lost / two people on one device): rate is reported raw, not clamped', () => {
@@ -235,29 +240,29 @@ test('long range (180 days, 5000 registrations, 3000 orders) computes fast and c
   assert.equal(r.daily.length, 181);
   assert.equal(r.totals.registered, 5000 - registrations.filter((x) => x.dayKey > '2026-10-12').length);
   assert.equal(r.daily.reduce((a, d) => a + d.registered, 0), r.totals.registeredDaySum);
-  assert.ok(r.totals.closedInWindow <= r.totals.registered);
+  assert.ok(r.totals.approvedInWindow <= r.totals.registered);
 });
 
 test('cards: today vs yesterday vs 7-day average; averages of rates are pooled ratios; missing days count as zero', () => {
   const daily = [
-    { day: '2026-10-05', visits: 10, registered: 1, closedInWindow: 1 },
-    { day: '2026-10-08', visits: 30, registered: 3, closedInWindow: 0 },
-    { day: '2026-10-11', visits: 20, registered: 4, closedInWindow: 2 },
-    { day: '2026-10-12', visits: 50, registered: 5, closedInWindow: 1 },
+    { day: '2026-10-05', visits: 10, registered: 1, approvedInWindow: 1 },
+    { day: '2026-10-08', visits: 30, registered: 3, approvedInWindow: 0 },
+    { day: '2026-10-11', visits: 20, registered: 4, approvedInWindow: 2 },
+    { day: '2026-10-12', visits: 50, registered: 5, approvedInWindow: 1 },
   ];
   const c = C.buildCards({ daily, todayKey: '2026-10-12', topMeasured: true });
   assert.equal(c.today.visits, 50);
   assert.equal(c.today.visitToRegistered, 0.1);
   assert.equal(c.yesterday.registered, 4);
-  assert.equal(c.yesterday.registeredToClosed, 0.5);
+  assert.equal(c.yesterday.registeredToApproved, 0.5);
   // 7 הימים שלפני ה-12.10: 5..11 -> ביקורים 60/7, נרשמו 8/7, שיעור מצטבר 8/60
   assert.equal(c.weekAvg.days, 7);
   assert.ok(Math.abs(c.weekAvg.visits - 60 / 7) < 1e-9);
   assert.ok(Math.abs(c.weekAvg.visitToRegistered - 8 / 60) < 1e-9);
-  assert.ok(Math.abs(c.weekAvg.registeredToClosed - 3 / 8) < 1e-9);
+  assert.ok(Math.abs(c.weekAvg.registeredToApproved - 3 / 8) < 1e-9);
   const none = C.buildCards({ daily: [], todayKey: '2026-10-12', topMeasured: true });
   assert.equal(none.today.visitToRegistered, null);
-  assert.equal(none.weekAvg.registeredToClosed, null);
+  assert.equal(none.weekAvg.registeredToApproved, null);
 });
 
 test('shortName: first name + first letter of the family name, nothing more', () => {
@@ -295,4 +300,52 @@ test('NON_ORDER_STATUSES mirror the real constants of lib/orderReservation.js', 
 test('contract: ANON_EVENT_TYPES has no register (register is server-only); every funnel stage has a Hebrew label', () => {
   assert.ok(!K.ANON_EVENT_TYPES.includes('register'));
   for (const s of K.FUNNEL_STAGES) assert.ok(/[֐-׿]/.test(s.label));
+});
+
+test('opened vs approved: an unpaid saved order is opened (the main conversion) but not approved (the strict one); both rates reported', () => {
+  const r = run({
+    registrations: [reg('a', '2026-10-12T05:00:00Z'), reg('b', '2026-10-12T05:00:00Z'), reg('c', '2026-10-12T05:00:00Z'), reg('d', '2026-10-12T05:00:00Z')],
+    customers: new Map(['a', 'b', 'c', 'd'].map((id) => [id, cust()])),
+    orders: [
+      ord('a', '2026-10-12T06:00:00Z', { confirmed: false, hasItem: true }), // נפתחה, לא אושרה
+      ord('b', '2026-10-12T06:00:00Z'), // נפתחה ואושרה
+      ord('c', '2026-10-12T06:00:00Z', { confirmed: false, hasItem: false }), // בלי פריט פעיל: לא הזמנה אמיתית
+    ],
+  });
+  assert.equal(r.totals.openedInWindow, 2);
+  assert.equal(r.totals.approvedInWindow, 1);
+  assert.equal(r.totals.openedNotApproved, 1);
+  assert.equal(r.totals.openedSameDay, 2);
+  assert.equal(r.rates.registeredToOpened, 0.5);
+  assert.equal(r.rates.registeredToApproved, 0.25);
+  assert.equal(r.rates.openedToApproved, 0.5);
+  assert.ok(r.totals.approvedInWindow <= r.totals.openedInWindow);
+  assert.equal(r.daily[0].openedInWindow, 2);
+  assert.equal(r.daily[0].approvedInWindow, 1);
+});
+
+test('opened: an order created before the registration or after the window never counts, even if approved', () => {
+  const base = { registrations: [reg('a', '2026-10-12T06:00:00Z')], customers: new Map([['a', cust()]]) };
+  assert.equal(run({ ...base, orders: [ord('a', '2026-10-12T05:00:00Z', { confirmed: false, hasItem: true })] }).totals.openedInWindow, 0);
+  assert.equal(run({ ...base, windowDays: 1, orders: [ord('a', '2026-10-14T06:00:00Z', { confirmed: false, hasItem: true })] }).totals.openedInWindow, 0);
+  assert.equal(run({ ...base, windowDays: 1, orders: [ord('a', '2026-10-13T20:59:00Z', { confirmed: false, hasItem: true })] }).totals.openedInWindow, 1);
+});
+
+test('opened window maturity and cards carry opened / approved with pooled ratios', () => {
+  const r = run({
+    from: '2026-09-01', to: '2026-10-12',
+    registrations: [reg('old', '2026-09-02T07:00:00Z'), reg('old2', '2026-09-03T07:00:00Z'), reg('new', '2026-10-11T07:00:00Z')],
+    customers: new Map([['old', cust()], ['old2', cust()], ['new', cust()]]),
+    orders: [ord('old', '2026-09-05T07:00:00Z', { confirmed: false, hasItem: true }), ord('old2', '2026-09-05T07:00:00Z')],
+  });
+  assert.equal(r.totals.openedInWindowMatured, 2);
+  assert.equal(r.totals.approvedInWindowMatured, 1);
+  assert.equal(r.rates.registeredToOpenedMatured, 1);
+  assert.equal(r.rates.registeredToApprovedMatured, 0.5);
+  const cards = C.buildCards({ daily: [{ day: '2026-10-12', visits: 10, registered: 4, openedInWindow: 2, approvedInWindow: 1 }], todayKey: '2026-10-12', topMeasured: true });
+  assert.equal(cards.today.opened, 2);
+  assert.equal(cards.today.approved, 1);
+  assert.equal(cards.today.registeredToOpened, 0.5);
+  assert.equal(cards.today.registeredToApproved, 0.25);
+  assert.equal(cards.weekAvg.registeredToOpened, null);
 });
