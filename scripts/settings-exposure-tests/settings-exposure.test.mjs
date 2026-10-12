@@ -320,3 +320,79 @@ test('(e) the public-surface list matches the layout: only the kiosk, the punch 
   // the main layout lifts the wall for the kiosk and the punch clock; the in-flight branches add /station and /privacy|/terms (isPublicDoc)
   for (const n of exemptions) assert.ok(['isPublicKiosk', 'isPunchClock', 'isPublicDoc'].includes(n), `new login-wall exemption "${n}" in app/layout.js: add its folder to PUBLIC_SURFACE_DIRS here and review what it reads from /api/settings`);
 });
+
+// ---------------------------------------------------------------------------------------------------------------- (f)
+// Routes that used to answer anyone (2026-10-12, owner decision) and now need a session; the developer-only ones need the programmer role.
+const CLOSED_ROUTES = [
+  { file: 'app/api/export-migration-report/route.js', role: 'מתכנת' },
+  { file: 'app/api/db-check/route.js', role: 'מתכנת' },
+  { file: 'app/api/admin/database/status/route.js', role: 'מתכנת' },
+  { file: 'app/api/pricelists/categories/route.js', role: null },
+  { file: 'app/api/queries-by-path/route.js', role: null },
+];
+
+test('(f) closed routes: without a session -> 401 and no data, with one -> not 401', async () => {
+  for (const { file } of CLOSED_ROUTES) {
+    const mod = await L(file);
+    globalThis.__AUTH = false;
+    const denied = await mod.GET(new Request('http://test.local/x?path=/dashboard'));
+    assert.equal(denied.status, 401, `${file} answers 401 without a session`);
+    assert.deepEqual(await denied.json(), { error: 'Unauthorized' }, `${file}: no data in the refusal`);
+    globalThis.__AUTH = true;
+    if (file.includes('export-migration-report')) continue; // heavy report that reads the repo files; the gate itself is pinned above and statically below
+    const origErr = console.error; console.error = () => {};
+    try {
+      const ok = await mod.GET(new Request('http://test.local/x?path=/dashboard'));
+      assert.notEqual(ok.status, 401, `${file} is reachable with a session`);
+    } finally { console.error = origErr; }
+  }
+  globalThis.__AUTH = true;
+});
+
+test('(f) static: every closed route calls checkAuth before doing anything else in GET (developer-only ones with the programmer role)', () => {
+  for (const { file, role } of CLOSED_ROUTES) {
+    const src = fs.readFileSync(path.join(PROJ, file), 'utf8').replace(/^\uFEFF/, '');
+    const i = src.search(/export async function GET\s*\(/);
+    assert.ok(i >= 0, `${file}: GET found`);
+    const body = src.slice(i);
+    const gate = role ? body.indexOf(`checkAuth('${role}')`) : body.indexOf('checkAuth()');
+    assert.ok(gate > 0, `${file}: GET is gated by checkAuth(${role ? `'${role}'` : ''})`);
+    assert.ok(gate < body.search(/\btry\s*\{|prisma\.|readFile|fs\./), `${file}: the gate comes before any work`);
+    assert.match(src, /import \{ checkAuth \} from /, `${file}: imports checkAuth`);
+  }
+});
+
+test('(f) no public page / print view / popup fetches a closed route without a session (consumer scan)', () => {
+  const closedPaths = ['/api/export-migration-report', '/api/db-check', '/api/admin/database/status', '/api/pricelists/categories', '/api/queries-by-path'];
+  const allowed = new Set([
+    // staff screens (session) and dev-only tooling
+    'app/components/dress-card/useDressCard.js', 'app/components/dress-new/LegacyNewDressPage.js', 'app/components/dress-new/useModelNewController.js',
+    'app/dashboard/dresses/[id]/LegacyDressCardPage.js', 'app/dashboard/pricelist/page.js', 'app/admin/database/page.js', 'components/ClipboardDebugger.js',
+    // the legacy kiosk: every data call it makes already needs an employee cookie
+    'app/customer-interface/page.js',
+    // cache bookkeeping lists, not fetches
+    'lib/apiCache.js',
+  ]);
+  const consumers = [];
+  (function walk(dir) {
+    for (const e of fs.readdirSync(path.join(PROJ, dir), { withFileTypes: true })) {
+      const rel = dir + '/' + e.name;
+      if (e.isDirectory()) { if (!['node_modules', '.next', 'api'].includes(e.name) || dir !== 'app') walk(rel); continue; }
+      if (!/\.(js|jsx|mjs)$/.test(e.name)) continue;
+      const code = stripComments(fs.readFileSync(path.join(PROJ, rel), 'utf8'));
+      if (closedPaths.some((p) => code.includes(p))) consumers.push(rel);
+    }
+  })('app');
+  for (const d of ['components', 'lib']) (function walk(dir) {
+    for (const e of fs.readdirSync(path.join(PROJ, dir), { withFileTypes: true })) {
+      const rel = dir + '/' + e.name;
+      if (e.isDirectory()) { walk(rel); continue; }
+      if (!/\.(js|jsx|mjs)$/.test(e.name)) continue;
+      if (closedPaths.some((p) => stripComments(fs.readFileSync(path.join(PROJ, rel), 'utf8')).includes(p))) consumers.push(rel);
+    }
+  })(d);
+  assert.ok(consumers.includes('app/dashboard/pricelist/page.js') && consumers.includes('app/customer-interface/page.js'), 'the consumer scan is not vacuous');
+  const unexpected = consumers.filter((f) => !allowed.has(f) && !f.startsWith('app/api/'));
+  assert.deepEqual(unexpected, [], 'a new consumer of a closed route: check it runs with a session, then add it to the allowed list');
+  for (const f of ['app/print', 'app/station', 'app/privacy', 'app/terms', 'app/components/kiosk', 'app/components/a5-print']) assert.ok(!consumers.some((c) => c.startsWith(f + '/')), `${f} does not use a closed route`);
+});
