@@ -123,6 +123,12 @@ function EventCard({ oc }) {
           </div>
         </div>
       ) : null}
+      {oc.settings.multiBranch ? (
+        <div className="kv oc-branch-kv" data-testid="oc-branch">
+          <KvRow icon="pin" label="סניף ביצוע ההזמנה" value={order.branch || (order.isPhoneOrder ? 'הזמנה טלפונית' : '')} />
+          {order.pickupBranch && order.pickupBranch !== order.branch ? <KvRow icon="pin" label="סניף איסוף" value={order.pickupBranch} /> : null}
+        </div>
+      ) : null}
       <div className="row wrap oc-evt-row">
         <button type="button" className={`btn${range ? ' on' : ''}`} id="evType" aria-pressed={range} disabled={!editing}
           onClick={() => set(prev => eventTypeUpdates(prev, !isRangeEvent(prev)))}>

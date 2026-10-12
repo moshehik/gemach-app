@@ -182,6 +182,23 @@ export function alertText(alert) {
   return alert.label || '';
 }
 
+// ריבוי סניפים: שבב "להעביר בין סניפים" בשורת ההכנה (row.transfers מ-lib/schedule/index.js). null כשאין. text = הטקסט הקצר בשורה, tip = כל הפריטים.
+export function transferChip(row) {
+  const list = row && Array.isArray(row.transfers) ? row.transfers : [];
+  if (!list.length) return null;
+  const groups = new Map();
+  for (const t of list) {
+    const k = t.from + '→' + t.to;
+    if (!groups.has(k)) groups.set(k, { from: t.from, to: t.to, n: 0 });
+    groups.get(k).n += 1;
+  }
+  const g = [...groups.values()];
+  const first = g[0];
+  const text = (first.n > 1 ? 'להעביר ' + first.n + ' פריטים' : 'להעביר פריט') + ' מ' + first.from + ' ל' + first.to + (g.length > 1 ? ' +' + (g.length - 1) : '');
+  const tip = list.map((t) => (t.modelName ? t.modelName + ' ' : '') + (t.size !== null && t.size !== undefined ? 'מידה ' + t.size + ' ' : '') + (t.barcode ? '(' + t.barcode + ') ' : '') + 'מ' + t.from + ' ל' + t.to).join(' · ');
+  return { text, tip, count: list.length };
+}
+
 // שם השלב בכותרת המקטע ובציר: שלב 1 = הזמנות שנרשמו באותו יום, לכן "הזמנות חדשות" (השרת שולח "הזמנה")
 const STAGE_LABEL_OVERRIDE = { order: 'הזמנות חדשות' };
 export function stageLabel(stage) {

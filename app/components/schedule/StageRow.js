@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import ScheduleIcon from './ScheduleIcon';
 import { MarkButton } from './MarkControls';
 import {
-  STAGE_META, subText, subItems, flagLabels, alertText, itemText, alterationSummary, formatAddress,
+  STAGE_META, subText, subItems, flagLabels, alertText, itemText, alterationSummary, formatAddress, transferChip,
 } from './scheduleMeta';
 
 // שורת לו״ז אחת (שורות / טבלה). המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, rowHTML/trHTML/statusHTML, שורות
@@ -37,8 +37,15 @@ function AlertChip({ row }) {
 // שבבי מידע: דגלי ההזמנה בשורת האירוע בלבד (B21). שבב "חיוב משלוח קיים" (B08) הוסר בהחלטת הבעלים 7.10.2026.
 function InfoChips({ stage, row }) {
   const flags = stage.key === 'event' ? flagLabels(row.flags) : [];
+  const xfer = stage.key === 'prep' ? transferChip(row) : null;
   return (
     <>
+      {xfer ? (
+        <span className="chip gold lz-xfer" data-tip={xfer.tip}>
+          <ScheduleIcon name="swap" />
+          {xfer.text}
+        </span>
+      ) : null}
       {flags.map((f) => (
         <span key={f} className="chip gray lz-flag" data-tip="דגל הזמנה שמשפיע על התאריכים">{f}</span>
       ))}
@@ -89,6 +96,7 @@ function RowDetails({ stage, row }) {
           </DetailRow>
         ) : null}
         {stage.showAddress ? <DetailRow label="כתובת">{addr || 'חסרה כתובת'}</DetailRow> : null}
+        {stage.key === 'prep' && row.transfers && row.transfers.length ? <DetailRow label="העברה בין סניפים">{transferChip(row).tip}</DetailRow> : null}
         {row.branch ? <DetailRow label="סניף">{row.branch}{row.pickupBranch && row.pickupBranch !== row.branch ? ' · איסוף: ' + row.pickupBranch : ''}</DetailRow> : null}
         {row.notes ? <DetailRow label="הערות">{row.notes}</DetailRow> : null}
         {row.internalNotes ? (

@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { Blk, ClearX, Field, Ic, Note, NoCombo, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest from './NoSuggest';
-import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
+import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility, pickupBranchesOf, trackBranchOn } from './newOrderLogic';
 
 const ORDER_TYPES = [
   { v: false, label: 'הזמנה רגילה', icon: 'user', tip: 'הזמנה טלפונית וסניף ביצוע מוציאים זה את זה' },
@@ -54,16 +54,16 @@ export default function StepDelivery({ ctl, part }) {
                 <SegPill id="orderSeg" label="סוג הזמנה" options={ORDER_TYPES} value={!!o.isPhoneOrder} onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} />
               </div>
             ) : null}
-            {s.track_branch_on_order === 'true' ? (
+            {trackBranchOn(s) ? (
               <Field label="סניף ביצוע" icon="pin" htmlFor="noBranchSel">
                 <NoCombo id="noBranchSel" label="סניף ביצוע" placeholder={o.isPhoneOrder ? 'לא רלוונטי בהזמנה טלפונית' : 'בחר סניף...'} disabled={!!o.isPhoneOrder} value={o.branch || ''} options={[['', ''], ...branches.map(b => [b, b])]} onChange={(val) => {
                   set({ branch: val, isPhoneOrder: val ? false : o.isPhoneOrder });
                 }} />
               </Field>
             ) : null}
-            {s.branches_enabled === 'true' ? (
+            {s.branches_enabled === 'true' || s.multi_branch_enabled === 'true' ? (
               <Field label="סניף איסוף" icon="bag" htmlFor="noPickupSel">
-                <NoCombo id="noPickupSel" label="סניף איסוף" placeholder="בחר סניף..." value={o.pickupBranch || ''} options={[['', ''], ...branches.map(b => [b, b])]} onChange={(val) => set({ pickupBranch: val })} />
+                <NoCombo id="noPickupSel" label="סניף איסוף" placeholder="בחר סניף..." value={o.pickupBranch || ''} options={[['', ''], ...pickupBranchesOf(s).map(b => [b, b])]} onChange={(val) => set({ pickupBranch: val })} />
               </Field>
             ) : null}
           </div>

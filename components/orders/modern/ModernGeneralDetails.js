@@ -34,6 +34,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
   // 1cbaf995 / fdce699f: allow_abroad_long_stay_orders = 'false' מסתיר את בורר "אירוע רגיל / חו"ל" (ברירת מחדל: מוצג)
   const [allowAbroadSetting, setAllowAbroadSetting] = useState(true);
+  // ריבוי סניפים (multi_branch_enabled, ברירת מחדל כבוי): מציגים את סניף הביצוע / האיסוף של ההזמנה בשורת פרטי האירוע
+  const [multiBranch, setMultiBranch] = useState(false);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -45,6 +47,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
         const abroadSetting = arr.find(s => s.key === 'allow_abroad_long_stay_orders');
         setAllowAbroadSetting(!(abroadSetting && abroadSetting.value === 'false'));
+        const mb = arr.find(s => s.key === 'multi_branch_enabled');
+        setMultiBranch(!!mb && mb.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -318,6 +322,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                     ? <strong style={{ color: 'var(--text)' }}>{`${new Date(order.eventDate).toLocaleDateString('he-IL')} (${order.eventDateHebrew || getHebrewDateString(order.eventDate)})`}</strong>
                     : 'טרם נבחר תאריך')}
                 {order.notes ? <> · הערות: {order.notes}</> : null}
+                {multiBranch ? <> · סניף: <strong style={{ color: 'var(--text)' }}>{order.branch || (order.isPhoneOrder ? 'הזמנה טלפונית' : 'לא נרשם')}</strong>{order.pickupBranch && order.pickupBranch !== order.branch ? <> · איסוף: <strong style={{ color: 'var(--text)' }}>{order.pickupBranch}</strong></> : null}</> : null}
               </div>
             </div>
             <button type="button" className="btn btn-ghost btn-icon-only" title="עריכת פרטי אירוע" onClick={() => setIsEditingEvent(true)}>
