@@ -8,6 +8,7 @@
 // כשאין מייל ללקוח: "כתובת מייל חסרה" (OcMissingEmail) לפני החלון. סגירה עם תוכן שנערך: "לזרוק את המייל?" (שכבה 2). אין window.alert/confirm.
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
+import { useNoFill } from '@/lib/autofillGuard';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { ensureCustomerEmail } from './OcMissingEmail';
 import { sendOrderMail } from './ocDocsActions';
@@ -85,6 +86,7 @@ function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDi
 }
 
 export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot, close }) {
+  const nf = useNoFill();
   const { order, obligations, payments, items } = snapshot;
   const name = customerNameOf(order);
   const orderId = order.orderId;
@@ -176,7 +178,7 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
           ) : (
             <>
               <div className="mfld"><label className="lbl" htmlFor="m-to"><OcIcon name="mail" size="sm" />כתובת מייל</label>
-                <input className="inp" id="m-to" type="email" dir="ltr" value={to} disabled={!idle} autoComplete="off" data-autofocus="true" placeholder="example@gmail.com" onChange={(e) => { setTo(e.target.value); markDirty(); }} /></div>
+                <input className="inp" id="m-to" inputMode="email" dir="ltr" value={to} disabled={!idle} {...nf('to')} data-autofocus="true" placeholder="example@gmail.com" onChange={(e) => { setTo(e.target.value); markDirty(); }} /></div>
               <div className="mfld"><span className="lbl"><OcIcon name="clip" size="sm" />מצורף</span>
                 <div className="mfiles"><div className="mfile on" aria-checked="true" role="checkbox" aria-disabled="true">
                   <span className="mft"><OcIcon name="file" /></span>

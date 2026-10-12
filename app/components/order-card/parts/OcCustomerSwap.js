@@ -11,6 +11,7 @@
 // שינוי מכוון: ת״ז בטופס כש-require_customer_id_number (השרת דוחה בלעדיה - בישן "שגיאה בשמירת לקוח" בלי הסבר). ר' W2a-NOTES.
 import { useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
+import { useNoFill } from '@/lib/autofillGuard';
 import { DlgButtons, DlgBtn, DlgHead, Field, Inp } from '../OcUi';
 import { NEW_CUSTOMER_EMPTY, customerName, gmailComplete, gmailCompletable, newCustomerBody, newCustomerError } from './ocDetailsLogic';
 
@@ -60,28 +61,29 @@ function CustomerSearch({ picked, onPick, onConfirm }) {
 }
 
 function NewCustomerForm({ form, setForm, settings }) {
+  const nf = useNoFill();
   const set = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
   return (
     <div className="oc-cs-pane">
       <div className="grid2">
-        <Field label="שם פרטי *" htmlFor="oc-nc-fn"><Inp id="oc-nc-fn" value={form.firstName} onChange={set('firstName')} data-autofocus="true" /></Field>
-        <Field label="שם משפחה *" htmlFor="oc-nc-ln"><Inp id="oc-nc-ln" value={form.lastName} onChange={set('lastName')} /></Field>
+        <Field label="שם פרטי *" htmlFor="oc-nc-fn"><Inp id="oc-nc-fn" {...nf('firstName')} value={form.firstName} onChange={set('firstName')} data-autofocus="true" /></Field>
+        <Field label="שם משפחה *" htmlFor="oc-nc-ln"><Inp id="oc-nc-ln" {...nf('lastName')} value={form.lastName} onChange={set('lastName')} /></Field>
       </div>
       <div className="grid2 oc-cs-gap">
-        <Field label="טלפון *" htmlFor="oc-nc-ph"><Inp id="oc-nc-ph" dir="ltr" inputMode="tel" value={form.phone1} onChange={set('phone1')} /></Field>
-        <Field label="דוא״ל *" htmlFor="oc-nc-em"><Inp id="oc-nc-em" dir="ltr" type="email" value={form.email} onChange={set('email')} /></Field>
+        <Field label="טלפון *" htmlFor="oc-nc-ph"><Inp id="oc-nc-ph" dir="ltr" inputMode="tel" {...nf('phone1')} value={form.phone1} onChange={set('phone1')} /></Field>
+        <Field label="דוא״ל *" htmlFor="oc-nc-em"><Inp id="oc-nc-em" dir="ltr" inputMode="email" {...nf('email')} value={form.email} onChange={set('email')} /></Field>
       </div>
       {gmailCompletable(form.email) ? (
         <div className="oc-cs-gm"><button type="button" className="btn sm" onClick={() => setForm(prev => ({ ...prev, email: gmailComplete(prev.email) }))}>השלם ל- @gmail.com</button></div>
       ) : null}
       <div className="grid2 oc-cs-gap">
-        <Field label="עיר" htmlFor="oc-nc-city"><Inp id="oc-nc-city" value={form.city} onChange={set('city')} /></Field>
-        <Field label="רחוב" htmlFor="oc-nc-st"><Inp id="oc-nc-st" value={form.street} onChange={set('street')} /></Field>
+        <Field label="עיר" htmlFor="oc-nc-city"><Inp id="oc-nc-city" {...nf('city')} value={form.city} onChange={set('city')} /></Field>
+        <Field label="רחוב" htmlFor="oc-nc-st"><Inp id="oc-nc-st" {...nf('street')} value={form.street} onChange={set('street')} /></Field>
       </div>
       <div className={settings.requireCustomerIdNumber ? 'grid2 oc-cs-gap' : 'oc-cs-gap'}>
-        <Field label="בית" htmlFor="oc-nc-hn"><Inp id="oc-nc-hn" inputMode="numeric" value={form.houseNum} onChange={set('houseNum')} /></Field>
+        <Field label="בית" htmlFor="oc-nc-hn"><Inp id="oc-nc-hn" inputMode="numeric" {...nf('houseNum')} value={form.houseNum} onChange={set('houseNum')} /></Field>
         {settings.requireCustomerIdNumber ? (
-          <Field label="תעודת זהות *" htmlFor="oc-nc-id"><Inp id="oc-nc-id" dir="ltr" inputMode="numeric" value={form.zeout || ''} onChange={set('zeout')} /></Field>
+          <Field label="תעודת זהות *" htmlFor="oc-nc-id"><Inp id="oc-nc-id" dir="ltr" inputMode="numeric" {...nf('zeout')} value={form.zeout || ''} onChange={set('zeout')} /></Field>
         ) : null}
       </div>
     </div>

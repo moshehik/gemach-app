@@ -9,6 +9,7 @@ import { SearchNotices, SearchEmptyHint } from '../../components/SearchNotices';
 import { useLabels } from '@/app/components/LabelsContext';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildCustomersListParams } from '@/app/lib/prefetchRoutes';
+import { useNoFill } from '@/lib/autofillGuard';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const customersCache = cacheNamespace('customers');
@@ -28,6 +29,7 @@ const buildCustomersAiPrompt = (f) => {
 };
 
 export default function CustomersPage() {
+  const nf = useNoFill();
   const router = useRouter();
   const { getLabel } = useLabels();
   const [customers, setCustomers] = useState([]);
@@ -530,6 +532,8 @@ export default function CustomersPage() {
                     <input
                       id="adv-search-email"
                       type="text"
+                      inputMode="email"
+                      {...nf('email')}
                       className="input"
                       value={advFilters.email}
                       onChange={e => setAdvFilters(p => ({ ...p, email: e.target.value }))}

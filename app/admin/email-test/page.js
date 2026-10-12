@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 
 // מסך בדיקת מיילים: מקלידים כתובת אחת ושולחים אליה מייל לדוגמה מכל סוג בקטלוג
 // (lib/emailCatalog.js). לעולם לא נשלח ללקוחות/עובדים אמיתיים - רק לכתובת שהוקלדה.
@@ -10,6 +11,7 @@ const STATUS_LABEL = { idle: 'טרם נשלח', sending: 'שולח...', ok: 'נ�
 const STATUS_CLASS = { idle: 'badge', sending: 'badge badge-warning', ok: 'badge badge-success', error: 'badge badge-danger' };
 
 export default function EmailTestPage() {
+  const nf = useNoFill();
   const [types, setTypes] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [to, setTo] = useState('');
@@ -91,6 +93,7 @@ export default function EmailTestPage() {
           <input
             id="email-test-to"
             type="email"
+            {...nf('email')}
             dir="ltr"
             className="input"
             value={to}

@@ -6,6 +6,7 @@
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
+import { useNoFill } from '@/lib/autofillGuard';
 import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
@@ -50,13 +51,14 @@ function MissLine({ c, ctl, mode = 'use' }) {
 
 // פרטי הוראת קבע (hok_enabled) - ללקוח קיים נשמרים על order.hok*, ללקוח חדש על newCustomer.hok*
 function HokCard({ value, onChange }) {
+  const nf = useNoFill();
   return (
     <div className="card" style={{ marginTop: 18 }}>
       <div className="card-h"><div className="ico blue"><Ic n="bank" c="lg" /></div><h2>פרטי הוראת קבע (3)</h2></div>
       <div className="grid2">
-        <Field label="בנק" icon="bank" htmlFor="noHokBank"><input className="inp" id="noHokBank" autoComplete="off" {...NO_FILL} value={value.bankName || ''} onChange={(e) => onChange('BankName', e.target.value)} /></Field>
-        <Field label="סניף" icon="pin" htmlFor="noHokBranch"><input className="inp" id="noHokBranch" autoComplete="off" {...NO_FILL} value={value.bankBranch || ''} onChange={(e) => onChange('BankBranch', e.target.value)} /></Field>
-        <Field label="חשבון" icon="card" htmlFor="noHokAcc"><input className="inp" id="noHokAcc" dir="ltr" autoComplete="off" {...NO_FILL} value={value.bankAccount || ''} onChange={(e) => onChange('BankAccount', e.target.value)} /></Field>
+        <Field label="בנק" icon="bank" htmlFor="noHokBank"><input className="inp" id="noHokBank" {...nf('hokBank')} value={value.bankName || ''} onChange={(e) => onChange('BankName', e.target.value)} /></Field>
+        <Field label="סניף" icon="pin" htmlFor="noHokBranch"><input className="inp" id="noHokBranch" {...nf('hokBranch')} value={value.bankBranch || ''} onChange={(e) => onChange('BankBranch', e.target.value)} /></Field>
+        <Field label="חשבון" icon="card" htmlFor="noHokAcc"><input className="inp" id="noHokAcc" dir="ltr" {...nf('hokAcc')} value={value.bankAccount || ''} onChange={(e) => onChange('BankAccount', e.target.value)} /></Field>
       </div>
       <div className="trow" style={{ marginTop: 14 }}><Switch checked={value.consent} onChange={(v) => onChange('Consent', v)} label="אישור גביה" /><span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span></div>
     </div>
@@ -66,6 +68,7 @@ const orderHok = (ctl) => ({ bankName: ctl.order.hokBankName, bankBranch: ctl.or
 const setOrderHok = (ctl) => (k, v) => ctl.setOrder(prev => ({ ...prev, [`hok${k}`]: v }));
 
 function PhoneTab({ ctl }) {
+  const nf = useNoFill();
   const res = ctl.foundCustomersFromPhone;
   const sel = ctl.pickedFound;
   const anyMissing = res.some(c => ctl.missingOf(c).length || unsatisfiedFieldGroupShortLabels(c, ctl.fieldGroups).length);
@@ -73,7 +76,7 @@ function PhoneTab({ ctl }) {
   return (
     <>
       <Field label="מספר טלפון *" icon="phone" htmlFor="noPhoneQ">
-        <input className="inp" id="noPhoneQ" type="tel" dir="ltr" inputMode="tel" placeholder="05..." autoComplete="off" {...NO_FILL} autoFocus
+        <input className="inp" id="noPhoneQ" dir="ltr" inputMode="tel" placeholder="05..." {...nf('phoneQ')} autoFocus
           value={ctl.phoneSearchInput} onChange={(e) => ctl.setPhoneSearchInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ctl.handleCheckPhone(); } }} />
         <ClearX show={!!ctl.phoneSearchInput} onClear={() => { ctl.setPhoneSearchInput(''); ctl.setFoundCustomersFromPhone([]); }} />
@@ -103,12 +106,13 @@ function PhoneTab({ ctl }) {
 }
 
 function ListTab({ ctl }) {
+  const nf = useNoFill();
   const c = ctl.order.selectedCustomer;
   const list = ctl.listResults || [];
   return (
     <>
       <Field label="חיפוש לפי שם, טלפון או עיר" icon="search" htmlFor="noListQ">
-        <input className="inp" id="noListQ" placeholder="חפש לקוח לפי שם, טלפון, עיר..." autoComplete="off" {...NO_FILL} readOnly={!!c}
+        <input className="inp" id="noListQ" placeholder="חפש לקוח לפי שם, טלפון, עיר..." {...nf('listQ')} readOnly={!!c}
           value={c ? `${getCustomerFullName(c)}${c.phone1 ? ` (${c.phone1})` : ''}` : ctl.listQuery} onChange={(e) => ctl.setListQuery(e.target.value)} />
         {c ? <ClearX show onClear={() => ctl.pickFromList(null)} label="נקה בחירה" tip="נקה בחירה" /> : null}
       </Field>
@@ -134,6 +138,7 @@ function ListTab({ ctl }) {
 }
 
 function NewTab({ ctl }) {
+  const nf = useNoFill();
   const s = ctl.settings;
   const n = ctl.newCustomer;
   const set = (k) => (v) => { ctl.setNewCustomerError(null); ctl.setNewCustomer(prev => ({ ...prev, [k]: v })); };
@@ -154,7 +159,7 @@ function NewTab({ ctl }) {
   // c89234ec (auto_advance_fixed_fields): נייד מלא -> השדה הבא; עיר/רחוב שנבחרו מהרשימה -> הרחוב / מספר הבית
   const aa = s.auto_advance_fixed_fields === 'true';
   const phoneAdvance = (k, nextId) => ({ onChange: (e) => { set(k)(e.target.value); if (aa && justCompleted(isMobilePhoneComplete, n[k], e.target.value)) focusField(nextId); } });
-  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
+  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, ...nf(k), value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
   return (
     <>
       {ctl.phoneSearchInput.trim() ? (
@@ -166,15 +171,15 @@ function NewTab({ ctl }) {
       <div className="grid2 col1">
         <Field label="שם פרטי *" icon="user" htmlFor="noNcFirst"><input id="noNcFirst" {...inp('firstName')} /></Field>
         <Field label="שם משפחה *" icon="user" htmlFor="noNcLast"><input id="noNcLast" {...inp('lastName')} /></Field>
-        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
-        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
+        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" inputMode="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
+        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" inputMode="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
         <Field label={`אימייל${star(s.require_customer_email === 'true' || isFieldMandatoryFromPicker(s, 'email') || isFieldRequiredByGroup('email', n, ctl.fieldGroups))}`} icon="mail" htmlFor="noNcEmail"
           after={<>
             {n.email && !n.email.includes('@') ? <div style={{ marginTop: 8 }}><button type="button" className="btn sm" onClick={() => set('email')(`${n.email}@gmail.com`)}><Ic n="mail" c="sm" />השלם ל- @gmail.com</button></div> : null}
             {errFor('email')}
             {groupErrors.map(m => <div key={m} className="no-grp" role="note"><Ic n="alert" c="sm" />{m}</div>)}
           </>}>
-          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ type: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל', onKeyDown: onEnter }} />
+          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ inputMode: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל', onKeyDown: onEnter }} />
         </Field>
       </div>
       <div className="ncmore">

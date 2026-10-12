@@ -8,6 +8,7 @@ import { useRef, useState } from 'react';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { buildSendEmailBody, SEND_MODES, EMAIL_RE, fmtSize } from '@/lib/employeeCardA5';
 import { Dlg, Ic, NO_FILL, useEc } from './EcUi';
+import { useNoFill } from '@/lib/autofillGuard';
 
 const toBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -17,6 +18,7 @@ const toBase64 = (file) => new Promise((resolve, reject) => {
 });
 
 export default function EcMail({ employeeId, defaultTo, name, onClose }) {
+  const nf = useNoFill();
   const ec = useEc();
   const fileRef = useRef(null);
   const [form, setForm] = useState({ to: normalizeEmail(defaultTo) || defaultTo || '', cc: '', subject: '', body: '' });
@@ -85,8 +87,8 @@ export default function EcMail({ employeeId, defaultTo, name, onClose }) {
         <button type="button" className="ibtn mx" data-ec="m-x" aria-label="סגירה" data-tip="סגור" onClick={close} disabled={state === 'sending'}><Ic id="x" size="sm" /></button>
       </div>
       <div className="ec-mrow">
-        <div className="mfld"><label className="lbl" htmlFor="m-to">אל (To)</label><input className="inp" id="m-to" type="email" dir="ltr" value={form.to} onChange={set('to')} disabled={dis} {...NO_FILL} /></div>
-        <div className="mfld"><label className="lbl" htmlFor="m-cc">עותק (CC)</label><input className="inp" id="m-cc" type="email" dir="ltr" value={form.cc} onChange={set('cc')} disabled={dis} {...NO_FILL} /></div>
+        <div className="mfld"><label className="lbl" htmlFor="m-to">אל (To)</label><input className="inp" id="m-to" type="email" dir="ltr" value={form.to} onChange={set('to')} disabled={dis} {...NO_FILL} {...nf('to')} /></div>
+        <div className="mfld"><label className="lbl" htmlFor="m-cc">עותק (CC)</label><input className="inp" id="m-cc" type="email" dir="ltr" value={form.cc} onChange={set('cc')} disabled={dis} {...NO_FILL} {...nf('cc')} /></div>
       </div>
       <div className="mfld"><label className="lbl" htmlFor="m-sub">נושא</label><input className="inp" id="m-sub" type="text" value={form.subject} onChange={set('subject')} disabled={dis} {...NO_FILL} /></div>
       <div className="mfld"><label className="lbl" htmlFor="m-body">תוכן</label><textarea className="inp" id="m-body" rows={6} value={form.body} onChange={set('body')} disabled={dis} /></div>

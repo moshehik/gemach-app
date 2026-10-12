@@ -502,7 +502,8 @@ const PINNED_BLOBS = {
   // + המשך אוטומטי כשתשלום שאינו אשראי משלים את הסכום המלא (דיווח 67c0d652, מאחורי new_order_auto_finish_when_paid; כבוי = אפס שינוי)
   // + מעבר אוטומטי לשדה הבא בשדות באורך קבוע / אחרי בחירת עיר ורחוב (דיווח c89234ec, מאחורי auto_advance_fixed_fields; כבוי = אפס שינוי)
   // + נוסח הסכמת הדיוור המאוחד "מאשר/ת קבלת דיוורים" (R06, PR #249) - טקסט בלבד
-  'app/orders/new/LegacyNewOrderPage.js': 'a9c14fc0f36cb3b5ae0341cd869b7596f85849fe',
+  // + שדות הלקוח החדש בלי היסטוריית הצעות של הדפדפן (name אקראי לכל טעינה דרך useNoFill; scripts/test_email_autofill_guard.mjs) - מאפיינים בלבד
+  'app/orders/new/LegacyNewOrderPage.js': '5f4718f743a8be434bfa66c6f859a1488d7d595a',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

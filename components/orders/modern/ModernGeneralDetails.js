@@ -10,6 +10,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/deliveryValidation';
+import { useNoFill } from '../../../lib/autofillGuard';
 
 /**
  * טאב "פרטים כלליים" בעיצוב "אריג" — כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
@@ -18,6 +19,7 @@ import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/
  * והחלפת לקוח מהכרטיס.
  */
 export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail, showManualPaymentCreditButton = false, onOpenManualPaymentCredit }) {
+  const nf = useNoFill();
   const [showManualPaymentCreditChooser, setShowManualPaymentCreditChooser] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(!order?.eventDate && !order?.fromDate);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -616,14 +618,14 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               ) : (
                 <div>
                   <div className="form-grid">
-                    <div className="field"><label>שם פרטי *</label><input type="text" className="input" autoComplete="off" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} /></div>
-                    <div className="field"><label>שם משפחה *</label><input type="text" className="input" autoComplete="off" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} /></div>
+                    <div className="field"><label>שם פרטי *</label><input type="text" className="input" {...nf('firstName')} value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} /></div>
+                    <div className="field"><label>שם משפחה *</label><input type="text" className="input" {...nf('lastName')} value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} /></div>
                   </div>
                   <div className="form-grid">
-                    <div className="field"><label>טלפון *</label><input type="text" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} /></div>
+                    <div className="field"><label>טלפון *</label><input type="text" className="input" style={{ direction: 'ltr' }} {...nf('phone1')} value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} /></div>
                     <div className="field">
                       <label>דוא&quot;ל *</label>
-                      <input type="email" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                      <input type="text" inputMode="email" className="input" style={{ direction: 'ltr' }} {...nf('email')} value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
                       {(!newCustomer.email || !newCustomer.email.includes('@')) && (
                         <button
                           type="button"
@@ -637,10 +639,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                     </div>
                   </div>
                   <div className="form-grid">
-                    <div className="field"><label>עיר</label><input type="text" className="input" autoComplete="off" value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} /></div>
+                    <div className="field"><label>עיר</label><input type="text" className="input" {...nf('city')} value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} /></div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <div className="field" style={{ flex: 2 }}><label>רחוב</label><input type="text" className="input" autoComplete="off" value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} /></div>
-                      <div className="field" style={{ flex: 1 }}><label>בית</label><input type="text" className="input" autoComplete="off" value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} /></div>
+                      <div className="field" style={{ flex: 2 }}><label>רחוב</label><input type="text" className="input" {...nf('street')} value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} /></div>
+                      <div className="field" style={{ flex: 1 }}><label>בית</label><input type="text" className="input" {...nf('houseNum')} value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} /></div>
                     </div>
                   </div>
                 </div>
