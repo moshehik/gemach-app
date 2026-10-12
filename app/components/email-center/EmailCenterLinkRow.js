@@ -13,7 +13,7 @@ export default function EmailCenterLinkRow() {
         <small>עריכת הנושא והניסוח של כל מייל, תזמון לפני/אחרי אירוע, נתונים קבועים ודיוורים.</small>
       </div>
       <div className="st-ctl">
-        <Link className="btn ghost sm" href="/admin/email-center" aria-label="פתיחת מרכז המיילים (עמוד נפרד)" data-element-name="כפתור_settings_email_center">
+        <Link className="btn ghost sm" href="/admin/email-center" data-guide-id="set.emailcenter-link" aria-label="פתיחת מרכז המיילים (עמוד נפרד)" data-element-name="כפתור_settings_email_center">
           <Ic id="ext" />פתיחה
         </Link>
       </div>

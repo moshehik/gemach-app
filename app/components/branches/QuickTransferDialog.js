@@ -130,14 +130,14 @@ export function QuickTransferPanel({ branches, defaultBranch, onApplied, autoFoc
     <div className="qt-root" dir="rtl" data-testid="quick-transfer">
       <div className="field">
         <label className="lbl">פעולה</label>
-        <DcPill id="qtMode" value={mode} options={MODES} onChange={(m) => { setMode(m); }} label="פעולה" />
+        <DcPill id="qtMode" data-guide-id="qt.mode" value={mode} options={MODES} onChange={(m) => { setMode(m); }} label="פעולה" />
       </div>
       <div className="qt-hint">{HINT[mode]}</div>
 
       {NEEDS_BRANCH.has(mode) ? (
         <div className="field">
           <label className="lbl" htmlFor="qtBranch">{mode === 'from_warehouse' ? 'סניף יעד' : 'סניף'}</label>
-          <select id="qtBranch" className="inp" value={branch} onChange={(e) => setBranch(e.target.value)}>
+          <select id="qtBranch" data-guide-id="qt.branch" className="inp" value={branch} onChange={(e) => setBranch(e.target.value)}>
             {names.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
@@ -160,7 +160,7 @@ export function QuickTransferPanel({ branches, defaultBranch, onApplied, autoFoc
       <div className="field">
         <label className="lbl" htmlFor="qtBarcode">ברקוד {ready ? '' : '(קודם השלימו את ההגדרות למעלה)'}</label>
         <input
-          id="qtBarcode" ref={bcRef} className="inp qt-bc" value={value} inputMode="numeric" autoComplete="off" disabled={!ready}
+          id="qtBarcode" data-guide-id="qt.barcode" ref={bcRef} className="inp qt-bc" value={value} inputMode="numeric" autoComplete="off" disabled={!ready}
           placeholder="סרקו או הקלידו ברקוד ו-Enter" data-autofocus={autoFocus ? 'true' : undefined}
           onChange={(e) => { const v = e.target.value; if (/[\s,;]/.test(v.trim()) && splitCodes(v).length > 1) send(v); else setValue(v); }}
           onPaste={(e) => { const t = e.clipboardData && e.clipboardData.getData('text'); if (t && splitCodes(t).length > 1) { e.preventDefault(); send(t); } }}
@@ -173,7 +173,7 @@ export function QuickTransferPanel({ branches, defaultBranch, onApplied, autoFoc
           {qt.log.length ? <>{okCount} עודכנו{errCount ? <> · <b className="qt-err-n">{errCount} שגיאות</b></> : null}</> : 'עוד לא נסרק דבר'}
         </span>
         <span className="qt-bar-btns">
-          <button type="button" className="btn sm" onClick={qt.undoLast} disabled={!canUndo} data-act="qt-undo"><OcIcon name="undo" size="sm" />ביטול אחרון</button>
+          <button type="button" className="btn sm" onClick={qt.undoLast} disabled={!canUndo} data-guide-id="qt.undo" data-act="qt-undo"><OcIcon name="undo" size="sm" />ביטול אחרון</button>
           <button type="button" className="btn ghost sm" onClick={qt.clear} disabled={!qt.log.length || qt.busy}>ניקוי רשימה</button>
         </span>
       </div>

@@ -72,7 +72,7 @@ export default function ReturnToNewDesignButton({ placement = 'topbar' }) {
   if (!allowed) return null;
 
   return (
-    <span className={`gm-pvt gm-pvt-return gm-pvt-return-${placement}`} data-pvt-return="1">
+    <span className={`gm-pvt gm-pvt-return gm-pvt-return-${placement}`} data-guide-id="disp.return-new" data-pvt-return="1">
       <button
         type="button"
         className="gm-pvt-return-btn"

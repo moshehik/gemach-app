@@ -155,7 +155,7 @@ const STATUS_TEXT = { returned: 'הוחזר', repair: 'בתיקון', notInUse: 
 function ModelTiles({ p }) {
   const t = p.tiles;
   return (
-    <div className="capstats sp-tiles" role="group" aria-label="סיכום תפוסה">
+    <div className="capstats sp-tiles" data-guide-id="srch.panel-tiles" role="group" aria-label="סיכום תפוסה">
       <Tile cls="cs-stock" label="במלאי"><b>{t.stock}</b></Tile>
       <Tile cls="cs-busy" label={p.date.isToday ? 'בתפוסה היום' : 'בתפוסה בתאריך'}><b>{t.busy}</b></Tile>
       <Tile cls="cs-res" label="רזרבה"><b>{t.reserve}</b></Tile>
@@ -178,7 +178,7 @@ function ItemTiles({ p }) {
     else if (st.kind === 'free' && t.rentCount === 0) sub = 'טרם הושכר';
   }
   return (
-    <div className="capstats sp-tiles" role="group" aria-label="סיכום הפריט">
+    <div className="capstats sp-tiles" data-guide-id="srch.panel-tiles" role="group" aria-label="סיכום הפריט">
       <Tile cls="cs-stock" label="סטטוס" sub={sub}>{main}</Tile>
       <Tile cls="cs-res" label="פעמים שהושכר"><b>{t.rentCount}</b></Tile>
       <Tile cls="cs-busy" label="הזמנות שחייבות אותו"><b>{t.required}</b></Tile>
@@ -301,8 +301,8 @@ export default function SearchPanel({ query, compact = false, onOpen }) {
     ? <div className="sp-empty">לא ניתן לטעון את המיקומים. <button type="button" className="sp-more" onClick={wh.retry}>נסו שוב</button></div>
     : !wh.panel ? <div className="sp-skel sp-skel-line" aria-busy="true" /> : <WhereView w={wh.panel} compact={compact} onOpen={onOpen} />;
   return (
-    <section className={`sp${compact ? ' sp-compact' : ''}${s.state === 'loading' ? ' sp-refresh' : ''}`} data-sp-state="ok" data-sp-mode={p.mode} aria-label={isItem ? 'פרטי הפריט' : 'תפוסת הדגם'}>
-      <button type="button" className={`sp-where ${compact ? 'sn-link' : 'li lrow'}${whereOpen ? ' on' : ''}`} data-sp-act="where" aria-expanded={whereOpen} onClick={() => setWhereOpen((v) => !v)}>
+    <section className={`sp${compact ? ' sp-compact' : ''}${s.state === 'loading' ? ' sp-refresh' : ''}`} data-guide-id="srch.panel" data-sp-state="ok" data-sp-mode={p.mode} aria-label={isItem ? 'פרטי הפריט' : 'תפוסת הדגם'}>
+      <button type="button" className={`sp-where ${compact ? 'sn-link' : 'li lrow'}${whereOpen ? ' on' : ''}`} data-guide-id="srch.panel-where" data-sp-act="where" aria-expanded={whereOpen} onClick={() => setWhereOpen((v) => !v)}>
         <span className={compact ? 'sp-rt' : 't'}>
           <b>{whereOpen ? 'חזרה לתפוסה' : whereLabel}</b>
           <span className={compact ? 'sp-ln' : 'ln'}>{whereOpen ? whereLabel : whereSub}</span>

@@ -114,7 +114,7 @@ function CtxLine({ stage, dateText, sizes, models, search, showDateCol, onGoto }
     cols.push(
       <div className="ctx-col" key="d">
         <span className="ctx-pill">תאריך: {dateText}</span>
-        {links ? <button type="button" className="ctx-link" data-goto="1" onClick={() => onGoto(1)}>שינוי תאריך{linkArrow}</button> : null}
+        {links ? <button type="button" className="ctx-link" data-guide-id="kiosk.step-date" data-goto="1" onClick={() => onGoto(1)}>שינוי תאריך{linkArrow}</button> : null}
       </div>
     );
   }
@@ -844,7 +844,7 @@ function KioskInner({ initialSettings }) {
   };
 
   const modelSearchBox = modelSearchOn ? (
-    <div className="ks-msearch" data-agy-id="kiosk_model_search">
+    <div className="ks-msearch" data-guide-id="kiosk.model-search" data-agy-id="kiosk_model_search">
       <KIcon id="search" size="sm" />
       <input data-agy-id="kiosk_model_search_input" type="text" inputMode="search" autoComplete="off" aria-label="חיפוש דגם" placeholder="חיפוש דגם"
         value={modelQuery} onChange={(e) => setModelQuery(e.target.value)} />
@@ -874,7 +874,7 @@ function KioskInner({ initialSettings }) {
           {stage === 1 && (
             <div className="panel on" id="p1">
               <div id="p1Card" className="ks-p1">
-                <div className="ks-stephead">
+                <div className="ks-stephead" data-guide-id="kiosk.date-title">
                   <span className="step-eyebrow">שלב <span className="ks-snum">1</span></span>
                   <h2 className="kiosk-headline">סמני בלוח שלפנייך את תאריך האירוע</h2>
                   <svg className="step-down-arrow" viewBox="0 0 28 26" style={{ width: 36, height: 32, color: 'var(--gm-gold-d)' }} aria-hidden="true"><path d="M14 2v18M6 14l8 8 8-8" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -900,7 +900,7 @@ function KioskInner({ initialSettings }) {
                   ) : null}
                 </div>
                 <div className="row ks-center">
-                  <button type="button" className="btn primary" id="toStep2" data-agy-id="kiosk_to_step2_btn" disabled={!selectedDate} onClick={() => goStage(2)}>
+                  <button type="button" className="btn primary" id="toStep2" data-guide-id="kiosk.step-next" data-agy-id="kiosk_to_step2_btn" disabled={!selectedDate} onClick={() => goStage(2)}>
                     לשלב הבא<svg className="ic" viewBox="0 0 28 20" style={{ width: 22, height: 16 }} aria-hidden="true">{ARROW}</svg>
                   </button>
                 </div>
@@ -909,7 +909,7 @@ function KioskInner({ initialSettings }) {
                   <div className="ks-cta" data-agy-id="kiosk_self_registration_cta">
                     <span className="ks-cta-ico"><KIcon id="user" /></span>
                     <div className="ks-cta-txt"><b>מילוי פרטים אישיים</b><span>ממלאים פעם אחת, והעובדת תמשיך איתך להזמנה.</span></div>
-                    <button type="button" className="btn" data-agy-id="kiosk_open_register_btn" onClick={() => { setRegKey((k) => k + 1); setMode('register'); }}>
+                    <button type="button" className="btn" data-guide-id="kiosk.register" data-agy-id="kiosk_open_register_btn" onClick={() => { setRegKey((k) => k + 1); setMode('register'); }}>
                       <KIcon id="pencil" size="sm" />למילוי הפרטים
                     </button>
                   </div>
@@ -929,7 +929,7 @@ function KioskInner({ initialSettings }) {
           {/* שלב 2: דגם ומידה */}
           {stage === 2 && (
             <div className="panel on" id="p2">
-              <div className="ks-p2">
+              <div className="ks-p2" data-guide-id="kiosk.model-size">
                 <div className="ks-stephead">
                   <span className="step-eyebrow">שלב <span className="ks-snum">2</span></span>
                   <h2 className="kiosk-headline">צייני את הדגם והמידה של השמלה</h2>
@@ -963,7 +963,7 @@ function KioskInner({ initialSettings }) {
                 </div>
                 <div className="row spread wrap ks-p2-actions">
                   <button type="button" className="btn ghost" id="back1From2" data-agy-id="kiosk_back_to_step1_btn" onClick={() => goStage(1)}><KIcon id="back" size="sm" />חזרה לתאריך</button>
-                  <button type="button" className="btn primary" id="toStep3" data-agy-id="kiosk_to_results_btn" onClick={toResults}>
+                  <button type="button" className="btn primary" id="toStep3" data-guide-id="kiosk.to-results" data-agy-id="kiosk_to_results_btn" onClick={toResults}>
                     הצג תוצאות<svg className="ic" viewBox="0 0 28 20" style={{ width: 22, height: 16 }} aria-hidden="true">{ARROW}</svg>
                   </button>
                 </div>
@@ -982,7 +982,7 @@ function KioskInner({ initialSettings }) {
                     <span className="ks-datebar-date">{formatHebrewDate(eventDate)}</span>
                   </div>
                   <span className="ks-datebar-dow">{eventDate.toLocaleDateString('he-IL', { weekday: 'long' })}</span>
-                  <button type="button" className="btn sm" data-agy-id="kiosk_change_date_btn" onClick={() => goStage(1)}><KIcon id="cal" size="sm" />שינוי תאריך</button>
+                  <button type="button" className="btn sm" data-guide-id="kiosk.step-date" data-agy-id="kiosk_change_date_btn" onClick={() => goStage(1)}><KIcon id="cal" size="sm" />שינוי תאריך</button>
                   {modelSearchBox}
                 </div>
               )}
@@ -1002,7 +1002,7 @@ function KioskInner({ initialSettings }) {
                     <input data-agy-id="catalog_ai_input" type="text" placeholder="שאלי את ה-AI..." value={aiInput} onChange={(e) => setAiInput(e.target.value)} disabled={aiLoading} autoComplete="off" />
                   </form>
                 ))}
-                <button type="button" className="btn" data-agy-id="toggle_sidebar_btn" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((o) => !o)}>
+                <button type="button" className="btn" data-guide-id="kiosk.filter-btn" data-agy-id="toggle_sidebar_btn" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((o) => !o)}>
                   <KIcon id="sliders" size="sm" />סינון ותצוגה{filtersActive ? <span className="ks-dot" aria-label="יש סינון פעיל" /> : null}
                 </button>
                 <div className="ks-zoomwrap" ref={zoomPopoverRef}>
@@ -1021,15 +1021,15 @@ function KioskInner({ initialSettings }) {
                   )}
                 </div>
                 <div className="ks-cluster">
-                  <button type="button" className="ibtn" aria-label="חזרה למערכת" data-tip="חזרה למערכת" data-agy-id="exit_to_system_btn"
+                  <button type="button" className="ibtn" aria-label="חזרה למערכת" data-tip="חזרה למערכת" data-guide-id="kiosk.exit" data-agy-id="exit_to_system_btn"
                     onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }}><KIcon id="logout" size="sm" /></button>
                   <button type="button" className="ibtn" aria-label="חיפוש חדש" data-tip="חיפוש חדש" data-agy-id="new_search_btn" onClick={() => goStage(1)}><KIcon id="search" size="sm" /></button>
-                  <button type="button" className="ibtn" aria-label="רענון מלאי" data-tip="רענון מלאי" data-agy-id="refresh_inventory_btn" onClick={fetchInventory}><KIcon id="refresh" size="sm" /></button>
-                  <button type="button" className="ibtn" aria-label={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-tip={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-agy-id="print_catalog_btn" onClick={() => askPrint(null)}><KIcon id="print" size="sm" /></button>
+                  <button type="button" className="ibtn" aria-label="רענון מלאי" data-tip="רענון מלאי" data-guide-id="kiosk.refresh" data-agy-id="refresh_inventory_btn" onClick={fetchInventory}><KIcon id="refresh" size="sm" /></button>
+                  <button type="button" className="ibtn" aria-label={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-tip={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} data-guide-id="kiosk.print" data-agy-id="print_catalog_btn" onClick={() => askPrint(null)}><KIcon id="print" size="sm" /></button>
                   {isLocked ? (
                     <button type="button" className="ibtn ks-lock" aria-label="שחרור מסך" data-tip="שחרור מסך" data-agy-id="unlock_screen_btn" onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }}><KIcon id="lock" size="sm" /></button>
                   ) : (
-                    <button type="button" className="ibtn ks-lock" aria-label="נעילת מסך ללקוח" data-tip="נעילת מסך ללקוח - מעבר למסך מלא, יציאה (Esc) דורשת אישור עובד" data-agy-id="lock_screen_btn" onClick={lockScreen}><KIcon id="lock" size="sm" /></button>
+                    <button type="button" className="ibtn ks-lock" aria-label="נעילת מסך ללקוח" data-tip="נעילת מסך ללקוח - מעבר למסך מלא, יציאה (Esc) דורשת אישור עובד" data-guide-id="kiosk.lock" data-agy-id="lock_screen_btn" onClick={lockScreen}><KIcon id="lock" size="sm" /></button>
                   )}
                 </div>
               </div>
@@ -1037,7 +1037,7 @@ function KioskInner({ initialSettings }) {
               {aiEnabled && isAiChatVisible && <div className="ks-aiwrap">{renderAiChatCard(() => setIsAiChatVisible(false))}</div>}
 
               {sidebarOpen && (
-                <aside className="ks-filter" data-agy-id="catalog_sidebar">
+                <aside className="ks-filter" data-guide-id="kiosk.filters" data-agy-id="catalog_sidebar">
                   <div className="ks-fgroup ks-fsearch">
                     <label className="lbl" htmlFor="ks-f-search"><KIcon id="search" size="sm" />חיפוש</label>
                     <input id="ks-f-search" className="inp" data-agy-id="catalog_search_input" type="text" placeholder="שם דגם, מספר, או מידה..." value={search} onChange={(e) => setSearch(e.target.value)} />

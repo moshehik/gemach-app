@@ -248,12 +248,12 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
   return (
     <LzPortal>
       <div className="scrim on lz-cf-scrim" role="presentation" onClick={stop} onMouseDown={(e) => { stop(e); if (e.target === e.currentTarget) close(); }}>
-        <div className="dlg lz-cf lz-bc" id="dlg" role="dialog" aria-modal="true" aria-labelledby="lz-bc-title">
+        <div className="dlg lz-cf lz-bc" id="dlg" data-guide-id="sched.bc-dialog" role="dialog" aria-modal="true" aria-labelledby="lz-bc-title">
           <div className="dbadge" aria-hidden="true"><ScheduleIcon name="scan" /></div>
           <h2 id="lz-bc-title">{heading}</h2>
           <div className="sub">{name ? name + ' · ' : ''}{sub}</div>
 
-          <div className="lz-bc-inp">
+          <div className="lz-bc-inp" data-guide-id="sched.bc-input">
             <ScheduleIcon name="scan" />
             <input
               ref={inputRef}
@@ -329,7 +329,7 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
             </div>
           ) : null}
 
-          <div className="lz-det lz-bc-list">
+          <div className="lz-det lz-bc-list" data-guide-id="sched.bc-list">
             {items.map((it) => (
               <div className={'li lz-bc-it' + (it.registered || it.taken || !it.needsBarcode ? ' ok' : ' miss')} key={it.orderItemId}>
                 <div className="ic-b"><ScheduleIcon name={it.taken || it.registered ? 'check' : (it.needsBarcode ? 'scan' : 'dress')} /></div>
@@ -352,13 +352,13 @@ export default function BarcodeDialog({ target, onClose, onProgress, onMarkReady
           </div>
 
           {items.some((it) => it.registered && !it.taken) ? (
-            <button type="button" className="btn ghost lz-bc-relall" disabled={busy || done} onClick={releaseAll} data-tip="לשחרר את כל הרישומים של ההזמנה (למשל כשהלקוחה לא הגיעה)">
+            <button type="button" className="btn ghost lz-bc-relall" data-guide-id="sched.bc-release-all" disabled={busy || done} onClick={releaseAll} data-tip="לשחרר את כל הרישומים של ההזמנה (למשל כשהלקוחה לא הגיעה)">
               <ScheduleIcon name="undo" />שחרור כל הרישומים (אי-הגעה)
             </button>
           ) : null}
 
           <div className="dbtns">
-            <button ref={yesRef} type="button" className="btn primary lg block" disabled={!complete || busy || done || !onMarkReady} onClick={markReady}>
+            <button ref={yesRef} type="button" className="btn primary lg block" data-guide-id="sched.bc-done" disabled={!complete || busy || done || !onMarkReady} onClick={markReady}>
               <ScheduleIcon name="check" />{yesLabel}{summary && summary.required ? ' (' + summary.registered + '/' + summary.required + ')' : ''}
             </button>
             <button type="button" className="btn ghost block" onClick={close}><ScheduleIcon name="x" />סגירה</button>

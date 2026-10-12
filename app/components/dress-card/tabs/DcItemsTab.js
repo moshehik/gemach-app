@@ -153,7 +153,7 @@ export default function DcItemsTab({ dc, ui, active }) {
       <div className="card-h">
         <div className="ico gold"><OcIcon name="box" size="lg" /></div><h2>פריטים ומלאי</h2>
         {multi && branchNames.length
-          ? <button type="button" className="btn" id="dcQuickBtn" aria-haspopup="dialog" onClick={quickTransfer}><OcIcon name="scan" />העברה מהירה</button>
+          ? <button type="button" className="btn" id="dcQuickBtn" data-guide-id="dc.quick-transfer" aria-haspopup="dialog" onClick={quickTransfer}><OcIcon name="scan" />העברה מהירה</button>
           : null}
         {canManage
           ? <button type="button" className="btn navy" id="dcAddBtn" data-guide-id="dc.item-add" aria-haspopup="dialog" onClick={addItem}><OcIcon name="plus" />הוסף פריט</button>

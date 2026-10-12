@@ -32,7 +32,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
     <aside className="rail lz-rail" data-guide-id="sched.rail" aria-label="שלבי התהליך">
       <div className={'st-sidenav lz-snav' + (loading ? ' lz-loading' : '')}>
         <div className="lz-rh">שלבי היום</div>
-        <div className="sbar" id="sbar">
+        <div className="sbar" id="sbar" data-guide-id="sched.scan">
           <div className="inpw">
             <ScheduleIcon name="scan" />
             <input

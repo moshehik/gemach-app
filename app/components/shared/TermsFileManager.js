@@ -76,7 +76,7 @@ export default function TermsFileManager({ variant = 'sim', onDone, onError }) {
   const cur = data && data.current;
   const history = (data && data.history) || [];
   return (
-    <div className="tfm" data-terms-file-manager="1" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: legacy ? '14px 0' : '4px 0 10px' }}>
+    <div className="tfm" data-guide-id="set.terms-file" data-terms-file-manager="1" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: legacy ? '14px 0' : '4px 0 10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <b>קובץ התקנון שמוצג ללקוחות</b>
@@ -85,7 +85,7 @@ export default function TermsFileManager({ variant = 'sim', onDone, onError }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className={btnPrimary} disabled={busy || !data} onClick={() => inputRef.current && inputRef.current.click()}>{busy ? 'מעלה…' : cur ? 'החלפת קובץ' : 'העלאת קובץ תקנון'}</button>
+          <button type="button" className={btnPrimary} data-guide-id="set.terms-upload" disabled={busy || !data} onClick={() => inputRef.current && inputRef.current.click()}>{busy ? 'מעלה…' : cur ? 'החלפת קובץ' : 'העלאת קובץ תקנון'}</button>
           {cur ? <a className={btn} href="/terms" target="_blank" rel="noopener noreferrer">תצוגה כפי שהלקוחה רואה</a> : null}
           {cur ? <button type="button" className={btn} disabled={busy} onClick={clearCurrent}>הסרה</button> : null}
           <a className={btn} href="/privacy" target="_blank" rel="noopener noreferrer">מדיניות הפרטיות</a>

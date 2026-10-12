@@ -214,7 +214,7 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
   return (
     <>
       <div className="row wrap" style={{ marginBottom: 14, gap: 10, alignItems: 'center' }}>
-        <button type="button" className="btn ghost sm" onClick={onBack}><Ic id="back" />חזרה לרשימת המיילים</button>
+        <button type="button" className="btn ghost sm" data-guide-id="emc.editor-back" onClick={onBack}><Ic id="back" />חזרה לרשימת המיילים</button>
         <h2 className="adm-h" style={{ margin: 0 }}><span className="adm-hi"><Ic id="mail" /></span>{emailName}</h2>
         {email.edited ? <span className="chip gold">נערך</span> : null}
       </div>
@@ -238,7 +238,7 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
             <div className="st-ctl">
               {email.enabledEditable ? (
                 <label className="sw">
-                  <input type="checkbox" aria-label={`הפעלת המייל: ${emailName}`} checked={email.enabled} onChange={(e) => toggleEnabled(e.target.checked)} data-element-name={`מתג_email_${email.id}`} />
+                  <input type="checkbox" data-guide-id="emc.editor-toggle" aria-label={`הפעלת המייל: ${emailName}`} checked={email.enabled} onChange={(e) => toggleEnabled(e.target.checked)} data-element-name={`מתג_email_${email.id}`} />
                   <i />
                 </label>
               ) : <span className="chip">{email.enabledMode === 'locked' ? 'תמיד פעיל' : 'נשלח לפי פעולה'}</span>}
@@ -256,7 +256,7 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
       <div className="ec-grid">
         <div>
           {email.subject ? (
-            <section className="st-sec st-card">
+            <section className="st-sec st-card" data-guide-id="emc.subject">
               <h2 className="adm-h"><span className="adm-hi"><Ic id="send" /></span>נושא המייל</h2>
               <div className="card adm-rows"><div className="list" style={{ padding: 12 }}>
                 <MergeEditor ref={subjectRef} value={subject} vars={vars} disabled={!editable} ariaLabel="נושא המייל" onChange={setSubject} onFocusEditor={() => { activeHandle.current = subjectRef.current; }} />
@@ -272,7 +272,7 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
           )}
 
           {email.lines.length ? (
-            <section className="st-sec st-card">
+            <section className="st-sec st-card" data-guide-id="emc.lines">
               <h2 className="adm-h"><span className="adm-hi"><Ic id="pencil" /></span>שורות המייל</h2>
               <div className="card adm-rows"><div className="list" style={{ padding: '4px 12px' }}>
                 {email.lines.map((l) => (
@@ -291,7 +291,7 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
             </section>
           ) : null}
 
-          <section className="st-sec st-card">
+          <section className="st-sec st-card" data-guide-id="emc.schedule">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="clock" /></span>תזמון השליחה</h2>
             <div className="card adm-rows"><div className="list" style={{ padding: 12 }}>
               <Schedule email={email} sched={sched} setSched={setSched} disabled={!editable} />
@@ -300,15 +300,15 @@ export default function EmailEditor({ email, catalog, onBack, onReload, askReset
 
           {editable ? (
             <div className="ec-sticky-save">
-              <button type="button" className="btn primary" disabled={!dirty || saving} onClick={save} data-element-name={`כפתור_email_save_${email.id}`}><Ic id="check" />{saving ? 'שומר…' : 'שמירה'}</button>
+              <button type="button" className="btn primary" data-guide-id="emc.editor-save" disabled={!dirty || saving} onClick={save} data-element-name={`כפתור_email_save_${email.id}`}><Ic id="check" />{saving ? 'שומר…' : 'שמירה'}</button>
               <button type="button" className="btn ghost" disabled={!dirty || saving} onClick={discard}><Ic id="undo" />ביטול השינויים</button>
-              <button type="button" className="btn ghost" disabled={saving || (!email.edited && !dirty)} onClick={() => askReset(email)} style={{ marginInlineStart: 'auto' }}><Ic id="refresh" />איפוס המייל לברירת מחדל</button>
+              <button type="button" className="btn ghost" data-guide-id="emc.editor-reset" disabled={saving || (!email.edited && !dirty)} onClick={() => askReset(email)} style={{ marginInlineStart: 'auto' }}><Ic id="refresh" />איפוס המייל לברירת מחדל</button>
               {dirty ? <span className="chip gold">יש שינויים שלא נשמרו</span> : null}
             </div>
           ) : null}
         </div>
 
-        <aside className="ec-prev" aria-label="תצוגה מקדימה">
+        <aside className="ec-prev" data-guide-id="emc.preview" aria-label="תצוגה מקדימה">
           <div className="ec-prev-subj"><b>נושא:</b>{prev.subject || '…'}</div>
           {prev.error ? <div className="ec-prev-err" role="alert">{prev.error}</div> : null}
           <iframe className="ec-frame" title="תצוגה מקדימה של המייל" sandbox="" srcDoc={prev.html || '<p style="font-family:sans-serif;padding:16px">טוען תצוגה…</p>'} />

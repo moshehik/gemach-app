@@ -63,7 +63,7 @@ export default function FixedFieldsPanel({ fixed, onReload, askResetAll, toast, 
   return (
     <div className="ec-grid">
       <div>
-        <section className="st-sec st-card">
+        <section className="st-sec st-card" data-guide-id="emc.fixed">
           <h2 className="adm-h"><span className="adm-hi"><Ic id="note" /></span>נתונים קבועים בכל מייל</h2>
           <div className="card adm-rows"><div className="list" style={{ padding: '4px 12px' }}>
             {fixed.map((f) => (
@@ -105,9 +105,9 @@ export default function FixedFieldsPanel({ fixed, onReload, askResetAll, toast, 
           </div></div>
         </section>
         <div className="ec-sticky-save">
-          <button type="button" className="btn primary" disabled={!dirtyKeys.length || saving} onClick={save} data-element-name="כפתור_email_fixed_save"><Ic id="check" />{saving ? 'שומר…' : 'שמירה'}</button>
+          <button type="button" className="btn primary" data-guide-id="emc.fixed-save" disabled={!dirtyKeys.length || saving} onClick={save} data-element-name="כפתור_email_fixed_save"><Ic id="check" />{saving ? 'שומר…' : 'שמירה'}</button>
           <button type="button" className="btn ghost" disabled={!dirtyKeys.length || saving} onClick={() => setVals(initial)}><Ic id="undo" />ביטול השינויים</button>
-          <button type="button" className="btn ghost" disabled={saving || !fixed.some((f) => f.overridden)} onClick={askResetAll} style={{ marginInlineStart: 'auto' }}><Ic id="refresh" />איפוס כל הנתונים לברירת מחדל</button>
+          <button type="button" className="btn ghost" data-guide-id="emc.fixed-reset" disabled={saving || !fixed.some((f) => f.overridden)} onClick={askResetAll} style={{ marginInlineStart: 'auto' }}><Ic id="refresh" />איפוס כל הנתונים לברירת מחדל</button>
           {dirtyKeys.length ? <span className="chip gold">יש שינויים שלא נשמרו</span> : null}
         </div>
       </div>

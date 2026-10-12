@@ -151,7 +151,7 @@ function BranchesRow() {
         <small>הוספת סניפים, סניף ראשי, ולכל סניף: מדידה / איסוף / החזרה, וההגדרות של ריבוי סניפים. נפתח בעמוד נפרד.</small>
       </div>
       <div className="st-ctl">
-        <Link className="btn ghost sm" href="/admin/branches" aria-label="פתיחת ניהול הסניפים (עמוד נפרד)" data-element-name="כפתור_settings_branches">
+        <Link className="btn ghost sm" href="/admin/branches" data-guide-id="set.branches-link" aria-label="פתיחת ניהול הסניפים (עמוד נפרד)" data-element-name="כפתור_settings_branches">
           <Ic id="ext" />פתיחה
         </Link>
       </div>
@@ -169,7 +169,7 @@ function ScheduleRow() {
         <small>הכנה, איסוף, החזרה ותיקונים: כמה ימים לפני או אחרי האירוע, פעיל או כבוי, משמרת - וטווח ההתראה על העברת פריטים בין סניפים. נפתח כחלון בדף הלו״ז.</small>
       </div>
       <div className="st-ctl">
-        <Link className="btn ghost sm" href="/schedule?settings=1" aria-label="פתיחת הגדרות תהליכי הלו״ז" data-element-name="כפתור_settings_schedule">
+        <Link className="btn ghost sm" href="/schedule?settings=1" data-guide-id="set.schedule-link" aria-label="פתיחת הגדרות תהליכי הלו״ז" data-element-name="כפתור_settings_schedule">
           <Ic id="ext" />פתיחה
         </Link>
       </div>

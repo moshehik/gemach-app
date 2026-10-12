@@ -132,7 +132,7 @@ export default function ScheduleSettingsDialog({ open, onClose, onSaved }) {
   return (
     <LzPortal>
       <div className="scrim on" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="dlg lz-wiz lz-setd" id="dlg" role="dialog" aria-modal="true" aria-labelledby="lz-set-title">
+        <div className="dlg lz-wiz lz-setd" id="dlg" data-guide-id="sched.settings-dialog" role="dialog" aria-modal="true" aria-labelledby="lz-set-title">
           <div className="dbadge" aria-hidden="true"><ScheduleIcon name="gear" /></div>
           <h2 id="lz-set-title">הגדרות תהליכים <span className="chip gray lz-mgt">הנהלה ראשית בלבד</span></h2>
           <div className="sub">לכל תהליך: פעיל או כבוי, כמה ימי עסקים לפני או אחרי האירוע הוא מתבצע, ואם רוצים גם באיזו משמרת (ברירת מחדל: בלי משמרות). השינוי משפיע על הציר, על הרשימות ועל הלוח החודשי.</div>
@@ -140,7 +140,7 @@ export default function ScheduleSettingsDialog({ open, onClose, onSaved }) {
           {err && !data ? <div className="empty" role="alert"><p>{err}</p></div> : null}
           {data ? (
             <>
-              <div className="lz-sbody" id="stB">
+              <div className="lz-sbody" id="stB" data-guide-id="sched.settings-list">
                 {groups.map(([g, label, list]) => (
                   <section className="lz-sg" key={g}>
                     <h3 className="adm-h lz-sgh"><span className="adm-hi"><ScheduleIcon name={GROUP_ICON[g]} /></span>{label}</h3>
@@ -150,7 +150,7 @@ export default function ScheduleSettingsDialog({ open, onClose, onSaved }) {
                   </section>
                 ))}
                 {data.multiBranch ? (
-                  <section className="lz-sg">
+                  <section className="lz-sg" data-guide-id="sched.settings-horizon">
                     <h3 className="adm-h lz-sgh"><span className="adm-hi"><ScheduleIcon name="swap" /></span>התראת העברה בין סניפים</h3>
                     <div className="card adm-rows lz-scard"><div className="list">
                       <div className="li st-row st-ctlrow lz-srow" data-sk="branch-horizon">
@@ -165,8 +165,8 @@ export default function ScheduleSettingsDialog({ open, onClose, onSaved }) {
               <div className="lz-note"><ScheduleIcon name="info" className="sm" /><span>כללי ההתראות (הסימן !) יוגדרו בהמשך. כרגע: פריט שלא סומן כבוצע אחרי היום שלו, וכתובת חסרה במשלוח.</span></div>
               {err ? <div className="lz-serr" role="alert">{err}</div> : null}
               <div className="dbtns mact">
-                <button type="button" className="btn primary lg" onClick={save} disabled={saving || !canEdit} data-act="schedule-settings-save"><ScheduleIcon name="check" />{saving ? 'שומר…' : 'שמירה'}</button>
-                <button type="button" className="btn" onClick={reset} disabled={saving || !canEdit}><ScheduleIcon name="refresh" className="sm" />איפוס לברירת מחדל</button>
+                <button type="button" className="btn primary lg" data-guide-id="sched.settings-save" onClick={save} disabled={saving || !canEdit} data-act="schedule-settings-save"><ScheduleIcon name="check" />{saving ? 'שומר…' : 'שמירה'}</button>
+                <button type="button" className="btn" data-guide-id="sched.settings-reset" onClick={reset} disabled={saving || !canEdit}><ScheduleIcon name="refresh" className="sm" />איפוס לברירת מחדל</button>
                 <button type="button" className="btn ghost" onClick={onClose}>ביטול<ScheduleIcon name="x" className="sm" /></button>
               </div>
               {!canEdit ? <div className="lz-serr" role="status">רק הנהלה ראשית ומתכנת יכולים לשנות את ההגדרות האלה.</div> : null}

@@ -139,7 +139,7 @@ export default function BranchesManager({ compact = false }) {
               {enabled ? 'דלוק: מוצג סניף על כל פריט, יש הקלדה מהירה להעברות, חישוב צרכים והתראות.' : 'כבוי (ברירת מחדל): אין שום שינוי בממשק או בחישובים.'}
             </div>
           </div>
-          <button type="button" className={`btn ${enabled ? 'btn-secondary' : 'btn-primary'}`} disabled={saving || (!enabled && !hasActive)} onClick={() => toggleEnabled(!enabled)} data-act="toggle-multi-branch">
+          <button type="button" className={`btn ${enabled ? 'btn-secondary' : 'btn-primary'}`} data-guide-id="brn.enable" disabled={saving || (!enabled && !hasActive)} onClick={() => toggleEnabled(!enabled)} data-act="toggle-multi-branch">
             {enabled ? 'כיבוי ריבוי סניפים' : 'הפעלת ריבוי סניפים'}
           </button>
         </div>
@@ -150,7 +150,7 @@ export default function BranchesManager({ compact = false }) {
         )}
       </div>
 
-      <h2 className="section-title">הסניפים</h2>
+      <h2 className="section-title" data-guide-id="brn.list">הסניפים</h2>
       {branches.length === 0 && <div className="empty-state"><p>עוד לא הוגדרו סניפים. הוסיפו את הראשון.</p></div>}
       {branches.map((b) => {
         const u = usage[b.id] || { orders: 0, units: 0 };
@@ -161,18 +161,18 @@ export default function BranchesManager({ compact = false }) {
               <div className="field" style={{ marginBottom: 6 }}>
                 <label htmlFor={`br-name-${b.id}`}>שם הסניף</label>
                 <input
-                  id={`br-name-${b.id}`} className="input" value={b.name} maxLength={40} disabled={used}
+                  id={`br-name-${b.id}`} data-guide-id="brn.name" className="input" value={b.name} maxLength={40} disabled={used}
                   onChange={(e) => setBranch(b.id, { name: e.target.value })} placeholder="לדוגמה: נווה יעקב"
                 />
                 {used && <span className="hint">השם נעול: יש עליו {u.orders} הזמנות ו-{u.units} פריטים. כדי להחליף שם - משביתים ומוסיפים סניף חדש.</span>}
               </div>
-              <label className="checkbox-row" style={{ cursor: b.active ? 'pointer' : 'default' }}>
+              <label className="checkbox-row" data-guide-id="brn.main" style={{ cursor: b.active ? 'pointer' : 'default' }}>
                 <input type="radio" name="branch-main" checked={!!b.isMain && b.active} disabled={!b.active} onChange={() => setMain(b.id)} style={{ accentColor: 'var(--primary-solid)' }} />
                 <span>סניף ראשי</span>
                 {b.isMain && b.active && <span className="badge badge-primary">ראשי</span>}
               </label>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 0 auto' }}>
+            <div data-guide-id="brn.caps" style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 0 auto' }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)' }}>מה יש בסניף</div>
               {CAPS.map((c) => (
                 <Switch key={c} id={`br-${c}-${b.id}`} checked={b[c]} label={CAPABILITY_LABEL[c]} onChange={(v) => setBranch(b.id, { [c]: v })} />
@@ -189,13 +189,13 @@ export default function BranchesManager({ compact = false }) {
         );
       })}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-secondary" onClick={addBranch} disabled={branches.length >= MAX_BRANCHES} data-act="add-branch">הוספת סניף</button>
+        <button type="button" className="btn btn-secondary" data-guide-id="brn.add" onClick={addBranch} disabled={branches.length >= MAX_BRANCHES} data-act="add-branch">הוספת סניף</button>
         {!hasActive && branches.length > 0 && <span className="hint">אין סניף פעיל</span>}
       </div>
 
       {enabled && (
         <>
-          <h2 className="section-title">התראות על העברת פריטים בין סניפים</h2>
+          <h2 className="section-title" data-guide-id="brn.notices">התראות על העברת פריטים בין סניפים</h2>
           <div className="card card-pad">
             <Switch id="br-banner" checked={notice.bannerEnabled} label="להציג בראש הדף (מתחת לשורת התפריט) התראה שיש פריטים להעביר או להחזיר לסניף אחר" onChange={(v) => touch(() => setNotice((n) => ({ ...n, bannerEnabled: v })))} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginTop: 14, opacity: notice.bannerEnabled ? 1 : 0.55 }}>
@@ -218,7 +218,7 @@ export default function BranchesManager({ compact = false }) {
         </>
       )}
 
-      <h2 className="section-title">פריטי רזרבה</h2>
+      <h2 className="section-title" data-guide-id="brn.reserve">פריטי רזרבה</h2>
       <div className="card card-pad">
         <Switch id="br-reserve-alert" checked={notice.reserveAlert} label="בסריקת החזרה של פריט רזרבה שיצא באישור: להקפיץ התראה על החזרה לרזרבה (נסגרת ב-Enter ונרשמת ברשימת ההתראות). לא תלוי בריבוי סניפים." onChange={(v) => touch(() => setNotice((n) => ({ ...n, reserveAlert: v })))} />
         <div className="hint" style={{ color: 'var(--text-3)', marginTop: 6, fontSize: 12.5 }}>מסמן את הפריט כיצא מהרזרבה ברגע אישור ההשכרה (רק כשהשכרת רזרבה דורשת אישור מנהל), ומנקה את הסימון בהחזרה.</div>
@@ -228,7 +228,7 @@ export default function BranchesManager({ compact = false }) {
       {msg && <div className={msg.type === 'success' ? 'callout callout-success' : 'callout callout-danger'} style={{ marginTop: 14 }} role="status">{msg.text}</div>}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-        <button type="button" className="btn btn-primary" onClick={() => save()} disabled={saving || !dirty || clientErrors.length > 0} data-act="save-branches">{saving ? 'שומר...' : 'שמירה'}</button>
+        <button type="button" className="btn btn-primary" data-guide-id="brn.save" onClick={() => save()} disabled={saving || !dirty || clientErrors.length > 0} data-act="save-branches">{saving ? 'שומר...' : 'שמירה'}</button>
         <button type="button" className="btn btn-ghost" onClick={load} disabled={saving || !dirty}>ביטול שינויים</button>
       </div>
     </div>

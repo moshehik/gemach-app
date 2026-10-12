@@ -171,7 +171,7 @@ export default function EmailCenterPage() {
           כל המיילים שהמערכת שולחת. לכל מייל: הפעלה/כיבוי, עריכת הנושא והשורות (עם שדות מוחלפים), ותזמון. מייל שלא נערך יוצא בדיוק כמו תמיד.
         </p>
         {groups.map((g) => (
-          <section className="st-sec st-card" key={g.cat}>
+          <section className="st-sec st-card" key={g.cat} data-guide-id="emc.list">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="mail" /></span>{g.label}</h2>
             <div className="card adm-rows"><div className="list">
               {g.items.map((c) => {
@@ -188,11 +188,11 @@ export default function EmailCenterPage() {
                     <div className="st-ctl">
                       {e.enabledEditable ? (
                         <label className="sw">
-                          <input type="checkbox" aria-label={`הפעלת המייל: ${c.name}`} checked={e.enabled} onChange={(ev) => toggleEnabled(e, ev.target.checked)} data-element-name={`מתג_email_${c.id}`} />
+                          <input type="checkbox" data-guide-id="emc.row-toggle" aria-label={`הפעלת המייל: ${c.name}`} checked={e.enabled} onChange={(ev) => toggleEnabled(e, ev.target.checked)} data-element-name={`מתג_email_${c.id}`} />
                           <i />
                         </label>
                       ) : <span className="chip">{e.enabledMode === 'locked' ? 'תמיד פעיל' : 'לפי פעולה'}</span>}
-                      <button type="button" className="btn ghost sm" onClick={() => setSelected(c.id)} data-element-name={`כפתור_email_open_${c.id}`}><Ic id="pencil" />{e.editable ? 'עריכה' : 'תצוגה'}</button>
+                      <button type="button" className="btn ghost sm" data-guide-id="emc.row-edit" onClick={() => setSelected(c.id)} data-element-name={`כפתור_email_open_${c.id}`}><Ic id="pencil" />{e.editable ? 'עריכה' : 'תצוגה'}</button>
                     </div>
                   </div>
                 );
@@ -225,12 +225,12 @@ export default function EmailCenterPage() {
           <div className="li st-row st-ctlrow">
             <div className="ic-b"><Ic id="send" /></div>
             <div className="t"><b className="st-lb">שליחת מיילי דוגמה</b><small>שולח מייל לדוגמה מכל סוג לכתובת שתקלידו (לא ללקוחות אמיתיים).</small></div>
-            <div className="st-ctl"><Link className="btn ghost sm" href="/admin/email-test"><Ic id="ext" />פתיחה</Link></div>
+            <div className="st-ctl"><Link className="btn ghost sm" data-guide-id="emc.tools-test" href="/admin/email-test"><Ic id="ext" />פתיחה</Link></div>
           </div>
           <div className="li st-row st-ctlrow">
             <div className="ic-b"><Ic id="list" /></div>
             <div className="t"><b className="st-lb">יומן המיילים שנשלחו</b><small>כל מייל שיצא (או נכשל) - למתכנת בלבד.</small></div>
-            <div className="st-ctl"><Link className="btn ghost sm" href="/admin/site-settings/email-logs"><Ic id="ext" />פתיחה</Link></div>
+            <div className="st-ctl"><Link className="btn ghost sm" data-guide-id="emc.tools-logs" href="/admin/site-settings/email-logs"><Ic id="ext" />פתיחה</Link></div>
           </div>
           <div className="li st-row st-ctlrow">
             <div className="ic-b"><Ic id="gear" /></div>
@@ -274,11 +274,11 @@ export default function EmailCenterPage() {
           <div className="layout">
             <aside className="rail" aria-label="לשוניות">
               <div className="st-sidenav">
-                <nav className="st-stabs" role="tablist" aria-label="מרכז המיילים" aria-orientation="vertical">
+                <nav className="st-stabs" data-guide-id="emc.nav" role="tablist" aria-label="מרכז המיילים" aria-orientation="vertical">
                   {TABS.map((t) => {
                     const on = t.id === tab;
                     return (
-                      <button key={t.id} type="button" className={`st-stab${on ? ' on' : ''}`} role="tab" aria-selected={on} aria-current={on ? 'page' : undefined} onClick={() => openTab(t.id)} data-element-name={`כפתור_email_tab_${t.id}`}>
+                      <button key={t.id} type="button" className={`st-stab${on ? ' on' : ''}`} data-guide-id={`emc.tab-${t.id}`} role="tab" aria-selected={on} aria-current={on ? 'page' : undefined} onClick={() => openTab(t.id)} data-element-name={`כפתור_email_tab_${t.id}`}>
                         <span className="st-sic"><Ic id={t.icon} plain /></span>
                         <span className="st-slb">{t.label}</span>
                         <span className="st-sgo" aria-hidden="true"><Ic id="chev" plain /></span>
@@ -293,7 +293,7 @@ export default function EmailCenterPage() {
               <div className="st-toptabs">
                 <nav className="tabs" role="tablist" aria-label="מרכז המיילים">
                   {TABS.map((t) => (
-                    <button key={t.id} type="button" className={`tab${t.id === tab ? ' on' : ''}`} role="tab" data-ico={t.icon} aria-selected={t.id === tab} onClick={() => openTab(t.id)}>
+                    <button key={t.id} type="button" className={`tab${t.id === tab ? ' on' : ''}`} data-guide-id={`emc.tab-${t.id}`} role="tab" data-ico={t.icon} aria-selected={t.id === tab} onClick={() => openTab(t.id)}>
                       <span className="tico"><Ic id={t.icon} plain /></span>{t.label}
                     </button>
                   ))}

@@ -216,7 +216,7 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedule
       <div className="ec-grid">
         <div>
           {/* ---------------- נמענים ---------------- */}
-          <section className="st-sec st-card">
+          <section className="st-sec st-card" data-guide-id="emc.camp-who">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="users" /></span>למי לשלוח</h2>
             <div className="card adm-rows"><div className="list" style={{ padding: 12 }}>
               <div className="sizes st-wide-btn" role="group" aria-label="סוג הבחירה">
@@ -284,7 +284,7 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedule
           </section>
 
           {/* ---------------- תוכן ---------------- */}
-          <section className="st-sec st-card">
+          <section className="st-sec st-card" data-guide-id="emc.camp-content">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="pencil" /></span>תוכן הדיוור</h2>
             <div className="card adm-rows"><div className="list" style={{ padding: 12 }}>
               <VarPalette vars={campaignVars} onInsert={insertVar} title="שדות אישיים לכל נמענת" />
@@ -350,7 +350,7 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedule
           </section>
 
           {/* ---------------- שליחה ---------------- */}
-          <section className="st-sec st-card">
+          <section className="st-sec st-card" data-guide-id="emc.camp-send">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="send" /></span>שליחה</h2>
             <div className="card adm-rows"><div className="list" style={{ padding: 12 }}>
               <div className="seg pill" role="radiogroup" aria-label="מתי לשלוח" style={{ '--n': 2, '--i': sendMode === 'now' ? 0 : 1, maxWidth: 360 }}>
@@ -376,8 +376,8 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedule
                 </div>
               ) : null}
               <div className="ec-actions">
-                <button type="button" className="btn ghost" disabled={!contentReady || busy || uploading} onClick={sendTest}><Ic id="mail" />שליחת בדיקה לעצמי</button>
-                <button type="button" className="btn primary lg" disabled={!canSend} onClick={() => setConfirm(true)} data-element-name="כפתור_email_campaign_send"><Ic id="send" />{sendMode === 'schedule' ? 'תזמון הדיוור' : 'שליחת הדיוור'}</button>
+                <button type="button" className="btn ghost" data-guide-id="emc.camp-test" disabled={!contentReady || busy || uploading} onClick={sendTest}><Ic id="mail" />שליחת בדיקה לעצמי</button>
+                <button type="button" className="btn primary lg" data-guide-id="emc.camp-go" disabled={!canSend} onClick={() => setConfirm(true)} data-element-name="כפתור_email_campaign_send"><Ic id="send" />{sendMode === 'schedule' ? 'תזמון הדיוור' : 'שליחת הדיוור'}</button>
               </div>
               {progress ? (
                 <div role="status" aria-live="polite">
@@ -389,7 +389,7 @@ export default function CampaignPanel({ campaignVars, dryRun, cronNote, schedule
           </section>
 
           {/* ---------------- היסטוריה ---------------- */}
-          <section className="st-sec st-card">
+          <section className="st-sec st-card" data-guide-id="emc.camp-history">
             <h2 className="adm-h"><span className="adm-hi"><Ic id="list" /></span>דיוורים אחרונים</h2>
             <div className="card adm-rows"><div className="list" style={{ padding: 12, overflowX: 'auto' }}>
               {history.campaigns.length ? (

@@ -68,7 +68,7 @@ export function PageTools({ onExport, onDownload, onPrint, onSettings, canExport
       <WizButton mode="dl" onClick={onDownload} />
       <WizButton mode="print" onClick={onPrint} />
       {canSettings && onSettings ? (
-        <button type="button" className="ibtn" aria-label={TIP.settings} data-tip={TIP.settings} onClick={onSettings}>
+        <button type="button" className="ibtn" data-guide-id="sched.settings" aria-label={TIP.settings} data-tip={TIP.settings} onClick={onSettings}>
           <ScheduleIcon name="gear" className="ia-gear ia-h" />
         </button>
       ) : null}

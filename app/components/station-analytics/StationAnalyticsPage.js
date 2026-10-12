@@ -96,7 +96,7 @@ function ChartCard({ title, sub, children }) {
 
 function Section({ id, icon, title, extra, children }) {
   return (
-    <section className="st-sec st-card" id={id} data-sec={id}>
+    <section className="st-sec st-card" id={id} data-guide-id={`sa.sec-${id.replace(/^sa-/, '')}`} data-sec={id}>
       <h2 className="adm-h"><span className="adm-hi"><Ic id={icon} /></span>{title}{extra ? <span className="st-hr">{extra}</span> : null}</h2>
       {children}
     </section>
@@ -232,7 +232,7 @@ export default function StationAnalyticsPage({ preload = null }) {
             </div>
           </div>
 
-          <div className="hf-bar adm-bar st-bar" role="group" aria-label="סינון">
+          <div className="hf-bar adm-bar st-bar" data-guide-id="sa.filters" role="group" aria-label="סינון">
             <Seg label="תקופה" idPrefix="sa_preset" options={PRESETS} value={preset} onChange={pickPreset} />
             {preset === 'custom' ? (
               <button type="button" className="btn ghost sm" onClick={() => setAskRange(true)} data-agy-id="sa_range_btn">
@@ -242,7 +242,7 @@ export default function StationAnalyticsPage({ preload = null }) {
             <Seg label="ערוץ" idPrefix="sa_channel" options={CHANNELS} value={channel} onChange={setChannel} />
             <span className="chip gray">חלון המרה</span>
             <Seg label="חלון ההמרה לסגירת הזמנה, בימים" idPrefix="sa_window" options={WINDOW_PILLS} value={String(windowDays)} onChange={(v) => setWindowDays(parseInt(v, 10))} />
-            <button type="button" className="btn ghost sm" onClick={() => setTick((n) => n + 1)} disabled={state.status === 'loading' || state.status === 'refreshing'} data-agy-id="sa_refresh_btn"><Ic id="refresh" />רענון</button>
+            <button type="button" className="btn ghost sm" onClick={() => setTick((n) => n + 1)} disabled={state.status === 'loading' || state.status === 'refreshing'} data-guide-id="sa.refresh" data-agy-id="sa_refresh_btn"><Ic id="refresh" />רענון</button>
           </div>
 
           {state.status === 'loading' && !d ? (
@@ -267,7 +267,7 @@ export default function StationAnalyticsPage({ preload = null }) {
             <div className={`layout${state.status === 'refreshing' ? ' sa-busy' : ''}`}>
               <aside className="rail" aria-label="ניווט וההסבר על המדדים">
                 <div className="st-sidenav">
-                  <nav className="st-stabs" role="tablist" aria-label="קטעי המסך" aria-orientation="vertical">
+                  <nav className="st-stabs" data-guide-id="sa.nav" role="tablist" aria-label="קטעי המסך" aria-orientation="vertical">
                     {SECTIONS.map((s) => (
                       <button key={s.id} type="button" role="tab" aria-selected={activeSec === s.id} className={`st-stab${activeSec === s.id ? ' on' : ''}`} onClick={() => goSection(s.id)} data-agy-id={`sa_nav_${s.id}`}>
                         <span className="st-sic"><Ic id={s.icon} plain /></span>
