@@ -10,6 +10,8 @@ import { printPageEventBodies } from '../../../lib/history/orderEvents';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
+import { stripCodeLabel } from '../../../lib/modelCodeLabel';
+import { sortByModelThenSize } from '../../../lib/sizeSort';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -21,7 +23,14 @@ function newPrintEventId() {
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
 // bare number without that word.
-const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+// כשהשם הוא המספר עצמו (נווה יעקב: "522 (קוד: 522)") מודפס "522" פעם אחת - stripCodeLabel ב-lib/modelCodeLabel.js.
+
+// סדר שורות הפריטים בכל הדפסת הזמנה / הכנות להיום: דגם לפי מספר עולה, ובתוך הדגם מידה עולה (ה-API מחזיר את הפריטים בסדר הכנסה).
+const sortPrintItems = (items) => sortByModelThenSize(
+  items,
+  (i) => i.dressItem?.dress?.barcodePrefix ?? i.dressItem?.barcodePrefix ?? i.barcodePrefix,
+  (i) => i.sizeText || i.dressItem?.sizeText
+);
 
 // "פרטי החזרה" (top-of-print line, shown on both the order-confirmation and
 // rental-report print types - org2 report 5c1be668 asked for return day/hour on the
@@ -311,7 +320,7 @@ export default function PrintOrderPage() {
     const totalObligations = ord?.obligations?.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) || 0;
     const totalPayments = ord?.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0;
     const balance = Math.max(0, totalObligations - totalPayments);
-    const activeItems = ord?.items ? ord.items.filter(i => !i.isDeleted) : [];
+    const activeItems = ord?.items ? sortPrintItems(ord.items.filter(i => !i.isDeleted)) : [];
     const activePayments = ord?.payments ? ord.payments.filter(p => !p.isDeleted) : [];
     // מועד החזרה = toDate/returnDate, או יום העבודה הראשון אחרי האירוע (שישי/שבת/חג/ערב חג/ימים
     // שהבעלים סימן - הכלל האחיד של lib/businessDays.js, אותו כלל של התראת האיחור); האיסוף = 2 ימי עסקים לפני.
