@@ -2,8 +2,11 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import fs from 'fs';
+import { checkAuth } from '../../../../../lib/auth';
 
+// 2026-10-12: was public. Its only consumer is /admin/database (developer-only layout), which calls it with the session cookie.
 export async function GET() {
+  if (!(await checkAuth('מתכנת'))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const statusFilePath = path.join(process.cwd(), 'migration_status.json');
     
