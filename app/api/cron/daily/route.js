@@ -9,12 +9,14 @@ import { emailSubject } from '@/lib/emailCatalog';
 import { getEmailConfig, cfgPlain } from '@/lib/emailConfig';
 import { whenWordForDays } from '@/lib/emailRegistry';
 import { sendOrderConfirmationEmail } from '@/lib/orderConfirmationMail';
+import { processDueCampaigns } from '@/lib/emailCampaign';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '@/lib/orderReservation';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, getExpectedReturnDate, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // Cron יומי: מופעל ע"י Vercel Cron (vercel.json) או ידנית GET /api/cron/daily
 // מכבד את כל מתגי האוטומציה - לא שולח אם ההגדרה כבויה.
@@ -308,6 +310,12 @@ export async function GET(request) {
       }
     } catch (e) { results.errors.push(`manualBarcodes: ${e.message}`); }
   }
+
+  // דיוורים מתוזמנים שהגיע זמנם (מרכז המיילים, לשונית "דיוורים") - אותה ריצה, אחרי כל המיילים האוטומטיים. כשל כאן לא פוגע בשאר.
+  try {
+    const campaigns = await processDueCampaigns({ deadlineMs: Date.now() + 30000 });
+    if (campaigns.processed) results.campaigns = campaigns;
+  } catch (e) { results.errors.push(`campaigns: ${e.message}`); }
 
   return NextResponse.json({ success: true, ...results });
 }
