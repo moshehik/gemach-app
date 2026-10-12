@@ -177,3 +177,25 @@
 - `lib/homeSearchInventory.js`: **שינוי (model-numbers: `modelDisplayName`) מול מחיקה (הענף מסיר את שורות "מלאי" הישנות מהחיפוש הראשי, הפאנל מחליף אותן)** => נמחק. אין לו צרכנים אחרים (`lib/globalSearch.js` בענף כבר לא מייבא אותו; `test_global_search_server` עודכן בענף). כלל השם "אמיתי אחרת מספר" חל על הפאנל דרך patch 04.
 - **patch 04** חל נקי (`SearchPanel.js`, `lib/searchPanel.js`, `lib/searchPanelCore.js`): לא "ללא שם" בכותרות, ברשימת הדגמים התואמים ובפאנל; שם רק כשהוא תיאורי אמיתי (`modelHasRealName`).
 - הרצה: אפס כשלים חדשים.
+
+## 18. feature/neve-new-ui-default-2026-10-12
+- נמזג בלי קונפליקט קוד (גרסה/package בלבד); `scripts/test_page_variant_switch.mjs` נמזג אוטומטית.
+- תיקוני בדיקות: `test_home_css_guard` - הכלל `.topbar:has(.gm-pvt-return-topbar)` (עטיפת כותרת הישנה במובייל, בשביל לחצן "חזרה לממשק החדש") הוסף כחריג מתועד להיקף `.gm-pvt`; `business-days-tests/return-dates` - אתר הקריאה של מייל אישור ההזמנה עבר מ-`app/api/orders/route.js` ל-`lib/orderConfirmationMail.js` (מרכז המיילים).
+- ה-seed (`seed_neve_new_ui_default.js`, נווה בלבד) לא הורץ; פקודות מדויקות ב-`docs/deploy-runbook-2026-10-12.md`.
+
+## תוספות בשלב ב' לסקריפטים (לא הורצו)
+- `scripts/apply_pending_ddl.js` (חדש): החלת `StationEvent` / `AuthThrottle` (רשימה סגורה, dry-run כברירת מחדל, `--apply --expect-host`).
+- `scripts/seed_kiosk_public_settings.js`: נווה נוצר עכשיו `false` (החלטת הרכז: הקישור הציבורי נשאר כבוי); קודם `true`.
+- `scripts/clean_placeholder_model_names.js`: `--apply` דורש `--backup-file=<json חדש>`; חדש `clean_placeholder_model_names_rollback.js`; בדיקה `test_model_name_cleanup_backup.mjs`.
+
+## תוצאות שלב ב' (ריצה מלאה אחרונה: 142 משימות, כולל `business-days-tests`)
+- **15 כשלים - כולם הכשלים הקיימים שבטבלה שלמעלה** (בדיוק אותה רשימה והחתימות הפנימיות שלהם כמו ב-`origin/main`): `cpu-phase1b` (2), `customer-card-tests/run`, `order-card-tests/run`, `order-events`, `pdf-tests/server-pdf`, `schedule-tests/run`, `test_ai_employees_live`, `test_ai_sql_table_policy` (`AuthThrottle` חסר), `test_attendance_summary`, `test_customer_completeness_db`, `test_customer_inline_edit`, `test_punch_clock_logic`, `test_scrub_logged_secrets_db`, `test_search_lists_ui_static`. אפס כשלים חדשים. (`logo-measure-tests/cpu-timing` נכשל פעם אחת תחת עומס בריצה אחת - ידוע כ-flaky.)
+- eslint: אפס שגיאות חדשות בכל 178 הקבצים ששונו מאז סוף שלב א' (נשארו 3 שגיאות קיימות: `AppShell.js` "This value cannot be modified", `ChangesChips.js` x2 - קיימות גם לפני המיזוגים).
+- `prisma validate` עבר; `prisma migrate diff` (סכמת `origin/main` → סכמה סופית) = בדיוק ה-DDL של `DressItem` + `CustomerConsent` + `StationEvent` (ר' runbook).
+- **לא נבדק:** `next build`, דפדפן ו-RTL ויזואלי (כולל הרכבה מחדש של חלון "השכרה והחזרה" בהחלפת הזמנה, באנר "אשר מסירה", שורת ההודעות), ושום DB/ DDL/ seed.
+
+## שאלות פתוחות לרכז (שלב ב')
+1. `lib/ai/sqlTablePolicy.js`: להוסיף `AuthThrottle` ל-`ALL_TABLES`/`NEVER_TABLES` (כשל קיים מ-#273; שורה אחת).
+2. `seed_barcode_entry_settings.js --profile=neve` מדליק את הברקוד בלו"ז בנווה (ב4 ב-runbook) - האם בלילה הזה או רק `off`?
+3. הניקויים בנווה (ג1/ג2) - להריץ בלילה? ללא `--include-obligations` אלא אם יתבקש.
+4. בתצוגת כרטיס ה-PDF/מייל: שדה "כתובת" קבוע במרכז המיילים גובר על `gmach_pickup_address` בטקסט (הקישור נשאר נגזר מהכתובת הייעודית) - אם לא רצוי, להסיר את השדה הקבוע בנווה.
