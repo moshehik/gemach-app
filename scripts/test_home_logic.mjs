@@ -773,7 +773,8 @@ t('דף הבית לא מפנה יותר לקובץ sprite חיצוני (מסננ
   for (const f of readdirSync(HOME_DIR).filter((x) => x.endsWith('.js'))) {
     assert.ok(!homeSource(f).includes('sprite.svg#'), `${f} still references an external sprite.svg#...`);
   }
-  assert.ok(homeSource('HomeParts.js').includes('`#${SPRITE_ID_PREFIX}${id}`'), 'Ic must reference the inline #gmi-<name> symbol');
+  assert.ok(homeSource('homeIcon.js').includes('`#${SPRITE_ID_PREFIX}${id}`'), 'Ic must reference the inline #gmi-<name> symbol'); // Ic עבר ל-homeIcon.js (HomeParts מייצא אותו מחדש)
+  assert.ok(/export \{ Ic \}/.test(homeSource('HomeParts.js')), 'HomeParts must still re-export Ic');
 });
 t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSprite מוותר כש-MenuA5Shell כבר מספק אותו', () => {
   assert.equal((homeSource('HomeA5.js').match(/<HomeSprite \/>/g) || []).length, 1);

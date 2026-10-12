@@ -6,7 +6,7 @@
 // "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד: ברקוד בן 7 ספרות + Enter מחזיר את הפריט המושכר (כמו תיבת "החזרה מהירה"
 // של העיצוב הישן, TopbarSearch.js); אם אין פריט מושכר בברקוד - נשארים בחיפוש ומוצגות התוצאות עם הסיבה (דיווח df035847).
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree, menuRowMatchesTerm } from '@/lib/menu/buildMenuTree';
 import { MINE_URL } from '@/lib/myRecentActivityView';
@@ -21,7 +21,8 @@ import { postReturnScan } from '@/components/orders/returnScanClient';
 import { runQuickBarcode } from '@/components/orders/barcodeFlowClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
-import SearchPanel from '../search/SearchPanel';
+import { useSearchPanelModel } from '../search/SearchPanel';
+import { leadKeys, isCovered } from '@/lib/searchPanelRows';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
 const MIN_CHARS = 2;
@@ -234,6 +235,13 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const [pick, setPick] = useState(null); // הזמנות שמחכות לפריט הפנוי (השכרה מהירה בברקוד, כשיש כמה) - בחירה
   // פאנל התפוסה / הפריט (ר' search/SearchPanel.js): תצוגה מקדימה תוך כדי הקלדה, מתחת לשורת החיפוש. Enter נשאר אצל החזרה המהירה / חיפוש מלא.
   const panelTerm = useDebounce(prefixOn ? '' : term, 350);
+  // כותרת + ריבועים מעל הרשימה; שורות הפאנל (איפה אני? / בחוץ / הוחזרו / ממתינות) נכנסות לרשימת התוצאות עצמה (sn-link), בלי כפילות מול תוצאות החיפוש
+  const panel = useSearchPanelModel(panelTerm, { compact: true, enabled: !!panelTerm, onOpen: (url) => onGo(() => nav.navigate(url), true) });
+  const panelKeys = useMemo(() => leadKeys(panel.lead), [panel.lead]);
+  const apiResults = useMemo(
+    () => search.results.filter((it) => !isCovered(panelKeys, { kind: it.fromBarcode ? 'item' : it.orderId ? 'order' : '', orderId: it.orderId, barcode: it.barcode })),
+    [search.results, panelKeys],
+  );
 
   // ברקוד בן 7 ספרות + Enter (זרימת הברקוד ברצף, components/orders/barcodeFlowClient.js): פריט מושכר -> חלון "השכרה והחזרה" של
   // ההזמנה והברקוד מוחזר בתוכו (הסריקות הבאות נשארות בחלון ועוברות בין הזמנות); פריט פנוי + ההגדרה quick_search_barcode_opens_rental
@@ -330,7 +338,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     const apiOn = term.length >= MIN_CHARS;
     list = (
       <>
-        {panelTerm ? <SearchPanel query={panelTerm} compact onOpen={(url) => onGo(() => nav.navigate(url), true)} /> : null}
+        {panel.head}
         {pages.length > 0 && <div className="sn-st">עמודים</div>}
         {pages.map((p) => (
           <a
@@ -345,9 +353,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             {p.group ? <span className="sn-k">{p.group}</span> : null}
           </a>
         ))}
+        {(panel.lead.length > 0 || (apiOn && !search.searching && !search.pending && apiResults.length > 0)) && <div className="sn-st">הזמנות ולקוחות</div>}
+        {panel.lead.map((x) => <Fragment key={x.key}>{x.node}</Fragment>)}
         {apiOn && (search.searching || search.pending) && <div className="sn-empty">מחפש…</div>}
-        {apiOn && !search.searching && !search.pending && search.results.length > 0 && <div className="sn-st">הזמנות ולקוחות</div>}
-        {apiOn && !search.searching && !search.pending && search.results.map((item, idx) => {
+        {apiOn && !search.searching && !search.pending && apiResults.map((item, idx) => {
           const isOrder = !!item.orderId;
           const name = `${item.firstName || ''} ${item.lastName || ''}`.trim();
           return (
@@ -364,7 +373,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             </a>
           );
         })}
-        {apiOn && !search.searching && !search.pending && search.results.length === 0 && pages.length === 0 && (
+        {apiOn && !search.searching && !search.pending && apiResults.length === 0 && pages.length === 0 && panel.lead.length === 0 && (
           <div className="sn-empty">לא נמצאו תוצאות</div>
         )}
         {!apiOn && pages.length === 0 && <div className="sn-empty">לא נמצאו עמודים תואמים</div>}

@@ -315,6 +315,10 @@
 .gm-ds.gm-home .res-one .li .t b.rt .stx { margin-inline-start: 0; }
 .gm-ds.gm-home .res-one .li mark { background: transparent; color: var(--gm-gold-d); font-weight: 700; }
 .gm-ds.gm-home .res-one .li.nolink { cursor: default; }
+/* כותרת קבוצה ומצב ריק של קבוצה בתוך רשימת התוצאות (ResultGroupHead / ResultEmpty ב-ResultRow.js): פאנל התפוסה (בחוץ / הוחזרו / ממתינות). כותרת כמו כותרת הלו"ז ליום (.dchips-h),
+   מצב ריק = .empty של הפלטה בגודל קבוצה. */
+.gm-ds.gm-home .res-one .rgrp-h { display: flex; align-items: center; gap: 6px; padding: 14px 4px 4px; color: var(--gm-navy-900); font-size: 15px; }
+.gm-ds.gm-home .res-one .rgrp-empty { padding: 12px 4px; }
 .gm-ds.gm-home .res-one .dchips { padding: 4px 4px 14px; }
 .gm-ds.gm-home .res-one .dchips-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: var(--gm-navy-900); }
 .gm-ds.gm-home .res-one .dchips-r { display: flex; flex-wrap: wrap; gap: 8px; }

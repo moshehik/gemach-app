@@ -72,7 +72,7 @@ const pageRoutes = appFiles
   .map((r) => (r === '/' ? '/' : r.replace(/\/$/, '')))
   .sort();
 
-const GUIDE_ATTR_RE = /data-guide-id=(?:"([^"]+)"|'([^']+)'|\{\s*"([^"]+)"\s*\}|\{\s*'([^']+)'\s*\}|\{\s*`([^`]+)`\s*\}|\{([^}"'`][^}]*)\})/g;
+const GUIDE_ATTR_RE = /data-guide-id=(?:"([^"]+)"|'([^']+)'|\{\s*"([^"]+)"\s*\}|\{\s*'([^']+)'\s*\}|\{\s*`([^`]+)`\s*\}|\{([^}"'`][^}]*)\})|['"]data-guide-id['"]:\s*['"]([^'"]+)['"]/g; // + צורת אובייקט: { 'data-guide-id': 'x' } (פאנל התפוסה מעביר data-* לשורת התוצאה המשותפת)
 const literalIds = new Map(); // id -> [files]
 const templateUses = []; // { file, expr }
 for (const f of appFiles) {
@@ -81,7 +81,7 @@ for (const f of appFiles) {
   let m;
   GUIDE_ATTR_RE.lastIndex = 0;
   while ((m = GUIDE_ATTR_RE.exec(src))) {
-    const lit = m[1] || m[2] || m[3] || m[4];
+    const lit = m[1] || m[2] || m[3] || m[4] || m[7];
     const tpl = m[5];
     const expr = m[6];
     if (lit) { if (!literalIds.has(lit)) literalIds.set(lit, []); literalIds.get(lit).push(rel(f)); }
