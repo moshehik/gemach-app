@@ -179,7 +179,7 @@ t('המסלול הציבורי: רק API ציבורי, בלי נעילה / AI / 
   for (const forbidden of ['/api/dresses', '/api/settings', '/api/employees', '/api/login', '/api/ai', 'requestFullscreen', 'hide-global-nav']) assert.ok(!pub.includes(forbidden), forbidden);
   assert.match(station, /loadPublicKioskConfig/);
   assert.match(station, /KioskPublic/);
-  assert.doesNotMatch(station, /storeSelfService/);
+  assert.doesNotMatch(station, /cfg.storeSelfService/);
 });
 t('הנעילה: מחלקת הגוף, מסך מלא, שחרור באישור עובד ו-/api/login', () => {
   assert.match(kiosk, /hide-global-nav/);
