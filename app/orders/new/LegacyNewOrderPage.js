@@ -485,7 +485,7 @@ export default function NewOrderPage() {
     
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20&pickerFor=new-order`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         setFoundCustomersFromPhone(data.data);
@@ -2035,6 +2035,7 @@ export default function NewOrderPage() {
                 <div className="field">
                   <label>חיפוש לפי שם, טלפון או עיר</label>
                   <CustomerSelector
+                    pickerFor="new-order"
                     value={order.selectedCustomer}
                     onChange={(c) => {
                       if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }

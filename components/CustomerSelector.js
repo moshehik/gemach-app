@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useDebounce from '@/hooks/useDebounce';
 
-export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
+// pickerFor="new-order": הבורר של "לקוח קיים" בהזמנה חדשה - השרת מסנן אותו לפי ההגדרה new_order_customer_list_filter (lib/newOrderCustomerFilter.js).
+// בלי הפרמטר (החלפת לקוח בכרטיס הזמנה וכד') אין שום סינון.
+export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false, pickerFor }) {
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState([]);
   // הודעת חיפוש מהשרת (api/customers -> notices): מקלדת אנגלית / שמות דומים
@@ -73,7 +75,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQueryEffective)}&limit=50`, {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQueryEffective)}&limit=50${pickerFor ? `&pickerFor=${encodeURIComponent(pickerFor)}` : ''}`, {
           signal: controller.signal
         });
         const data = await res.json();

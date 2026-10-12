@@ -14,6 +14,8 @@ import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 import { planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
+import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
+import { newOrderPickerConditions } from '@/lib/customerPickerFilter';
 
 async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -96,6 +98,11 @@ async function queryCustomersList(searchParams, opts) {
     }
     if (advCity) conditions.push({ city: { contains: advCity } });
     if (advEmail) conditions.push({ email: { contains: advEmail } });
+    // בורר "לקוח קיים" של הזמנה חדשה (?pickerFor=new-order): לפי ההגדרה new_order_customer_list_filter - 'complete' משאיר רק לקוחות עם כל הפרטים
+    // הנדרשים ביצירת לקוח (lib/customerCompleteness.js). ללא הפרמטר (/customers, כרטיס הזמנה, בדיקת כפילות לפי ?phone=) - אין שום סינון.
+    if (searchParams.get(NEW_ORDER_PICKER_PARAM) === NEW_ORDER_PICKER_VALUE) {
+      conditions.push(...await memoLookup(opts.cache, 'pickerFilter', () => newOrderPickerConditions()));
+    }
 
     const where = { AND: conditions };
 

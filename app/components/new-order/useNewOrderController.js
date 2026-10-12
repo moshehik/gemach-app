@@ -12,6 +12,7 @@ import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupError
 import { isInlineCustomerEditOn } from '@/lib/customerInlineEdit';
 import { resolveOrderRedirectHref, ORDER_REDIRECT_SCREENS } from '@/lib/orderRedirectScreens';
 import { resolveNewOrderLayout } from '@/lib/newOrderLayout';
+import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
 import * as NL from './newOrderLogic';
 import { scrollToSection } from './layoutLogic';
 
@@ -158,7 +159,7 @@ export default function useNewOrderController({ router }) {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) { say('info', 'נא להזין מספר טלפון תקין'); return; }
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20&${NEW_ORDER_PICKER_PARAM}=${NEW_ORDER_PICKER_VALUE}`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         setFoundCustomersFromPhone(data.data);
@@ -185,7 +186,7 @@ export default function useNewOrderController({ router }) {
     const t = setTimeout(async () => {
       setListLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(listQuery)}&limit=50`, { signal: ctl.signal });
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(listQuery)}&limit=50&${NEW_ORDER_PICKER_PARAM}=${NEW_ORDER_PICKER_VALUE}`, { signal: ctl.signal });
         const data = await res.json();
         if (!ctl.signal.aborted) setListResults(data.data || []);
       } catch (err) {
