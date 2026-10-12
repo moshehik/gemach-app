@@ -1,7 +1,8 @@
 'use client';
 
 // ארבעת השלבים של אשף "דגם חדש" (A5) - markup כמו step1()..step4() / itemRow() / savedView() בעיצוב המאושר (model-new.js), על ה-state של הבקר.
-import { Ic, MnCatCombo, NO_FILL, SegPill, SubH, Tip } from './MnUi';
+import { Ic, MnCatCombo, SegPill, SubH, Tip } from './MnUi';
+import { useNoFill } from '@/lib/autofillGuard';
 import { hDateFull } from './useModelNewController';
 import { buildBarcode, locIcon, pad2, plural } from './modelNewLogic';
 
@@ -9,6 +10,7 @@ const Bad = ({ children }) => <><Ic n="alert" c="sm" />{children}</>;
 
 // ---------------------------------------------------------------- שלב 1: זיהוי הדגם
 export function StepIdentity({ ctl }) {
+  const nf = useNoFill();
   const { S, codeLen } = ctl;
   const d = S.d;
   const showCe = ctl.codeErr && (S.touched.code || ctl.code !== '');
@@ -23,8 +25,8 @@ export function StepIdentity({ ctl }) {
             <Tip t={`קידומת הברקוד של הפריטים (${codeLen} ספרות). הקוד מרכיב את ברקודי הפריטים ולא ניתן לשינוי לאחר היצירה`} /></label>
           <div className="mn-line">
             <div className="inpw">
-              <input className="inp" id="mnCode" name="mnCode-nofill" inputMode="numeric" dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={d.code}
-                placeholder={ctl.codeLoading ? 'טוען קוד פנוי...' : '0'.repeat(codeLen)} autoComplete="off" {...NO_FILL}
+              <input className="inp" id="mnCode" {...nf('code')} inputMode="numeric" dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={d.code}
+                placeholder={ctl.codeLoading ? 'טוען קוד פנוי...' : '0'.repeat(codeLen)}
                 onChange={(e) => ctl.onCode(e.target.value)} onBlur={() => ctl.touch('code')} />
             </div>
             <button type="button" className="btn sm" data-act="auto-code" data-tip="הקוד הפנוי הבא במאגר" onClick={ctl.autoCode}><Ic n="refresh" c="sm" />קוד פנוי</button>
@@ -35,7 +37,7 @@ export function StepIdentity({ ctl }) {
           <div className={`field${showNe ? ' bad' : ''}`} id="mnNameF">
             <label className="lbl with-ic" htmlFor="mnName"><Ic n="tag" c="sm" />שם דגם<span className="req">*</span></label>
             <div className="inpw">
-              <input className="inp" id="mnName" name="mnName-nofill" value={d.name} placeholder="לדוגמה: רומנטיקה" autoComplete="off" {...NO_FILL}
+              <input className="inp" id="mnName" {...nf('name')} value={d.name} placeholder="לדוגמה: רומנטיקה"
                 onChange={(e) => ctl.setField({ name: e.target.value })} onBlur={() => ctl.touch('name')} />
               <button type="button" className="inpx" aria-label="ניקוי" data-tip="ניקוי" hidden={!d.name}
                 onClick={() => { ctl.setField({ name: '' }); const i = document.getElementById('mnName'); if (i) i.focus(); }}><Ic n="x" c="sm" /></button>
@@ -132,6 +134,7 @@ function ItemRows({ ctl, ro }) {
 }
 
 export function StepStock({ ctl }) {
+  const nf = useNoFill();
   const { S } = ctl;
   // אחרי הוספה: המיקוד והבחירה עוברים למספר הסידורי (כמו בעיצוב) - להוספת כמה פריטים ברצף לאותה מידה
   const add = () => { if (ctl.addItem()) setTimeout(() => { const el = document.getElementById('mnSer'); if (el) { el.focus(); el.select(); } }, 0); };
@@ -145,12 +148,12 @@ export function StepStock({ ctl }) {
         <div className="mn-g2" style={{ gridTemplateColumns: 'repeat(2,minmax(0,210px))', gap: '16px 20px' }}>
           <div className="field">
             <label className="lbl with-ic" htmlFor="mnSize"><Ic n="dress" c="sm" />מידה<span className="req">*</span></label>
-            <div className="inpw"><input className="inp" id="mnSize" name="mnSize-nofill" type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={A.size} autoComplete="off" {...NO_FILL}
+            <div className="inpw"><input className="inp" id="mnSize" {...nf('size')} type="number" min="0" max="99" inputMode="numeric" placeholder="38" value={A.size}
               onChange={(e) => ctl.onSize(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
           </div>
           <div className="field">
             <label className="lbl with-ic" htmlFor="mnSer"><Ic n="hash" c="sm" />מס׳ סידורי</label>
-            <div className="inpw"><input className="inp" id="mnSer" name="mnSer-nofill" type="number" min="1" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial} autoComplete="off" {...NO_FILL}
+            <div className="inpw"><input className="inp" id="mnSer" {...nf('serial')} type="number" min="1" max="99" inputMode="numeric" placeholder="אוטו׳" value={serial}
               onChange={(e) => ctl.setAdd({ serial: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
           </div>
         </div>

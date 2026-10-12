@@ -13,6 +13,7 @@
 // הגדרות ← MGD:199-216 (deliverySettingsOf) ; חישוב החובה ← lib/deliveryValidation (deliveryFieldState). השמירה עצמה - ה-PUT של הבקר.
 // נקודות הרחבה ל-W2b (R49; ממומש ב-parts/OcDeliveryJoinPicker.js): SLOTS.DeliveryJoinPicker (בורר הצטרפות למשלוח, אחרי כרטיס "יעד"). ר' W2a-NOTES.
 import { useEffect, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import { SLOTS } from '../slots';
 import {
@@ -56,6 +57,7 @@ const hl = (o, q) => {
  * closed=true: רשימה סגורה - נקלט רק ערך מהרשימה (או ריק); עזיבה עם טקסט אחר מחזירה את הערך התקף (R21). closed=false: טקסט חופשי.
  */
 export function SuggestInput({ id, name, icon = 'pin', value, options, closed, onCommit, placeholder, describedBy, required, disabled }) {
+  const nf = useNoFill();
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
@@ -108,8 +110,8 @@ export function SuggestInput({ id, name, icon = 'pin', value, options, closed, o
     <div className="inpw">
       <OcIcon name={icon} size="sm" />
       <input
-        ref={inRef} className="inp" id={id} name={name} value={shown} placeholder={placeholder} disabled={disabled}
-        autoComplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"
+        ref={inRef} className="inp" id={id} {...nf(name || id)} value={shown} placeholder={placeholder} disabled={disabled}
+        data-lpignore="true" data-1p-ignore data-form-type="other"
         role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listId : undefined}
         aria-activedescendant={open && act >= 0 ? `${listId}-${act}` : undefined} aria-describedby={describedBy} aria-required={required || undefined}
         onFocus={() => { if (closed) { setText(value || ''); setFocused(true); } setOpen(true); }}

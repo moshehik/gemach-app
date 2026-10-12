@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { verifyPin } from './modern/mocAuth';
+import { useNoFill } from '../../lib/autofillGuard';
 
 /**
  * Reusable "print / email order" control: a floating menu with the same 4
@@ -22,6 +23,7 @@ export default function OrderPrintMenu({
   // RentalReturnModal מעביר את זה true כדי לדלג על השער ולפתוח את התפריט ישירות.
   skipRegulationsCheck = false
 }) {
+  const nf = useNoFill();
   const [open, setOpen] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -264,6 +266,7 @@ export default function OrderPrintMenu({
             <p>ללקוח זה {order.customer?.email ? 'מעודכנת כתובת מייל' : 'לא מעודכנת כתובת מייל במערכת'}. ניתן לערוך, לצרף קבצים ולבחור יעד (מייל / דרייב / גם וגם). טבלת הוראות מסודרת תצורף אוטומטית למייל.</p>
             <input
               type="email"
+              {...nf('email')}
               className="input"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}

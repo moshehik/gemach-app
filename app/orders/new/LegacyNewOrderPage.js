@@ -14,6 +14,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
+import { useNoFill } from '../../../lib/autofillGuard';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import CustomerCompleteModal from './CustomerCompleteModal';
 import { isInlineCustomerEditOn } from '../../../lib/customerInlineEdit';
@@ -55,6 +56,7 @@ const computePaymentMethodOptions = (settingsObj) => {
 };
 
 export default function NewOrderPage() {
+  const nf = useNoFill();
   const router = useRouter();
   
   const [step, setStep] = useState(1);
@@ -2102,16 +2104,16 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    <input id="cust-firstName" className="input" type="text" {...nf('firstName')} value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    <input id="cust-lastName" className="input" type="text" {...nf('lastName')} value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => { setNewCustomer(prev => ({ ...prev, phone1: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone1, e.target.value)) focusField('cust-phone2'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" {...nf('phone1')} value={newCustomer.phone1} onChange={e => { setNewCustomer(prev => ({ ...prev, phone1: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone1, e.target.value)) focusField('cust-phone2'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                 </div>
 
                 {/* טלפון נוסף/אימייל: השדה היחיד שבאמת תמיד חובה הוא require_customer_email
@@ -2121,12 +2123,12 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, parseFieldGroups(settings.mandatory_field_groups)) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => { setNewCustomer(prev => ({ ...prev, phone2: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone2, e.target.value)) focusField('cust-email'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" {...nf('phone2')} value={newCustomer.phone2} onChange={e => { setNewCustomer(prev => ({ ...prev, phone2: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone2, e.target.value)) focusField('cust-email'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      <input id="cust-email" className="input" type="email" dir="ltr" {...nf('email')} value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
                         <button
                           type="button"
@@ -2156,21 +2158,21 @@ export default function NewOrderPage() {
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => { setNewCustomer(prev => ({ ...prev, city: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.cities)) focusField('cust-street'); }} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-city" className="input" type="text" list="cust-city-list" {...nf('city')} value={newCustomer.city} onChange={e => { setNewCustomer(prev => ({ ...prev, city: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.cities)) focusField('cust-street'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-city-list">
                         {customerLocations.cities.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => { setNewCustomer(prev => ({ ...prev, street: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.streets)) focusField('cust-house'); }} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-street" className="input" type="text" list="cust-street-list" {...nf('street')} value={newCustomer.street || ''} onChange={e => { setNewCustomer(prev => ({ ...prev, street: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.streets)) focusField('cust-house'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-street-list">
                         {customerLocations.streets.map(s => <option key={s} value={s} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-house">מספר בית {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('houseNum')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-house" className="input" type="text" {...nf('houseNum')} value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                     </div>
                   </div>
                   <div className="field">
@@ -2180,7 +2182,7 @@ export default function NewOrderPage() {
                         ? <span style={{ color: 'var(--danger)' }}>*</span>
                         : (settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>)}
                     </label>
-                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
+                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} {...nf('zeout')} value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
                   {settings.hide_marketing_consent_field !== 'true' && (
                     <div className="field" style={{ marginTop: 10 }}>

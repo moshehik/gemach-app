@@ -17,6 +17,7 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval, stashApprovalToken, DEBT_APPROVAL_LEVEL } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
+import { useNoFill } from '../../../lib/autofillGuard';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -182,6 +183,7 @@ const orderServerSignature = (snap) => {
 };
 
 export default function OrderDetailsPage({ params }) {
+  const nf = useNoFill();
   const router = useRouter();
   const unwrappedParams = use(params);
   const id = unwrappedParams.id;
@@ -2237,6 +2239,7 @@ export default function OrderDetailsPage({ params }) {
             </p>
             <input
               type="email"
+              {...nf('email')}
               className="input"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}

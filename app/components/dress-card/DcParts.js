@@ -3,6 +3,7 @@
 // DcParts - רכיבי עזר קטנים של כרטיס הדגם: טולטיפ-עזרה (.tip), קופסת סימון דו-מצבית (.seg.pill עם הנפשת הידית), טקסט עם הדגשה,
 // ושדה/קריאה-בלבד של העיצוב המאושר (fld / vf ב-scratch/emp-models-build/model-card.js).
 import { useLayoutEffect, useRef } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../order-card/OcIcon';
 
 export const Ic = OcIcon;
@@ -51,18 +52,18 @@ export function DcPill({ id, value, options, onChange, label, className = '' }) 
   );
 }
 
-const NOFILL = { autoComplete: 'nope', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
 /** שדה טקסט עם אייקון וכפתור ניקוי (fld בעיצוב) */
 export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, mode, tip, hint, inputStyle, error }) {
+  const nf = useNoFill();
   const v = value == null ? '' : value;
   return (
     <div className={`field${error ? ' bad' : ''}`}>
       <label className="lbl" htmlFor={id}>{label}{tip ? <Tip text={tip} /> : null}</label>
       <div className="inpw">
         <OcIcon name={icon} size="sm" />
-        <input className="inp" id={id} name={`${id}-nofill`} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-err` : undefined} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
-          onChange={lock ? undefined : (e) => onChange(e.target.value)} {...NOFILL} />
+        <input className="inp" id={id} {...nf(id)} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-err` : undefined} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
+          onChange={lock ? undefined : (e) => onChange(e.target.value)} />
         {lock ? null : <button type="button" className="inpx" aria-label="ניקוי" hidden={!v} onClick={() => { onChange(''); const el = document.getElementById(id); if (el) el.focus(); }}><OcIcon name="x" size="sm" /></button>}
       </div>
       {error ? <div className="dc-err" id={`${id}-err`} role="alert" style={{ marginTop: 6 }}><OcIcon name="alert" size="sm" />{error}</div> : null}

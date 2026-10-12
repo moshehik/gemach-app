@@ -13,9 +13,11 @@ import ModernCustomerHistoryTab from '../../../components/customers/modern/Moder
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { useNoFill, fieldOf } from '@/lib/autofillGuard';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup } from '@/lib/customerValidation';
 
 export default function CustomerPage({ params }) {
+  const nf = useNoFill();
   const router = useRouter();
   const { id } = use(params);
   const [customer, setCustomer] = useState(null);
@@ -129,7 +131,8 @@ export default function CustomerPage({ params }) {
   }, [id, router]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { value, type, checked } = e.target;
+    const name = fieldOf(e.target);
     setCustomer(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
@@ -267,17 +270,17 @@ export default function CustomerPage({ params }) {
           <div className="form-grid">
             <div className="field">
               <label>שם פרטי *</label>
-              <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={handleChange} required />
+              <input type="text" className="input" {...nf('firstName')} value={customer.firstName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label>שם משפחה *</label>
-              <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={handleChange} required />
+              <input type="text" className="input" {...nf('lastName')} value={customer.lastName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label>טלפון *</label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={handleChange} required />
+                <input type="text" className="input" {...nf('phone1')} value={customer.phone1 || ''} onChange={handleChange} required />
               </div>
             </div>
             <div className="field">
@@ -289,7 +292,7 @@ export default function CustomerPage({ params }) {
               </label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={handleChange} />
+                <input type="text" className="input" {...nf('phone2')} value={customer.phone2 || ''} onChange={handleChange} />
               </div>
             </div>
             <div className="field">
@@ -301,7 +304,7 @@ export default function CustomerPage({ params }) {
               </label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
-                <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
+                <input type="email" className="input" {...nf('email')} value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
               </div>
             </div>
             <p className="hint" style={{ gridColumn: '1 / -1', margin: '-6px 0 0', color: 'var(--text-2)' }}>
@@ -309,19 +312,19 @@ export default function CustomerPage({ params }) {
             </p>
             <div className="field">
               <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <input type="text" className="input" {...nf('city')} value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
               <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <input type="text" className="input" {...nf('street')} value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
               <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <input type="number" className="input" {...nf('houseNum')} value={customer.houseNum || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
               <label>תעודת זהות (לעריכה/ביטול) {settings.require_customer_id_number === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
+              <input type="text" className="input" style={{ direction: 'ltr' }} {...nf('zeout')} value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
             </div>
             {settings.hide_marketing_consent_field !== 'true' && (
               <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>

@@ -6,6 +6,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { sendWithApproval } from '../../../lib/approvalClient';
+import { useNoFill } from '../../../lib/autofillGuard';
 import {
   planDeliveryLeg, needsAddressQuestion, canUseSavedAddress, customerSavedAddress, customerCityKey, defaultAddressChoice,
   validateOtherAddress, buildDeliveryFields, deliveryLegPrice, deliveryLegAmounts, priceTableCities
@@ -88,6 +89,7 @@ function getObligationIcon(obs) {
  * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
  */
 const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, onSignRegulations, isLivePreviewing = false, onOrderChange, bankRequired = false }, ref) {
+  const nf = useNoFill();
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
 
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -1548,7 +1550,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>מייל לקוח (לשליחת אישור זיכוי)</label>
-                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ direction: 'ltr' }} />
+                <input type="email" className="input" {...nf('refundEmail')} value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ direction: 'ltr' }} />
               </div>
             </div>
             <div className="modal-foot">

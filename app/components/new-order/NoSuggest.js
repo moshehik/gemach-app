@@ -4,7 +4,7 @@
 // נפתחת בפוקוס/הקלדה בתוך ה-.inpw, הדגשת ההתאמה ב-<mark>, חצים/Enter/Escape, בחירה בעכבר (mousedown).
 // prefix = מצב "השלמה" (מייל): ההצעות מתחילות במה שהוקלד ואין "אין התאמות".
 import { useMemo, useRef, useState } from 'react';
-import { NO_FILL } from './NoUi';
+import { useNoFill } from '@/lib/autofillGuard';
 
 function hl(o, q, prefix) {
   if (!q) return o;
@@ -17,6 +17,7 @@ export default function NoSuggest({ id, value, onChange, onPick, options, prefix
   const [open, setOpen] = useState(false);
   const [act, setAct] = useState(-1);
   const blurT = useRef(null);
+  const nf = useNoFill();
   const q = String(value || '').trim();
   const items = useMemo(() => {
     const all = (typeof options === 'function' ? options(value) : options) || [];
@@ -41,8 +42,7 @@ export default function NoSuggest({ id, value, onChange, onPick, options, prefix
         className="inp"
         id={id}
         value={value}
-        autoComplete="off"
-        {...NO_FILL}
+        {...nf(id)}
         role="combobox"
         aria-autocomplete="list"
         aria-controls={listId}

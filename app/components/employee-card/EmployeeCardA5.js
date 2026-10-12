@@ -13,6 +13,7 @@
 import '@/design-system/components.css';
 import './employee-card.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill, fieldOf } from '@/lib/autofillGuard';
 import { useRouter } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { requestJson, describeFailure } from '@/lib/employeeCardSave';
@@ -63,6 +64,7 @@ function PasswordField({ id, label, value, onChange, shown, onToggle, hint }) {
 }
 
 export default function EmployeeCardA5({ employeeId }) {
+  const nf = useNoFill();
   const id = employeeId;
   const isNew = id === 'new';
   const router = useRouter();
@@ -201,7 +203,8 @@ export default function EmployeeCardA5({ employeeId }) {
 
   // --- טופס ---------------------------------------------------------------------------------------
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { value, type, checked } = e.target;
+    const name = fieldOf(e.target);
     setEmployee((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
@@ -380,9 +383,9 @@ export default function EmployeeCardA5({ employeeId }) {
                     </div>
                   ) : null}
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-firstName">שם פרטי *</label><input className="inp" type="text" id="employee-detail-firstName" name="firstName" value={employee.firstName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-lastName">שם משפחה *</label><input className="inp" type="text" id="employee-detail-lastName" name="lastName" value={employee.lastName || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-fullName">שם מלא (מחושב/לתצוגה)</label><input className="inp" type="text" id="employee-detail-fullName" name="fullName" value={employee.fullName || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-firstName">שם פרטי *</label><input className="inp" type="text" id="employee-detail-firstName" {...nf('firstName')} value={employee.firstName || ''} onChange={handleChange} required /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-lastName">שם משפחה *</label><input className="inp" type="text" id="employee-detail-lastName" {...nf('lastName')} value={employee.lastName || ''} onChange={handleChange} required /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-fullName">שם מלא (מחושב/לתצוגה)</label><input className="inp" type="text" id="employee-detail-fullName" {...nf('fullName')} value={employee.fullName || ''} onChange={handleChange} /></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-joinDate">תאריך כניסה לארגון</label><div className="inpw dt"><Ic id="cal" size="sm" /><input className="inp" type="date" id="employee-detail-joinDate" name="joinDate" value={joinDateValue(employee.joinDate)} onChange={handleChange} /></div></div>
                   </div>
                 </section>
@@ -390,12 +393,12 @@ export default function EmployeeCardA5({ employeeId }) {
                 <section className="card dfields" aria-labelledby="h-contact">
                   <CardHead icon="phone" id="h-contact">יצירת קשר</CardHead>
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone1">טלפון נייד *</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone1" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required autoComplete="off" {...NO_FILL} /></div></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone2">טלפון נוסף</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone2" name="phone2" value={employee.phone2 || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone1">טלפון נייד *</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone1" {...nf('phone1')} value={employee.phone1 || ''} onChange={handleChange} required /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-phone2">טלפון נוסף</label><div className="inpw"><Ic id="phone" size="sm" /><input className="inp" type="tel" inputMode="tel" id="employee-detail-phone2" {...nf('phone2')} value={employee.phone2 || ''} onChange={handleChange} /></div></div>
                     <div className="field wide">
                       <label className="lbl" htmlFor="employee-detail-email">דוא&quot;ל</label>
                       <div className="ec-eml">
-                        <div className="inpw"><Ic id="mail" size="sm" /><input className="inp" type="email" inputMode="email" id="employee-detail-email" name="email" value={employee.email || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                        <div className="inpw"><Ic id="mail" size="sm" /><input className="inp" type="email" inputMode="email" id="employee-detail-email" {...nf('email')} value={employee.email || ''} onChange={handleChange} /></div>
                         {employee.email ? <button type="button" className="ibtn" id="ecCopy" aria-label="העתק כתובת מייל" onClick={copyEmail}><Ic id={copied ? 'check' : 'copy'} /></button> : null}
                         {employee.email && !isNew ? <button type="button" className="ibtn" id="ecSend" aria-label="שלח מייל" onClick={() => setMailOpen(true)}><Ic id="mail" /></button> : null}
                       </div>
@@ -409,9 +412,9 @@ export default function EmployeeCardA5({ employeeId }) {
                 <section className="card dfields" aria-labelledby="h-address">
                   <CardHead icon="pin" id="h-address">כתובת</CardHead>
                   <div className="grid2">
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-city">עיר</label><input className="inp" type="text" id="employee-detail-city" name="city" value={employee.city || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-street">רחוב</label><input className="inp" type="text" id="employee-detail-street" name="street" value={employee.street || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-houseNum">בית</label><input className="inp" type="text" id="employee-detail-houseNum" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-city">עיר</label><input className="inp" type="text" id="employee-detail-city" {...nf('city')} value={employee.city || ''} onChange={handleChange} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-street">רחוב</label><input className="inp" type="text" id="employee-detail-street" {...nf('street')} value={employee.street || ''} onChange={handleChange} /></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-houseNum">בית</label><input className="inp" type="text" id="employee-detail-houseNum" {...nf('houseNum')} value={employee.houseNum || ''} onChange={handleChange} /></div>
                   </div>
                 </section>
 
@@ -420,7 +423,7 @@ export default function EmployeeCardA5({ employeeId }) {
                   {isNew ? (
                     <div className="field" id="pwNew">
                       <label className="lbl" htmlFor="employee-detail-password">סיסמא לשעון נוכחות</label>
-                      <input className="inp" type="text" id="employee-detail-password" name="password" value={employee.password || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} />
+                      <input className="inp" type="text" id="employee-detail-password" {...nf('password')} value={employee.password || ''} onChange={handleChange} />
                     </div>
                   ) : (
                     <div id="pwEdit">
@@ -482,7 +485,7 @@ export default function EmployeeCardA5({ employeeId }) {
                   <CardHead icon="wallet" id="h-pay">נתוני שכר</CardHead>
                   <div className="grid2">
                     <div className="field"><label className="lbl" htmlFor="employee-detail-hourlyWage">שכר לשעה (₪)</label><div className="inpw money"><span className="aff" aria-hidden="true">₪</span><input className="inp" type="number" step="0.01" inputMode="decimal" id="employee-detail-hourlyWage" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
-                    <div className="field"><label className="lbl" htmlFor="employee-detail-paymentMethod">אופן תשלום</label><div className="inpw"><Ic id="bank" size="sm" /><input className="inp" type="text" id="employee-detail-paymentMethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
+                    <div className="field"><label className="lbl" htmlFor="employee-detail-paymentMethod">אופן תשלום</label><div className="inpw"><Ic id="bank" size="sm" /><input className="inp" type="text" id="employee-detail-paymentMethod" {...nf('paymentMethod')} value={employee.paymentMethod || ''} onChange={handleChange} /></div></div>
                     <div className="field ec-travel"><span className="lbl" id="ec-travel-l">זכאות לנסיעות</span><div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-travelExpenses" name="travelExpenses" aria-labelledby="ec-travel-l" checked={!!employee.travelExpenses} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-travelExpenses" className="pf-pl">{employee.travelExpenses ? 'זכאי לנסיעות' : 'לא זכאי לנסיעות'}</label></div></div>
                   </div>
                 </section>
