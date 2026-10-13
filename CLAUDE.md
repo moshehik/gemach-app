@@ -15,7 +15,7 @@ A Next.js (App Router) management system for a "gemach" (גמ"ח) — a free-loa
 | | org1 — the main gemach (הגמ"ח הראשי) | org2 — נווה יעקב |
 |---|---|---|
 | Live site | `gemach-app-uyh4-beryl.vercel.app` (Vercel project `gemach-app-uyh4`) | `gmach-neve-yaakov.vercel.app` (Vercel project `gmach-neve-yaakov`) |
-| Database | Neon project `gemach-main-prod`, us-east-1 (functions region `iad1`) | Neon project `gemach-dresses-2`, eu-central-1 (functions region `fra1`) |
+| Database | Neon project `gemach-main-prod`, us-east-1 (functions region `iad1`) | Neon project `gemach-neve-yaakov` (`rapid-term-19830730`, host `ep-bold-fire-bah6hgru`, org gmach-neve-yaakov-13-10; moved 2026-10-13, full-copy tooling in `scratch/neon-migration/`), eu-central-1 (functions region `fra1`) |
 | Scripts reach it via | `.env` `PROD_DATABASE_URL`/`DATABASE_URL`, GitHub secret `DATABASE_URL`, `--org=1` | `DATABASE_URL_ORG2`/`PROD_DATABASE_URL_ORG2`, or `PROD_DATABASE_URL` inside `scratch/new_gemach_db.env` (that name means org2 there), GitHub secret `DATABASE_URL_ORG2`, `--org=2` |
 
 Verified 2026-09-20 ([docs/vercel-resource-audit-2026-09-20.md](docs/vercel-resource-audit-2026-09-20.md)); DB hosts have moved before, so re-read the env file before trusting one. Code fixes reach both orgs automatically; business rules differ only through `SystemSetting` rows in each org's own DB (see Standing rules).
