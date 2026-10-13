@@ -194,3 +194,13 @@
 - **התראת כשל גיבוי** ([scripts/lib/backupAlert.js](scripts/lib/backupAlert.js), רץ ב-GitHub Actions): יוצאת מ-Hostinger רק כשמוגדרים סודות הרפוזיטורי `HOSTINGER_MAIL_TOKEN_ORG2` + `HOSTINGER_MAILBOX_ID_ORG2` (המספר = מספר הארגון). בלעדיהם היא נשארת ב-Apps Script. הגמח הראשי לא מושפע.
 - **מכסות:** תיבת Hostinger מוגבלת לפי החבילה (Business Starter 1,000 ליום, Standard/Premium 3,000, ניסיון 100; עד 100 נמענים למייל). דיוורים גדולים (אלפים) שייכים לשירות דיוור ייעודי.
 - **אין נפילה ל-Gmail (החלטת הבעלים, 2026-10-13):** כשהמשתנים מוגדרים, כל כשל בשליחה (טוקן/הרשאה/קצב/PDF/רשת) מוחזר כשגיאה ונרשם ב-`EmailLog` עם `status=error` לטיפול ידני, ולא יוצא מ-Gmail. חריג יחיד: שליחה עם העלאה לדרייב נשארת ב-Apps Script.
+
+## תיבת מייל באתר (/admin/mailbox, 2026-10-14)
+
+מסך תיבת דואר מלא לתיבת Hostinger של האתר (נווה יעקב; בגמח הראשי ההודעה "לא מחוברת"): תיקיות (נכנסים/נשלחו/אשפה...), חיפוש, קריאה, תשובה/תשובה לכולם/העברה, כוכב, לא נקרא, מחיקה (לאשפה; מהאשפה סופית), הורדת קבצים מצורפים וכתיבת מייל חדש עם קבצים (עד 3MB ביחד).
+- קוד: [lib/hostingerMailbox.js](lib/hostingerMailbox.js) (עטיפת ה-API), [app/api/admin/mailbox/route.js](app/api/admin/mailbox/route.js) (GET `action=status|folders|messages|message|attachment`, POST `action=send|flags|move|delete`), [app/admin/mailbox/page.js](app/admin/mailbox/page.js). בדיקות: `scripts/email-center-tests/mailbox.test.mjs`.
+- הרשאה: הנהלה ראשית בלבד, **fail-closed** גם כשחובת ההתחברות כבויה (התיבה חושפת את כל התכתובת). הטוקן נשאר בשרת.
+- אבטחה: גוף HTML מוצג ב-iframe עם `sandbox` (בלי סקריפטים) ו-CSP; תמונות מרוחקות חסומות עד "הצג תמונות"; קבצים מצורפים תמיד מורדים (`attachment`, `nosniff`); נתיב תיקייה ו-uid מאומתים לפני שהם נכנסים ל-URL.
+- שליחה מהמסך נרשמת ב-`EmailLog` (גם כשל), והעתק נשמר ב-`INBOX.Sent` על ידי Hostinger. אין שמירת טיוטות ואין תמונות inline (`cid:`).
+- נתיב תיקייה/כשל: כמו שאר השליחה - אין נפילה ל-Gmail.
+
