@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
+import { getStockSnapshot } from '@/lib/preloadStockCache';
+import { currentDbModeTag } from '@/lib/dbMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,49 +68,11 @@ async function GET(request) {
       ...(includeWarehouse ? [] : ['מחסן', 'warehouse']),
       ...(allowRentingReserve ? [] : ['רזרבה', 'reserve'])
     ];
-    const stockItems = await prisma.dressItem.findMany({
-      where: {
-        notInUse: false,
-        isDeleted: false,
-        inRepair: false,
-        ...(excludeLocationTerms.length > 0 ? {
-          OR: [
-            { location: null },
-            { AND: excludeLocationTerms.map(term => ({ location: { not: { contains: term } } })) }
-          ]
-        } : {})
-      },
-      select: {
-        id: true,
-        dressModelId: true,
-        sizeText: true,
-        quantity: true
-      }
-    });
-
-    // Group stock by [dressModelId][sizeText]
-    const stock = {};
-    stockItems.forEach(item => {
-      if (!item.dressModelId) return;
-      const size = item.sizeText || 'כללי';
-      if (!stock[item.dressModelId]) {
-        stock[item.dressModelId] = {};
-      }
-      if (!stock[item.dressModelId][size]) {
-        stock[item.dressModelId][size] = { total: 0, itemId: item.id };
-      }
-      stock[item.dressModelId][size].total += (item.quantity || 1);
-    });
-
-    // 3. Fetch barcodes prefix to modelId map
-    const models = await prisma.dressModel.findMany({
-      select: { id: true, barcodePrefix: true }
-    });
-    const prefixToModelId = {};
-    models.forEach(m => {
-      if (m.barcodePrefix) {
-        prefixToModelId[m.barcodePrefix] = m.id;
-      }
+    // 2+3. מלאי הפריטים הפעילים (stock) + מפת קידומת-ברקוד -> דגם: מטמון שרת של 60 שנ' (lib/preloadStockCache.js).
+    // _t (רענון יזום של הלקוח אחרי כשל הוספה) עוקף את המטמון. ההזמנות (שלב 4) תמיד נקראות טריות.
+    const { stock, prefixToModelId } = await getStockSnapshot(prisma, excludeLocationTerms, {
+      fresh: searchParams.has('_t'),
+      tag: currentDbModeTag(),
     });
 
     // 4. Fetch bookings in date range window — אותם תנאים בדיוק כמו getAvailableInventory
