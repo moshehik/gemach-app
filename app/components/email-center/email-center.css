@@ -1,0 +1,67 @@
+/* מרכז המיילים (/admin/email-center) - CSS מקומי בהיקף .gm-ds.gm-st .ec-* בלבד, מעל settings-sim.css ורכיבי הפלטה (design-system/components.css).
+   הכול דרך משתני הפלטה (--gm-*), בלי צבעים קשיחים חדשים חוץ מהצ'יפים (זהב/כחול של הפלטה). לא נוגע ב-design-system/. */
+
+.gm-ds.gm-st .ec-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:24px;align-items:start}
+@media (max-width:1100px){.gm-ds.gm-st .ec-grid{grid-template-columns:1fr}}
+
+/* ===== עורך "דברי דואר": טקסט עם צ'יפים של שדות מוחלפים ===== */
+.gm-ds.gm-st .ec-merge{min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid var(--gm-line,rgba(0,0,0,.18));background:#fff;color:var(--gm-navy-900,#16213a);font-size:15px;line-height:2.1;direction:rtl;text-align:right;outline:none;white-space:pre-wrap;word-break:break-word;cursor:text}
+.gm-ds.gm-st .ec-merge:focus{border-color:var(--gm-gold,#c8a24a);box-shadow:0 0 0 3px rgba(200,162,74,.28)}
+.gm-ds.gm-st .ec-merge[aria-disabled="true"]{opacity:.6;cursor:not-allowed;background:rgba(0,0,0,.04)}
+.gm-ds.gm-st .ec-merge:empty::before{content:attr(data-placeholder);color:var(--gm-ink3,#8b8b95);pointer-events:none}
+.gm-ds.gm-st .ec-merge.ec-multi{min-height:96px}
+.gm-ds.gm-st .ec-merge.ec-drop{box-shadow:0 0 0 3px rgba(200,162,74,.5)}
+.gm-ds.gm-st .ec-chip{display:inline-flex;align-items:center;gap:6px;margin:0 2px;padding:1px 4px 1px 10px;border-radius:999px;background:var(--gm-navy,#1f2d52);color:var(--gm-gold-300,#f1dc8f);font-size:13px;font-weight:600;line-height:1.7;cursor:grab;user-select:none;vertical-align:baseline;white-space:nowrap}
+.gm-ds.gm-st .ec-chip:active{cursor:grabbing}
+.gm-ds.gm-st .ec-chip-bad{background:var(--gm-rose-700,#a4264a);color:#fff}
+.gm-ds.gm-st .ec-chip-x{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.18);font-size:13px;line-height:1;cursor:pointer}
+.gm-ds.gm-st .ec-chip-x:hover{background:rgba(255,255,255,.4)}
+
+.gm-ds.gm-st .ec-palette{position:sticky;top:calc(var(--gm-snav-h,0px) + 8px);z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 14px;border-radius:14px;border:1px solid var(--gm-line,rgba(0,0,0,.14));background:rgba(255,255,255,.96)}
+.gm-ds.gm-st .ec-palette>b{font-size:13px;color:var(--gm-navy-900,#16213a)}
+.gm-ds.gm-st .ec-palette .ec-chip{cursor:pointer}
+.gm-ds.gm-st .ec-hint{display:block;margin:4px 0 0;font-size:12.5px;color:var(--gm-ink3,#6b6b78)}
+.gm-ds.gm-st .ec-line{display:grid;gap:6px;padding:12px 4px;border-bottom:1px solid var(--gm-line,rgba(0,0,0,.08))}
+.gm-ds.gm-st .ec-line:last-child{border-bottom:0}
+.gm-ds.gm-st .ec-line-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-st .ec-line-h b{font-size:14px;color:var(--gm-navy-900,#16213a)}
+.gm-ds.gm-st .ec-line-h .ibtn{margin-inline-start:auto}
+
+/* ===== תצוגה מקדימה ===== */
+.gm-ds.gm-st .ec-prev{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-st .ec-prev-subj{font-size:13px;color:var(--gm-navy-900,#16213a);padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.9);border:1px solid var(--gm-line,rgba(0,0,0,.12))}
+.gm-ds.gm-st .ec-prev-subj b{margin-inline-end:6px}
+.gm-ds.gm-st .ec-frame{width:100%;height:560px;border:1px solid var(--gm-line,rgba(0,0,0,.14));border-radius:14px;background:#f3eee8}
+.gm-ds.gm-st .ec-prev-err{color:var(--gm-rose-700,#a4264a);font-size:13px}
+
+/* ===== תזמון ===== */
+.gm-ds.gm-st .ec-sched{display:grid;gap:10px}
+.gm-ds.gm-st .ec-sched-row{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.035)}
+.gm-ds.gm-st .ec-sched-row.ec-off{opacity:.55}
+.gm-ds.gm-st .ec-sched-row>b{font-size:14px}
+.gm-ds.gm-st .ec-days{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gm-ds.gm-st .ec-num{width:84px}
+@media (max-width:700px){.gm-ds.gm-st .ec-sched-row{grid-template-columns:1fr}}
+
+/* ===== דיוורים ===== */
+.gm-ds.gm-st .ec-recips{display:grid;gap:8px;margin-top:10px}
+.gm-ds.gm-st .ec-recip-list{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow:auto}
+.gm-ds.gm-st .ec-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.06);font-size:13px}
+.gm-ds.gm-st .ec-warn{padding:10px 12px;border-radius:12px;background:rgba(200,162,74,.18);color:var(--gm-navy-900,#16213a);font-size:13.5px}
+.gm-ds.gm-st .ec-bad{padding:10px 12px;border-radius:12px;background:rgba(164,38,74,.12);color:var(--gm-rose-700,#a4264a);font-size:13.5px}
+.gm-ds.gm-st .ec-thumb{max-width:220px;max-height:140px;border-radius:10px;border:1px solid var(--gm-line,rgba(0,0,0,.14))}
+.gm-ds.gm-st .ec-files{display:grid;gap:6px}
+.gm-ds.gm-st .ec-file{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.05);font-size:13.5px}
+.gm-ds.gm-st .ec-file .ibtn{margin-inline-start:auto}
+.gm-ds.gm-st .ec-progress{height:10px;border-radius:999px;background:rgba(0,0,0,.1);overflow:hidden}
+.gm-ds.gm-st .ec-progress>i{display:block;height:100%;background:var(--gm-navy,#1f2d52);transition:width .3s}
+.gm-ds.gm-st .ec-hist{width:100%;border-collapse:collapse;font-size:13.5px}
+.gm-ds.gm-st .ec-hist th,.gm-ds.gm-st .ec-hist td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--gm-line,rgba(0,0,0,.1))}
+.gm-ds.gm-st .ec-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.gm-ds.gm-st .ec-row2{grid-template-columns:1fr}}
+.gm-ds.gm-st .ec-field{display:grid;gap:6px;margin-bottom:14px}
+.gm-ds.gm-st .ec-field>label{font-size:14px;font-weight:600;color:var(--gm-navy-900,#16213a)}
+.gm-ds.gm-st .ec-note{font-size:13px;color:var(--gm-ink3,#6b6b78);line-height:1.7;margin:6px 0 0}
+.gm-ds.gm-st .ec-dry{padding:10px 14px;border-radius:12px;background:rgba(31,45,82,.1);color:var(--gm-navy-900,#16213a);font-weight:600;margin-bottom:14px}
+.gm-ds.gm-st .ec-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.gm-ds.gm-st .ec-sticky-save{position:sticky;bottom:12px;z-index:6;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.97);border:1px solid var(--gm-line,rgba(0,0,0,.18));box-shadow:0 6px 24px rgba(0,0,0,.12);margin-top:14px}

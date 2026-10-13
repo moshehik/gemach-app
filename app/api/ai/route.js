@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { generateChatTitle } from '../../../lib/ai/chatTitle';
 
 const TITLE_GRACE_MS = 1500;
-import { checkAuth } from '../../../lib/auth';
+import { checkAuth, getSettingsViewerTier } from '../../../lib/auth';
+import { settingsRowsForTier } from '../../../lib/adminOnlySettings';
 import { checkAiAccess } from '../../../lib/permissions';
 import { verifiedCookieStore } from '@/lib/authTokens';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
@@ -16,8 +19,11 @@ import { HDate } from '@hebcal/core';
 import { processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../lib/sqlGuard';
+import { assertSqlTables, tablesForTier, aiTierForRole } from '../../../lib/ai/sqlTablePolicy';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
-import { buildHowToGuide } from '../../../lib/howToGuide';
+import { answerSiteQuestion, pointAtSettings } from '../../../lib/ai/siteGuide';
+import { buildSettingsGuideForNewUi } from '../../../lib/aiGuide/settingsLocation';
+import { appendSettingLocations } from '../../../lib/aiGuide/settingsLocationText';
 import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
 import { prepareAiFiles } from '../../../lib/ai/aiFiles';
 import {
@@ -28,7 +34,6 @@ import {
   normalizeAiSql,
   finalizeAiText,
   validateSettingTags,
-  validateLinkTags,
   extractSqlQueries,
   buildUserDateHints,
   rowCountFacts,
@@ -123,7 +128,7 @@ async function handleAiPost(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { prompt, history: rawHistory = [], context = '', image = null, recordingFileId = null, recordingSteps = null, files: rawFiles = null } = await req.json();
+    const { prompt, history: rawHistory = [], context = '', currentPath: rawCurrentPath = '/', image = null, recordingFileId = null, recordingSteps = null, files: rawFiles = null } = await req.json();
     // חיתוך היסטוריית השיחה ל-10 ההודעות האחרונות גם בצד השרת (5c5b2b1c): הווידג'ט כבר חותך בצד הלקוח,
     // אבל /admin/ai שולח את כל השרשור - הקשר ישן מדי גרם לתשובות לא רלוונטיות.
     const history = Array.isArray(rawHistory) ? rawHistory.filter((m) => m && typeof m === 'object').slice(-10) : [];
@@ -197,7 +202,7 @@ async function handleAiPost(req) {
     // Employee Classification Protections - שיטה משותפת עם app/api/ai/statistics/route.js
     // (loadEmployeeAccess ב-lib/ai/aiCommon.js), במקום עותק קשיח נפרד כאן.
     const cookieStore = await cookies();
-    const { isManager, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+    const { isManager, employeeContext, roleId: aiRoleId, employeeId: aiEmployeeId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     const mainChatRestrictionConfig = await getFeatureRestrictionConfig('main_chat');
     // loadEmployeeAccess() already computed the default financial-data-restriction text above;
@@ -221,15 +226,14 @@ async function handleAiPost(req) {
 ACTION: SETTINGS_GUIDE()
 The system will then give you the full, up-to-date catalog of every configurable system setting (exact key, Hebrew name, category/location in the admin menu, description, field type, and current value), and you must answer based on that catalog alone.` : '';
 
-    // ACTION: HOWTO_GUIDE() - operational "how do I do X" questions (e.g. "איך
-    // מוסיפים תיקון להזמנה", "איך מדפיסים תווית משלוח"), as opposed to
-    // SETTINGS_GUIDE above which is about where a SystemSetting lives. Available to
-    // EVERY employee (not gated by isManager) since these are day-to-day operation
-    // questions, not admin/financial ones.
+    // ACTION: SITE_GUIDE() - שאלות על האתר עצמו: "איך עושים X", "איפה Y", "האם יש אפשרות Z", "תראי לי איפה". נענות מרישום מובנה של הממשק
+    // החדש בלבד (lib/aiGuide + lib/ai/siteGuide.js), מותאם להרשאות ולארגון של המשתמשת, כולל הצבעה על אלמנטים. זמין לכל עובדת (לא רק מנהלות).
+    // (נקרא בעבר HOWTO_GUIDE ונענה מקטלוג ידני של הממשק הישן; השם הישן עדיין מתקבל.)
     const howToGuideInstructions = `
-21. CRITICAL RULE FOR "HOW DO I..." QUESTIONS: If the user asks how to perform some operational action in the system (e.g. "איך מוסיפים...", "איך מבטלים...", "איך מדפיסים...", "איפה עושים...", "מאיפה אפשר ל...") and it is NOT a question about a SystemSetting (see rule above) and NOT a request for data from the database - you MUST NOT guess the answer, and you MUST NOT generate SQL. Instead, output EXACTLY this on its own line and nothing else:
-ACTION: HOWTO_GUIDE()
-The system will then give you a catalog of common operational actions (title, short instructions, and the page route to open), and you must answer based on that catalog alone. If nothing in the catalog genuinely matches, say honestly that you don't have instructions for that yet instead of guessing.`;
+21. CRITICAL RULE FOR QUESTIONS ABOUT THE SITE ITSELF: If the user asks how to perform an action in the system ("איך מוסיפים...", "איך מבטלים...", "איך מדפיסים...", "איך שולחים...", "איך עושים..."), WHERE something is (a page, button, tab, menu item, screen, icon, report, setting group - "איפה...", "מאיפה...", "איפה הכפתור...", "איפה רואים..."), how to open/reach/find something, whether the system has a certain option, page or feature ("האם יש אפשרות...", "אפשר ל...", "יש באתר...", "קיים...?"), or asks you to show/point at something on the screen ("תראי לי איפה...") - and it is NOT a request for data from the database (counts, names, dates, orders, customers, dresses, availability) - you MUST NOT answer from your own knowledge and MUST NOT generate SQL. Instead, output EXACTLY this on its own line and nothing else:
+ACTION: SITE_GUIDE()
+Also treat as site questions: statements of intent about doing something in the system without asking for data (e.g. "אני רוצה לשלוח מייל לכל הלקוחות שיש להם אירוע...", "אני רוצה להדפיס...", "איך אני נותנת גישה..."), and questions about whether something can be done from a UI element even when they mention a model, size or date (e.g. "אפשר לבדוק זמינות מידה 4 בדגם 511 ישר מהחיפוש?"). A request for the actual availability/count/list itself (e.g. "האם דגם 511 פנוי ב-20 חשוון") is a data question, not a site question.
+The system will then give you the verified map of the new interface for this user (and, for managers, the system settings), and you must answer from it alone.`;
 
     const schemaText = getSchemaContext();
     // עוגן "עכשיו" בזמן ישראל (תאריך+שעה+יום בשבוע, עברי ולועזי) - מחושב בשרת ולא ע"י המודל
@@ -266,73 +270,35 @@ The system will then give you a catalog of common operational actions (title, sh
 
     // Check for the how-to-guide action (see howToGuideInstructions above) -
     // available to every employee, unlike the settings guide.
-    const howToGuideMatch = /ACTION:\s*HOWTO_GUIDE\(\)/i.exec(aiResponse);
+    const howToGuideMatch = /ACTION:\s*(?:SITE_GUIDE|HOWTO_GUIDE)\(\)/i.exec(aiResponse);
 
     // Check for Custom Action with JSON payload
     const actionRegex = /ACTION:\s*CHECK_AVAILABILITY\(([\s\S]+?)\)/i;
     const actionMatch = actionRegex.exec(aiResponse);
 
-    if (settingsGuideMatch) {
+    if (settingsGuideMatch || howToGuideMatch) {
+      // שאלה על האתר עצמו: מענה מהרישום המובנה של הממשק החדש בלבד (lib/ai/siteGuide.js), מותאם להרשאות ולארגון, עם הצבעה על אלמנטים.
       try {
-        const settingRows = await getAllCachedSettings();
-        const catalog = buildSettingsGuide(settingRows);
-
-        const followupPrompt = `The user asked: "${prompt}".
-You determined this question is about a system setting and requested the full settings catalog.
-Here is the complete, up-to-date catalog of every configurable system setting in the admin panel ("הגדרות מערכת") - key, Hebrew name, category/tab, location, description, field type, and current value:
-${JSON.stringify(catalog)}
-
-Answer the user in Hebrew:
-1. Say clearly where the relevant setting is found, copying the EXACT "location" field of that setting from the catalog (e.g. "הגדרות מערכת ← יומן") - never guess or paraphrase the tab name.
-2. Briefly explain in plain Hebrew what the setting does and its current value.
-3. Do NOT invent a setting key that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
-4. Keep the answer short and conversational. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
-CRITICAL: If you identified one or more specific setting keys that answer the question (at most 3), end your response with each one on its own new line in this EXACT format: [OPEN_SETTING:the_exact_key]. Use the exact "key" field from the catalog above, never the Hebrew name, and never a key that is not in the catalog. Omit this tag entirely if no specific setting genuinely matches the question.`;
-
+        const guideOut = await answerSiteQuestion({
+          prompt,
+          historyText,
+          who: { employeeId: aiEmployeeId, roleId: aiRoleId, cookieStore, currentPath: typeof rawCurrentPath === 'string' ? rawCurrentPath.slice(0, 200) : '/' },
+          generate: (p) => generateContent(p),
+          dateContext,
+          settingsRows: isManager ? settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier()) : null, // מנהלות: גם קטלוג ההגדרות (מיקום במסך ההגדרות החדש), באותה קריאה
+        });
         try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');
+          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SITE GUIDE RESPONSE ====\n' + guideOut.response + '\n' + JSON.stringify(guideOut.meta) + '\n\n');
         } catch (e) {}
-
-        const finalResponse = await generateContent(followupPrompt);
-
-        try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
-        } catch (e) {}
-
-        // אימות בקוד מול הקטלוג: תגית עם מפתח שלא קיים מוסרת, ומיקום ("הגדרות מערכת ← X") מתוקן לקטגוריה האמיתית
-        return NextResponse.json({ response: finalizeAiText(validateSettingTags(finalResponse, catalog), new Date()), data: null, sqlQuery: null });
+        // גם תשובת המדריך עוברת את אימות התגיות (OPEN_SETTING / OPEN_LINK) כמו כל תשובה אחרת (סקירת אבטחה 12.10.2026) - תגית שהמודל המציא לא מגיעה ללקוח
+        const guideText = await finalizeTagsAndText(guideOut.response, {
+          isManager,
+          loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
+          loadHowToCatalog: async () => [],
+        });
+        return NextResponse.json({ response: guideText, data: null, sqlQuery: null, guide: guideOut.guide, guideHref: guideOut.guideHref });
       } catch (err) {
-        console.error('Settings guide action error:', err);
-        aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
-      }
-    } else if (howToGuideMatch) {
-      try {
-        const catalog = buildHowToGuide();
-
-        const followupPrompt = `The user asked: "${prompt}".
-You determined this is an operational "how do I..." question and requested the how-to catalog.
-Here is the complete catalog of common operational actions in the system - key, title, short instructions, and the page route to open:
-${JSON.stringify(catalog)}
-
-Answer the user in Hebrew:
-1. Explain briefly and clearly, in plain conversational Hebrew, the steps to perform the action, based on the "steps" field.
-2. Do NOT invent an action/route that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
-3. Keep the answer short. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
-CRITICAL: If you identified one or more specific catalog entries that answer the question (at most 2), end your response with each one on its own new line in this EXACT format: [OPEN_LINK:the_exact_route|the_exact_title]. Use the exact "route" and "title" fields from the catalog above, never invented ones. Omit this tag entirely if nothing in the catalog genuinely matches.`;
-
-        try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== HOWTO GUIDE FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');
-        } catch (e) {}
-
-        const finalResponse = await generateContent(followupPrompt);
-
-        try {
-          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== HOWTO GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
-        } catch (e) {}
-
-        return NextResponse.json({ response: finalizeAiText(validateLinkTags(finalResponse, catalog)), data: null, sqlQuery: null });
-      } catch (err) {
-        console.error('Howto guide action error:', err);
+        console.error('Site guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';
       }
     } else if (actionMatch) {
@@ -360,7 +326,9 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
         
         const allModels = await prisma.dressModel.findMany();
         const modelMap = {};
-        allModels.forEach(m => modelMap[m.id] = m.name);
+        // שם הדגם בטבלת הזמינות: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם - N" ולא ה-UUID (lib/modelDisplay.js)
+        const mdOpts = await getModelDisplayOpts();
+        allModels.forEach(m => modelMap[m.id] = modelDisplayName(m, { ...mdOpts, fallback: '' }));
 
         // זיהוי דגמים בקוד: לפי מזהה פנימי, לפי מספר דגם (barcodePrefix) או לפי שם. בבדיקת האמינות
         // ה-AI העביר את הדגם כמספר (551) ואף דגם לא התאים (מפתחות הזמינות הם UUID), הטבלה חזרה ריקה
@@ -532,6 +500,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
           console.log(`AI generated ${label}:`, sql);
           try {
             assertReadOnlySelect(sql);
+            assertSqlTables(sql, tablesForTier(aiTierForRole(aiRoleId))); // R4b: only tables this caller's tier may read
           } catch (guardErr) {
             console.error(`SQL Guard rejected AI-generated ${label}:`, guardErr.message, '\nRejected SQL:', sql);
             throw guardErr;
@@ -624,8 +593,8 @@ WARNING: your previous answer claimed nothing was found, but the database DID re
 
     const finalText = await finalizeTagsAndText(aiResponse, {
       isManager,
-      loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
-      loadHowToCatalog: async () => buildHowToGuide(),
+      loadSettingsCatalog: async () => buildSettingsGuide(settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier())),
+      loadHowToCatalog: async () => [], // תגיות OPEN_LINK ישנות כבר לא נוצרות; כל תגית שנשארה נמחקת (הצבעה: guide בתשובה)
     });
     return NextResponse.json({ response: nameNotice ? `${nameNotice}\n${finalText}` : finalText, data: safeData, sqlQuery: sqlQueryToReturn });
   } catch (error) {

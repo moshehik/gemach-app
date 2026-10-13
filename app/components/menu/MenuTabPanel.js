@@ -13,7 +13,7 @@ export default function MenuTabItem({ tab, active, activeItemId, open, handlers,
     // לשונית "בקרוב" (למשל "לוז" כשאין הרשאה / הדף עוד לא קיים): לא קישור, לא ניתנת למיקוד, בלי תפריט.
     return (
       <div className="sn-item" data-sn={tab.id} data-soon="">
-        <span className="sn-tab is-miss" aria-disabled="true" data-tip={tab.tip || undefined}>
+        <span className="sn-tab is-miss" aria-disabled="true" data-tip={tab.tip || undefined} data-guide-id={`menu.tab-${tab.id}`}>
           <Ic n={tab.icon} />
           {tab.label}
           <span className="sn-soon">{SOON_LABEL}</span>
@@ -37,6 +37,7 @@ export default function MenuTabItem({ tab, active, activeItemId, open, handlers,
           type="button"
           className={cls}
           data-sn-trigger
+          data-guide-id={`menu.tab-${tab.id}`}
           aria-haspopup="true"
           aria-expanded={open ? 'true' : 'false'}
           onClick={() => handlers.toggle(tab.id)}
@@ -50,6 +51,7 @@ export default function MenuTabItem({ tab, active, activeItemId, open, handlers,
           href={tab.href}
           className={cls}
           aria-current={active ? 'page' : undefined}
+          data-guide-id={`menu.tab-${tab.id}`}
           onClick={(e) => onNavigate(e, tab.href)}
         >
           <Ic n={tab.icon} />
@@ -61,6 +63,7 @@ export default function MenuTabItem({ tab, active, activeItemId, open, handlers,
           type="button"
           className="sn-cv"
           data-sn-trigger
+          data-guide-id={`menu.tab-${tab.id}-more`}
           aria-haspopup="true"
           aria-expanded={open ? 'true' : 'false'}
           aria-label={`תפריט ${tab.label}`}

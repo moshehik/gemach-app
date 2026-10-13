@@ -1,0 +1,101 @@
+/* app/components/rental-return/rental-return.css - חלון "השכרה והחזרה" בעיצוב החדש (נלקח מחלון הלוח החודשי המאושר, BRD-E16 / BRD-UNV-6,
+   board.css בקומיט 620780b7), כשהוא נפתח מכל מקום באתר (החזרה מהירה בחיפוש, היסטוריית חיפוש). השורש: .gm-ds.gm-lz.gm-rr.dlg-dark
+   (בלי רקע עמוד - רק החלונות). כל כלל בהיקף .gm-ds.gm-rr. */
+.gm-ds.gm-rr{background:transparent;min-height:0}
+.gm-ds.gm-rr .ibtn.bd-info{width:34px;height:34px;padding:0;border-radius:50%;flex:none}
+.gm-ds.gm-rr .ibtn.bd-info .ic{width:16px;height:16px}
+.gm-ds.gm-rr .scrim.bd-scrim{z-index:1000}
+.gm-ds.gm-rr .scrim.bd-sub-scrim{z-index:1050}
+.gm-ds.gm-rr .scrim.bd-cf-scrim{z-index:1100}
+.gm-ds.gm-rr #toast{z-index:1200}
+.gm-ds.gm-rr .pl-tt{z-index:1250}
+.gm-ds.gm-rr .bd-dh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+.gm-ds.gm-rr .bd-dht{display:flex;align-items:center;gap:12px;min-width:0}
+.gm-ds.gm-rr .bd-dht h2{margin:0;font-size:22px;font-weight:600;line-height:1.3;color:var(--navy-900)}
+.gm-ds.gm-rr .bd-dht .faint{color:var(--ink3);font-size:14px}
+.gm-ds.gm-rr .bd-dx{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.gm-ds.gm-rr .ibtn.bd-rb{width:38px;height:38px;padding:0;border-radius:50%}
+.gm-ds.gm-rr .ibtn.bd-rb .ic,.gm-ds.gm-rr .ibtn.bd-rb .icon{width:18px;height:18px}
+.gm-ds.gm-rr .ibtn.bd-rb:disabled{opacity:.6;cursor:not-allowed}
+.gm-ds.gm-rr .bd-dh .chip{margin:0}
+
+/* חלון "השכרה והחזרה" (E16) */
+.gm-ds.gm-rr .dlg.bd-rent{max-width:980px;width:100%;max-height:calc(100dvh - 32px);padding:24px 26px;text-align:start;background:linear-gradient(135deg,#fffcf7 0%,#f6eee8 55%,#fbf4ee 100%)}
+.gm-ds.gm-rr .bd-rload{padding:56px 16px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.gm-ds.gm-rr .bd-rsub{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:2px}
+.gm-ds.gm-rr .bd-rsub>span{display:inline-flex;align-items:center;gap:6px}
+.gm-ds.gm-rr .bd-rsub .ic{color:var(--navy-500)}
+.gm-ds.gm-rr .bd-pm{display:inline-flex;position:relative}
+.gm-ds.gm-rr .bd-scan{margin:0 0 14px}
+.gm-ds.gm-rr .bd-scan .inpw,.gm-ds.gm-rr .bd-rinb{position:relative}
+.gm-ds.gm-rr .bd-scan .inpw>.ic,.gm-ds.gm-rr .bd-rinb>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;width:20px;height:20px;color:var(--navy-500);pointer-events:none;z-index:1}
+.gm-ds.gm-rr .bd-scan input.inp{width:100%;min-height:50px;padding-inline:48px 16px;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.55);box-shadow:none;color:var(--navy-900);font-size:17px}
+.gm-ds.gm-rr .bd-scan input.inp:focus{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
+.gm-ds.gm-rr .bd-sn{min-height:30px;margin-top:8px}
+.gm-ds.gm-rr .bd-sn .chip{white-space:normal;height:auto;line-height:1.5;padding-block:3px}
+.gm-ds.gm-rr .lz-banner.bd-note,.gm-ds.gm-rr .lz-banner.bd-pend{flex-wrap:wrap}
+.gm-ds.gm-rr .lz-banner.bd-pend .btn{margin-inline-start:auto}
+.gm-ds.gm-rr .bd-rst{padding:14px 18px}
+.gm-ds.gm-rr .bd-rst .hgrp{display:flex;flex-direction:column;gap:6px}
+.gm-ds.gm-rr .bd-ri .li{cursor:default}
+.gm-ds.gm-rr .bd-ri .ic-b{background:var(--sky-100)}
+.gm-ds.gm-rr .bd-ri .lz-act{gap:6px}
+.gm-ds.gm-rr .bd-ri .lz-act .chip{font-size:13px;padding:2px 10px}
+.gm-ds.gm-rr .bd-ri .btn.sm{min-height:34px;height:34px;padding:0 12px;font-size:14px;gap:6px}
+.gm-ds.gm-rr .bd-ri .btn.sm .ic{width:16px;height:16px}
+.gm-ds.gm-rr .chip.bd-chipbtn{cursor:pointer;border:0;font:inherit}
+.gm-ds.gm-rr .chip.bd-chipbtn:hover,.gm-ds.gm-rr .chip.bd-chipbtn:focus-visible{box-shadow:0 0 0 2px var(--gold);outline:0}
+.gm-ds.gm-rr .chip.bd-dim{opacity:.7}
+.gm-ds.gm-rr .bd-tg{display:inline-flex;gap:4px}
+.gm-ds.gm-rr .btn.bd-tgb{background:transparent;border:1.5px solid var(--navy);color:var(--navy)}
+.gm-ds.gm-rr .btn.bd-tgb .ic{color:var(--navy)}
+.gm-ds.gm-rr .btn.bd-tgb:not(:disabled):is(:hover,:focus-visible),.gm-ds.gm-rr .btn.bd-tgb.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gm-ds.gm-rr .btn.bd-tgb:not(:disabled):is(:hover,:focus-visible) .ic,.gm-ds.gm-rr .btn.bd-tgb.on .ic{color:#fff}
+.gm-ds.gm-rr .btn.bd-tgb.bd-tgbad.on{background:var(--red);border-color:var(--red)}
+.gm-ds.gm-rr .btn.bd-tgb:disabled:not(.on){opacity:.55;cursor:not-allowed}
+.gm-ds.gm-rr .btn.bd-danger{color:var(--red)}
+.gm-ds.gm-rr .btn.bd-danger .ic{color:var(--red)}
+.gm-ds.gm-rr .bd-rin{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:4px 12px 12px;padding-inline-start:68px}
+.gm-ds.gm-rr .bd-rinr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-rr .bd-rinb input.inp{width:200px;min-height:40px;padding-inline:44px 12px;border:2px solid var(--gold-b);border-radius:999px;background:#fff;box-shadow:none}
+.gm-ds.gm-rr .bd-rinb input.inp:focus{box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
+.gm-ds.gm-rr .lz-banner.bd-man{flex-direction:column;align-items:stretch;gap:8px;width:min(320px,100%);margin:0}
+.gm-ds.gm-rr .bd-man input.inp{min-height:40px;border-radius:12px;background:#fff}
+.gm-ds.gm-rr .bd-mantr{gap:10px;font-size:14px}
+.gm-ds.gm-rr .bd-manb{display:flex;gap:8px}
+.gm-ds.gm-rr .bd-link{background:none;border:0;padding:0 0 2px;font:inherit;font-size:13px;font-weight:600;color:var(--navy-700);border-bottom:2px solid var(--gold);cursor:pointer}
+.gm-ds.gm-rr .bd-link:hover,.gm-ds.gm-rr .bd-link:focus-visible{color:var(--navy-900);outline:0}
+.gm-ds.gm-rr .bd-rfoot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
+@media (max-width:640px){.gm-ds.gm-rr .dlg.bd-rent{padding:18px 14px}.gm-ds.gm-rr .bd-rin{padding-inline-start:12px}.gm-ds.gm-rr .bd-rst{padding:8px 6px}.gm-ds.gm-rr .bd-rfoot .btn{flex:1 1 140px}}
+
+/* פרטי פריט / פריטים זהים */
+.gm-ds.gm-rr .dlg.bd-item,.gm-ds.gm-rr .dlg.bd-dup{max-width:560px;width:100%;text-align:start}
+.gm-ds.gm-rr .bd-kv{display:flex;flex-direction:column}
+.gm-ds.gm-rr .bd-kv .hv-r{display:flex;align-items:center;gap:12px;min-height:40px;padding:6px 0}
+.gm-ds.gm-rr .bd-kv .hv-r+.hv-r{border-top:1px solid var(--sky-200)}
+.gm-ds.gm-rr .bd-kv .hv-r small{flex:none;width:120px;font-size:13px;color:var(--ink3)}
+.gm-ds.gm-rr .bd-kv .hv-r b{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--navy-900);overflow-wrap:anywhere}
+.gm-ds.gm-rr .bd-h3{margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--sky-200);font-size:16px;font-weight:600;color:var(--navy-900)}
+.gm-ds.gm-rr .bd-hist{display:flex;flex-direction:column;gap:10px}
+.gm-ds.gm-rr .bd-hl{padding:10px 12px;border-radius:12px;background:var(--sky-50);border:1px solid var(--sky-200)}
+.gm-ds.gm-rr .bd-hlh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.gm-ds.gm-rr .bd-hlh small{color:var(--ink3);font-size:12.5px}
+.gm-ds.gm-rr .bd-chg{display:flex;flex-wrap:wrap;gap:6px}
+.gm-ds.gm-rr .bd-chg .chip{white-space:normal;gap:4px}
+.gm-ds.gm-rr .bd-from{color:var(--red)}
+.gm-ds.gm-rr .bd-to{color:var(--green)}
+.gm-ds.gm-rr .bd-none,.gm-ds.gm-rr .bd-raw{font-size:12px;color:var(--ink3)}
+.gm-ds.gm-rr .bd-dupo{width:100%;border:1px solid var(--sky-200);border-radius:14px;background:#fff;font:inherit;text-align:start;margin-bottom:6px}
+.gm-ds.gm-rr .bd-dupo .bd-num{font-weight:700;color:var(--navy)}
+
+/* חלון "בטוח?" / הערה (BoardDialogs.js): החלון הכהה של הפלטה כמו בלו״ז; שדה ההערה בתוכו */
+.gm-ds.gm-rr .dlg.bd-cf .bd-cf-l{display:block}
+.gm-ds.gm-rr .bd-cf-form{margin:0 0 16px}
+.gm-ds.gm-rr .bd-cf-form input.inp{width:100%;min-height:46px;border-radius:14px}
+
+@media (max-width:640px){
+ .gm-ds.gm-rr .bd-dh{flex-wrap:wrap}
+ .gm-ds.gm-rr .bd-dht{flex:1 1 100%}
+ .gm-ds.gm-rr .bd-dx{justify-content:flex-start}
+}
+.gm-ds.gm-rr .bd-rsub>span{white-space:nowrap}

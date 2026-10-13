@@ -107,7 +107,7 @@ function DressCardBody({ dressId }) {
             <main className="main" ref={mainRef}>
               <DcTabs dc={dc} ui={ui} />
             </main>
-            <aside className="rail" id="rail" aria-label="סיכום הדגם" ref={railRef}>
+            <aside className="rail" id="rail" aria-label="סיכום הדגם" ref={railRef} data-guide-id="dc.rail">
               <DcRail dc={dc} ui={ui} />
             </aside>
           </div>

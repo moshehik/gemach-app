@@ -179,7 +179,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
       return (
         <div className="field" style={{ marginBottom: 0 }}>
           <label>שם השורה</label>
-          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') goTo(1); }} placeholder="שם השורה" disabled={saving} />
+          <input className="input" autoFocus data-guide-id="perm.wiz-name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') goTo(1); }} placeholder="שם השורה" disabled={saving} />
         </div>
       );
     }
@@ -323,7 +323,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
       className="modal-backdrop"
       style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <div className="modal animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: '640px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="modal animate-fade-in" data-guide-id="perm.wizard" onClick={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: '640px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div className="modal-head">
           <strong>
             <svg className="icon"><use href="#i-shield" /></svg>
@@ -335,7 +335,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
         </div>
 
         {/* Stepper */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 20px 4px', overflowX: 'auto' }}>
+        <div data-guide-id="perm.wiz-stepper" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 20px 4px', overflowX: 'auto' }}>
           {STEPS.map((label, index) => {
             const reachable = index <= maxStep;
             const done = index < step;
@@ -389,7 +389,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
                 {isEditing ? 'עדכון השורה' : 'יצירת השורה'}
               </button>
             ) : (
-              <button type="button" className="btn btn-primary" onClick={() => goTo(step + 1)} disabled={saving}>הבא</button>
+              <button type="button" className="btn btn-primary" data-guide-id="perm.wiz-next" onClick={() => goTo(step + 1)} disabled={saving}>הבא</button>
             )}
           </div>
         </div>

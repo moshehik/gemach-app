@@ -95,7 +95,7 @@ export default function StatisticsPage() {
           <h1>מרכז נתונים ופילוח</h1>
         </div>
         <div className="page-actions">
-          <a href="/migration_report.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-icon-only" title="דוח הגירת נתונים מאקסס">
+          <a href="/migration_report.html" data-guide-id="stat.migration-report" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-icon-only" title="דוח הגירת נתונים מאקסס">
             <svg className="icon"><use href="#i-download" /></svg>
           </a>
         </div>
@@ -105,24 +105,25 @@ export default function StatisticsPage() {
         <div className="card-pad" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field" style={{ marginBottom: 0, width: '200px' }}>
             <label htmlFor="admin-statistics-start-date">מתאריך אירוע / התחלה</label>
-            <input id="admin-statistics-start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input" />
+            <input id="admin-statistics-start-date" data-guide-id="stat.date-from" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input" />
           </div>
           <div className="field" style={{ marginBottom: 0, width: '200px' }}>
             <label htmlFor="admin-statistics-end-date">עד תאריך אירוע / סיום</label>
-            <input id="admin-statistics-end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input" />
+            <input id="admin-statistics-end-date" data-guide-id="stat.date-to" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input" />
           </div>
-          <button type="button" onClick={fetchData} className="btn btn-primary">
+          <button type="button" onClick={fetchData} className="btn btn-primary" data-guide-id="stat.apply">
             החל סינון
           </button>
         </div>
       </div>
 
-      <div className="tabs">
+      <div className="tabs" data-guide-id="stat.tabs">
         {tabs.map(t => (
           <button
             type="button"
             key={t.id}
             className={activeTab === t.id ? 'tab active' : 'tab'}
+            data-guide-id={`stat.tab-${t.id}`}
             style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
             onClick={() => { setData(null); setActiveTab(t.id); }}
           >
@@ -151,7 +152,7 @@ export default function StatisticsPage() {
       {summaryData && (
         <>
           <h2 className="section-title">מידע כללי נוסף</h2>
-          <div className="card" style={{ maxWidth: '340px' }}>
+          <div className="card" style={{ maxWidth: '340px' }} data-guide-id="stat.peak-employees">
             <div className="card-head">
               <div className="card-title-row">
                 <svg className="icon"><use href="#i-user-check" /></svg>

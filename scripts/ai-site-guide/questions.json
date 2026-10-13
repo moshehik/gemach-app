@@ -1,0 +1,2295 @@
+[
+  {
+    "id": "q01",
+    "topic": "orders",
+    "q": "איך פותחים הזמנה חדשה?",
+    "role": "manager",
+    "truth": "בתפריט העליון, בלשונית \"הזמנה\" (לחיצה עליה פותחת ישר הזמנה חדשה; בתפריט הנפתח שלה: \"הזמנה חדשה\", \"עמדת לקוח\", \"בדיקת מלאי\"). אפשר גם להקליד # בשורת החיפוש ולבחור \"הזמנה חדשה\". הלשונית מוצגת רק למי שיש לה הרשאת \"הזמנה חדשה\".",
+    "source": [
+      "lib/menu/buildMenuTree.js:136",
+      "lib/menu/buildMenuTree.js:171",
+      "lib/quickShortcuts.js:50"
+    ],
+    "expect": [
+      [
+        "הזמנה חדשה"
+      ],
+      [
+        "לשונית",
+        "תפריט העליון",
+        "סרגל העליון",
+        "בתפריט"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "בית וחיפוש"
+    ],
+    "routes": [
+      "/orders/new"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q02",
+    "topic": "orders",
+    "q": "אני בהזמנה חדשה, איפה מכניסים את הלקוחה? ומה אם היא לא במערכת",
+    "role": "manager",
+    "truth": "בשלב הראשון \"לקוח\" של אשף ההזמנה החדשה יש שלושה אופנים: \"לפי טלפון\" (מקלידים טלפון ולוחצים בדיקה; מספר שלא קיים פותח כרטיס לקוח חדש), \"מהרשימה\" ו\"לקוח חדש\". אחר כך ממשיכים בשלבים: תאריכים, (משלוח כשמופעל), פריטים, סיכום ותשלום, ובסוף \"סיום ויצירת ההזמנה\".",
+    "source": [
+      "app/components/new-order/StepCustomer.js:14-16",
+      "app/components/new-order/StepCustomer.js:75-92",
+      "app/components/new-order/newOrderLogic.js:555-563",
+      "app/components/new-order/NewOrderA5.js:87"
+    ],
+    "expect": [
+      [
+        "לפי טלפון",
+        "טלפון"
+      ],
+      [
+        "לקוח חדש"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/orders/new"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q03",
+    "topic": "orders",
+    "q": "שכחתי להוסיף שמלה להזמנה שכבר נשמרה, איך מוסיפים?",
+    "role": "manager",
+    "truth": "פותחים את כרטיס ההזמנה, לשונית \"פריטים\", לוחצים \"הוסף פריט\" (נפתח \"הוספת שמלה\"): מקלידים מספר דגם ובוחרים מהרשימה, בוחרים מידה ולוחצים \"הוסף להזמנה\". אחר כך שומרים בפאנל \"שינויים בהזמנה\" בצד (\"שמור\"). בהזמנה נעולה (תאריך האירוע עבר) הוספת פריטים חסומה.",
+    "source": [
+      "app/components/order-card/tabs/OcItemsTab.js:139-149",
+      "app/components/order-card/parts/OcAddItemPanel.js:262-282",
+      "app/components/order-card/OcTabs.js:11-17"
+    ],
+    "expect": [
+      [
+        "פריטים"
+      ],
+      [
+        "הוסף פריט",
+        "הוספת שמלה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "פרטים כלליים"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q04",
+    "topic": "orders",
+    "q": "הלקוחה רוצה להזיז את תאריך האירוע בהזמנה קיימת, איפה משנים",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, לשונית \"פרטים\", בכרטיס \"אירוע\" לוחצים על עיפרון \"עריכת תאריך\", בוחרים תאריך חדש בלוח העברי ושומרים (\"שמור\"). בהזמנה שתאריך האירוע שלה עבר (נעולה) העריכה חסומה ונדרש אישור מנהל.",
+    "source": [
+      "app/components/order-card/tabs/OcDetailsTab.js:106-107",
+      "app/components/order-card/tabs/OcDetailsTab.js:119-122",
+      "app/components/order-card/OcTopbar.js:14-18"
+    ],
+    "expect": [
+      [
+        "פרטים"
+      ],
+      [
+        "אירוע"
+      ],
+      [
+        "עריכת תאריך",
+        "עיפרון",
+        "סמל העריכה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "פרטים כלליים"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q05",
+    "topic": "orders",
+    "q": "איך רושמים תשלום שהלקוחה שילמה על הזמנה?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, לשונית \"תשלומים\": כשיש יתרה לתשלום מופיע כפתור \"תשלום ₪X\" (וגם \"הוסף תשלום\" בכרטיס \"תשלומים שהתקבלו\") שפותח חלון לבחירת אמצעי תשלום וסכום. בתחתית יש \"תשלום נוסף\" (אם הופעל בהגדרות) ו\"בקשת זיכוי ללקוח\". אם יש שינויים שלא נשמרו צריך לשמור לפני.",
+    "source": [
+      "app/components/order-card/tabs/OcPaymentsTab.js:99",
+      "app/components/order-card/tabs/OcPaymentsTab.js:141",
+      "app/components/order-card/tabs/OcPaymentsTab.js:164-165"
+    ],
+    "expect": [
+      [
+        "תשלומים"
+      ],
+      [
+        "הוסף תשלום",
+        "תשלום ₪",
+        "תשלום נוסף"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q06",
+    "topic": "orders",
+    "q": "איך מוחקים הזמנה ששלחו בטעות",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, בשורת הכותרת העליונה, סמל הפח \"מחיקת הזמנה\". אם כבר הייתה השכרה חלקית/מלאה, או שהפריטים נלקחו והוחזרו (או שההגדרה חוסמת הזמנה שהושכרה חלקית), הפח מוחלף בסמל נעילה והמחיקה חסומה.",
+    "source": [
+      "app/components/order-card/OcTopbar.js:37-41",
+      "app/components/order-card/OcTopbar.js:67-72",
+      "app/components/order-card/orderCardLogic.js:337-343"
+    ],
+    "expect": [
+      [
+        "מחיקת הזמנה",
+        "פח"
+      ],
+      [
+        "חסומ",
+        "נעילה",
+        "לא ניתן",
+        "הושכר"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q07",
+    "topic": "orders",
+    "q": "עשיתי שינויים בכרטיס הזמנה, איפה לחצים לשמור? ואם התחרטתי?",
+    "role": "manager",
+    "truth": "בפאנל \"שינויים בהזמנה\" בצד הכרטיס מופיע כפתור \"שמור\" ומתחתיו \"בטל שינויים\"; לכל שינוי ברשימה יש \"ביטול השינוי\" ואפשר \"החזר ביטול\". שינויים שלא נשמרו נשמרים כטיוטה במחשב הזה, וביציאה/כניסה חוזרת מוצג באנר \"נמצאו שינויים שלא נשמרו\" עם \"שחזר\" ו\"מחק אותם\".",
+    "source": [
+      "app/components/order-card/parts/OcRail.js:190-233",
+      "app/components/order-card/parts/ocRailLogic.js:56",
+      "app/components/order-card/parts/OcDraftBanner.js:28-39"
+    ],
+    "expect": [
+      [
+        "שמור"
+      ],
+      [
+        "בטל שינויים",
+        "ביטול השינוי"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q08",
+    "topic": "orders",
+    "q": "איפה רואים מי שינה משהו בהזמנה ומתי",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, לשונית \"היסטוריה\": הכרטיס \"יומן הזמנה\" ומתחתיו \"פעולות ושינויים\" (קודם/חדש, מי ביצע ומתי) עם מסננים: פריטים, תשלומים, משלוח, תאריכים, מסמכים, כללי (ובנוסף חתימות/הדפסות/מיילים/תיקונים כשיש שורות כאלה).",
+    "source": [
+      "app/components/order-card/OcTabs.js:11-17",
+      "app/components/order-card/parts/OcHistoryFeed.js:137",
+      "app/components/order-card/parts/ocHistoryModel.js:9-10",
+      "app/components/order-card/tabs/OcHistoryTab.js:3-8"
+    ],
+    "expect": [
+      [
+        "היסטוריה"
+      ],
+      [
+        "פעולות ושינויים",
+        "יומן הזמנה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q09",
+    "topic": "returns",
+    "q": "איך מסמנים שהשמלה נלקחה / הושכרה",
+    "role": "manager",
+    "truth": "אין כפתור \"סמן כנלקחה\" נפרד: במקום זה סורקים או מקלידים את ברקוד השמלה בשדה \"ברקוד: סרקו או הקלידו...\" בשורת הכותרת של כרטיס ההזמנה (או בשדה הברקוד בשורת הפריט הפתוחה, \"סרקו ברקוד להשכרה\"). סריקה של פריט שעדיין לא נלקח = השכרה. בהזמנה נעולה (תאריך האירוע עבר) השכרה חסומה.",
+    "source": [
+      "app/components/order-card/parts/OcScanBar.js:69-70",
+      "app/components/order-card/hooks/useItemActions.js:302-306",
+      "app/components/order-card/hooks/useItemActions.js:649-654",
+      "app/components/order-card/parts/OcBarcodeRow.js:69-92"
+    ],
+    "expect": [
+      [
+        "ברקוד"
+      ],
+      [
+        "סרק",
+        "סריקה",
+        "הקלד"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "טאב החזרות"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q10",
+    "topic": "returns",
+    "q": "הלקוחה החזירה את השמלה, איך רושמים החזרה בהזמנה?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה סורקים שוב את ברקוד הפריט (אותו שדה ברקוד; בשורת הפריט כתוב \"סרקו ברקוד להחזרה\"): סריקה של פריט שכבר נלקח = החזרה, והשורה תציג \"הוחזרה\" עם בורר \"תקין\" / \"לא תקין\". החזרה לפני מועד האירוע עשויה לדרוש אישור מנהל לפי הגדרה.",
+    "source": [
+      "app/components/order-card/parts/OcBarcodeRow.js:45-60",
+      "app/components/order-card/hooks/useItemActions.js:302-304",
+      "app/components/order-card/hooks/useItemActions.js:653-654",
+      "lib/settingsMetadata.js:59"
+    ],
+    "expect": [
+      [
+        "ברקוד"
+      ],
+      [
+        "סרק",
+        "סריקה",
+        "הקלד"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "טאב החזרות",
+      "בטאב ההחזרות"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q11",
+    "topic": "returns",
+    "q": "יש דרך מהירה להחזיר שמלה בלי לפתוח את ההזמנה? סורקים ברקוד",
+    "role": "manager",
+    "truth": "כן: בחיפוש העליון (סמל החיפוש בסרגל) מקלידים או סורקים ברקוד מלא בן 7 ספרות ולוחצים Enter – מופיעה ההנחיה \"Enter - החזרה מהירה של ברקוד ...\" והפריט המושכר מוחזר. אם אין פריט מושכר בברקוד הזה, נשארים בחיפוש ומוצגות תוצאות עם הסבר.",
+    "source": [
+      "app/components/menu/MenuSearchPanel.js:6",
+      "app/components/menu/MenuSearchPanel.js:227-256",
+      "app/components/menu/MenuSearchPanel.js:397",
+      "lib/searchNormalize.js:553-563"
+    ],
+    "expect": [
+      [
+        "ברקוד"
+      ],
+      [
+        "Enter",
+        "אנטר"
+      ],
+      [
+        "7 ספרות",
+        "שבע ספרות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "בית וחיפוש"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q12",
+    "topic": "returns",
+    "q": "סימנתי בטעות שהשמלה הוחזרה. איך מבטלים?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, לשונית \"פריטים\": פותחים את שורת הפריט, ובשורת הברקוד לוחצים \"בטל החזרה\" (לפריט שהוחזר) או \"בטל השכרה\" (לפריט שנלקח); מופיע חלון אישור \"ביטול החזרה\" / \"ביטול השכרה\". ביטול השכרה חסום בהזמנה נעולה.",
+    "source": [
+      "app/components/order-card/parts/OcBarcodeRow.js:60",
+      "app/components/order-card/parts/OcBarcodeRow.js:89",
+      "app/components/order-card/hooks/useItemActions.js:456-483"
+    ],
+    "expect": [
+      [
+        "בטל החזרה",
+        "ביטול החזרה"
+      ],
+      [
+        "פריטים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q13",
+    "topic": "returns",
+    "q": "שמלה חזרה קרועה, איך מסמנים שההחזרה לא תקינה",
+    "role": "manager",
+    "truth": "בשורת הפריט שהוחזר, בבורר \"מצב ההחזרה\" בוחרים \"לא תקין\" – נפתח חלון \"החזרה לא תקינה\" לכתיבת הערה (\"מה לא תקין?\") שנוספת לכרטיס הלקוח. בדף \"לוז\", בשלבי ההחזרה (החזרה ידנית / משלוח חזור) יש גם כפתור \"הוחזר לא תקין\" ליד \"בוצע\".",
+    "source": [
+      "app/components/order-card/parts/OcBarcodeRow.js:50-56",
+      "app/components/order-card/parts/OcBarcodeRow.js:98-110",
+      "app/components/schedule/MarkControls.js:97-101"
+    ],
+    "expect": [
+      [
+        "לא תקין"
+      ],
+      [
+        "הערה",
+        "כרטיס הלקוח",
+        "החזרה לא תקינה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q14",
+    "topic": "returns",
+    "q": "איך אני רואה מי עדיין לא החזירה שמלות והאיחור כבר עבר",
+    "role": "manager",
+    "truth": "בדף הבית > \"חיפוש מתקדם\" אפשר לבחור תחום \"החזרות\" (שלב \"איחור\") או תחום \"התראות\" (מאחורי כפתור ה-+) עם סוג \"איחור בהחזרה\". אם הופעלה בהגדרות החלונית \"הזמנות שלא הוחזרו\", היא קופצת בכניסה עם הזמנה, שם לקוח וימי איחור.",
+    "source": [
+      "app/components/home/homeAdvConfig.js:29",
+      "app/components/home/homeAdvConfig.js:45",
+      "app/components/home/homeAdvConfig.js:83",
+      "app/components/home/HomeAdvanced.js:492",
+      "app/components/OverdueOrdersModal.js:33-42",
+      "lib/settingsMetadata.js:257"
+    ],
+    "expect": [
+      [
+        "איחור"
+      ],
+      [
+        "חיפוש מתקדם",
+        "הזמנות שלא הוחזרו"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/?adv=1"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q15",
+    "topic": "returns",
+    "q": "איפה העמוד של \"השכרות והחזרות\" עם הטבלה של כל ההשכרות?",
+    "role": "manager",
+    "truth": "בתפריט העליון החדש אין עמוד \"השכרות והחזרות\" נפרד: \"השכרות\" ו\"החזרות\" בלשונית \"בית\" פותחות את דף החיפוש מסונן לאותה קטגוריה, ובחיפוש המתקדם יש תחומים \"השכרות\" ו\"החזרות\" עם סינונים מפורטים. עמוד הטבלה /rentals קיים רק בתפריט הישן.",
+    "source": [
+      "lib/menu/buildMenuTree.js:104-105",
+      "lib/menu/buildMenuTree.js:112",
+      "app/components/home/homeAdvConfig.js:74-75"
+    ],
+    "expect": [
+      [
+        "בית"
+      ],
+      [
+        "השכרות"
+      ],
+      [
+        "חיפוש"
+      ],
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן",
+        "רק בישן",
+        "בתפריט הישן",
+        "הישן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "טאב החזרות",
+      "בטאב ההחזרות"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": true
+  },
+  {
+    "id": "q16",
+    "topic": "customers",
+    "q": "איך מוצאים כרטיס לקוחה לפי שם או טלפון?",
+    "role": "manager",
+    "truth": "סמל החיפוש בסרגל העליון (או תיבת החיפוש בדף הבית): מקלידים שם או טלפון ובוחרים את הלקוחה מהתוצאות. לחיפוש רק בלקוחות: לשונית \"בית\" > \"לקוחות\". בכרטיס הלקוחה לשוניות: פרטים, הזמנות, תשלומים, היסטוריה.",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:555-561",
+      "app/components/menu/MenuSearchPanel.js:367",
+      "lib/menu/buildMenuTree.js:103",
+      "app/components/customer-card/CustomerCardA5.js:29-33"
+    ],
+    "expect": [
+      [
+        "חיפוש"
+      ],
+      [
+        "לקוחות",
+        "לקוחה",
+        "טלפון"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "בית וחיפוש"
+    ],
+    "routes": [
+      "/",
+      "/?scope=customers"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q17",
+    "topic": "customers",
+    "q": "איך מוסיפים לקוחה חדשה בלי לפתוח הזמנה",
+    "role": "manager",
+    "truth": "בכלי הניהול: ניהול > \"כל כלי הניהול\" > \"כל הלקוחות\" (עבודה שוטפת, להנהלה; הדף נקרא \"לקוחות\" / \"רשימת לקוחות\") ולחיצה על \"לקוח חדש\" – טופס עם פרטי לקוח, חשבון בנק לזיכויים והערות, ו\"שמירת לקוחה\". אחרת – בשלב \"לקוח\" באשף \"הזמנה חדשה\" > \"לקוח חדש\".",
+    "source": [
+      "lib/adminHubCatalog.js:110",
+      "app/components/customers-list/CustomersListA5.js:143",
+      "app/components/customer-card/NewCustomerA5.js:95",
+      "app/components/customer-card/NewCustomerA5.js:141",
+      "app/components/new-order/StepCustomer.js:16"
+    ],
+    "expect": [
+      [
+        "לקוח חדש"
+      ],
+      [
+        "כל הלקוחות",
+        "הזמנה חדשה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/customers-list",
+      "/customers/new",
+      "/orders/new"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q18",
+    "topic": "inventory",
+    "q": "איך בודקים אם דגם מסוים פנוי בתאריך האירוע של לקוחה?",
+    "role": "manager",
+    "truth": "בתפריט העליון, לשונית \"הזמנה\" > \"בדיקת מלאי\" (/stock-check): בוחרים תאריך עברי, דגם ו/או מידות (חובה דגם או מידה) ולוחצים \"בדיקת מלאי\". יש גם \"בדיקה גמישה\" (מידה ± 2). בתוצאות: דגמים פנויים ולכל מידה כמה פנויים. הכלי תלוי בהרשאת ההזמנות.",
+    "source": [
+      "lib/menu/buildMenuTree.js:141",
+      "lib/menu/buildMenuTree.js:171",
+      "app/components/stock/StockCheckPage.js:339-445"
+    ],
+    "expect": [
+      [
+        "בדיקת מלאי"
+      ],
+      [
+        "הזמנה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/stock-check"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q19",
+    "topic": "inventory",
+    "q": "אפשר לבדוק זמינות מידה 4 בדגם 511 לכ' חשוון ישר מהחיפוש?",
+    "role": "manager",
+    "truth": "כן. בחיפוש (דף הבית או סמל החיפוש) מקלידים למשל \"מידה 4 דגם 511 כ חשוון\": שילוב מידה + דגם + תאריך עברי נותן את הזמינות ביום הקרוב שחל בו התאריך. אפשר גם כמה דגמים/מידות מופרדים בפסיק. רשימת מה אפשר להקליד: הקשת % בתחילת השורה.",
+    "source": [
+      "lib/searchNormalize.js:553-563",
+      "lib/quickShortcuts.js:22"
+    ],
+    "expect": [
+      [
+        "מידה"
+      ],
+      [
+        "דגם"
+      ],
+      [
+        "תאריך",
+        "חשוון",
+        "עברי"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q20",
+    "topic": "inventory",
+    "q": "איך מוסיפים דגם חדש למערכת?",
+    "role": "manager",
+    "truth": "ניהול > \"כל כלי הניהול\" > \"דגמים\" (עבודה שוטפת, רשימת הדגמים) ובה לוחצים \"דגם חדש\" (מוצג להנהלה) – נפתח אשף דגם חדש. (גם הקישור \"שמלות\" בתחתית האתר מוביל לרשימת הדגמים).",
+    "source": [
+      "lib/adminHubCatalog.js:105",
+      "app/components/models-list/ModelsListA5.js:224",
+      "lib/uiVariantScreens.js:207-215",
+      "app/components/home/homeLogic.js:624"
+    ],
+    "expect": [
+      [
+        "דגם חדש"
+      ],
+      [
+        "דגמים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "קטלוג דגמים"
+    ],
+    "routes": [
+      "/dashboard/dresses",
+      "/dashboard/dresses/new",
+      "/admin"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q21",
+    "topic": "inventory",
+    "q": "קיבלנו עוד שמלה במידה חדשה מדגם שקיים, איך מוסיפים אותה למלאי",
+    "role": "manager",
+    "truth": "פותחים את כרטיס הדגם (מרשימת הדגמים), לשונית \"פריטים\" > \"הוסף פריט\": חלון \"הוספת פריט\" (מידה, מיקום ועוד), והשינוי נכנס לעגלת \"שינויים בכרטיס\" ונשמר בלחיצה על \"שמור\" (הכפתור מוצג למי שמורשית לניהול פריטי דגם, הרשאה \"ניהול פריטי דגם\"). בלשונית \"פריטים\" אפשר גם לערוך מיקום וסטטוס של פריט קיים.",
+    "source": [
+      "app/components/dress-card/DcTabs.js:14-17",
+      "app/components/dress-card/tabs/DcItemsTab.js:141-143",
+      "app/components/dress-card/dialogs/DcItemDialogs.js:33-41"
+    ],
+    "expect": [
+      [
+        "פריטים"
+      ],
+      [
+        "הוסף פריט",
+        "הוספת פריט"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q22",
+    "topic": "inventory",
+    "q": "איך מוציאים דגם מהמאגר שלא יופיע יותר בהזמנות?",
+    "role": "manager",
+    "truth": "בכרטיס הדגם, לשונית \"פרטים\", בכרטיס \"מצב הדגם\" משנים סטטוס ל\"לא פעיל\" ושומרים (הדגם יוצא מהמאגר ולא ניתן לבחור אותו בהזמנה). אפשר גם \"מחיקת דגם\" (סמל פח בראש הכרטיס) ובהמשך \"שחזור דגם\".",
+    "source": [
+      "app/components/dress-card/tabs/DcDetailsTab.js:72-76",
+      "app/components/dress-card/DcTopbar.js:83-88"
+    ],
+    "expect": [
+      [
+        "לא פעיל",
+        "מחיקת דגם"
+      ],
+      [
+        "כרטיס הדגם",
+        "פרטים",
+        "מצב הדגם"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q23",
+    "topic": "schedule",
+    "q": "איך רואים מה מתוכנן להיום - הכנות, משלוחים, החזרות?",
+    "role": "manager",
+    "truth": "בלשונית \"לוז\" בתפריט העליון: \"היום\" (או \"מחר\") פותח את דף \"לוח זמנים\" עם שלבי היום: הזמנות חדשות, תיקונים, הכנה, משלוח הלוך, איסוף מקומי, אירוע, החזרה ידנית, משלוח חזור (ו\"הזמנות שעודכנו\"). יש מתג שורות/טבלה וסינון לפי סניף.",
+    "source": [
+      "lib/menu/buildMenuTree.js:152-153",
+      "lib/menu/buildMenuTree.js:167",
+      "app/components/schedule/scheduleMeta.js:9-20",
+      "app/components/schedule/ScheduleDay.js:309-324"
+    ],
+    "expect": [
+      [
+        "לוז"
+      ],
+      [
+        "היום"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/schedule"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q24",
+    "topic": "schedule",
+    "q": "איך מסמנים בלוז שההכנה של הזמנה בוצעה",
+    "role": "manager",
+    "truth": "בדף \"לוז\" בשורת ההזמנה בשלב \"הכנה\" לוחצים \"בוצע\" ומאשרים בחלון (\"כן, סמן כבוצע\"); לביטול לוחצים שוב על \"בוצע\" (\"כן, בטל סימון\"). בכותרת השלב יש \"הכל בוצע\" (דורש הרשאה). בשלבי ההחזרה יש גם \"הוחזר לא תקין\".",
+    "source": [
+      "app/components/schedule/MarkControls.js:74-100",
+      "app/components/schedule/MarkControls.js:120-140",
+      "app/components/schedule/scheduleMeta.js:47-51",
+      "lib/permissionsMetadata.js:555"
+    ],
+    "expect": [
+      [
+        "בוצע"
+      ],
+      [
+        "לוז",
+        "הכנה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q25",
+    "topic": "schedule",
+    "q": "איך רואים את כל החודש ואיך עוברים לפרטי יום מסוים?",
+    "role": "manager",
+    "truth": "לשונית \"לוח חודשי\": לוח עם מוני שלבים לכל יום, ניווט חודש קודם/הבא וקפיצה לחודש, מתג \"לוח חודשי\" / \"רשימת ימים\", סינון לפי שלב. לחיצה על יום פותחת את דף הלוז של אותו יום.",
+    "source": [
+      "lib/menu/buildMenuTree.js:168",
+      "app/components/board/BoardPage.js:196-220",
+      "app/components/board/BoardPage.js:9-14",
+      "app/components/board/BoardParts.js:50-57",
+      "app/components/board/BoardParts.js:117-135"
+    ],
+    "expect": [
+      [
+        "לוח חודשי"
+      ],
+      [
+        "לוז",
+        "לחיצה על יום",
+        "לוח זמנים",
+        "לוח הזמנים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/board",
+      "/schedule"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q26",
+    "topic": "settings",
+    "q": "איפה מגדירים אילו אמצעי תשלום מוצגים בהזמנה?",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\" (הנהלה ראשית/מתכנת) > לשונית \"תשלומים\" > \"אמצעי תשלום פעילים\" > \"אמצעים שמוצגים בהזמנה\" (ברירת מחדל: אשראי דרך נדרים פלוס, מזומן, יציאה באישור מנהל; אפשר להוסיף אמצעי).",
+    "source": [
+      "lib/settingsSimLayout.js:93",
+      "lib/settingsSimLayout.js:202",
+      "lib/settingsSimLayout.js:568",
+      "lib/menu/buildMenuTree.js:121"
+    ],
+    "expect": [
+      [
+        "הגדרות מערכת"
+      ],
+      [
+        "תשלומים"
+      ],
+      [
+        "אמצעי תשלום",
+        "אמצעים שמוצגים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q27",
+    "topic": "settings",
+    "q": "כמה ימי רווח צריך בין השכרות של אותה שמלה? איפה משנים",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\" > לשונית \"מלאי ויומן\" > \"רווחים בין השכרות\" (או \"תצורה\" > \"כללי השכרה\"): \"ימי מרווח ביטחון בין השכרות\" – מספר הימים לפני ואחרי האירוע שבהם השמלה נחשבת תפוסה; ו\"דלג על סוף שבוע בחישוב מלאי\".",
+    "source": [
+      "lib/settingsSimLayout.js:86",
+      "lib/settingsSimLayout.js:126",
+      "lib/settingsSimLayout.js:176",
+      "lib/settingsMetadata.js:187",
+      "lib/settingsMetadata.js:303"
+    ],
+    "expect": [
+      [
+        "ימי מרווח",
+        "מרווח ביטחון"
+      ],
+      [
+        "הגדרות מערכת",
+        "הגדרות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q28",
+    "topic": "settings",
+    "q": "איפה מפעילים מייל אוטומטי ללקוחה כשנפתחת הזמנה ותזכורת לפני איסוף",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\" > לשונית \"הודעות\" > \"מיילים אוטומטיים ללקוחות\": \"אישור הזמנה (מייל)\", \"תזכורת מייל יום לפני איסוף\" (עם שעה), \"מייל אוטומטי למאחרים\" ונוסח המייל, ו\"שליחת מייל לפי תאריך אירוע\".",
+    "source": [
+      "lib/settingsSimLayout.js:103",
+      "lib/settingsSimLayout.js:237",
+      "lib/settingsMetadata.js:92",
+      "lib/settingsMetadata.js:97-98"
+    ],
+    "expect": [
+      [
+        "הגדרות מערכת",
+        "הגדרות"
+      ],
+      [
+        "הודעות"
+      ],
+      [
+        "מיילים אוטומטיים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q29",
+    "topic": "settings",
+    "q": "איפה קובעים שמייל וכתובת מלאה הם שדות חובה בפרטי לקוחה",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\" > לשונית \"הזמנות\" > סעיף \"שדות חובה בלקוח\": \"חייב מייל לקוח\", \"חייב כתובת מלאה\", \"חייב אישור דיוור\", תעודת זהות ועוד.",
+    "source": [
+      "lib/settingsSimLayout.js:114",
+      "lib/settingsMetadata.js:69-71"
+    ],
+    "expect": [
+      [
+        "שדות חובה"
+      ],
+      [
+        "הזמנות"
+      ],
+      [
+        "הגדרות מערכת",
+        "הגדרות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q30",
+    "topic": "settings",
+    "q": "איך מחליפים את הלוגו והשם של הגמח שמופיעים באתר?",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\": שם הגמ\"ח בלשונית \"תצורה\" > \"פרטי הגמ״ח\" (\"שם הגמ״ח\"), והלוגו בלשונית \"מיתוג\" > \"קבצי מיתוג\" (העלאת לוגו PNG/JPG; מופיע בראש העמודים ובהדפסות).",
+    "source": [
+      "lib/settingsSimLayout.js:85",
+      "lib/settingsSimLayout.js:91",
+      "lib/settingsSimLayout.js:185",
+      "app/components/settings-sim/SettingsSimPage.js:75-115"
+    ],
+    "expect": [
+      [
+        "מיתוג"
+      ],
+      [
+        "לוגו"
+      ],
+      [
+        "הגדרות מערכת",
+        "הגדרות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q31",
+    "topic": "admin",
+    "q": "איפה רואים סטטיסטיקות ודוחות כלליים?",
+    "role": "manager",
+    "truth": "ניהול > \"כל כלי הניהול\" > קטגוריית \"תובנות ודוחות\": \"סטטיסטיקה\" (מרכז נתונים ופילוח), \"דשבורד\" (גרפים ומגמות, אזור ניהול - סיכומים ופילוחים) ו\"מערכת AI\" – להנהלה ראשית/מתכנת. ל\"סיכום כספי\" יש גם קישור בתחתית האתר.",
+    "source": [
+      "lib/adminHubCatalog.js:78-81",
+      "app/admin/statistics/page.js:95",
+      "app/dashboard/page.js:125",
+      "app/components/home/homeLogic.js:625"
+    ],
+    "expect": [
+      [
+        "סטטיסטיקה",
+        "דשבורד"
+      ],
+      [
+        "כל כלי הניהול",
+        "ניהול"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/statistics",
+      "/dashboard",
+      "/admin"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q32",
+    "topic": "admin",
+    "q": "אני רוצה לראות מי שינה נתונים במערכת ומתי - איפה",
+    "role": "manager",
+    "truth": "ניהול > \"כל כלי הניהול\" > קטגוריית \"נתונים והיסטוריה\" > \"היסטוריית נתונים\" (תיעוד שינויים), ו\"היסטוריית גלישה\" (דפים ושגיאות). להזמנה בודדת: כרטיס ההזמנה > לשונית \"היסטוריה\".",
+    "source": [
+      "lib/adminHubCatalog.js:91-92",
+      "app/components/history-lists/DataHistoryA5.js:146",
+      "app/components/order-card/OcTabs.js:16"
+    ],
+    "expect": [
+      [
+        "היסטוריית נתונים"
+      ],
+      [
+        "ניהול",
+        "כל כלי הניהול"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/data-history",
+      "/management/history"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q33",
+    "topic": "admin",
+    "q": "איפה משנים מחיר השכרה לקטגוריה?",
+    "role": "manager",
+    "truth": "ניהול > \"ניהול מחירון\" (גם: \"כל כלי הניהול\" > \"תמחור וחישובים\" > \"ניהול מחירון\"): הגדרת מחירי השכרה לפי קטגוריה ומידה, צפייה והדפסה. להנהלה ראשית/מתכנת.",
+    "source": [
+      "lib/adminHubCatalog.js:65",
+      "lib/menu/buildMenuTree.js:132"
+    ],
+    "expect": [
+      [
+        "ניהול מחירון",
+        "מחירון"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/dashboard/pricelist",
+      "/admin"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q34",
+    "topic": "deliveries",
+    "q": "איך מוסיפים משלוח להזמנה?",
+    "role": "manager",
+    "truth": "בתנאי שהמשלוחים מופעלים בגמ\"ח (הגדרה \"הצג משלוחים\", enable_deliveries): בכרטיס ההזמנה יש לשונית \"משלוח\" (אם הוגדרה לשונית נפרדת, אחרת הכרטיסייה בתוך \"פרטים\"): מסמנים \"הזמנה עם משלוח\", בוחרים כיוון ויעד (עיר וכתובת). בהזמנה חדשה זה שלב \"משלוח\" באשף. אם אין אפשרות כזו – המשלוחים כבויים בגמ\"ח.",
+    "source": [
+      "app/components/order-card/OcTabs.js:6",
+      "app/components/order-card/OcTabs.js:19-21",
+      "app/components/order-card/tabs/OcDeliveryTab.js:156-182",
+      "lib/settingsMetadata.js:112",
+      "lib/settingsMetadata.js:422"
+    ],
+    "expect": [
+      [
+        "הזמנה עם משלוח",
+        "לשונית משלוח",
+        "לשונית \"משלוח\"",
+        "משלוח"
+      ],
+      [
+        "מופעל",
+        "מופעלת",
+        "הופעל",
+        "מופעלים",
+        "בתנאי"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "פרטים כלליים"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q35",
+    "topic": "deliveries",
+    "q": "איפה מגדירים כמה עולה משלוח לכל עיר",
+    "role": "manager",
+    "truth": "ניהול > \"הגדרות מערכת\" > לשונית \"משלוחים\" > \"משלוחים – הפעלה ומחירים\": \"מחיר משלוח אחיד (ברירת מחדל)\" ו\"מחיר משלוח לפי עיר (JSON)\". המשלוחים עצמם חייבים להיות מופעלים (\"הצג משלוחים\").",
+    "source": [
+      "lib/settingsSimLayout.js:121",
+      "lib/settingsMetadata.js:115-116",
+      "lib/settingsMetadata.js:112"
+    ],
+    "expect": [
+      [
+        "משלוחים"
+      ],
+      [
+        "לפי עיר",
+        "מחיר משלוח"
+      ],
+      [
+        "הגדרות מערכת",
+        "הגדרות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/settings"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q36",
+    "topic": "print",
+    "q": "איך מדפיסים את ההזמנה בשביל הלקוחה?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה, בשורת הכותרת, סמל המדפסת \"הדפסה / מייל\" > \"הדפסת סיכום ללקוח\" או \"הדפסת השכרה\" (יש גם \"דף הכנה למחסן\" ו\"דף משלוח\" כשרלוונטי ומורשה). אם ההזמנה עוד לא סומנה כחתומה על התקנון, נשאלים לפני הפתיחה \"האם הלקוח חתם על התקנון?\".",
+    "source": [
+      "app/components/order-card/parts/OcPrintMenu.js:59",
+      "app/components/order-card/parts/OcPrintMenu.js:79-85",
+      "app/components/order-card/parts/ocDocsLogic.js:36-45"
+    ],
+    "expect": [
+      [
+        "הדפסת סיכום",
+        "הדפסת השכרה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q37",
+    "topic": "print",
+    "q": "איך מדפיסים מדבקות ברקוד לשמלות של דגם?",
+    "role": "manager",
+    "truth": "בכרטיס הדגם, בסמל ההדפסה בראש הדף > \"מדבקות ברקוד לפריטים\" (או \"הורדה כ-PDF: מדבקות ברקוד\"). בדף הלוז יש גם \"מדבקות שמלה\" (דף הדפסה PP-08) לפי הזמנות היום.",
+    "source": [
+      "app/components/dress-card/DcTopbar.js:44-47",
+      "app/components/dress-card/dcPrint.js:15-24",
+      "lib/schedule/print/registry.js:57"
+    ],
+    "expect": [
+      [
+        "מדבקות ברקוד",
+        "מדבקות"
+      ],
+      [
+        "כרטיס הדגם",
+        "כרטיס דגם",
+        "הדפסה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q38",
+    "topic": "print",
+    "q": "איך מדפיסים את דפי העבודה של היום, דף הכנה ורשימה לשליח?",
+    "role": "manager",
+    "truth": "בדף \"לוז\": סמל \"הדפסת דפים\" בכותרת העמוד (או בכותרת שלב מסוים) פותח אשף \"הדפסה · דפי הלוז\": מסמנים דפים (למשל \"דף הכנה\", \"דף משלוח הלוך (למשלוחן)\", \"רשימת שליח לפי עיר\", \"מדבקות שמלה\") ולוחצים \"הדפס נבחרים\" או \"הדפס את כל דפי היום\". יש גם הורדה כ-PDF וייצוא Excel (להנהלה).",
+    "source": [
+      "app/components/schedule/ScheduleToolbarSlots.js:16-17",
+      "app/components/schedule/print/PrintWizard.js:220-224",
+      "app/components/schedule/print/PrintWizard.js:262-280",
+      "lib/schedule/print/registry.js:53-66"
+    ],
+    "expect": [
+      [
+        "לוז"
+      ],
+      [
+        "הדפסה",
+        "הדפס"
+      ],
+      [
+        "דף הכנה",
+        "דפי הלוז",
+        "רשימת שליח"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/schedule"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q39",
+    "topic": "email",
+    "q": "איך שולחים ללקוחה את פרטי ההזמנה במייל?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה: סמל \"הדפסה / מייל\" > \"שליחה במייל\" (או \"שליחת מייל השכרה\"); אם אין כתובת מייל ללקוח נפתח חלון \"כתובת מייל חסרה\". כשההגדרה \"מייל מהיר מכרטיס ההזמנה\" פעילה יש גם לחצן \"מייל מהיר\" ליד המייל בלשונית \"פרטים\" (נושא, תוכן וצרופות לבחירה).",
+    "source": [
+      "app/components/order-card/parts/ocDocsLogic.js:44-45",
+      "app/components/order-card/parts/ocDocsLogic.js:22-24",
+      "app/components/order-card/parts/OcMailSheet.js:246-253",
+      "app/components/order-card/tabs/OcDetailsTab.js:70-72",
+      "lib/settingsMetadata.js:176"
+    ],
+    "expect": [
+      [
+        "שליחה במייל",
+        "מייל מהיר"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q40",
+    "topic": "email",
+    "q": "אני רוצה לשלוח מייל לכל הלקוחות שיש להם אירוע בשבוע הבא",
+    "role": "manager",
+    "truth": "ניהול > \"כל כלי הניהול\" > קטגוריית \"מיילים\" > \"שליחת מייל לפי תאריך אירוע\": בוחרים מתאריך (ועד תאריך), נושא ותוכן, עם מעקב שליחה. הכלי פעיל רק כשההגדרה \"שליחת מייל לפי תאריך אירוע\" דלוקה (הגדרות מערכת > הודעות > \"מיילים אוטומטיים ללקוחות\").",
+    "source": [
+      "lib/adminHubCatalog.js:99",
+      "app/admin/bulk-email/page.js:54",
+      "app/admin/bulk-email/page.js:71-84",
+      "app/api/bulk-email/route.js:24",
+      "lib/settingsSimLayout.js:103"
+    ],
+    "expect": [
+      [
+        "שליחת מייל לפי תאריך אירוע"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/bulk-email"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q41",
+    "topic": "email",
+    "q": "איפה רואים אילו מיילים נשלחו להזמנה הזאת?",
+    "role": "manager",
+    "truth": "בכרטיס ההזמנה > לשונית \"היסטוריה\" > \"פעולות ושינויים\": מסנן \"מיילים\" (מופיע כשנשלחו מיילים). \"יומן מיילים\" כללי של כל האתר קיים רק למתכנת.",
+    "source": [
+      "app/components/order-card/parts/ocHistoryModel.js:10",
+      "lib/adminHubCatalog.js:97"
+    ],
+    "expect": [
+      [
+        "היסטוריה"
+      ],
+      [
+        "מיילים"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q42",
+    "topic": "capacity",
+    "q": "איך בודקים אם שמלה שהוספתי להזמנה פנויה בתאריך האירוע",
+    "role": "manager",
+    "truth": "בשורת הפריט (כרטיס הזמנה > \"פריטים\", שורה פתוחה) לוחצים על הסמל \"בדוק תפוסה לתאריך אירוע\": חלון עם \"במלאי\", \"בתפוסה מתוכננת\", \"רזרבה זמינה\" והזמנות תופסות בטווח חודש לפני ואחרי. בהזמנה חדשה אותו סמל נמצא בסל הפריטים. לבדיקה כללית: \"בדיקת מלאי\".",
+    "source": [
+      "app/components/order-card/parts/OcItemRow.js:78",
+      "app/components/order-card/parts/OcCapacityDialog.js:48-58",
+      "app/components/new-order/StepItems.js:164"
+    ],
+    "expect": [
+      [
+        "בדוק תפוסה",
+        "בדיקת תפוסה",
+        "תפוסה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q43",
+    "topic": "capacity",
+    "q": "איך מסמנים שהגמח סגור ביום מסוים, מעבר לשישי ושבת?",
+    "role": "manager",
+    "truth": "\"ימי אי-פעילות\" (/non-working-days): ניהול > \"כל כלי הניהול\" > \"ימי אי-פעילות\"; בלוח העברי בוחרים יום (או כמה) ולוחצים \"סמן: אין פעילות\", או מוסיפים תאריך עברי קבוע (נסגר כל שנה), ובסוף \"שמור\". שישי, שבת וחגים סגורים אוטומטית. עובדת בלי הרשאת עריכה רואה את הדף בצפייה בלבד.",
+    "source": [
+      "app/components/nonWorkingDays/NonWorkingDaysPage.js:476",
+      "app/components/nonWorkingDays/NonWorkingDaysPage.js:486-491",
+      "app/components/nonWorkingDays/NonWorkingDaysPage.js:679-680",
+      "lib/menu/buildMenuTree.js:128",
+      "lib/adminHubCatalog.js:57"
+    ],
+    "expect": [
+      [
+        "ימי אי-פעילות",
+        "ימי אי פעילות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/non-working-days"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q44",
+    "topic": "search",
+    "q": "איך מחפשים הזמנה לפי מספר הזמנה או שם לקוחה",
+    "role": "manager",
+    "truth": "סמל החיפוש בסרגל העליון (או תיבת החיפוש בדף הבית): מקלידים שם, טלפון, מספר הזמנה או ברקוד (7 ספרות) – מוצגים עמודים, הזמנות ולקוחות. אפשר להוסיף מילת מפתח (\"הזמנה 25734\", \"טלפון 050...\"). בדף הבית יש גם \"לחיפוש חכם\".",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:555-561",
+      "app/components/menu/MenuSearchPanel.js:367",
+      "lib/searchNormalize.js:553-563",
+      "app/components/home/HomeA5.js:729"
+    ],
+    "expect": [
+      [
+        "חיפוש"
+      ],
+      [
+        "מספר הזמנה",
+        "מספר ההזמנה",
+        "הזמנה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "בית וחיפוש"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q45",
+    "topic": "search",
+    "q": "איפה החיפוש המתקדם",
+    "role": "manager",
+    "truth": "בלשונית \"בית\" > \"חיפוש מתקדם\" (או כפתור \"לחיפוש מתקדם\" בדף הבית). בוחרים תחום (\"במה נתמקד?\": לקוחות, הזמנות, השכרות, החזרות, תיקונים, משלוחים, תפוסה, דגמים, עובדים; כספים והתראות מאחורי כפתור ה-+), ממלאים סינונים ולוחצים חיפוש.",
+    "source": [
+      "lib/menu/buildMenuTree.js:112",
+      "app/components/home/HomeA5.js:688",
+      "app/components/home/HomeAdvanced.js:3",
+      "app/components/home/HomeAdvanced.js:492",
+      "app/components/home/homeAdvConfig.js:72-85"
+    ],
+    "expect": [
+      [
+        "חיפוש מתקדם"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/?adv=1"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q46",
+    "topic": "search",
+    "q": "איך חוזרים להזמנה שפתחתי לפני כמה דקות? יש קיצורים בחיפוש?",
+    "role": "manager",
+    "truth": "בלשונית \"בית\" > \"שינויים אחרונים\", או הקלדת @ בתחילת שורת החיפוש בדף הבית: לקוחות, הזמנות ופריטים שפתחת לאחרונה בעמדה. קיצורים נוספים: # פעולות מהירות (הזמנה חדשה, טיוטות, ממתינים לתשלום), $ חיפושים שמורים, & השינויים שלי, % מילות מפתח; כפתור \"קיצורים\" מציג מדריך.",
+    "source": [
+      "lib/quickShortcuts.js:17-23",
+      "lib/quickShortcuts.js:49-53",
+      "lib/menu/buildMenuTree.js:107",
+      "lib/menu/buildMenuTree.js:110",
+      "app/components/menu/MenuSearchPanel.js:73-76"
+    ],
+    "expect": [
+      [
+        "@"
+      ],
+      [
+        "#"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q47",
+    "topic": "nav",
+    "q": "איפה רואים התראות והודעות חדשות?",
+    "role": "manager",
+    "truth": "סמל הפעמון בסרגל העליון (עם מספר ההתראות שלא נקראו): נפתח פאנל \"התראות\" עם \"סמן הכל כנקרא\" ו\"ניקוי\", ושורות \"פתח מרכז הודעות\" ו\"הודעה למנהל\" (כשהאפשרויות פעילות בהגדרות).",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:605-630",
+      "app/components/menu/MenuBell.js:188-192",
+      "lib/menu/buildMenuTree.js:156-157"
+    ],
+    "expect": [
+      [
+        "פעמון"
+      ],
+      [
+        "התראות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q48",
+    "topic": "nav",
+    "q": "איך עוברים לאתר הישן?",
+    "role": "manager",
+    "truth": "סמל \"האתר הישן\" (חץ יוצא, תג \"זמני\") בקבוצת הסמלים בסרגל העליון, ליד הפעמון: לחיצה מחליפה את התפריט העליון לעיצוב הישן ומרעננת את העמוד. הקישור זמני ופועל בכיוון אחד בלבד מהסמל. בחלק מהמסכים יש גם אייקון \"חזרה לתצוגה הישנה\" בכותרת המסך (להנהלה ראשית/מתכנת).",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:591-603",
+      "app/components/menu/MenuA5Shell.js:196-205",
+      "lib/menu/buildMenuTree.js:564",
+      "app/components/board/BoardPage.js:197"
+    ],
+    "expect": [
+      [
+        "האתר הישן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q49",
+    "topic": "nav",
+    "q": "יש תקלה באתר, איך מדווחים?",
+    "role": "manager",
+    "truth": "סמל \"דיווח על שגיאה בעמוד\" (חרק) בסרגל העליון (לא מוצג כשמערכת דיווחי השגיאות כבויה בהגדרות): נפתח חלון עם \"מה קרה?\"; תגובות מופיעות ב\"פניות שלי\". קיים גם \"דיווח על תקלה\" בתחתית האתר בקבוצת \"עזרה\".",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:576-585",
+      "lib/menu/buildMenuTree.js:562",
+      "app/components/home/homeLogic.js:631-632",
+      "app/components/errorReport/ErrorReportWindow.js:944",
+      "app/components/errorReport/ErrorReportWindow.js:1151"
+    ],
+    "expect": [
+      [
+        "דיווח על שגיאה",
+        "דיווח על תקלה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q50",
+    "topic": "nav",
+    "q": "איך מצמידים קיצורים קבועים לסרגל העליון?",
+    "role": "manager",
+    "truth": "הצמדת קיצורים לסרגל (כפתור הסיכה) הייתה רק בתפריט הישן ולא קיימת בתפריט החדש (הוסרה). בתפריט \"ניהול\" החדש אפשר רק לנעוץ כלי ניהול (לחצן \"נעץ בתפריט\" ליד הכלי), והוא מציג גם את הכלים שנפתחו לאחרונה.",
+    "source": [
+      "lib/menu/buildMenuTree.js:41",
+      "app/components/menu/menuParts.js:159",
+      "lib/menu/buildMenuTree.js:304-341"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן",
+        "רק בישן",
+        "בתפריט הישן",
+        "הוסר",
+        "הישן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": true
+  },
+  {
+    "id": "q51",
+    "topic": "perm",
+    "q": "למה אין לי כפתור הגדרות מערכת בתפריט ניהול?",
+    "role": "employee",
+    "truth": "\"הגדרות מערכת\" (ו\"כל כלי הניהול\") מוצגים רק להנהלה ראשית ולמתכנת. עובדת רגילה רואה בלשונית \"ניהול\" רק מה שמותר לה, למשל \"ימי אי-פעילות\" בצפייה בלבד. הרשאות נקבעות ע\"י ההנהלה ב\"הרשאות\".",
+    "source": [
+      "lib/menu/buildMenuTree.js:121",
+      "lib/menu/buildMenuTree.js:123",
+      "lib/menu/buildMenuTree.js:128",
+      "lib/menu/buildMenuTree.js:508-510",
+      "lib/adminHubCatalog.js:53"
+    ],
+    "expect": [
+      [
+        "הנהלה",
+        "מנהל",
+        "מנהלת"
+      ],
+      [
+        "הרשאה",
+        "הרשאות",
+        "מתכנת"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q52",
+    "topic": "perm",
+    "q": "למנהלת יש בלוז כפתור ייצוא לאקסל ולי אין, למה",
+    "role": "employee",
+    "truth": "ייצוא ל-Excel בדף \"לוז\" מוצג רק להנהלה/למורשות (\"עובדת\" רגילה בלי XL – החלטת בעלים JDG-04). גם \"הכל בוצע\" בכותרת השלב דורש הרשאה. הדפסה והורדת PDF זמינות לפי הרשאות הדפים.",
+    "source": [
+      "app/components/schedule/ScheduleDay.js:35",
+      "app/components/schedule/ScheduleDay.js:258-261",
+      "app/components/schedule/ScheduleToolbarSlots.js:10-12",
+      "lib/permissionsMetadata.js:555"
+    ],
+    "expect": [
+      [
+        "הרשאה",
+        "הנהלה",
+        "מנהל"
+      ],
+      [
+        "אקסל",
+        "Excel",
+        "XL",
+        "ייצוא"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q53",
+    "topic": "perm",
+    "q": "אין לי בתפריט את הלשונית לוח חודשי",
+    "role": "employee",
+    "truth": "הלשונית \"לוח חודשי\" מוצגת רק למי שיש לה הרשאת עמוד \"לוח חודשי\" (כברירת מחדל סגור לכל מי שאינה הנהלה ראשית/מתכנת). מנהלת נותנת גישה ב\"ניהול\" > \"הרשאות\" (שורת הרשאה לעמוד \"לוח חודשי\").",
+    "source": [
+      "lib/menu/buildMenuTree.js:168",
+      "lib/menu/buildMenuTree.js:243",
+      "lib/permissionsMetadata.js:176-183"
+    ],
+    "expect": [
+      [
+        "הרשאה",
+        "הרשאות"
+      ],
+      [
+        "הנהלה",
+        "מנהל",
+        "מנהלת"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q54",
+    "topic": "perm",
+    "q": "איך נותנים לעובדת מסוימת גישה לעמוד שהיא לא רואה?",
+    "role": "manager",
+    "truth": "ניהול > \"הרשאות\" (/admin/permissions): יוצרים \"שורת הרשאה חדשה\", בוחרים עמודים/פיצ'רים, מחלקות ועובדות; גישה אחת מספיקה (איחוד השורות). אפשר גם חריגה אישית מכרטיס העובד. הדף פתוח להנהלה ראשית/מתכנת.",
+    "source": [
+      "app/admin/permissions/PermissionsClient.js:72-85",
+      "app/admin/permissions/PermissionsClient.js:125",
+      "app/admin/permissions/PermissionsClient.js:220",
+      "lib/adminHubCatalog.js:52",
+      "lib/permissionPageGroups.js:1-9"
+    ],
+    "expect": [
+      [
+        "הרשאות"
+      ],
+      [
+        "שורת הרשאה",
+        "מחלקה",
+        "עובדת"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [
+      "/admin/permissions"
+    ],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q55",
+    "topic": "perm",
+    "q": "ההזמנה נעולה ואני לא מצליחה להוסיף או למחוק שמלה, למה?",
+    "role": "employee",
+    "truth": "הזמנה שתאריך האירוע שלה עבר נעולה: השכרה, עריכה ומחיקה של פריטים חסומות (החזרה, תשלומים וזיכויים זמינים). לשחרור לוחצים על סמל הנעילה בכותרת > \"שחרר באישור מנהל\" – נדרש מנהל או הרשאת \"עריכת הזמנה שתאריך האירוע שלה עבר\".",
+    "source": [
+      "app/components/order-card/OcTopbar.js:14-18",
+      "app/components/order-card/tabs/OcItemsTab.js:147-149",
+      "lib/permissionsMetadata.js:474"
+    ],
+    "expect": [
+      [
+        "נעול"
+      ],
+      [
+        "אישור מנהל",
+        "מנהל",
+        "הרשאה"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar"
+    ],
+    "routes": [],
+    "exists": true,
+    "oldOnly": false
+  },
+  {
+    "id": "q56",
+    "topic": "trap",
+    "q": "איך מדפיסים את הלוח החודשי?",
+    "role": "manager",
+    "truth": "בלוח החודשי החדש אין כפתור הדפסה/ייצוא (הוסרו הדפסה בתא ואשף הדפסת הכנה). לחיצה על יום פותחת את דף \"לוז\" של אותו יום, ושם יש \"הדפסת דפים\" (אשף הדפסה) והורדה.",
+    "source": [
+      "app/components/board/BoardPage.js:9-14",
+      "app/components/schedule/ScheduleToolbarSlots.js:16-17"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ],
+      [
+        "לוז",
+        "לוח זמנים",
+        "לחיצה על יום"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "כפתור הדפסה בלוח החודשי"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q57",
+    "topic": "trap",
+    "q": "יש לי לקוחה כפולה בשני כרטיסים, איך מאחדים אותם לכרטיס אחד?",
+    "role": "manager",
+    "truth": "אין פעולת איחוד/מיזוג כרטיסי לקוחה במערכת. אפשר לתקן פרטים בכרטיס, להחליף לקוח בהזמנה (\"החלפת לקוח\" בכרטיס ההזמנה) ולמחוק כרטיס כפול (\"מחיקת לקוחה\", כשאין הזמנות/חסימות והרשאה מתאימה).",
+    "source": [
+      "app/components/order-card/tabs/OcDetailsTab.js:61",
+      "app/components/customer-card/CcTopbar.js:39",
+      "app/components/customer-card/CcDialogs.js:76-89"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "איחוד לקוחות",
+      "מיזוג כרטיסים",
+      "איחוד כרטיסים"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q58",
+    "topic": "trap",
+    "q": "איפה שולחים ללקוחה הודעת וואטסאפ או SMS מהאתר?",
+    "role": "manager",
+    "truth": "אין שליחת וואטסאפ או SMS מהאתר. הפנייה ללקוחות מהאתר היא במייל (שליחה במייל, \"מייל מהיר\", מיילים אוטומטיים).",
+    "source": [
+      "app/components/order-card/parts/ocDocsLogic.js:44-45",
+      "lib/settingsSimLayout.js:103"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "וואטסאפ בכרטיס",
+      "כפתור וואטסאפ"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q59",
+    "topic": "trap",
+    "q": "איך מחברים את האתר לחשבשבת או לחשבונית ירוקה כדי להפיק חשבוניות?",
+    "role": "manager",
+    "truth": "אין חיבור לתוכנות הנהלת חשבונות או הפקת חשבוניות. אפשר לייצא נתונים לקובץ Excel/PDF ולהדפיס מסמכים (למשל דף חשבון ללקוח, אישור תשלומים).",
+    "source": [
+      "app/components/customer-card/CcTopbar.js:36-43"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "הגדרות מערכת > חשבשבת",
+      "אינטגרציה לחשבשבת"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q60",
+    "topic": "trap",
+    "q": "איך מוסיפים לקוחה לרשימת המתנה לשמלה שתפוסה בתאריך שלה?",
+    "role": "manager",
+    "truth": "אין רשימת המתנה לשמלות. אפשר לבדוק זמינות ב\"בדיקת מלאי\" או בחיפוש (מידה + דגם + תאריך), ולבדוק תפוסה בשורת הפריט.",
+    "source": [
+      "app/components/stock/StockCheckPage.js:339-445",
+      "lib/searchNormalize.js:553-563"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "רשימת המתנה בכרטיס"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q61",
+    "topic": "trap",
+    "q": "איפה רואים את המשלוחים על מפה?",
+    "role": "manager",
+    "truth": "אין תצוגת מפה למשלוחים. יש רשימת משלוחים, דפי הדפסה ללוז (רשימת שליח לפי עיר, דף משלוח הלוך/חזור) ולשונית \"משלוח\" בכרטיס ההזמנה (כשהמשלוחים מופעלים).",
+    "source": [
+      "lib/schedule/print/registry.js:63-66",
+      "lib/schedule/print/registry.js:92",
+      "app/components/order-card/tabs/OcDeliveryTab.js:156-182"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "מפת משלוחים",
+      "לחצו על מפה"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q62",
+    "topic": "trap",
+    "q": "איפה מגדירים תבנית מייל עם לוגו שונה לכל סוג מייל בנפרד?",
+    "role": "manager",
+    "truth": "אין עריכת תבניות מייל לכל סוג מייל, ואין לוגו במיילים. נערך רק נוסח מייל האיחור (הגדרות מערכת > הודעות > \"מיילים אוטומטיים ללקוחות\") והלוגו הראשי מועלה פעם אחת ב\"מיתוג\" ומשמש בעמודים ובהדפסות.",
+    "source": [
+      "lib/settingsSimLayout.js:91",
+      "lib/settingsSimLayout.js:103",
+      "lib/settingsMetadata.js:98",
+      "lib/emailTemplates.js:1"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "עורך תבניות מייל"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q63",
+    "topic": "trap",
+    "q": "איך משכפלים הזמנה קיימת להזמנה חדשה עם אותם פריטים?",
+    "role": "manager",
+    "truth": "אין פעולת שכפול הזמנה. יוצרים הזמנה חדשה (\"הזמנה חדשה\") ומוסיפים את הפריטים. (בשמירה כפולה של אותה הזמנה מוצג רק חלון \"הזמנה זו כבר נשמרה\").",
+    "source": [
+      "app/components/new-order/NoDialogs.js:345-346",
+      "lib/menu/buildMenuTree.js:136"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "כפתור שכפול",
+      "שכפל הזמנה"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q64",
+    "topic": "trap",
+    "q": "איפה המדריך למשתמש באתר?",
+    "role": "manager",
+    "truth": "אין עדיין מדריך למשתמש: הקישור \"מדריך למשתמש\" בתחתית האתר (קבוצת \"עזרה\") מוצג כבוי עם \"בקרוב\". יש \"דיווח על תקלה\", ובדף הבית קישור \"למצגת הסבר על האתר\".",
+    "source": [
+      "app/components/home/homeLogic.js:631-632",
+      "app/components/home/HomeA5.js:858-862"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן",
+        "בקרוב"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "לחצו על מדריך למשתמש"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q65",
+    "topic": "trap",
+    "q": "איך נותנים ללקוחה קבועה הנחה אוטומטית / מועדון לקוחות?",
+    "role": "manager",
+    "truth": "אין מועדון לקוחות או הנחה קבועה בכרטיס הלקוחה. (קיימת רק הגדרת מבצע סטים וזיכויים, וחיוב/זיכוי ידני בהזמנה בהרשאת מנהל.)",
+    "source": [
+      "lib/settingsMetadata.js:214",
+      "app/components/order-card/tabs/OcPaymentsTab.js:170-180"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "מועדון לקוחות בכרטיס"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q66",
+    "topic": "trap",
+    "q": "יש אפליקציה להתקנה בטלפון? אני רוצה שההתראות יקפצו לי בנייד",
+    "role": "manager",
+    "truth": "אין אפליקציה להתקנה ואין התראות פוש לנייד. האתר עובד בדפדפן (גם במסך צר, עם תפריט המבורגר) וההתראות מוצגות בתוך האתר: פעמון וחלוניות.",
+    "source": [
+      "app/components/menu/MenuA5Shell.js:605-630",
+      "app/components/menu/MenuA5Shell.js:663-676"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "הורידו את האפליקציה"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q67",
+    "topic": "trap",
+    "q": "איך מחליפים את שפת האתר לאנגלית?",
+    "role": "manager",
+    "truth": "אין בורר שפות; הממשק בעברית בלבד (RTL).",
+    "source": [
+      "lib/menu/pageLabels.js:1-8"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "בורר שפה"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q68",
+    "topic": "trap",
+    "q": "אפשר לסנכרן את הלוז ליומן של גוגל?",
+    "role": "manager",
+    "truth": "אין סנכרון ליומן גוגל. הלוז זמין בדף \"לוז\" (ו\"לוח חודשי\"), עם הדפסה/הורדה/ייצוא.",
+    "source": [
+      "app/components/schedule/ScheduleToolbarSlots.js:16-17",
+      "lib/menu/buildMenuTree.js:167-168"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "יומן גוגל בהגדרות"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q69",
+    "topic": "trap",
+    "q": "איך מקבלים תשלום בפייפאל או בביט מהלקוחה? יש חיבור לזה?",
+    "role": "manager",
+    "truth": "אין חיבור לפייפאל או לביט. הסליקה המובנית היחידה היא אשראי דרך נדרים פלוס (הגדרות מערכת > תשלומים), והאמצעים המוצגים בהזמנה נקבעים ב\"אמצעי תשלום פעילים\".",
+    "source": [
+      "lib/settingsSimLayout.js:93",
+      "lib/settingsSimLayout.js:97",
+      "lib/settingsSimLayout.js:568"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "חיבור לפייפאל"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  },
+  {
+    "id": "q70",
+    "topic": "trap",
+    "q": "איך מוסיפים שדה חדש משלי לכרטיס לקוחה, למשל \"מידת נעליים\"?",
+    "role": "manager",
+    "truth": "אין הוספת שדות מותאמים אישית. אפשר לרשום בשדה \"הערות ללקוחה\", ולשנות רק את שמות הכיתובים הקיימים ב\"שינוי שמות\".",
+    "source": [
+      "app/components/customer-card/tabs/CcDetailsTab.js:106",
+      "lib/settingsSimLayout.js:56-63"
+    ],
+    "expect": [
+      [
+        "אין",
+        "לא קיים",
+        "לא קיימת",
+        "אינה קיימת",
+        "לא מצאתי",
+        "לא ניתן"
+      ],
+      [
+        "הערות"
+      ]
+    ],
+    "forbid": [
+      "תפריט הצד",
+      "סרגל הצד",
+      "תפריט צד",
+      "sidebar",
+      "הוספת שדה מותאם"
+    ],
+    "routes": [],
+    "exists": false,
+    "oldOnly": false
+  }
+]

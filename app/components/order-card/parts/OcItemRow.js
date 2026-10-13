@@ -29,7 +29,7 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
   const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } };
   return (
     <article className={`hrow irow${pending || mode === 'del' ? ' pending' : ''}${open ? ' open' : ''}`} data-item={key}>
-      <div className="li rlink lrow" role="button" tabIndex={0} data-act="opitem" aria-expanded={open} aria-controls={detId} onClick={onToggle} onKeyDown={onKey}>
+      <div className="li rlink lrow" role="button" tabIndex={0} data-act="opitem" data-guide-id="oc.item-row" aria-expanded={open} aria-controls={detId} onClick={onToggle} onKeyDown={onKey}>
         <div className="ic-b"><OcIcon name="dress" /><span className="rlbl">פריט</span></div>
         <div className="t">
           <b>דגם <bdi>{itemName(item)}</bdi> · מידה {item.sizeText || '—'}</b>
@@ -57,7 +57,7 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
               <small>פעולות</small>
               <b className="hv-btns">
                 {!locked && !quotaFull ? (
-                  <button type="button" className="btn sm" data-act="restore" onClick={() => actions.toggleDeleted(item)}><OcIcon name="undo" size="sm" />שחזור</button>
+                  <button type="button" className="btn sm" data-act="restore" data-guide-id="oc.item-restore" onClick={() => actions.toggleDeleted(item)}><OcIcon name="undo" size="sm" />שחזור</button>
                 ) : null}
               </b>
             </div>
@@ -69,22 +69,22 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
                 <b className="hv-btns">
                   {pending ? (
                     <>
-                      <button type="button" className="btn sm" data-act="confirmitem" disabled={confirming} aria-busy={confirming} onClick={confirm}><OcIcon name="check" size="sm" />אישור</button>
-                      <button type="button" className="ibtn" data-act="rmitem" aria-label="הסרת פריט" data-tip="הסרת פריט" onClick={() => actions.toggleDeleted(item)}><OcIcon name="trash" size="sm" /></button>
+                      <button type="button" className="btn sm" data-act="confirmitem" data-guide-id="oc.item-confirm" disabled={confirming} aria-busy={confirming} onClick={confirm}><OcIcon name="check" size="sm" />אישור</button>
+                      <button type="button" className="ibtn" data-act="rmitem" data-guide-id="oc.item-remove" aria-label="הסרת פריט" data-tip="הסרת פריט" onClick={() => actions.toggleDeleted(item)}><OcIcon name="trash" size="sm" /></button>
                     </>
                   ) : (
                     <>
-                      <button type="button" className="ibtn" data-act="itemdet" aria-label="פרטים נוספים והיסטוריה" data-tip="פרטים נוספים והיסטוריה" onClick={onDetails}><OcIcon name="info" size="sm" /></button>
-                      <button type="button" className="ibtn" data-act="cap" aria-label="בדוק תפוסה לתאריך אירוע" data-tip="בדוק תפוסה לתאריך אירוע" onClick={onCapacity}><OcIcon name="cal" size="sm" /></button>
+                      <button type="button" className="ibtn" data-act="itemdet" data-guide-id="oc.item-details" aria-label="פרטים נוספים והיסטוריה" data-tip="פרטים נוספים והיסטוריה" onClick={onDetails}><OcIcon name="info" size="sm" /></button>
+                      <button type="button" className="ibtn" data-act="cap" data-guide-id="oc.item-capacity" aria-label="בדוק תפוסה לתאריך אירוע" data-tip="בדוק תפוסה לתאריך אירוע" onClick={onCapacity}><OcIcon name="cal" size="sm" /></button>
                       {altEnabled && hasAlt && !locked ? (
-                        <button type="button" className="btn sm" data-act="altdone" aria-pressed={!!item.alterationDone} onClick={() => actions.toggleAltDone(item)}>
+                        <button type="button" className="btn sm" data-act="altdone" data-guide-id="oc.item-alt-done" aria-pressed={!!item.alterationDone} onClick={() => actions.toggleAltDone(item)}>
                           <OcIcon name="check" size="sm" />{item.alterationDone ? 'בטל סימון תיקון' : 'סמן תיקון בוצע'}
                         </button>
                       ) : null}
                       {!item.isTaken && !locked ? (
                         <>
-                          <button type="button" className="ibtn" data-act="edititem" aria-label="עריכת פריט" data-tip="עריכת פריט" onClick={onEdit}><OcIcon name="pencil" size="sm" /></button>
-                          <button type="button" className="ibtn" data-act="rmitem" aria-label="הסרת פריט" data-tip="הסרת פריט" onClick={() => actions.toggleDeleted(item)}><OcIcon name="trash" size="sm" /></button>
+                          <button type="button" className="ibtn" data-act="edititem" data-guide-id="oc.item-edit" aria-label="עריכת פריט" data-tip="עריכת פריט" onClick={onEdit}><OcIcon name="pencil" size="sm" /></button>
+                          <button type="button" className="ibtn" data-act="rmitem" data-guide-id="oc.item-remove" aria-label="הסרת פריט" data-tip="הסרת פריט" onClick={() => actions.toggleDeleted(item)}><OcIcon name="trash" size="sm" /></button>
                         </>
                       ) : null}
                     </>

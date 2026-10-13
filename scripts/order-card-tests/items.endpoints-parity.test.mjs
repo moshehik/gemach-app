@@ -521,10 +521,12 @@ test('מחיקת שורה שטרם נשמרה = הסרתה (cancelNewItem)', asy
   assert.deepEqual(me.state.removed, ['L1']);
 });
 
-test('טיוטת עריכה (editDraftOf) = handleEditItem של הישן; itemName/itemCode זהים', () => {
+test('טיוטת עריכה (editDraftOf) = handleEditItem של הישן; itemName/itemCode זהים', async () => {
   const items = [it('a1', { description: '4512 (קוד: 45) - שמלה', dressModelId: undefined }), it('a2', { dressItem: { ...dressItem('a2', 'ללא שם 7', 77, '40') }, sizeText: '' })];
   const itemCode = mimFunction('itemCode', {});
-  const itemName = mimFunction('itemName', { itemCode });
+  // itemName בישן משתמש כעת ב-isPlaceholderModelName (lib/modelDisplay.js) - מועבר ל-scope כמו כל תלות של הרכיב
+  const { isPlaceholderModelName } = await P('lib/modelDisplay.js');
+  const itemName = mimFunction('itemName', { itemCode, isPlaceholderModelName });
   for (let k = 0; k < items.length; k++) {
     let out = null;
     mimFunction('handleEditItem', { items, alert: () => {}, itemName, onItemsChange: (fn) => { out = fn(items)[k]; } })(k);

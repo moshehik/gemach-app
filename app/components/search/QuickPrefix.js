@@ -272,7 +272,7 @@ function MineList({ qp }) {
     );
   };
   return (
-    <ul className="advlist mine-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
+    <ul className="advlist mine-list" data-guide-id="srch.prefix-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
       <MineHeader chips={mine ? mine.chips : []} setWho={mine ? mine.setWho : () => {}} more={m.state === 'ok' ? m.more : null} act={m.more ? qp.act === m.items.length - 1 : false} onAll={qp.pick} listId={qp.listId} idx={m.items.length - 1} />
       {m.state === 'loading' && <li className="advo none" role="status">{m.none}</li>}
       {m.state === 'error' && <li className="advo none" role="alert">{m.none}<small>{m.sub}</small></li>}
@@ -294,7 +294,7 @@ export function QuickPrefixList({ qp }) {
   const Src = PREFIX_SOURCES[qp.def.source];
   if (Src) return <Src.List qp={qp} />;
   return (
-    <ul className="advlist" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
+    <ul className="advlist" data-guide-id="srch.prefix-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
       {qp.items.length === 0 && (
         <li className="advo none" role="presentation">{qp.rows.length === 0 ? qp.def.empty : qp.def.noMatch}</li>
       )}
@@ -395,7 +395,7 @@ function ShortcutList({ qp, count }) {
   const m = qp.model;
   if (!m) return null;
   return (
-    <ul className="advlist mine-list pfx-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
+    <ul className="advlist mine-list pfx-list" data-guide-id="srch.prefix-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
       <li className="advo-h" role="presentation">{m.head}{count ? <b>{m.count}</b> : null}</li>
       {m.state === 'loading' && <li className="advo none" role="status">{m.none}</li>}
       {m.state === 'error' && <li className="advo none" role="alert">{m.none}<small>{m.sub}</small></li>}

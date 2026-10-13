@@ -312,7 +312,7 @@ export function createOrderCardFlows(env) {
       if (!post) return { ok: true, order: updatedOrder, submittedLocalIds, ...(joinError ? { joinError } : {}) };
       applySaved(updatedOrder, submittedLocalIds, env.get().items);
       if (joinError) ui.toast('error', 'ההצטרפות למשלוח לא נשמרה', `${joinError}. שאר השינויים נשמרו, והמשלוח חויב במחיר המלא.`);
-      if (needsAutoRefundBank(updatedOrder.refunds || [])) {
+      if ((st.settings.creditBankPromptAuto || st.settings.creditBankRequired) && needsAutoRefundBank(updatedOrder.refunds || [])) {
         env.set.tab('payments');
         env.emit('autoRefundNeedsBank', { source: 'save' });
       }
@@ -416,7 +416,9 @@ export function createOrderCardFlows(env) {
         }
         return { left: false, blocked: 'debt' };
       }
-      if (needsAutoRefundBank(updatedOrder.refunds || []) && !env.flags.bankPromptedOnExit) {
+      // חובה (credit_bank_details_required): חוסמים בכל ניסיון יציאה עד שיש פרטי בנק; אחרת - פעם אחת בלבד, ורק אם ההקפצה האוטומטית דולקת
+      const bankBlocksExit = st.settings.creditBankRequired || (st.settings.creditBankPromptAuto && !env.flags.bankPromptedOnExit);
+      if (needsAutoRefundBank(updatedOrder.refunds || []) && bankBlocksExit) {
         env.flags.bankPromptedOnExit = true;
         applySaved(updatedOrder, submittedLocalIds, env.get().items);
         env.set.tab('payments');

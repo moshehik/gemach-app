@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import { orderItemModelName } from '../../../lib/modelDisplay';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { postRentalRent } from './rentalToggle';
 
@@ -266,9 +267,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
     await handleBarcodeScan(null, barcode, item);
   };
 
-  const itemName = (item) => item.dressItem?.dress?.name
-    ? item.dressItem.dress.name
-    : (item.description || item.dressItem?.dressName || 'פריט כללי');
+  const itemName = (item) => orderItemModelName(item) || item.description || item.dressItem?.dressName || 'פריט כללי'; // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
 
   const itemHasRepairs = (item) =>
     item.neckAlteration === 1 || item.neckAlteration === true ||

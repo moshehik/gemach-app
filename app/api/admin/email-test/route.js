@@ -6,6 +6,7 @@ import { sendSystemEmail } from '@/lib/mailer';
 import { listEmailCatalog, EMAIL_CATALOG } from '@/lib/emailCatalog';
 import { buildSampleEmail, buildSampleGallery } from '@/lib/emailSamples';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { pickupAddressFrom } from '@/lib/gmachContact';
 import { renderPdf } from '@/lib/pdf';
 import { POST as orderEmailPOST } from '@/app/api/orders/[id]/email/route';
 
@@ -71,7 +72,7 @@ export async function GET(request) {
     if (preview !== 'ALL' && !EMAIL_CATALOG[preview]) return NextResponse.json({ error: 'סוג מייל לא מוכר' }, { status: 400 });
     const settings = await getAllCachedSettings();
     const get = (k) => settings.find(s => s.key === k)?.value;
-    const ctx = { gmachName: get('gmach_name') || undefined, gmachAddress: get('gmach_address') || undefined, gmachPhone: get('gmach_phone') || undefined };
+    const ctx = { gmachName: get('gmach_name') || undefined, gmachAddress: pickupAddressFrom(get) || undefined, gmachPhone: get('gmach_phone') || undefined };
     const sample = preview === 'ALL' ? buildSampleGallery(ctx) : buildSampleEmail(preview, ctx);
     return NextResponse.json({ subject: sample.subject, html: sample.html });
   }
@@ -104,7 +105,7 @@ export async function POST(request) {
     const get = (k) => settings.find(s => s.key === k)?.value;
     const ctx = {
       gmachName: get('gmach_name') || undefined,
-      gmachAddress: get('gmach_address') || undefined,
+      gmachAddress: pickupAddressFrom(get) || undefined,
       gmachPhone: get('gmach_phone') || undefined,
     };
     if (NEEDS_ORDER.has(id)) ctx.order = await loadSampleOrder();

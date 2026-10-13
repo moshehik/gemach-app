@@ -31,6 +31,7 @@ export function SaveIconButton({ text, saved, ibtn = false }) {
         className={`${ibtn ? 'ibtn ' : ''}pfx-save`}
         data-st={st}
         aria-label={label}
+        data-guide-id="srch.save-icon"
         data-tip={tip}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => saved.quickSave(q)}
@@ -43,7 +44,7 @@ export function SaveIconButton({ text, saved, ibtn = false }) {
 /** כפתור "קיצורים" (גלולת cmode-b): מימין ל"לחיפוש חכם" - ההורה מציב אותו ראשון בשורה (בכיוון RTL = צד ימין). */
 export function GuideButton({ onClick }) {
   return (
-    <button type="button" className="cmode-b pfx-help" aria-haspopup="dialog" aria-label={GUIDE_TEXT.buttonTip} data-tip={GUIDE_TEXT.buttonTip} onClick={onClick}>
+    <button type="button" className="cmode-b pfx-help" data-guide-id="srch.guide-btn" aria-haspopup="dialog" aria-label={GUIDE_TEXT.buttonTip} data-tip={GUIDE_TEXT.buttonTip} onClick={onClick}>
       <QIcon id="info" /><span className="pfx-help-t">{GUIDE_TEXT.button}</span>
     </button>
   );
@@ -95,7 +96,7 @@ export function GuideBody({ rows, onTry, onClose, firstRef }) {
     <>
       <h2 id="pfx-ht">{GUIDE_TEXT.title}</h2>
       <div className="sub">{GUIDE_TEXT.sub}</div>
-      <div className="chg" role="list">
+      <div className="chg" role="list" data-guide-id="srch.guide-dialog">
         {rows.map((h, i) => (
           <div className="c" role="listitem" key={h.ch}>
             <span className="ico pfx-key" aria-hidden="true">{h.ch}</span>

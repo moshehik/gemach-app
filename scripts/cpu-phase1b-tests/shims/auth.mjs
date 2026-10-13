@@ -12,3 +12,6 @@ export async function checkPageAccess() { return true; }
 export function canManageRoles() { return true; }
 export function roleRank(r) { return r; }
 export const DEVELOPER_ONLY_ROLES = [2];
+
+// GET /api/settings reader tier (lib/auth.js getSettingsViewerTier): globalThis.__TIER, else 'guest' when __AUTH === false, else 'admin' (everything, as before)
+export async function getSettingsViewerTier() { return globalThis.__TIER || (globalThis.__AUTH === false ? 'guest' : 'admin'); }

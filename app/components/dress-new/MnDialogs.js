@@ -3,9 +3,10 @@
 // החלונות של אשף "דגם חדש" (A5): #dlg של הפלטה בתוך .scrim, כהים (השורש נושא dlg-dark), ב-portal לשורש הדף - markup כמו dateDlg / urlDlg / exitDlg /
 // discardDlg / "יוצר את הדגם" בעיצוב המאושר (model-new.js), עם העיגול העליון (dbadge, DLG-MODERN decorate). אף חלון לא משתמש ב-window.alert / confirm / prompt.
 import { useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import { DialogFrame } from '../new-order/NoDialogs';
 import { addDays } from '../schedule/hebrewCalendar';
-import { DlgBadge, Ic, NO_FILL } from './MnUi';
+import { DlgBadge, Ic } from './MnUi';
 import { hDateFull } from './useModelNewController';
 
 const Btns = ({ children, style }) => <div className="dbtns" style={style}>{children}</div>;
@@ -32,6 +33,7 @@ export function DateDialog({ date, today, close }) {
 }
 
 export function UrlDialog({ value, code, close }) {
+  const nf = useNoFill();
   const [v, setV] = useState(value || '');
   const [err, setErr] = useState('');
   const ok = () => {
@@ -47,8 +49,8 @@ export function UrlDialog({ value, code, close }) {
         <label className="lbl" htmlFor="mnUrl">כתובת</label>
         <div className="inpw">
           <Ic n="clip" c="sm" />
-          <input className="inp" id="mnUrl" name="mnUrl-nofill" dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={v} data-autofocus="true"
-            placeholder={`/images/dresses/${code}.jpg`} autoComplete="off" {...NO_FILL}
+          <input className="inp" id="mnUrl" {...nf('url')} dir="ltr" style={{ direction: 'ltr', textAlign: 'right' }} value={v} data-autofocus="true"
+            placeholder={`/images/dresses/${code}.jpg`}
             onChange={(e) => { setV(e.target.value); setErr(''); }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ok(); } }} />
         </div>

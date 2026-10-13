@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { isPlaceholderModelName } from '../../../lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -764,9 +765,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
     // כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (לא שם תיאורי אמיתי) - עדיף להציג
     // את מספר הדגם, כמו שכבר קורה בעמדת הלקוחות - ר' דיווח org2 df1cdacf.
-    if (cleaned.startsWith('ללא שם')) {
+    if (isPlaceholderModelName(cleaned)) {
       const code = itemCode(item);
-      if (code) return String(code);
+      return code ? String(code) : 'פריט כללי';
     }
     return cleaned;
   };

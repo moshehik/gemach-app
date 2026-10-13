@@ -34,6 +34,7 @@
   --gm-bg:var(--gm-sky-200); /* צבע 29 */
   --gm-surface:#fff; /* צבע 30 */
   --gm-surface2:var(--gm-sky-50); /* צבע 31 */
+  --gm-milk:rgba(255,255,255,.6); /* חלבי: הרקע של מסגרת התוצאות בדף הבית (.hero-in.jshell) - משותף גם לעמדת הלקוח (kiosk-a5.css). נוסף ידנית 12.10.2026 - להוסיף גם ל-build/install.py */
   --gm-line:var(--gm-sky-300); /* צבע 32 */
   --gm-line2:var(--gm-sky-100); /* צבע 33 */
   --gm-ink:var(--gm-navy-900); /* צבע 34 */

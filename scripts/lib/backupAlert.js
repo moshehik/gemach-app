@@ -27,6 +27,27 @@ const PLACEHOLDER_FILE_B64 = Buffer.from('נשלח ממערכת הגמ"ח').toSt
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Hostinger Mail API (נווה יעקב): אם מוגדרים סודות HOSTINGER_MAIL_TOKEN_ORG<N> + HOSTINGER_MAILBOX_ID_ORG<N> של הארגון הזה,
+// ההתראה יוצאת מתיבת הדומיין ובכוונה בלי נפילה ל-Gmail: כשל נרשם ב-EmailLog (status=error) ובלוג הריצה. בלי הסודות - Apps Script כמו קודם.
+async function sendViaHostinger(org, { to, subject, body, html, senderName }) {
+  const token = process.env[`HOSTINGER_MAIL_TOKEN_ORG${org}`];
+  const mailbox = process.env[`HOSTINGER_MAILBOX_ID_ORG${org}`];
+  if (!token || !mailbox) return { ok: false, skipped: true };
+  const base = (process.env.HOSTINGER_MAIL_API_BASE || 'https://api.mail.hostinger.com').replace(/\/+$/, '');
+  try {
+    const res = await fetch(`${base}/api/v1/mailboxes/${encodeURIComponent(mailbox)}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ to: [to], subject, text: body, html, ...(senderName ? { displayName: String(senderName).slice(0, 200) } : {}) }),
+    });
+    if (res.status === 204 || res.status === 200) return { ok: true };
+    const t = (await res.text()).replace(/\s+/g, ' ').slice(0, 200);
+    return { ok: false, message: `Hostinger HTTP ${res.status}: ${t}` };
+  } catch (e) {
+    return { ok: false, message: `Hostinger: ${e.message}` };
+  }
+}
+
 async function resolveScriptUrl(prisma) {
   try {
     const rows = await prisma.systemSetting.findMany({
@@ -148,7 +169,11 @@ ${link ? `<p><a href="${esc(link)}">הרצה ב-GitHub Actions</a></p>` : ''}
     for (const addr of to) {
       let ok = false;
       let errMsg = null;
-      try {
+      const hs = await sendViaHostinger(org, { to: addr, subject, body, html, senderName: gmachName });
+      const viaHostinger = !hs.skipped;
+      if (hs.ok) ok = true;
+      else if (viaHostinger) errMsg = hs.message;
+      if (!viaHostinger) try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

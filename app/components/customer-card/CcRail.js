@@ -41,14 +41,14 @@ export default function CcRail({ cc, open, setOpen }) {
   return (
     <div className="rcard cart">
       <div className="sec-h"><CcIcon name="list" size="sm" /><span>סיכום</span></div>
-      <div className="glance">
+      <div className="glance" data-guide-id="cc.rail-glance">
         <span className={`gl sig ${sig.signed ? 'yes' : 'no'}`} tabIndex={0} data-rich="sig" aria-label={`${sig.signed ? 'חתום' : 'לא חתום'} - חתימה על תקנון`}><CcIcon name={sig.signed ? 'check' : 'x'} anim={false} /><span className="gv">{sig.signed ? 'חתום' : 'לא חתום'}</span></span>
         <span className="gl itm-c" tabIndex={0} data-rich="orders" aria-label={ordersText(nOrd)}><CcIcon name="file" anim={false} /><span className="gv">{ordersText(nOrd)}</span></span>
         <span className={`gl pay ${pc}`} tabIndex={0} data-rich="pay" aria-label="מצב תשלום"><CcIcon name="card" anim={false} /><span className="gv"><bdi dir="ltr">{pv}</bdi></span></span>
         <span className={`gl det${miss.length ? ' no' : ''}`} tabIndex={0} data-rich="det" aria-label="פרטי קשר"><CcIcon name={miss.length ? 'alert' : 'check'} anim={false} /><span className="gv">{miss.length ? `חסרים ${miss.length}` : 'פרטים מלאים'}</span></span>
       </div>
       <div className="cart-h">
-        <button type="button" className={`cart-t${bump ? ' bump' : ''}`} data-act="cart-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button type="button" className={`cart-t${bump ? ' bump' : ''}`} data-guide-id="cc.rail-changes" data-act="cart-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
           <CcIcon name="cart" size="sm" anim={false} /><b>שינויים בכרטיס</b><span className="badge">{changes.length}</span><span className="cart-sum" /><CcIcon name="chev" size="sm" anim={false} />
         </button>
         {cc.redoCount ? (
@@ -70,12 +70,12 @@ export default function CcRail({ cc, open, setOpen }) {
       </div>
       {dirty ? (
         <div className="cart-actions">
-          <button type="button" className="btn primary lg block" data-act="save" disabled={cc.saving} onClick={() => cc.save()}><CcIcon name="check" />{cc.saving ? 'שומר…' : 'שמור'}</button>
-          <button type="button" className="btn ghost block sec" data-act="discard" onClick={cc.discardAll}><CcIcon name="undo" size="sm" />בטל שינויים</button>
+          <button type="button" className="btn primary lg block" data-guide-id="cc.rail-save" data-act="save" disabled={cc.saving} onClick={() => cc.save()}><CcIcon name="check" />{cc.saving ? 'שומר…' : 'שמור'}</button>
+          <button type="button" className="btn ghost block sec" data-guide-id="cc.rail-discard" data-act="discard" onClick={cc.discardAll}><CcIcon name="undo" size="sm" />בטל שינויים</button>
         </div>
       ) : canPay ? (
         <div className="cart-actions">
-          <button type="button" className="btn primary lg block" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />שלם <bdi dir="ltr">{money(bal)}</bdi></button>
+          <button type="button" className="btn primary lg block" data-guide-id="cc.rail-pay" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />שלם <bdi dir="ltr">{money(bal)}</bdi></button>
         </div>
       ) : null}
     </div>

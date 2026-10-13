@@ -14,6 +14,7 @@
 // החיפוש + הסינון + המיון (גם כשהרשימה מעומדת ל-50 בלקוח - ההדפסה היא על כל השורות, לא על העמוד הנוכחי); ה-PDF נוצר בשרת מאותם גיליונות.
 
 import '@/design-system/components.css';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="mod" ל-A5List / A5ListPage מוסיף data-guide-id mod.search, mod.filter, mod.sort, mod.ai, mod.stats, mod.view, mod.export-excel, mod.export-print, mod.back (נבנים בתוך a5-list).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -218,12 +219,14 @@ function ModelsList() {
   return (
     <>
       <A5ListPage
+        guide="mod"
         title="דגמים" backId="mdlBack" onBack={() => router.push('/admin')}
         tools={<PageVariantToggle screen="models_list" placement="header" systemTip />}
         slotId={SLOT_ID} cardIcon="dress" cardTitle="קטלוג דגמים"
-        cardAction={isHead ? <button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/dashboard/dresses/new')}><Ic id="plus" />דגם חדש</button> : null}
+        cardAction={isHead ? <button type="button" className="btn navy" id="btnNew" data-guide-id="mod.new" onClick={() => router.push('/dashboard/dresses/new')}><Ic id="plus" />דגם חדש</button> : null}
       >
         <A5List
+          guide="mod"
           items={rows}
           getId={(m) => m.id}
           texts={{ placeholder: 'חיפוש דגם (שם, קוד, מידה, מס׳ סידורי)…', aiPlaceholder: 'בקשו מה-AI למצוא דגמים (למשל: דגמים שלא הושכרו השנה)…', countLabel: 'דגמים', emptyText: 'לא נמצאו דגמים התואמים את החיפוש' }}

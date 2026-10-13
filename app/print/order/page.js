@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
+import { Shirt, Scissors, Ruler, Check, Truck } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '../../../lib/hebrewDate';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
@@ -10,6 +10,11 @@ import { printPageEventBodies } from '../../../lib/history/orderEvents';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
+import { stripCodeLabel } from '../../../lib/modelCodeLabel';
+import { orderItemModelName } from '../../../lib/modelDisplay';
+import { sortByModelThenSize } from '../../../lib/sizeSort';
+import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
+import { pickupAddressFromList, pickupMapsUrlFromList } from '../../../lib/gmachContact';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -21,7 +26,14 @@ function newPrintEventId() {
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
 // bare number without that word.
-const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+// כשהשם הוא המספר עצמו (נווה יעקב: "522 (קוד: 522)") מודפס "522" פעם אחת - stripCodeLabel ב-lib/modelCodeLabel.js.
+
+// סדר שורות הפריטים בכל הדפסת הזמנה / הכנות להיום: דגם לפי מספר עולה, ובתוך הדגם מידה עולה (ה-API מחזיר את הפריטים בסדר הכנסה).
+const sortPrintItems = (items) => sortByModelThenSize(
+  items,
+  (i) => i.dressItem?.dress?.barcodePrefix ?? i.dressItem?.barcodePrefix ?? i.barcodePrefix,
+  (i) => i.sizeText || i.dressItem?.sizeText
+);
 
 // "פרטי החזרה" (top-of-print line, shown on both the order-confirmation and
 // rental-report print types - org2 report 5c1be668 asked for return day/hour on the
@@ -58,6 +70,8 @@ export default function PrintOrderPage() {
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
+  // נושא 9 (דוחות): enable_deliveries + delivery_as_item_row + ימי משלוח - המשלוח כשורת פריט עם מחיר ומועדי הלוך/חזור. null עד שההגדרות נטענו.
+  const [deliveryCfg, setDeliveryCfg] = useState(null);
   // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
   // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
   const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
@@ -109,6 +123,7 @@ export default function PrintOrderPage() {
           setEnableAlterations(false);
         }
         // 15 + 20 + 21 - הגדרות הדפסה למשלוח, מיון וסימון חסרה (כבוי = מוסתר/לא פעיל)
+        setDeliveryCfg(deliverySettingsFrom(settingsData));
         const delSetting = settingsData.find(s => s.key === 'delivery_show_in_order');
         if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
         const sortSetting = settingsData.find(s => s.key === 'print_sort_deliveries_first');
@@ -128,7 +143,8 @@ export default function PrintOrderPage() {
           box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
           footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
           gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
-          gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+          gmachAddress: pickupAddressFromList(settingsData), // gmach_pickup_address אם הוגדרה, אחרת gmach_address
+          pickupMapsUrl: pickupMapsUrlFromList(settingsData), // קישור "פתיחה במפות Google" - אופט-אין, '' = אין
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
           gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
           returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
@@ -311,7 +327,7 @@ export default function PrintOrderPage() {
     const totalObligations = ord?.obligations?.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) || 0;
     const totalPayments = ord?.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0;
     const balance = Math.max(0, totalObligations - totalPayments);
-    const activeItems = ord?.items ? ord.items.filter(i => !i.isDeleted) : [];
+    const activeItems = ord?.items ? sortPrintItems(ord.items.filter(i => !i.isDeleted)) : [];
     const activePayments = ord?.payments ? ord.payments.filter(p => !p.isDeleted) : [];
     // מועד החזרה = toDate/returnDate, או יום העבודה הראשון אחרי האירוע (שישי/שבת/חג/ערב חג/ימים
     // שהבעלים סימן - הכלל האחיד של lib/businessDays.js, אותו כלל של התראת האיחור); האיסוף = 2 ימי עסקים לפני.
@@ -320,6 +336,13 @@ export default function PrintOrderPage() {
     // 27f278c7: מצב "נקי" רק להדפסת הזמנה בודדת (גיליונות ההכנה המרוכזים נשארים כמו שהם)
     const clean = cleanLayoutSetting && !isBatch;
     const prepCustomerNotes = prepCustomerNotesSetting && isBatch ? manualCustomerNotes(ord?.customer?.notes) : '';
+    // null להזמנה שאינה משלוח / כשהמשלוחים כבויים (הגמ"ח הראשי) - אז כל ההדפסה זהה לקודמת
+    const deliverySection = deliveryCfg ? buildDeliverySection(ord, { settings: deliveryCfg }) : null;
+    // החלטה 27: בהזמנת משלוח רק מה שהלקוחה צריכה - הלוך-חזור: בלי קבלה/החזרה/כתובת איסוף; הלוך בלבד: רק החזרה; חזור בלבד: רק קבלה
+    const visits = deliverySection ? deliverySection.visits : null;
+    const showPickupBox = !visits || visits.pickup;
+    const showReturnBox = !visits || visits.ret;
+    const showAddress = !visits || visits.address;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -337,12 +360,12 @@ export default function PrintOrderPage() {
                   לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה.
                   05d34467 (2026-09-22): קבלת השמלות מוצגת לפני פרטי ההחזרה - כרונולוגית
                   קבלת השמלות קודמת לאירוע, וההחזרה אחריו. */}
-              {pickupDate && (
+              {pickupDate && showPickupBox && (
                 <div className="return-details-box">
                   <strong>קבלת השמלות:</strong> ביום {getHebrewWeekdayLabel(pickupDate)} {getHebrewDateString(pickupDate)} בשעה {printSettings?.pickupHours || STANDARD_PICKUP_HOURS} בדיוק.
                 </div>
               )}
-              {returnByDate && (
+              {returnByDate && showReturnBox && (
                 <div className="return-details-box">
                   <strong>{clean ? 'החזרת השמלות:' : 'פרטי החזרה:'}</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
@@ -367,11 +390,15 @@ export default function PrintOrderPage() {
                   <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
                   <div className="company-details">
                     {[
-                      printSettings?.gmachAddress,
+                      showAddress && printSettings?.gmachAddress,
                       printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
                       printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
                     ].filter(Boolean).join(' | ')}
                   </div>
+                  {/* קישור ניווט לכתובת האיסוף (אופט-אין: gmach_pickup_address / gmach_pickup_maps_url) - הכתובת גם כטקסט */}
+                  {showAddress && printSettings?.pickupMapsUrl && printSettings?.gmachAddress && (
+                    <div className="company-details">כתובת האיסוף: {printSettings.gmachAddress} · <a href={printSettings.pickupMapsUrl} target="_blank" rel="noreferrer">פתיחה במפות Google</a></div>
+                  )}
                 </div>
               </div>
 
@@ -403,6 +430,10 @@ export default function PrintOrderPage() {
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
+                  {/* נושא 9: מועדי המשלוח (הלוך/חזור) והעלות. כשהמשלוח מוצג כשורת פריט (delivery_as_item_row) המועדים והמחיר מופיעים שם, ולא פעמיים */}
+                  {showDeliveryInPrint && deliverySection && !deliverySection.itemRows.length && deliverySection.rows.filter(r => r.key === 'out' || r.key === 'back').map(r => (
+                    <Fragment key={r.key}>{r.label}: {r.value}<br /></Fragment>
+                  ))}
                   {!ord.isAbroad ? (
                     <>תאריך אירוע: {ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין')}</>
                   ) : (
@@ -475,7 +506,7 @@ export default function PrintOrderPage() {
               return (
                 <Fragment key={item.id}>
                   <tr>
-                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
+                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || orderItemModelName(item) || item.dressItem?.dressName) || '-'}</td>
                     <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
                     {enableAlterations && (
                       <td>{renderRepairChips(item)}</td>
@@ -492,6 +523,18 @@ export default function PrintOrderPage() {
               );
             })
           )}
+          {/* נושא 9 (delivery_as_item_row): המשלוח כשורה בטבלת הפריטים - לא פריט מלאי (בלי ברקוד/מידה), המחיר הוא חיוב המשלוח שכבר בסה"כ לחיוב */}
+          {deliverySection && deliverySection.itemRows.map((row) => (
+            <tr key={row.key} className="delivery-item-row" style={{ background: '#f4f4f4' }}>
+              <td style={{ fontWeight: '600', color: '#333' }}>
+                <Truck size={13} style={{ verticalAlign: '-2px' }} /> {row.label}
+                {row.detail && <div style={{ fontWeight: 400, fontSize: '0.85em', color: '#777', marginTop: 2 }}>{row.detail}</div>}
+              </td>
+              <td colSpan={colCount - 1} style={{ fontWeight: '700', whiteSpace: 'nowrap' }}>
+                {row.amount !== null && row.amount !== undefined ? `₪${row.amount}` : '-'}
+              </td>
+            </tr>
+          ))}
         </tbody>
         <tbody>
           <tr className="print-flow-row">
@@ -508,6 +551,12 @@ export default function PrintOrderPage() {
                         <td>סה&quot;כ לחיוב:</td>
                         <td>₪{totalObligations}</td>
                       </tr>
+                      {deliverySection && deliverySection.summaryRows.map((r) => (
+                        <tr key={r.key} className="delivery-summary-row">
+                          <td style={{ fontSize: '0.9em' }}>מתוכם {r.label}:</td>
+                          <td style={{ fontSize: '0.9em' }}>₪{r.amount}</td>
+                        </tr>
+                      ))}
                       <tr>
                         <td>סה&quot;כ שולם:</td>
                         <td>₪{totalPayments}</td>

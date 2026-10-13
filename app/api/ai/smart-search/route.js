@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '../../../../lib/modelDisplay';
+import { getModelDisplayOpts } from '../../../../lib/modelDisplayServer';
 import crypto from 'crypto';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
@@ -9,6 +11,7 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { buildDateContext, buildUserDateHints, normalizeAiSql, hebrewMonthRuleText } from '../../../../lib/ai/aiCommon';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
+import { assertSqlTables, tablesForSmartSearchContext } from '../../../../lib/ai/sqlTablePolicy';
 import { getFeatureRestrictionConfig, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
 import {
   EMPLOYEES_PAGE_SIZE, EMPLOYEES_MAX_PAGE, EMPLOYEES_STATEMENT_TIMEOUT_MS, buildEmployeesSystemPrompt, buildEmployeesQuery, buildEmployeesCountQuery,
@@ -230,6 +233,13 @@ export async function POST(req) {
       }
     }
 
+    // R4b (security-audit.md): the generated condition may only name the tables this page's question can need (lib/ai/sqlTablePolicy.js). Money tables
+    // (Payment / PaymentObligation / Refund) open up only when the financial-columns restriction is not hiding money from this caller.
+    const allowedTables = tablesForSmartSearchContext(pageContext, {
+      financial: pageContext === 'orders' ? !restrictOrdersFinancialColumns : pageContext === 'rentals' ? !restrictRentalsFinancialColumns : false,
+    });
+    const guardQuery = (q) => { assertReadOnlySelect(q); assertSqlTables(q, allowedTables); };
+
     const systemPrompt = `You are a smart database filtering assistant.
 The user wants to search for data in the following table schema:
 ${schemaContext}
@@ -293,7 +303,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
       whereClause = normalizeAiSql(verifiedClause);
       query = buildQuery(whereClause, (page - 1) * PAGE_SIZE);
       try {
-        assertReadOnlySelect(query);
+        guardQuery(query);
         data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
         querySuccess = true;
       } catch (dbError) {
@@ -328,7 +338,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
       query = buildQuery(whereClause, 0);
 
       try {
-        assertReadOnlySelect(query);
+        guardQuery(query);
         data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
         querySuccess = true;
       } catch (dbError) {
@@ -349,7 +359,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
         query = buildQuery(whereClause, 0);
 
         try {
-           assertReadOnlySelect(query);
+           guardQuery(query);
            data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
            querySuccess = true;
         } catch (retryError) {
@@ -382,6 +392,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
           }
         });
 
+        const mOpts = await getModelDisplayOpts(); // שם דגם אמיתי, אחרת המספר - לעולם לא "ללא שם" (lib/modelDisplay.js)
         const uniquePrefixes = new Set();
         fullOrders.forEach(order => {
           order.items.forEach(i => {
@@ -436,6 +447,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
               if (!dressName && prefix) {
                 dressName = dressModelMap.get(prefix);
               }
+              dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
               
               return {
                 id: i.id,
@@ -462,7 +474,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     let total = data.length;
     try {
       const countQuery = buildCountQuery(whereClause);
-      assertReadOnlySelect(countQuery);
+      guardQuery(countQuery);
       const countRows = await prisma.$queryRawUnsafe(countQuery);
       total = Number(countRows?.[0]?.count ?? total);
     } catch (countError) {

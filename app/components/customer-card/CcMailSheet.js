@@ -119,13 +119,13 @@ export default function CcMailSheet({ customer, ui, onGuard, onSent, close, fetc
       {error ? <div className="amsg cc-mailerr" role="alert"><CcIcon name="alert" size="sm" />{error}</div> : null}
       <div className="fx-2col">
         <div className="fx-stack">
-          <div className="mfld"><label className="lbl" htmlFor="m-sub">נושא</label><input className="inp" id="m-sub" value={subject} disabled={busy} data-autofocus="true" onChange={(e) => { dirty.current = true; setSubject(e.target.value); }} {...NO_FILL} /></div>
-          <div className="mfld"><label className="lbl" htmlFor="m-body">תוכן</label><textarea className="inp" id="m-body" ref={bodyRef} rows={9} placeholder="כתבו כאן את ההודעה ללקוחה…" value={body} disabled={busy} onChange={(e) => { dirty.current = true; setBody(e.target.value); }} {...NO_FILL} /></div>
+          <div className="mfld"><label className="lbl" htmlFor="m-sub">נושא</label><input className="inp" id="m-sub" data-guide-id="cc.mail-subject" value={subject} disabled={busy} data-autofocus="true" onChange={(e) => { dirty.current = true; setSubject(e.target.value); }} {...NO_FILL} /></div>
+          <div className="mfld"><label className="lbl" htmlFor="m-body">תוכן</label><textarea className="inp" id="m-body" data-guide-id="cc.mail-body" ref={bodyRef} rows={9} placeholder="כתבו כאן את ההודעה ללקוחה…" value={body} disabled={busy} onChange={(e) => { dirty.current = true; setBody(e.target.value); }} {...NO_FILL} /></div>
         </div>
         <div className="fx-stack">
           <div className="mfld">
             <span className="lbl"><CcIcon name="clip" size="sm" />דפים לצירוף</span>
-            <div className="mfiles">
+            <div className="mfiles" data-guide-id="cc.mail-docs">
               {all.map((d) => {
                 const on = docs.includes(d.id);
                 return (
@@ -152,12 +152,12 @@ export default function CcMailSheet({ customer, ui, onGuard, onSent, close, fetc
                 </div>
               ))}
             </div>
-            <div><button type="button" className="btn sm cc-addfile" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}><CcIcon name="plus" size="sm" />הוספת קובץ</button></div>
+            <div><button type="button" className="btn sm cc-addfile" data-guide-id="cc.mail-addfile" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}><CcIcon name="plus" size="sm" />הוספת קובץ</button></div>
             <input ref={fileRef} type="file" multiple hidden onChange={(e) => { const l = e.target.files ? Array.from(e.target.files) : []; if (l.length) { dirty.current = true; setFiles((prev) => [...prev, ...l]); } e.target.value = ''; }} />
           </div>
             <div className="mfld">
               <span className="lbl" id="cc-dest-l">יעד הקבצים</span>
-              <div className="seg pill" role="radiogroup" aria-labelledby="cc-dest-l" style={{ '--n': 3, '--i': destIdx }}>
+              <div className="seg pill" role="radiogroup" data-guide-id="cc.mail-dest" aria-labelledby="cc-dest-l" style={{ '--n': 3, '--i': destIdx }}>
                 <span className="pth" aria-hidden="true" />
                 {DESTS.map(([v, l]) => (
                   <button key={v} type="button" role="radio" aria-checked={sendMode === v} className={sendMode === v ? 'on' : ''} disabled={busy} onClick={() => setSendMode(v)}>{l}</button>
@@ -175,7 +175,7 @@ export default function CcMailSheet({ customer, ui, onGuard, onSent, close, fetc
         </div>
       </div>
       <div className="dbtns mact fx-actions">
-        <button type="button" className="btn primary lg" data-act="mail-send" id="m-send" disabled={!valid || busy} onClick={send}>
+        <button type="button" className="btn primary lg" data-guide-id="cc.mail-send" data-act="mail-send" id="m-send" disabled={!valid || busy} onClick={send}>
           {state === 'sending' ? <><span className="mspin" aria-hidden="true" />שולח…</> : state === 'done' ? <><CcIcon name="check" />נשלח</> : <><CcIcon name="send" />שלח מייל</>}
         </button>
         <button type="button" className="btn ghost" data-act="mail-cancel" disabled={busy} onClick={tryClose}><CcIcon name="x" size="sm" />ביטול</button>

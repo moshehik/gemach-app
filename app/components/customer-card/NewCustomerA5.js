@@ -19,6 +19,9 @@ import { CcPortalRoot } from './CcPortal';
 import { CcUiProvider, useCcUi } from './CcUi';
 import { CcEmailInput, CcInput, Tip } from './CcFields';
 import { buildNewCustomerPayload, isStarred, newCustomerInitial, validateForSave } from './customerCardLogic';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import ConsentFields, { useConsentInfo } from '@/app/components/shared/ConsentFields';
+import { EMPTY_CONSENT_ANSWERS, explicitConsentOn, invalidConsentFields, missingConsentLabels, withConsentBody } from '@/lib/consentForm';
 
 const FIELD_NAMES = { firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', phone2: 'טלפון נוסף', email: 'מייל' };
 
@@ -48,6 +51,9 @@ function NewBody() {
   const [settings, setSettings] = useState({});
   const [loc, setLoc] = useState({ cities: [], streets: [] });
   const [saving, setSaving] = useState(false);
+  // הסכמות מפורשות (explicit_consent_enabled): תקנון כן/לא, דיוורים כן/לא, אישור פרטיות - בלי ברירת מחדל (docs/customer-consents.md)
+  const [cons, setCons] = useState(EMPTY_CONSENT_ANSWERS);
+  const [consTried, setConsTried] = useState(false);
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((d) => { if (Array.isArray(d)) setSettings(d.reduce((a, s) => ({ ...a, [s.key]: s.value }), {})); })
@@ -62,6 +68,8 @@ function NewBody() {
   const set = (k) => (v) => setC((p) => ({ ...p, [k]: v }));
   const star = (k) => isStarred(k, c, { requiredKeys, isNew: true, settings });
   const groups = parseFieldGroups(settings.mandatory_field_groups);
+  const explicit = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicit);
 
   const save = async (e) => {
     if (e) e.preventDefault();
@@ -72,11 +80,18 @@ function NewBody() {
       if (v.field) setTimeout(() => { const el = document.querySelector(`.gm-cc [data-f="${v.field}"]`); if (el) el.focus(); }, 40);
       return;
     }
+    if (explicit) {
+      const missingConsents = missingConsentLabels(cons, settings, { isNew: true });
+      if (missingConsents.length) { setConsTried(true); ui.toast('error', 'יש להשלים את ההסכמות', missingConsents.join(' · ')); return; }
+    }
     setSaving(true);
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildNewCustomerPayload(c, { bankEnabled })) });
+      const base = buildNewCustomerPayload(c, { bankEnabled });
+      const body = explicit ? withConsentBody(base, cons, consentInfo, 'new-customer') : base;
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { ui.toast('error', data.error || data.message || 'שגיאה בשמירת נתונים'); return; }
+      if (data.consentWarning) ui.toast('error', 'ההסכמות לא נרשמו ביומן', data.consentWarning);
       if (data.id) {
         ui.toast('info', 'הלקוחה נוספה', 'פותחים את כרטיס הלקוחה…');
         router.push(`/customers/${data.id}`);
@@ -88,36 +103,42 @@ function NewBody() {
     }
   };
 
+  // Enter עובר לשדה הבא בכל הסדר (גם דרך מתגים ובחירות כן/לא) ובשדה האחרון שומר - lib/enterNavigation.js
+  const onFormKeyDown = useEnterNavigation(() => save());
+
   return (
     <div className="app cc-app cc-new" id="app">
       <div className="topbar">
         <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" onClick={() => router.back()}><CcIcon name="back" /></button>
         <div className="ttl"><h1><small>לקוח</small><bdi>חדש</bdi></h1></div>
       </div>
-      <form className="layout cc-layout-msg" onSubmit={save} autoComplete="off" noValidate>
+      <form className="layout cc-layout-msg" onSubmit={save} onKeyDown={onFormKeyDown} autoComplete="off" noValidate>
         <main className="main">
           <section className="panel on">
             <div className="card dfields">
               <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2></div>
               <div className="grid2">
-                <CcInput id="nFirst" field="firstName" label="שם פרטי" icon="user" value={c.firstName} onChange={set('firstName')} placeholder="שם פרטי..." required={star('firstName')} />
-                <CcInput id="nLast" field="lastName" label="שם משפחה" icon="user" value={c.lastName} onChange={set('lastName')} placeholder="שם משפחה..." required={star('lastName')} />
-                <CcInput id="nPhone" field="phone1" label="טלפון" icon="phone" value={c.phone1} onChange={set('phone1')} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
-                <CcInput id="nPhone2" field="phone2" label="טלפון נוסף" icon="phone" value={c.phone2} onChange={set('phone2')} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
-                <CcEmailInput id="nEmail" value={c.email} onChange={set('email')} required={star('email')} />
-                <CcInput id="nStreet" field="street" label="רחוב" icon="pin" value={c.street} onChange={set('street')} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
-                <CcInput id="nHouse" field="houseNum" label="מספר בית" icon="pin" value={c.houseNum} onChange={(v) => set('houseNum')(v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
-                <CcInput id="nCity" field="city" label="עיר" icon="pin" value={c.city} onChange={set('city')} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
-                <CcInput id="nId" field="zeout" label="תעודת זהות" icon="file" value={c.zeout} onChange={set('zeout')} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
+                <CcInput id="nFirst" data-guide-id="cust.new-first" field="firstName" label="שם פרטי" icon="user" value={c.firstName} onChange={set('firstName')} placeholder="שם פרטי..." required={star('firstName')} />
+                <CcInput id="nLast" data-guide-id="cust.new-last" field="lastName" label="שם משפחה" icon="user" value={c.lastName} onChange={set('lastName')} placeholder="שם משפחה..." required={star('lastName')} />
+                <CcInput id="nPhone" data-guide-id="cust.new-phone" field="phone1" label="טלפון" icon="phone" value={c.phone1} onChange={set('phone1')} placeholder="050-000-0000" mode="tel" dir="ltr" required={star('phone1')} />
+                <CcInput id="nPhone2" data-guide-id="cust.new-phone2" field="phone2" label="טלפון נוסף" icon="phone" value={c.phone2} onChange={set('phone2')} placeholder="אופציונלי" mode="tel" dir="ltr" required={star('phone2')} tip="טלפון בית או של בן משפחה" />
+                <CcEmailInput id="nEmail" data-guide-id="cust.new-email" value={c.email} onChange={set('email')} required={star('email')} />
+                <CcInput id="nStreet" data-guide-id="cust.new-street" field="street" label="רחוב" icon="pin" value={c.street} onChange={set('street')} placeholder="רחוב..." required={star('street')} suggest={loc.streets} />
+                <CcInput id="nHouse" data-guide-id="cust.new-house" field="houseNum" label="מספר בית" icon="pin" value={c.houseNum} onChange={(v) => set('houseNum')(v.replace(/[^\d]/g, ''))} placeholder="מספר..." mode="numeric" required={star('houseNum')} />
+                <CcInput id="nCity" data-guide-id="cust.new-city" field="city" label="עיר" icon="pin" value={c.city} onChange={set('city')} placeholder="עיר..." required={star('city')} suggest={loc.cities} />
+                <CcInput id="nId" data-guide-id="cust.new-id" field="zeout" label="תעודת זהות" icon="file" value={c.zeout} onChange={set('zeout')} placeholder="9 ספרות" mode="numeric" dir="ltr" required={star('zeout')} tip="לעריכה / ביטול הזמנה" />
               </div>
               {groups.length ? (
                 <div className="faint sm cc-mt24">
                   {groups.map((g) => `יש למלא לפחות אחד מבין: ${g.map((k) => FIELD_NAMES[k] || k).join(' / ')}`).join(' · ')}
                 </div>
               ) : null}
-              {settings.hide_marketing_consent_field !== 'true' ? (
+              {explicit ? (
+                <ConsentFields idPrefix="nCn" isNew settings={settings} info={consentInfo} value={cons} onChange={(patch) => setCons((p) => ({ ...p, ...patch }))}
+                  invalid={consTried ? invalidConsentFields(cons, settings, { isNew: true }) : {}} />
+              ) : settings.hide_marketing_consent_field !== 'true' ? (
                 <div className="trow cc-mt24">
-                  <label className="sw"><input type="checkbox" id="newMarketingConsent" data-f="marketingConsent" checked={!!c.marketingConsent} onChange={(e) => setC((p) => ({ ...p, marketingConsent: e.target.checked }))} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
+                  <label className="sw"><input type="checkbox" id="newMarketingConsent" data-guide-id="cust.new-consent" data-f="marketingConsent" checked={!!c.marketingConsent} onChange={(e) => setC((p) => ({ ...p, marketingConsent: e.target.checked }))} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
                   <b>מאשר/ת קבלת דיוורים</b><Tip text="תזכורות ועדכוני מבצעים במייל" />
                 </div>
               ) : null}
@@ -135,10 +156,10 @@ function NewBody() {
             ) : null}
             <div className="card">
               <div className="card-h"><div className="ico plum"><CcIcon name="note" size="lg" /></div><h2>הערות ללקוחה <Tip text="מוצג בחלון ההזמנה ומיועד לצוות בלבד" /></h2></div>
-              <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={c.notes} onChange={(e) => setC((p) => ({ ...p, notes: e.target.value }))} aria-label="הערות ללקוחה" />
+              <textarea className="inp" id="notes" data-guide-id="cust.new-notes" data-f="notes" placeholder="כתבו כאן הערה…" value={c.notes} onChange={(e) => setC((p) => ({ ...p, notes: e.target.value }))} aria-label="הערות ללקוחה" />
             </div>
             <div className="cc-newsave">
-              <button type="submit" className="btn primary lg block" data-act="save" disabled={saving}><CcIcon name="check" />{saving ? 'שומר…' : 'שמירת לקוחה'}</button>
+              <button type="submit" className="btn primary lg block" data-guide-id="cust.new-save" data-act="save" disabled={saving}><CcIcon name="check" />{saving ? 'שומר…' : 'שמירת לקוחה'}</button>
             </div>
           </section>
         </main>

@@ -9,10 +9,14 @@ import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
-import PageVariantToggle from './variant/PageVariantToggle';
+import ReturnToNewDesignButton from './variant/ReturnToNewDesignButton';
 import MessageHistoryButton from './MessageHistoryButton';
 import OverdueRemindersWatcher from './OverdueRemindersWatcher';
 import ShiftMessageWatcher from './ShiftMessageWatcher';
+import dynamic from 'next/dynamic';
+
+// ריבוי סניפים (docs/branches-plan.md): נטען רק כשהוא מופעל (branchNotices מ-app/layout.js; null = שום קוד לא נטען)
+const BranchNotices = dynamic(() => import('./branches/BranchNotices'), { ssr: false });
 
 // Personal pinned-shortcuts prefs: a single shared, browser-wide localStorage key
 // (not per-employee/cookie-scoped like /display-settings) — this is a convenience
@@ -31,6 +35,7 @@ export default function AppShell({
   hideErrorReporting,
   hideInternalMessaging,
   showOverdueRemindersPopup,
+  branchNotices,
   authToken,
   themePreference,
   children,
@@ -230,6 +235,10 @@ export default function AppShell({
 
           <TopbarSearch />
 
+          {/* "חזרה לממשק החדש" (12.10.2026, בקשת הבעלים): לחצן בולט עם טקסט בכותרת הממשק הישן, לכל עובד/ת פעיל/ה (מחליף את אייקון
+              המעבר של המעטפת בלבד, 4.10.2026). מחליף את כל המסכים לחדש בבת אחת. לא קיים בממשק החדש. */}
+          <ReturnToNewDesignButton placement="topbar" />
+
           {/* כל אייקוני הפעולה + הפרופיל יושבים יחד באזור ממוסגר אחד
               (.topbar-icon-cluster) — הכפתורים עצמם שקופים, ראה design-system.css */}
           <div className="topbar-icon-cluster">
@@ -238,8 +247,6 @@ export default function AppShell({
             </button>
             <ThemeToggle employeeId={authToken} initialTheme={themePreference} />
             {isProgrammer && <MessageHistoryButton />}
-            {/* "מעבר לתצוגה החדשה" של התפריט (4.10.2026) - הדרך חזרה אחרי "האתר הישן"; רק להנהלה ראשית / מתכנת */}
-            <PageVariantToggle screen="shell" placement="topbar" />
             {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
             <UserMenu hideInternalMessaging={hideInternalMessaging} checkOverdueOnLogout={!!showOverdueRemindersPopup && !isProgrammer} />
@@ -251,6 +258,7 @@ export default function AppShell({
         )}
 
         <div className="content">
+          {branchNotices ? <BranchNotices cfg={branchNotices} /> : null}
           {children}
         </div>
       </div>

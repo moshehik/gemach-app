@@ -17,7 +17,9 @@ process.env.PROJ = process.env.PROJ || PROJ;
 process.env.SPDIR = process.env.SPDIR || path.join(here, 'business-days-tests');
 register(pathToFileURL(path.join(here, 'business-days-tests', 'hooks.mjs')).href);
 const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
-const read = (rel) => readFileSync(path.join(PROJ, rel), 'utf8');
+// data-guide-id הם סימוני מדריך האתר של עוזר ה-AI (lib/aiGuide) ולא חלק מהמראה/ההתנהגות שהבדיקה נועלת - מוסרים לפני ההשוואה לטקסט המקור
+const stripGuide = (s) => s.replace(/ data-guide-id=(?:"[^"]*"|\{[^}]*\})/g, '');
+const read = (rel) => stripGuide(readFileSync(path.join(PROJ, rel), 'utf8'));
 
 const P = await L('lib/nonWorkingDaysPage.js');
 const B = await L('lib/businessDays.js');

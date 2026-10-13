@@ -6,6 +6,7 @@ import { hashSecret, verifySecret, last4Of, generateTempPassword } from '@/lib/p
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderPasswordResetEmailHtml } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig, cfgPlain } from '@/lib/emailConfig';
 
 // Manager-only replacement for the old "הצג סיסמה" (show password) feature: instead of
 // revealing an employee's existing password, a manager triggers a reset - a random
@@ -74,18 +75,24 @@ export async function POST(request, { params }) {
     const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
     const gmachPhone = settings.find(s => s.key === 'gmach_phone')?.value || '';
 
+    // מרכז המיילים (/admin/email-center): נושא / שורות / שדות קבועים שנערכו (בלי עריכה - בדיוק כמו תמיד)
+    const cfg = await getEmailConfig('passwordResetManager');
+    const plainBody = `שלום ${employee.firstName || ''},\n\nסיסמתך למערכת הגמ"ח אופסה על ידי מנהל.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, יש לפנות למנהל המערכת.`;
+    const html = renderPasswordResetEmailHtml({
+      firstName: employee.firstName,
+      tempPassword,
+      triggeredByManager: true,
+      gmachName,
+      gmachPhone,
+      cfg
+    });
+
     const emailResult = await sendSystemEmail({
       to: employee.email,
-      subject: emailSubject('passwordResetManager'),
+      subject: emailSubject('passwordResetManager', {}, cfg),
       emailId: 'passwordResetManager', // containsSecret: ביומן נשמר ממלא מקום ולא הסיסמה הזמנית (lib/emailCatalog.js)
-      body: `שלום ${employee.firstName || ''},\n\nסיסמתך למערכת הגמ"ח אופסה על ידי מנהל.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, יש לפנות למנהל המערכת.`,
-      html: renderPasswordResetEmailHtml({
-        firstName: employee.firstName,
-        tempPassword,
-        triggeredByManager: true,
-        gmachName,
-        gmachPhone
-      }),
+      body: cfgPlain(cfg, plainBody, html),
+      html,
       employeeId: authEmployee.id
     });
 

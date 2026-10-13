@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
@@ -62,6 +64,7 @@ async function fetchOrderItemsWithDress(orderId) {
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
 import { isDeliveryJoinEnabled, saveDeliveryJoin, releaseOrderJoins } from '../../../../lib/deliveryJoin';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo, syncStoredPaymentStatus } from '../../../../lib/sharedDelivery';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -79,6 +82,8 @@ import {
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
+import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
+import { registeredByScheduleIds, releaseUntakenBarcodes } from '@/lib/schedule/barcodeData';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -95,7 +100,8 @@ const RECALC_SETTING_KEYS = [
   'refund_tiers_at_deletion_time',
   'swap_pairing_window_minutes',
   'instant_undo_minutes',
-  'gap_size_price_rule'
+  'gap_size_price_rule',
+  'useModelNames' // שם הדגם בתיאורי החיוב (lib/modelDisplay.js): false = מספר בלבד
 ];
 
 export async function GET(request, { params }) {
@@ -181,6 +187,15 @@ export async function GET(request, { params }) {
       }
     });
 
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (barcodePrefix) - לעולם לא "ללא שם" (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד)
+    const mOpts = await getModelDisplayOpts();
+    // ברקוד בלו״ז: פריט שנרשם לו ברקוד בהכנה מהלו״ז ועוד לא נמסר מסומן barcodeRegisteredAtPrep (שדה תוספתי, רק כשההגדרה פעילה להזמנה) - החלון הישן
+    // (RentalReturnModal) מציג אותו "ברקוד נרשם בהכנה – טרם נמסר" ולא כסריקה שממתינה לאישור. כבוי = אין שאילתה ואין שדה.
+    let preppedIds = new Set();
+    if (await barcodeFeatureFor(parsedOrderId)) {
+      preppedIds = await registeredByScheduleIds(items.filter(i => i.barcode && !i.isTaken && !i.takenDate));
+    }
+
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -188,8 +203,9 @@ export async function GET(request, { params }) {
       if (!dressName && prefix !== null && prefix !== undefined) {
         dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description;
+      let finalDescription = scrubPlaceholderInText(item.description, prefix);
       if (!finalDescription || finalDescription === 'פריט כללי') {
         if (dressName) {
           finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
@@ -199,7 +215,7 @@ export async function GET(request, { params }) {
           finalDescription = 'פריט כללי';
         }
       } else if (dressName && !finalDescription.includes(dressName)) {
-        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${scrubPlaceholderInText(item.description, prefix)}`;
       }
 
       const isTaken = item.isTaken || item.takenDate !== null;
@@ -209,7 +225,8 @@ export async function GET(request, { params }) {
         ...item,
         description: finalDescription,
         isTaken,
-        isReturned
+        isReturned,
+        ...(preppedIds.has(String(item.id)) ? { barcodeRegisteredAtPrep: true } : {})
       };
     });
 
@@ -223,7 +240,7 @@ export async function GET(request, { params }) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {
@@ -355,6 +372,11 @@ async function putOrder(request, { params }, claims) {
         return NextResponse.json({ error: deliveryError, message: deliveryError }, { status: 400 });
       }
     }
+
+    // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל = null בלי שאילתה): מפתח הקבוצה (יום אירוע + כתובת) *לפני* השמירה - אחרי
+    // השמירה מיישרים מחדש גם את הקבוצה הישנה (ההזמנה אולי יצאה ממנה: כתובת / תאריך / משלוח שונו) וגם את החדשה. כישלון לא מפיל את השמירה.
+    let sharedPreKey = null;
+    try { sharedPreKey = await getSharedGroupKeyForOrder(parsedOrderId); } catch (sharedErr) { console.error(`Order ${parsedOrderId}: shared delivery pre-key failed:`, sharedErr); }
 
     // Debt approval. The approver is read FROM the signed approvalToken that POST /api/auth/verify-pin issued after the typed
     // code matched (bound to this order, the logged-in employee and the debt_approval kind; single use) - not from a CLAIMED
@@ -612,7 +634,7 @@ async function putOrder(request, { params }, claims) {
           id: true, cartStatus: true, isDeleted: true,
           sizeText: true, neckAlteration: true, sleeveAlteration: true,
           lengthAlteration: true, alterationDetails: true, alterationDone: true,
-          barcode: true,
+          barcode: true, isTaken: true, takenDate: true, // isTaken/takenDate: ביטול רישום ברקוד שלא נלקח כשהדגם/המידה מוחלפים (docs/schedule-barcode-plan.md H5)
           // לזיהוי הדגם/מידה שהוזמנו - לבדיקת enforce_rental_barcode_match למטה
           barcodePrefix: true,
           dressItem: { select: { barcodePrefix: true, sizeText: true, dress: { select: { barcodePrefix: true } } } }
@@ -625,6 +647,9 @@ async function putOrder(request, { params }, claims) {
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
+    // ברקוד בלו״ז: כשההגדרה פעילה להזמנה, שמירת הזמנה לעולם לא משנה ברקוד שכבר נרשם (עותק ישן בכרטיס פתוח היה דורס רישום מהלו״ז), ורישום שלא נלקח
+    // מתבטל כשהמידה מוחלפת או כשפריט מבוטל משוחזר (כדי שלא יישב בשני פריטים) - docs/schedule-barcode-plan.md. כבוי = ההתנהגות הקודמת בדיוק.
+    const barcodeEntryOn = !!(await barcodeFeatureFor(parsedOrderId));
 
     // enforce_rental_barcode_match (ברירת מחדל כבוי = התנהגות ישנה): שמירת ההזמנה כותבת את
     // ה-barcode שהלקוח שולח, ולכן זה נתיב נוסף שבו ברקוד יכול להגיע לפריט בלי בדיקה. משייכים כאן
@@ -782,7 +807,14 @@ async function putOrder(request, { params }, claims) {
             const normalizedNeck = (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0);
             const normalizedSleeve = (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0);
             const normalizedLength = (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null;
-            const normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
+            let normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
+            if (barcodeEntryOn && stored) {
+              // בהגדרה פעילה הברקוד נקבע רק במסלולי הרישום/הלקיחה (בדיקות כפילות, יומן): שמירת הזמנה לא משנה ברקוד רשום ולא מקצה ברקוד חדש מעותק ישן של הכרטיס
+              const hadRegistered = !!(stored.barcode && String(stored.barcode).trim() !== '');
+              normalizedBarcode = undefined;
+              // רישום שלא נלקח מתבטל גם כשהפריט עצמו מבוטל (שחרור אוטומטי, כמו בביטול הזמנה)
+              if (hadRegistered && !stored.isTaken && !stored.takenDate && (item.sizeText !== stored.sizeText || (stored.isDeleted && !nowDeleted) || (nowDeleted && !stored.isDeleted))) normalizedBarcode = null;
+            }
             // Prisma's @updatedAt stamps this row's updatedAt on *any* update() call, even one
             // that changes nothing - and orderItemEditWindow.js's 15-minute full-edit lock reads
             // that same updatedAt. Every save used to re-touch every item in the order (e.g. on
@@ -1026,6 +1058,24 @@ async function putOrder(request, { params }, claims) {
     }
     await applyDeliveryCharge(parsedOrderId);
 
+    // משלוח משותף: מיישרים את חיוב המשלוח של שאר ההזמנות בקבוצה הישנה והחדשה (הזיכוי / החיוב נרשם אוטומטית דרך המנגנון הקיים),
+    // והתשובה נושאת את ההתראות להצגה לעובד. הזמנה זו עצמה כבר חושבה למעלה (applyDeliveryCharge).
+    let sharedDelivery = null;
+    try {
+      const sharedPostKey = await getSharedGroupKeyForOrder(parsedOrderId);
+      if (sharedPreKey || sharedPostKey) {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedPreKey, sharedPostKey], excludeOrderIds: [parsedOrderId], reason: `שמירת הזמנה #${parsedOrderId}` });
+        if (rec.enabled) {
+          // סטטוס התשלום השמור של ההזמנה הזו עוקב אחרי היתרה אחרי שינוי המשלוח (הזמנות אחרות עודכנו בתוך reconcile)
+          const st = await syncStoredPaymentStatus(parsedOrderId);
+          sharedDelivery = { notices: rec.notices, self: sharedPostKey ? await getSharedDeliveryInfo(parsedOrderId) : null, ...(st.changed ? { selfStatus: { from: st.from, to: st.to } } : {}) };
+        }
+      }
+    } catch (sharedErr) {
+      console.error(`Order ${parsedOrderId}: shared delivery reconcile failed:`, sharedErr);
+      sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+    }
+
     // Fetch the fully updated order to return to the client.
     // These queries are independent of each other - fetch them concurrently.
     const [finalOrderRaw, items, payments, refunds, obligationsRaw, priceList] = await Promise.all([
@@ -1071,6 +1121,8 @@ async function putOrder(request, { params }, claims) {
       }
     });
     
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם (barcodePrefix) - לעולם לא "ללא שם" (lib/modelDisplay.js; בנווה useModelNames=false = מספר בלבד)
+    const mOpts = await getModelDisplayOpts();
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -1078,8 +1130,9 @@ async function putOrder(request, { params }, claims) {
       if (!dressName && prefix !== null && prefix !== undefined) {
         dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description;
+      let finalDescription = scrubPlaceholderInText(item.description, prefix);
       if (!finalDescription || finalDescription === 'פריט כללי') {
         if (dressName) {
           finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
@@ -1089,7 +1142,7 @@ async function putOrder(request, { params }, claims) {
           finalDescription = 'פריט כללי';
         }
       } else if (dressName && !finalDescription.includes(dressName)) {
-        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${scrubPlaceholderInText(item.description, prefix)}`;
       }
 
       const isTaken = item.isTaken || item.takenDate !== null;
@@ -1113,7 +1166,7 @@ async function putOrder(request, { params }, claims) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {
@@ -1131,7 +1184,7 @@ async function putOrder(request, { params }, claims) {
       return ob;
     });
     
-    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}) };
+    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}), ...(sharedDelivery ? { sharedDelivery } : {}) };
 
     return NextResponse.json(finalOrder);
   } catch (error) {
@@ -1229,6 +1282,10 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Cannot delete order with rental history' }, { status: 400 });
     }
 
+    // משלוח משותף: הקבוצה שההזמנה משתייכת אליה (לפני הביטול). אם זו הייתה הראשית - הבאה בתור הופכת לראשית וכל השאר מחושבים מחדש.
+    let sharedCancelKey = null;
+    try { sharedCancelKey = await getSharedGroupKeyForOrder(parsedOrderId); } catch (sharedErr) { console.error(`Order ${parsedOrderId}: shared delivery key before cancel failed:`, sharedErr); }
+
     // הפריטים וההתחייבויות שמבוטלים בפועל — נאספים לפני העדכון כדי לרשום לכל אחד מהם
     // שורת היסטוריה משלו. updateMany לא עובר דרך תוסף היומן, ולכן עד כה ביטול הזמנה
     // לא הותיר שום רישום בהיסטוריה של הפריט או של ההתחייבות — רק בהזמנה עצמה.
@@ -1290,6 +1347,16 @@ export async function DELETE(request, { params }) {
       });
     });
 
+    // ברקוד בלו״ז: ביטול הזמנה משחרר אוטומטית את הברקודים שנרשמו (בהכנה) ועוד לא נלקחו - השמלות חוזרות להיות פנויות להזמנה אחרת, וביומן נרשם מי/למה.
+    // רק כשההגדרה פעילה להזמנה; כשל כאן לא מפיל את הביטול (הפריטים ממילא מחוקים ולכן לא נחשבים מחזיקים בברקוד).
+    try {
+      if (await barcodeFeatureFor(parsedOrderId)) {
+        await releaseUntakenBarcodes({ orderId: parsedOrderId, note: `שוחרר אוטומטית בביטול הזמנה #${parsedOrderId}`, includeDeleted: true });
+      }
+    } catch (releaseFailure) {
+      console.error(`Order ${parsedOrderId}: releasing registered barcodes on cancel failed:`, releaseFailure);
+    }
+
     // R49 (W2b, סקירה סעיף 4): הזמנה שבוטלה יוצאת מהמשלוח - שורת ההצטרפות שלה נמחקת, ואם היא שורש עם מצטרפים הם משוחררים וחיוב
     // המשלוח שלהם מחושב מחדש (מחיר מלא). כשל כאן לא מפיל את הביטול. טבלה חסרה (DDL-1) = no-op.
     try {
@@ -1300,6 +1367,18 @@ export async function DELETE(request, { params }) {
       console.error(`Order ${parsedOrderId}: releasing delivery join on cancel failed:`, joinFailure);
     }
 
+    // משלוח משותף: הזמנה שבוטלה יוצאת מהקבוצה - שאר החברים מחושבים מחדש (ראשית חדשה / חזרה למחיר מלא). כשל לא מפיל את הביטול.
+    let sharedDelivery = null;
+    if (sharedCancelKey) {
+      try {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedCancelKey], excludeOrderIds: [parsedOrderId], reason: `ביטול הזמנה #${parsedOrderId}` });
+        if (rec.enabled) sharedDelivery = { notices: rec.notices, self: null };
+      } catch (sharedErr) {
+        console.error(`Order ${parsedOrderId}: shared delivery reconcile after cancel failed:`, sharedErr);
+        sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+      }
+    }
+
     // קיזוז זיכוי (customer_credit_offset_prompt, lib/creditOffset.js): הזיכוי שקוזז לתוך ההזמנה שנמחקה חוזר להזמנה שממנה בא, בתנועות הפוכות -
     // אחרת הכסף נשאר תקוע בהזמנה מחוקה בלי בקשת זיכוי. בלי תשלומי קיזוז בהזמנה זה לא עושה כלום; כשל כאן לא מפיל את הביטול.
     try {
@@ -1308,7 +1387,7 @@ export async function DELETE(request, { params }) {
       console.error(`Order ${parsedOrderId}: reversing credit offsets on cancel failed:`, offsetFailure);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(sharedDelivery ? { success: true, sharedDelivery } : { success: true });
   } catch (error) {
     console.error('Error deleting order:', error);
     return NextResponse.json(

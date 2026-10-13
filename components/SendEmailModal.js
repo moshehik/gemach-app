@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 import { normalizeEmail } from '@/lib/emailUtils';
+import { useNoFill, fieldOf } from '@/lib/autofillGuard';
 
 export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId, employeeId }) {
+  const nf = useNoFill();
   const [formData, setFormData] = useState({
     to: normalizeEmail(defaultTo) || defaultTo || '',
     cc: '',
@@ -46,7 +48,7 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
   if (!isOpen || typeof document === 'undefined') return null;
 
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData(prev => ({ ...prev, [fieldOf(e.target)]: e.target.value }));
   };
 
   const handleFileChange = (e) => {
@@ -202,12 +204,12 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>אל (To)</label>
-                <input type="email" name="to" className="input" value={formData.to} onChange={handleChange} required dir="ltr" disabled={loading} />
+                <input type="email" {...nf('to')} className="input" value={formData.to} onChange={handleChange} required dir="ltr" disabled={loading} />
               </div>
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>עותק (CC)</label>
-                <input type="email" name="cc" className="input" value={formData.cc} onChange={handleChange} dir="ltr" disabled={loading} />
+                <input type="email" {...nf('cc')} className="input" value={formData.cc} onChange={handleChange} dir="ltr" disabled={loading} />
               </div>
 
               <div className="field" style={{ marginBottom: 0 }}>

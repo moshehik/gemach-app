@@ -357,7 +357,7 @@ export default function RefundPlanner() {
 
       <div className="rp-shell">
         {/* ============ ימין: שדות למילוי ============ */}
-        <aside className="rp-side">
+        <aside className="rp-side" data-guide-id="refpl.form">
           <div className="card rp-panel">
             <div className="rp-sec">
               <div className="rp-sec-title"><span className="rp-num">1</span>ההזמנה והפריט</div>
@@ -460,7 +460,7 @@ export default function RefundPlanner() {
             </div>
           </div>
 
-          <ApplyPanel policy={policy} pol={pol} baseline={baseline} names={names} loadState={loadState}
+          <ApplyPanel guide="refpl.apply" policy={policy} pol={pol} baseline={baseline} names={names} loadState={loadState}
             onApplied={(p) => setBaseline(p)} onReset={() => baseline && setPolicy(baseline)} />
         </aside>
 
@@ -502,7 +502,7 @@ export default function RefundPlanner() {
             </div>
           )}
 
-          <div className="card rp-tl">
+          <div className="card rp-tl" data-guide-id="refpl.timeline">
             <div className="rp-tl-head">
               <div>
                 <div className="rp-tl-title">מה קורה אם מבטלים - מהדקה הראשונה ועד האירוע?</div>

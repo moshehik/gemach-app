@@ -14,6 +14,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
+import { useNoFill } from '../../../lib/autofillGuard';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import CustomerCompleteModal from './CustomerCompleteModal';
 import { isInlineCustomerEditOn } from '../../../lib/customerInlineEdit';
@@ -22,6 +23,10 @@ import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
 import { isCardNumberComplete, isExpiryComplete, isMobilePhoneComplete, justCompleted, isDatalistPick, focusField } from '../../../lib/autoAdvance';
+import { handleEnterKey } from '../../../lib/enterNavigation';
+import { explicitConsentOn, invalidConsentFields, missingConsentLabels, withConsentBody } from '../../../lib/consentForm';
+import ConsentFields, { useConsentInfo } from '../../components/shared/ConsentFields';
+import { branchConfigFromSettings, branchesWith, pickDefaultBranch } from '../../../lib/branches';
 import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
@@ -55,6 +60,7 @@ const computePaymentMethodOptions = (settingsObj) => {
 };
 
 export default function NewOrderPage() {
+  const nf = useNoFill();
   const router = useRouter();
   
   const [step, setStep] = useState(1);
@@ -108,8 +114,10 @@ export default function NewOrderPage() {
     hokBankBranch: '',
     hokBankAccount: '',
     hokConsent: false,
+    // חתימת הלקוח על תקנון ההשכרה - חובה בכל הזמנה חדשה, נשמר על Order.hasSignedRegulations
+    hasSignedRegulations: false,
   });
-  
+
   const [newItem, setNewItem] = useState({
     dressModelId: '',
     selectedSizes: [],
@@ -147,6 +155,10 @@ export default function NewOrderPage() {
   });
 
   const [settings, setSettings] = useState({});
+  // הסכמות מפורשות בלקוח חדש (תקנון כן/לא, דיוור כן/לא, אישור פרטיות; docs/customer-consents.md). כבוי = הטופס והגוף כמו קודם
+  const explicitConsent = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicitConsent);
+  const [consentTried, setConsentTried] = useState(false);
 
   // דיווחים 1cbaf995 / fdce699f: נווה יעקב לא מזמינים חו"ל / תפוסה ארוכה. ברירת מחדל (חסר/כל ערך שאינו 'false') = מוצג כמו תמיד.
   const allowAbroad = settings.allow_abroad_long_stay_orders !== 'false';
@@ -433,12 +445,14 @@ export default function NewOrderPage() {
   // ממלאים ברירת מחדל מהסניף האחרון שנבחר בדפדפן הזה (נשמר ב-onChange של ה-select
   // למטה), כדי שלא תצטרך לבחור שוב כל פעם; עדיין ניתן לשינוי לכל הזמנה בנפרד.
   useEffect(() => {
-    if (settings.track_branch_on_order !== 'true') return;
+    if (settings.track_branch_on_order !== 'true' && settings.multi_branch_enabled !== 'true') return;
     let remembered = '';
     try { remembered = localStorage.getItem('gemach_last_order_branch') || ''; } catch {}
+    // ריבוי סניפים: בלי סניף זכור בדפדפן - הסניף הראשי (בכל הזמנה נרשם סניף ביצוע)
+    if (!remembered && settings.multi_branch_enabled === 'true') remembered = pickDefaultBranch(branchConfigFromSettings(settings), '');
     if (!remembered) return;
     setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: remembered });
-  }, [settings.track_branch_on_order]);
+  }, [settings.track_branch_on_order, settings.multi_branch_enabled, settings.branches_config, settings.branch_list]);
 
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
@@ -449,23 +463,13 @@ export default function NewOrderPage() {
   const paymentMethodOptions = computePaymentMethodOptions(settings);
 
   const newCustomerFormRef = useRef(null);
-  // Enter עובר לשדה הבא בטופס לקוח חדש, ובשדה האחרון שולח בפועל - במקום לנסות לשלוח
-  // מכל שדה בנפרד (מה שנכשל כשעדיין חסרים שדות אחרים, אותה בעיה שתוקנה במודל
-  // האשראי למעלה). לא נוגע בתיבות סימון, כדי לא לשנות את הסימון שלהן בטעות (ר' דיווח e8ff9855).
+  // Enter עובר לשדה הבא בטופס לקוח חדש - גם דרך מתגים / בחירות כן-לא (Enter עליהם רק מקדם ולא משנה בחירה; רווח משנה) - ובשדה האחרון שולח בפועל
+  // (lib/enterNavigation.js, משותף לכל טפסי הלקוח). שדות מוסתרים ("פרטים נוספים" סגור) מדולגים. דיווח e8ff9855: לא משנים תיבות סימון בטעות -
+  // למעט תיבת "חתימה על התקנון" של ההזמנה (origin/main): Enter עליה מסמן אותה וממשיך הלאה.
+  const SIGNATURE_CHECKBOX_ID = 'cust-signed-regulations';
   const handleNewCustomerFieldEnter = (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    const container = newCustomerFormRef.current;
-    if (!container) return;
-    const focusable = Array.from(container.querySelectorAll('input, select, textarea, button'))
-      .filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
-    const next = focusable[focusable.indexOf(e.target) + 1];
-    if (next) {
-      next.focus();
-      if (typeof next.select === 'function') next.select();
-    } else {
-      handleSaveNewCustomerAndProceed();
-    }
+    if (e.key === 'Enter' && e.target && e.target.id === SIGNATURE_CHECKBOX_ID && !e.defaultPrevented) setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
+    handleEnterKey(e, { container: newCustomerFormRef.current, onSubmit: () => handleSaveNewCustomerAndProceed() });
   };
 
   const handleCheckPhone = async () => {
@@ -476,7 +480,7 @@ export default function NewOrderPage() {
     
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20&pickerFor=new-order`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         setFoundCustomersFromPhone(data.data);
@@ -549,6 +553,20 @@ export default function NewOrderPage() {
        return;
     }
 
+    if (explicitConsent) {
+      // הסכמות מפורשות: התשובה כן/לא על התקנון נאספת בטופס עצמו; "לא" נשמר כראיה וההזמנה נחסמת בלי חתימה בשלב התשלום
+      const missingConsents = missingConsentLabels({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true });
+      if (missingConsents.length > 0) {
+        setConsentTried(true);
+        alert(`יש למלא: ${missingConsents.join(', ')}`);
+        return;
+      }
+    } else if (!order.hasSignedRegulations) {
+       alert('יש לסמן שהלקוח חתם על התקנון');
+       document.getElementById(SIGNATURE_CHECKBOX_ID)?.focus();
+       return;
+    }
+
     // require_customer_id_number - חובה רק ביצירת לקוח חדש כאן (לא חלק מ-
     // getMissingMandatoryCustomerFields, כי אותה פונקציה משמשת גם את
     // handleUseExistingCustomer לבדיקת לקוח קיים שנבחר - אין לאכוף רטרואקטיבית ת"ז
@@ -580,13 +598,19 @@ export default function NewOrderPage() {
     }
 
     try {
+      // שדות העזר של טופס ההסכמות לא נשלחים כמו שהם: כבוי = הגוף כמו קודם, דלוק = withConsentBody (החוזה מול השרת)
+      const { marketingAnswer, acceptedTerms, acceptedPrivacy, ...customerFields } = newCustomer;
+      const postBody = explicitConsent
+        ? withConsentBody({ ...customerFields, marketingConsent: marketingAnswer === true }, { acceptedTerms, marketingConsent: marketingAnswer, acceptedPrivacy }, consentInfo, 'new-order')
+        : customerFields;
       const res = await fetch('/api/customers', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(newCustomer)
+         body: JSON.stringify(postBody)
       });
       const data = await res.json();
       if (res.ok) {
+         if (data.consentWarning) alert(data.consentWarning);
          setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
          setStep(2);
          setDuplicateCustomers([]);
@@ -1267,6 +1291,11 @@ export default function NewOrderPage() {
   };
 
   const executeSaveOrderForList = async (finalPaymentsList, force = false) => {
+    // חתימה על התקנון חובה בכל הזמנה - גם ללקוח קיים (שלא עובר בטופס "לקוח חדש"), ר' התיבה בשלב 5.
+    if (!order.hasSignedRegulations) {
+      alert('יש לסמן שהלקוח חתם על התקנון לפני שמירת ההזמנה');
+      return;
+    }
     pendingSavePaymentsRef.current = finalPaymentsList;
     setSaving(true);
     // Stop the autosave and let whatever it already started finish, so the real save is not
@@ -1340,6 +1369,7 @@ export default function NewOrderPage() {
         // 19 - משלוח יוצא יום לפני האירוע במקום יומיים, פר-הזמנה (ר' checkbox למטה ליד
         // delivery_one_day_before_option) - נצרך ב-GET /api/deliveries לחישוב תאריך היציאה בפועל.
         deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+        hasSignedRegulations: !!order.hasSignedRegulations,
         ...(hokDetailsPayload !== undefined ? { hokDetails: hokDetailsPayload } : {}),
         paymentsList: finalPaymentsList,
         // Set once a card was charged: the order must be saved under the number that already
@@ -1740,7 +1770,7 @@ export default function NewOrderPage() {
       hokFieldsOpen: settings.hok_enabled === 'true',
       isAbroad: order.isAbroad, eventDate: order.eventDate, fromDate: order.fromDate, toDate: order.toDate,
       deliveryError: validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities),
-      branchPending: settings.track_branch_on_order === 'true' && !order.branch && !order.isPhoneOrder,
+      branchPending: (settings.track_branch_on_order === 'true' || settings.multi_branch_enabled === 'true') && !order.branch && !order.isPhoneOrder,
     }),
     stateOverlay: duplicateCustomers.length > 0 || !!customerEditFor || !!deliveryModal || showExitConfirm || !!duplicateOrderWarning
       || pendingSpacingChange !== null || showSpacingCapacitySearch || !!capacityModalItem || showCreditModal || showQuickSwipeModal
@@ -2014,6 +2044,7 @@ export default function NewOrderPage() {
                 <div className="field">
                   <label>חיפוש לפי שם, טלפון או עיר</label>
                   <CustomerSelector
+                    pickerFor="new-order"
                     value={order.selectedCustomer}
                     onChange={(c) => {
                       if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
@@ -2068,7 +2099,7 @@ export default function NewOrderPage() {
             )}
 
             {searchMode === 'new' && (
-              <div className="card card-pad" ref={newCustomerFormRef}>
+              <div className="card card-pad" ref={newCustomerFormRef} onKeyDown={handleNewCustomerFieldEnter}>
                 {/* 1 - לא נמצא לקוח לפי הטלפון שהוזן (או שנבחר "לקוח אחר") - לפני שממלאים
                     כרטיס לקוח חדש מלא, להציע במפורש לנסות חיפוש לפי שם/עיר, כדי שטעות הקלדה
                     בטלפון לא תדחוף ליצירת כרטיס כפול ללקוח שכבר קיים במערכת. */}
@@ -2083,16 +2114,16 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    <input id="cust-firstName" className="input" type="text" {...nf('firstName')} value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    <input id="cust-lastName" className="input" type="text" {...nf('lastName')} value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => { setNewCustomer(prev => ({ ...prev, phone1: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone1, e.target.value)) focusField('cust-phone2'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" {...nf('phone1')} value={newCustomer.phone1} onChange={e => { setNewCustomer(prev => ({ ...prev, phone1: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone1, e.target.value)) focusField('cust-phone2'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                 </div>
 
                 {/* טלפון נוסף/אימייל: השדה היחיד שבאמת תמיד חובה הוא require_customer_email
@@ -2102,12 +2133,12 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, parseFieldGroups(settings.mandatory_field_groups)) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => { setNewCustomer(prev => ({ ...prev, phone2: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone2, e.target.value)) focusField('cust-email'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" {...nf('phone2')} value={newCustomer.phone2} onChange={e => { setNewCustomer(prev => ({ ...prev, phone2: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone2, e.target.value)) focusField('cust-email'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      <input id="cust-email" className="input" type="email" dir="ltr" {...nf('email')} value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
                         <button
                           type="button"
@@ -2132,26 +2163,26 @@ export default function NewOrderPage() {
                     בחלונית מוסתרת"). */}
                 <NocCollapsible
                   title="פרטים נוספים"
-                  openWhen={settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city') || isFieldMandatoryFromPicker('street') || isFieldMandatoryFromPicker('houseNum') || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
+                  openWhen={true /* חתימה על התקנון היא שדה חובה תמידי ויושבת בתוך המגירה */}
                 >
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => { setNewCustomer(prev => ({ ...prev, city: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.cities)) focusField('cust-street'); }} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-city" className="input" type="text" list="cust-city-list" {...nf('city')} value={newCustomer.city} onChange={e => { setNewCustomer(prev => ({ ...prev, city: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.cities)) focusField('cust-street'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-city-list">
                         {customerLocations.cities.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => { setNewCustomer(prev => ({ ...prev, street: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.streets)) focusField('cust-house'); }} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-street" className="input" type="text" list="cust-street-list" {...nf('street')} value={newCustomer.street || ''} onChange={e => { setNewCustomer(prev => ({ ...prev, street: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.streets)) focusField('cust-house'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-street-list">
                         {customerLocations.streets.map(s => <option key={s} value={s} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-house">מספר בית {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('houseNum')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-house" className="input" type="text" {...nf('houseNum')} value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                     </div>
                   </div>
                   <div className="field">
@@ -2161,15 +2192,24 @@ export default function NewOrderPage() {
                         ? <span style={{ color: 'var(--danger)' }}>*</span>
                         : (settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>)}
                     </label>
-                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
+                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} {...nf('zeout')} value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
-                  {settings.hide_marketing_consent_field !== 'true' && (
+                  {!explicitConsent && settings.hide_marketing_consent_field !== 'true' && (
                     <div className="field" style={{ marginTop: 10 }}>
                       <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                         <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
                         <span>מאשר/ת קבלת דיוורים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
                       </label>
                     </div>
+                  )}
+                  {/* חתימה על התקנון (חובה בכל הזמנה). כשההסכמות המפורשות דולקות השאלה "חתם/ה על התקנון: כן/לא" מופיעה ב-ConsentFields למטה ומסמנת גם את ההזמנה */}
+                  {!explicitConsent && (
+                  <div className="field" style={{ marginTop: 10 }}>
+                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                      <input id={SIGNATURE_CHECKBOX_ID} type="checkbox" checked={!!order.hasSignedRegulations} onChange={e => setOrder(prev => ({ ...prev, hasSignedRegulations: e.target.checked }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <span>חתם/ה על התקנון <span style={{ color: 'var(--danger)' }}>*</span></span>
+                    </label>
+                  </div>
                   )}
                   {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
                   {settings.hok_enabled === 'true' && (
@@ -2196,6 +2236,23 @@ export default function NewOrderPage() {
                     </div>
                   )}
                 </NocCollapsible>
+
+                {explicitConsent && (
+                  <ConsentFields
+                    idPrefix="lgCn" isNew settings={settings} info={consentInfo}
+                    value={{ acceptedTerms: newCustomer.acceptedTerms ?? null, marketingConsent: newCustomer.marketingAnswer ?? null, acceptedPrivacy: !!newCustomer.acceptedPrivacy }}
+                    invalid={consentTried ? invalidConsentFields({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true }) : {}}
+                    onChange={(patch) => {
+                      if ('acceptedTerms' in patch) setOrder(prev => ({ ...prev, hasSignedRegulations: patch.acceptedTerms === true }));
+                      setNewCustomer(prev => {
+                      const next = { ...prev };
+                      if ('acceptedTerms' in patch) next.acceptedTerms = patch.acceptedTerms;
+                      if ('acceptedPrivacy' in patch) next.acceptedPrivacy = patch.acceptedPrivacy;
+                      if ('marketingConsent' in patch) { next.marketingAnswer = patch.marketingConsent; next.marketingConsent = patch.marketingConsent === true; }
+                      return next;
+                    });}}
+                  />
+                )}
 
                 <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>
                   <svg className="icon"><use href="#i-check" /></svg> שמור לקוח והמשך
@@ -2303,7 +2360,7 @@ export default function NewOrderPage() {
               </NocCollapsible>
 
               {/* 15 + 13/34 - משלוח, טלפוני וסניף (מותנה ב-toggle, כבוי = מוסתר) */}
-              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
+              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.multi_branch_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
               <div className="card card-pad" style={{ marginTop: 12 }}>
                 <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח / סניף / טלפוני</h3>
                 <div className="form-grid">
@@ -2330,7 +2387,7 @@ export default function NewOrderPage() {
                       זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה).
                       2 - select סגור מתוך הגדרת branch_list בלבד (לא עוד input חופשי + datalist -
                       אפשר היה להקליד כל טקסט, לא רק את הסניפים שבהגדרה). */}
-                  {settings.track_branch_on_order === 'true' && (
+                  {(settings.track_branch_on_order === 'true' || settings.multi_branch_enabled === 'true') && (
                     <div className="field">
                       <label>סניף ביצוע</label>
                       <select
@@ -2343,13 +2400,13 @@ export default function NewOrderPage() {
                         }}
                       >
                         <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        {(settings.multi_branch_enabled === 'true' ? branchesWith(branchConfigFromSettings(settings), 'pickup').map(b => b.name) : String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean)).map(b => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
                     </div>
                   )}
-                  {settings.branches_enabled === 'true' && (
+                  {(settings.branches_enabled === 'true' || settings.multi_branch_enabled === 'true') && (
                     <div className="field">
                       <label>סניף איסוף</label>
                       <select
@@ -2358,7 +2415,7 @@ export default function NewOrderPage() {
                         onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))}
                       >
                         <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        {(settings.multi_branch_enabled === 'true' ? branchesWith(branchConfigFromSettings(settings), 'pickup').map(b => b.name) : String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean)).map(b => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
@@ -2707,6 +2764,16 @@ export default function NewOrderPage() {
         {step === 5 && (
           <div>
             <h2>תשלום וסיום</h2>
+
+            {/* לקוח חדש כבר סימן בטופס הלקוח; ללקוח קיים זו הנקודה היחידה לסמן, ולכן מוצג רק כשעוד לא נחתם. */}
+            {!order.hasSignedRegulations && (
+              <div className="card card-pad" style={{ marginBottom: 14 }}>
+                <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                  <input type="checkbox" checked={false} onChange={e => setOrder(prev => ({ ...prev, hasSignedRegulations: e.target.checked }))} />
+                  <span>הלקוח חתם על התקנון <span style={{ color: 'var(--danger)' }}>*</span></span>
+                </label>
+              </div>
+            )}
 
             <div className="two-col">
               <div className="card card-pad">

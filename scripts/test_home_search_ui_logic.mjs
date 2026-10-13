@@ -1,11 +1,11 @@
 // בדיקות הלוגיקה הטהורה של תוצאות החיפוש הראשי בדף הבית (app/components/home/homeLogic.js + searchPdf.js) אחרי שינויי 5.10.2026:
 //   הזמנות לפני לקוחות (ובתוך 8 השורות הראשונות), מס' הזמנה מדויק תמיד ראשון, צורת שורת פריט (שתי שורות: כותרת = ברקוד + מצב; שורה קטנה = הזמנה / לקוחה / תאריך),
-//   שורת "מלאי" (נרמול, בלי קישור כשאין הרשאה), צ'יפים של הלו"ז, סטטוס מחושב, הדגשת התאמה, סינון קטגוריה, טבלה/ייצוא.
+//   (שורות "מלאי" הוסרו ב-12.10.2026 - הוחלפו בפאנל התפוסה / הפריט; נבדק שהן לא חוזרות), צ'יפים של הלו"ז, סטטוס מחושב, הדגשת התאמה, סינון קטגוריה, טבלה/ייצוא.
 // הרצה: node scripts/test_home_search_ui_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  normalizeSearch, unifiedRows, resultsCount, applyScope, orderStatus, tableRecords, exportRecordsForRows, highlightParts, highlightQuery, inventorySizesText, TABLE_COLUMNS,
+  normalizeSearch, unifiedRows, resultsCount, applyScope, orderStatus, tableRecords, exportRecordsForRows, highlightParts, highlightQuery, TABLE_COLUMNS,
 } from '../app/components/home/homeLogic.js';
 import { sectionsFromGeneral } from '../app/components/home/searchPdf.js';
 
@@ -18,7 +18,6 @@ function t(name, fn) {
 const cust = (i) => ({ id: 'c' + i, firstName: 'לקוחה', lastName: 'מס' + i, phone1: '050-123' + (4000 + i), city: 'ירושלים' });
 const ord = (id, extra) => ({ id: 'u' + id, orderId: id, firstName: 'רחל', lastName: 'כהן', eventDateHebrew: 'כז תשרי תשפז', status: '', computedStatus: 'בקרוב', itemCount: 1, ...extra });
 const rent = (orderId, extra) => ({ id: 'i' + orderId, orderId, barcode: '6323401', sizeText: '34', catalogName: 'שמלת ורד', isTaken: true, isReturned: false, firstName: 'שרה', lastName: 'לוי', eventDateHebrew: 'ט״ו תשרי תשפ״ז', ...extra });
-const invRow = (extra) => ({ type: 'barcode', modelName: 'שמלת ורד', modelCode: 632, barcode: '6323401', size: '34', status: 'מושכר', itemMissing: false, date: '2026-10-05', dateLabel: 'היום', sizes: [{ size: '34', total: 1, booked: 1, available: 0, own: true }, { size: '36', total: 2, booked: 0, available: 2, own: false }], ...extra });
 
 console.log('סדר השורות');
 t('הזמנות לפני לקוחות; הלקוחות אחרי ההזמנות גם כשיש יותר מ-8 הזמנות (לקוחות לא דוחפים הזמנות מאחורי "עוד N")', () => {
@@ -36,21 +35,21 @@ t('מס\' הזמנה מדויק תמיד ראשון (גם כשהשרת החזי�
   assert.equal(rows[0].orderId, 2573);
   assert.deepEqual(rows.slice(1).map((r) => r.orderId), [1111, 3333, undefined]);
 });
-t('5-6 ספרות: הזמנה מדויקת ראשונה, אחריה מלאי ופריטי הברקוד, ורק אחר כך שאר ההזמנות והלקוחות', () => {
-  const res = normalizeSearch({ orders: [ord(11111), ord(25734)], customers: [cust(1)], rentals: [rent(52001, { barcode: '25734' })], inventory: [invRow({ barcode: '25734' })] });
+t('5-6 ספרות: הזמנה מדויקת ראשונה, אחריה פריטי הברקוד, ורק אחר כך שאר ההזמנות והלקוחות', () => {
+  const res = normalizeSearch({ orders: [ord(11111), ord(25734)], customers: [cust(1)], rentals: [rent(52001, { barcode: '25734' })] });
   const rows = unifiedRows(res, '25734');
-  assert.deepEqual(rows.map((r) => r.kind), ['הזמנה', 'מלאי', 'פריט', 'הזמנה', 'לקוח']);
+  assert.deepEqual(rows.map((r) => r.kind), ['הזמנה', 'פריט', 'הזמנה', 'לקוח']);
   assert.equal(rows[0].orderId, 25734);
 });
-t('7 ספרות = ברקוד: מלאי, פריטי הברקוד, ואז הזמנות ולקוחות; אין "הזמנה מדויקת" (7 ספרות אינן מס\' הזמנה)', () => {
-  const res = normalizeSearch({ orders: [ord(6323401)], customers: [cust(1)], rentals: [rent(52001), rent(52002)], inventory: [invRow()] });
+t('7 ספרות = ברקוד: פריטי הברקוד, ואז הזמנות ולקוחות; אין "הזמנה מדויקת" (7 ספרות אינן מס\' הזמנה)', () => {
+  const res = normalizeSearch({ orders: [ord(6323401)], customers: [cust(1)], rentals: [rent(52001), rent(52002)] });
   const rows = unifiedRows(res, '6323401');
-  assert.deepEqual(rows.map((r) => r.kind), ['מלאי', 'פריט', 'פריט', 'הזמנה', 'לקוח']);
+  assert.deepEqual(rows.map((r) => r.kind), ['פריט', 'פריט', 'הזמנה', 'לקוח']);
 });
-t('טקסט רגיל: מלאי (אם יש) ראשון, ואז הזמנות, לקוחות, פריטים; בלי query - אותו סדר בסיסי', () => {
-  const res = normalizeSearch({ orders: [ord(1)], customers: [cust(1)], rentals: [rent(9)], inventory: [invRow({ type: 'model' })] });
-  assert.deepEqual(unifiedRows(res, 'מידה 34').map((r) => r.kind), ['מלאי', 'הזמנה', 'לקוח', 'פריט']);
-  assert.deepEqual(unifiedRows(res).map((r) => r.kind), ['מלאי', 'הזמנה', 'לקוח', 'פריט']);
+t('טקסט רגיל: הזמנות, לקוחות, פריטים; בלי query - אותו סדר בסיסי', () => {
+  const res = normalizeSearch({ orders: [ord(1)], customers: [cust(1)], rentals: [rent(9)] });
+  assert.deepEqual(unifiedRows(res, 'מידה 34').map((r) => r.kind), ['הזמנה', 'לקוח', 'פריט']);
+  assert.deepEqual(unifiedRows(res).map((r) => r.kind), ['הזמנה', 'לקוח', 'פריט']);
 });
 
 console.log('צורת שורת פריט');
@@ -77,39 +76,17 @@ t('המקור של HomeResults: שורת פריט = <b> + שורה אחת (Parts
   assert.ok(!/ברקוד <bdi/.test(body) && !/מידה <bdi/.test(body), 'ברקוד ומידה לא בשורה נפרדת');
 });
 
-console.log('שורת מלאי');
-t('נרמול: רק שדות תצוגה; קישור רק נתיב פנימי; בלי קישור = שורה בלי url (לא קישור)', () => {
-  const res = normalizeSearch({ inventory: [
-    { ...invRow(), link: '/dashboard/dresses/m1', serial: 3, location: 'מדף 7', price: 999, modelId: 'secret' },
-    invRow({ link: 'https://evil.example/x' }),
-    invRow(),
-  ] });
-  assert.equal(res.inventory[0].link, '/dashboard/dresses/m1');
-  assert.equal(res.inventory[0].serial, '3');
-  assert.equal(res.inventory[1].link, '', 'כתובת חיצונית נזרקת');
-  assert.equal(res.inventory[2].link, '');
-  const json = JSON.stringify(res);
-  assert.ok(!json.includes('999') && !json.includes('secret'), 'שדות לא מוכרים לא עוברים');
-  const rows = unifiedRows(res, '6323401').filter((r) => r.kind === 'מלאי');
-  assert.deepEqual(rows.map((r) => !!r.url), [true, false, false]);
-  assert.ok(rows.every((r) => r.icon === 'box'));
-});
-t('מידות: סה"כ / מוזמנות / פנויות לכל מידה נשמרים; סיכום טקסט לטבלה / ייצוא', () => {
-  const [r] = normalizeSearch({ inventory: [invRow()] }).inventory;
-  assert.deepEqual(r.sizes[0], { size: '34', total: 1, booked: 1, available: 0, own: true });
-  assert.equal(inventorySizesText(r), '34: 0/1 · 36: 2/2');
-  const rec = tableRecords(unifiedRows(normalizeSearch({ inventory: [invRow()] })))[0];
-  assert.deepEqual(rec.cells, ['מלאי', 'שמלת ורד', '', '', '6323401', '', '', 'היום', 'מושכר · 34: 0/1 · 36: 2/2']);
-  assert.equal(rec.cells.length, TABLE_COLUMNS.length);
-  const ex = exportRecordsForRows(unifiedRows(normalizeSearch({ inventory: [invRow()] })));
-  assert.equal(ex[0]['סוג'], 'מלאי');
-});
-t('שורת מלאי נספרת כתוצאה; מסונן קטגוריה: "פריטים" משאירה מלאי, "הזמנות" / "לקוחות" לא', () => {
-  const res = normalizeSearch({ orders: [ord(1)], inventory: [invRow()], dateChips: { date: '2026-10-08', chips: [] } });
-  assert.equal(resultsCount(res), 3);
-  assert.equal(applyScope(res, 'rentals').inventory.length, 1);
-  assert.equal(applyScope(res, 'orders').inventory.length, 0);
+console.log('שורת מלאי הוסרה');
+t('שורות מלאי לא חוזרות: שדה inventory מתשובה ישנה / שרת ישן מתעלמים ממנו; הלו"ז נספר; מסונן קטגוריה', () => {
+  const old = { orders: [ord(1)], inventory: [{ type: 'barcode', modelName: 'שמלת ורד', barcode: '6323401', sizes: [] }], inventoryTruncated: true, dateChips: { date: '2026-10-08', chips: [] } };
+  const res = normalizeSearch(old);
+  assert.ok(!('inventory' in res) && !('inventoryTruncated' in res));
+  assert.ok(!JSON.stringify(res).includes('שמלת ורד'));
+  assert.deepEqual(unifiedRows(res, '6323401').map((r) => r.kind), ['הזמנה']);
+  assert.ok(!tableRecords(unifiedRows(res)).some((r) => r.cells[0] === 'מלאי'));
+  assert.equal(resultsCount(res), 2, 'הזמנה + צ\'יפי לו"ז');
   assert.equal(applyScope(res, 'orders').dateChips, null);
+  assert.ok(!('inventory' in applyScope(res, 'rentals')));
   assert.equal(resultsCount(normalizeSearch({ dateChips: { date: 'x', chips: [] } })), 1, 'צ\'יפים בלבד = לא "אין תוצאות"');
 });
 t('תשובה ישנה ששוחזרה מהדפדפן (בלי inventory / dateChips) לא שוברת את הרשימה', () => {
@@ -164,12 +141,11 @@ t('highlightQuery: שם / ספרות כן; תאריך ומילות מפתח לא
 });
 
 console.log('הדפסה / ייצוא');
-t('PDF: מקטעים לפי הסדר מלאי, הזמנות, לקוחות, פריטים; שורת פריט עם שם הדגם', () => {
-  const res = normalizeSearch({ orders: [ord(1)], customers: [cust(1)], rentals: [rent(9)], inventory: [invRow()] });
+t('PDF: מקטעים לפי הסדר הזמנות, לקוחות, פריטים (בלי מלאי); שורת פריט עם שם הדגם', () => {
+  const res = normalizeSearch({ orders: [ord(1)], customers: [cust(1)], rentals: [rent(9)] });
   const s = sectionsFromGeneral(res, 'כהן');
-  assert.deepEqual(s.map((x) => x.label), ['מלאי', 'הזמנות', 'לקוחות', 'פריטים']);
-  assert.deepEqual(s[0].rows[0], ['שמלת ורד', '6323401', 'מושכר', 'היום', '34: 0/1 · 36: 2/2']);
-  assert.equal(s[3].rows[0][0], 'שמלת ורד');
+  assert.deepEqual(s.map((x) => x.label), ['הזמנות', 'לקוחות', 'פריטים']);
+  assert.equal(s[2].rows[0][0], 'שמלת ורד');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

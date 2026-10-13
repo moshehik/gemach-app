@@ -55,7 +55,12 @@ test('POST /api/orders/draft, /calculate, /validate-inventory - גופים זה�
       assertSameNoWk(N.buildDraftBody(order, id, 340, active), L.legacyDraftBody(order, id, 340, active));
       assertSameNoWk(N.buildValidateBody(active, order, id), L.legacyValidateBody(active, order, id));
     }
-    assertSameNoWk(N.buildCalculateBody(order), L.legacyCalculateBody(order));
+    // משלוח משותף (shared_delivery_enabled): החדש שולח בנוסף customerId/deliveryAddress/deliveryOneDayBefore/fromDate לחישוב המחיר (השרת מתעלם כשהפיצ'ר כבוי) -
+    // סטייה מכוונת; כל שאר הגוף זהה לישן בדיוק.
+    const calc = N.buildCalculateBody(order);
+    for (const k of ['customerId', 'deliveryAddress', 'deliveryOneDayBefore', 'fromDate']) assert.ok(k in calc, `משלוח משותף: ${k} נשלח`);
+    const calcLegacyShape = Object.fromEntries(Object.entries(calc).filter(([k]) => !['customerId', 'deliveryAddress', 'deliveryOneDayBefore', 'fromDate'].includes(k)));
+    assertSameNoWk(calcLegacyShape, L.legacyCalculateBody(order));
   }
 });
 

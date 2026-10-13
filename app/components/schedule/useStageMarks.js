@@ -119,10 +119,11 @@ function errorText(e) {
 }
 
 /**
- * @param {{ data: object|null, setData: Function, refresh?: Function }} params  data = תשובת GET /api/schedule;
- *   setData = ה-setter של הדף; refresh = טעינה מחדש של היום (409 alreadyMarked: השורה כבר סומנה ממסך אחר)
+ * @param {{ data: object|null, setData: Function, refresh?: Function, onNeedBarcodes?: Function }} params  data = תשובת GET /api/schedule;
+ *   setData = ה-setter של הדף; refresh = טעינה מחדש של היום (409 alreadyMarked: השורה כבר סומנה ממסך אחר);
+ *   onNeedBarcodes(stage, row, body) = 409 needBarcodes מהשרת (ברקוד בלו״ז, docs/schedule-barcode-plan.md): חסר ברקוד לפריט - הדף פותח את חלונית הברקוד במקום טוסט שגיאה
  */
-export function useStageMarks({ data, setData, refresh = null }) {
+export function useStageMarks({ data, setData, refresh = null, onNeedBarcodes = null }) {
   const [busy, setBusy] = useState({});
   const [toast, setToast] = useState(null);
   const busyRef = useRef({});
@@ -179,6 +180,10 @@ export function useStageMarks({ data, setData, refresh = null }) {
       return true;
     } catch (e) {
       patchRows(stage.key, [{ orderId: row.orderId, ...before }], forDay);
+      if (e && e.status === 409 && e.body && e.body.needBarcodes && typeof onNeedBarcodes === 'function') {
+        onNeedBarcodes(stage, row, e.body); // חסר ברקוד: חלונית הברקוד (בלי טוסט שגיאה)
+        return false;
+      }
       if (e && e.status === 409 && e.body && e.body.alreadyMarked) {
         // מסך ישן: מישהי אחרת כבר סימנה (או במצב החזרה אחר) - השרת לא שינה דבר; טוענים את היום מחדש
         say('כבר סומן', errorText(e), 'warn');
@@ -190,7 +195,7 @@ export function useStageMarks({ data, setData, refresh = null }) {
     } finally {
       setBusyKey(key, false);
     }
-  }, [canMark, dayKey, patchRows, say, setBusyKey, refresh]);
+  }, [canMark, dayKey, patchRows, say, setBusyKey, refresh, onNeedBarcodes]);
 
   // "הכל בוצע" לשלב: רק השורות שעדיין לא בוצעו ושהמשתמשת רואה (orderIds נשלחים לשרת, שמאמת מחדש כל אחת).
   const onMarkAll = useCallback(async (stage) => {
@@ -210,12 +215,15 @@ export function useStageMarks({ data, setData, refresh = null }) {
       const rollback = befores.filter((b) => !got.has(b.orderId));
       patchRows(stage.key, [...(res.rows || []), ...rollback], forDay);
       const n = (res.counts && res.counts.marked) || 0;
-      const skipped = (res.skipped || []).length;
+      const skippedList = res.skipped || [];
+      const needBarcode = skippedList.filter((s) => s.reason === 'needs_barcode').length; // חסר ברקוד: לא סומנו (ברקוד בלו״ז)
+      const needReturn = skippedList.filter((s) => s.reason === 'needs_return_scan').length; // שמלות שטרם נסרקו בהחזרה
+      const skipped = skippedList.length - needBarcode - needReturn;
       const remaining = res.remaining || 0; // תקרת "הכל בוצע" לשלב (60 בהחזרה ידנית) - לחיצה נוספת ממשיכה
       say(
-        n && !remaining ? 'כל "' + stage.label + '" סומנו כבוצעו' : n ? 'חלק מ"' + stage.label + '" סומנו' : 'לא סומן דבר',
-        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : '') + (remaining ? ' · ' + remaining + ' נותרו - לחצו שוב על "הכל בוצע"' : ''),
-        n && !remaining ? 'ok' : 'warn',
+        n && !remaining && !needBarcode && !needReturn ? 'כל "' + stage.label + '" סומנו כבוצעו' : n ? 'חלק מ"' + stage.label + '" סומנו' : 'לא סומן דבר',
+        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : '') + (needBarcode ? ' · ' + needBarcode + ' לא סומנו (חסר ברקוד)' : '') + (needReturn ? ' · ' + needReturn + ' לא סומנו (שמלות שטרם נסרקו בהחזרה)' : '') + (remaining ? ' · ' + remaining + ' נותרו - לחצו שוב על "הכל בוצע"' : ''),
+        n && !remaining && !needBarcode && !needReturn ? 'ok' : 'warn',
       );
       return true;
     } catch (e) {
@@ -238,9 +246,14 @@ export function useStageMarks({ data, setData, refresh = null }) {
     busy: row && stage ? isBusy(stage.key, row.orderId) : false,
   }), [available, canMark, isBusy]);
 
+  // עדכון שבב הברקודים בשורה (barcodeInfo) מתוך חלונית הברקוד - בלי טעינה מחדש של היום
+  const patchBarcodeInfo = useCallback((stageKey, orderId, info) => {
+    patchRows(stageKey, [{ orderId, barcodeInfo: info }], dayKey);
+  }, [patchRows, dayKey]);
+
   return useMemo(() => ({
-    available, canMark, canMarkAll, isBusy, doneState, onMarkDone, onMarkAll, toast, dismissToast,
-  }), [available, canMark, canMarkAll, isBusy, doneState, onMarkDone, onMarkAll, toast, dismissToast]);
+    available, canMark, canMarkAll, isBusy, doneState, onMarkDone, onMarkAll, toast, dismissToast, say, patchBarcodeInfo,
+  }), [available, canMark, canMarkAll, isBusy, doneState, onMarkDone, onMarkAll, toast, dismissToast, say, patchBarcodeInfo]);
 }
 
 export default useStageMarks;

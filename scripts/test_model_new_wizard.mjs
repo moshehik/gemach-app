@@ -95,7 +95,7 @@ await t('buildModelPayload: אותם שדות כמו האשף הישן (POST /ap
   assert.equal(p.name, 'רומנטיקה'); assert.equal(p.barcodePrefix, '623'); assert.equal(p.priceCategory, 'A'); assert.equal(p.inInspection, true);
   assert.equal(p.imageUrl, '/u/a.jpg'); assert.equal(p.thumbnailUrl, '/u/t.jpg'); assert.match(p.entryDateToRepo, /^2026-10-09T/);
   const q = L.buildModelPayload({ code: '623', name: '', cat: 'A', entry: '2026-10-09' }, { useModelNames: false });
-  assert.equal(q.name, 'דגם 623'); assert.equal(q.imageUrl, ''); assert.equal(q.inInspection, false);
+  assert.equal(q.name, '623'); assert.equal(q.imageUrl, ''); assert.equal(q.inInspection, false);
 });
 await t('buildItemPayload: כמו האשף הישן (sizeText, serialNumber, dressBarcode, location, barcodePrefix, dressName, entryDateToRepo)', () => {
   const p = L.buildItemPayload({ size: '38', serial: 2, loc: 'מחסן' }, { barcodePrefix: 623, name: 'רומנטיקה' }, { code: '623', entry: '2026-10-09' }, ['חנות']);

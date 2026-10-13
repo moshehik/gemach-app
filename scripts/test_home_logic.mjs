@@ -125,17 +125,17 @@ t('נרמול: שדות רגישים של השרת (ת"ז, בנק, הערות פ
   }
 });
 t('נרמול: קלט ריק/חסר', () => {
-  const EMPTY_RES = { customers: [], orders: [], rentals: [], inventory: [], inventoryTruncated: false, notices: [], dateChips: null };
+  const EMPTY_RES = { customers: [], orders: [], rentals: [], notices: [], dateChips: null };
   assert.deepEqual(normalizeSearch(null), EMPTY_RES);
   assert.deepEqual(normalizeSearch({}), EMPTY_RES);
   assert.equal(resultsCount(null), 0);
 });
-t('נרמול: הודעות מהשרת (נחתך / ערכים נזרקו / תאריך לא קיים) - סוגים מוכרים בלבד, טקסט בלבד', () => {
+t('נרמול: הודעות מהשרת (תאריך לא קיים) - סוג מוכר בלבד, טקסט בלבד; הודעות המלאי הישנות (נחתך / ערכים נזרקו) נזרקות', () => {
   const n = normalizeSearch({ notices: [
-    { kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }, { kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' },
+    { kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }, { kind: 'valuesDropped', text: 'נלקחו 10 הערכים הראשונים' }, { kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' },
     { kind: 'hack', text: 'x' }, { kind: 'valuesDropped', text: '' }, { kind: 'valuesDropped', text: 5 }, null, 'str',
   ] }).notices;
-  assert.deepEqual(n, [{ kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }, { kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' }]);
+  assert.deepEqual(n, [{ kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' }]);
   assert.deepEqual(normalizeSearch({ notices: 'x' }).notices, []);
   const res = readFileSync(new URL('../app/components/home/HomeResults.js', import.meta.url), 'utf8');
   assert.ok(/res && Array\.isArray\(res\.notices\)/.test(res) && /data-notice-kind=\{n\.kind\}/.test(res), 'HomeResults מציג את ההודעות (גם בלי תוצאות)');
@@ -405,7 +405,8 @@ t('קישורי תחתית: כל פריטי העיצוב מופיעים; לא נ
   assert.deepEqual(g.map((x) => x.h), ['ניווט מהיר', 'עזרה', 'החשבון שלי']);
   assert.deepEqual(keys(g[0]), ['orders', 'customers', 'dresses', 'dashboard', 'landing']);
   assert.deepEqual(soonKeys(g[0]), ['dresses', 'dashboard'], 'שמלות (אין הרשאה) וסיכום כספי (לא הנהלה) = בקרוב');
-  assert.equal(g[0].links[0].href, '/orders'); assert.equal(g[0].links[0].soon, undefined);
+  assert.equal(g[0].links[0].href, '/?scope=orders', 'הזמנות בתחתית = החיפוש הראשי בהזמנות'); assert.equal(g[0].links[0].soon, undefined);
+  assert.equal(g[0].links[1].href, '/?scope=customers', 'לקוחות בתחתית = החיפוש הראשי בלקוחות');
   assert.equal(g[0].links[4].href, '/landing'); assert.equal(g[0].links[4].newTab, true, 'דף הנחיתה נפתח בלשונית חדשה'); assert.equal(g[0].links[4].soon, undefined);
   assert.deepEqual(keys(g[1]), ['guide', 'report']);
   assert.equal(g[1].links[0].soon, true, 'מדריך למשתמש: אין דף');
@@ -772,7 +773,8 @@ t('דף הבית לא מפנה יותר לקובץ sprite חיצוני (מסננ
   for (const f of readdirSync(HOME_DIR).filter((x) => x.endsWith('.js'))) {
     assert.ok(!homeSource(f).includes('sprite.svg#'), `${f} still references an external sprite.svg#...`);
   }
-  assert.ok(homeSource('HomeParts.js').includes('`#${SPRITE_ID_PREFIX}${id}`'), 'Ic must reference the inline #gmi-<name> symbol');
+  assert.ok(homeSource('homeIcon.js').includes('`#${SPRITE_ID_PREFIX}${id}`'), 'Ic must reference the inline #gmi-<name> symbol'); // Ic עבר ל-homeIcon.js (HomeParts מייצא אותו מחדש)
+  assert.ok(/export \{ Ic \}/.test(homeSource('HomeParts.js')), 'HomeParts must still re-export Ic');
 });
 t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSprite מוותר כש-MenuA5Shell כבר מספק אותו', () => {
   assert.equal((homeSource('HomeA5.js').match(/<HomeSprite \/>/g) || []).length, 1);

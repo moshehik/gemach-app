@@ -328,7 +328,7 @@ export default function AiRestrictionsPage() {
 
       {error && <div className="hint" style={{ color: 'var(--danger)', marginBottom: '10px' }}>{error}</div>}
 
-      <div className="list-card" style={{ flexDirection: 'column', alignItems: 'stretch', marginBottom: '16px', cursor: 'pointer' }} onClick={() => setShowBasePrompt((s) => !s)}>
+      <div className="list-card" data-guide-id="aiadm.restr-base" style={{ flexDirection: 'column', alignItems: 'stretch', marginBottom: '16px', cursor: 'pointer' }} onClick={() => setShowBasePrompt((s) => !s)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
           <svg className="icon" style={{ width: '16px', height: '16px', color: 'var(--text-3)' }}><use href="#i-info" /></svg>
           <span style={{ fontWeight: 700, fontSize: '13px', flex: 1 }}>מה נשלח לכל שיחת AI בכל מקרה (בלי קשר למגבלות)</span>
@@ -346,7 +346,7 @@ export default function AiRestrictionsPage() {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div data-guide-id="aiadm.restr-features" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {data.features.map((feature) => (
           <FeatureCard
             key={feature.key}

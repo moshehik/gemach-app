@@ -95,7 +95,7 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
   if (item.kind === 'soon') {
     // "בקרוב": אלמנט כבוי (span) - לא <a>, לא <button>, בלי tabindex; מתעלם מלחיצות.
     return (
-      <span className="sn-link is-miss" role={menu ? 'menuitem' : undefined} aria-disabled="true" data-tip={tip} data-menu-id={item.id}>
+      <span className="sn-link is-miss" role={menu ? 'menuitem' : undefined} aria-disabled="true" data-tip={tip} data-menu-id={item.id} data-guide-id={`menu.${item.id}`}>
         <SnLi n={item.icon} />
         {item.label}
         <span className="sn-k">{SOON_LABEL}</span>
@@ -110,10 +110,28 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
         role={menu ? 'menuitem' : undefined}
         data-tip={tip}
         data-menu-id={item.id}
+        data-guide-id={`menu.${item.id}`}
         onClick={() => onAction && onAction(item)}
       >
         {content}
       </button>
+    );
+  }
+  if (item.newTab) {
+    // פותח בלשונית חדשה (טעינה מלאה): היעד מרונדר בלי שלד האתר, ולכן לא עושים ניווט רך אליו.
+    return (
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cls}
+        role={menu ? 'menuitem' : undefined}
+        data-tip={tip}
+        data-menu-id={item.id}
+        data-guide-id={`menu.${item.id}`}
+      >
+        {content}
+      </a>
     );
   }
   return (
@@ -124,6 +142,7 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
       aria-current={active ? 'page' : undefined}
       data-tip={tip}
       data-menu-id={item.id}
+      data-guide-id={`menu.${item.id}`}
       onClick={(e) => onNavigate && onNavigate(e, item.href)}
     >
       {content}

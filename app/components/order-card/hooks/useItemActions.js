@@ -23,12 +23,14 @@
 // rentalToggle.js האמיתי ואת הפורט מול אותו שרת מדומה ומשווה את רצף הבקשות.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { modelDisplayName, isPlaceholderModelName } from '@/lib/modelDisplay';
 import { describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { alterationDoneLabel, estimateOnTake, detailsWithoutMarker } from '@/lib/alterationEstimate';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
+import { isSameModelCode } from '@/lib/modelCodeLabel';
 import { hebDateOf, newLocalId } from '../orderCardLogic';
 
 // ---------------------------------------------------------------------------------------------
@@ -40,9 +42,9 @@ export const itemCode = (item) => item?.dressItem?.dress?.barcodePrefix || item?
 export function itemName(item) {
   const raw = item?.dressItem?.dress?.name || item?.description || item?.dressItem?.dressName || 'פריט כללי';
   const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
-  if (cleaned.startsWith('ללא שם')) {
+  if (isPlaceholderModelName(cleaned)) {
     const code = itemCode(item);
-    if (code) return String(code);
+    return code ? String(code) : 'פריט כללי'; // לעולם לא "ללא שם" (lib/modelDisplay.js)
   }
   return cleaned;
 }
@@ -244,10 +246,8 @@ export function itemRequestBody(item, { forceFullEdit = false, managerAuth = nul
 // עזרים טהורים של רכיבי הלשונית (כאן ולא בקובצי ה-JSX כדי שייבדקו ב-node: items.logic.test.mjs)
 // ---------------------------------------------------------------------------------------------
 // "ללא שם" → קוד הדגם (OrderModelSelector.displayModelName)
-export function displayModelName(model) {
-  const name = (model?.name || '').trim();
-  if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
-  return name;
+export function displayModelName(model, opts) {
+  return modelDisplayName(model, { ...opts, fallback: '' }); // lib/modelDisplay.js
 }
 // טקסט הזמינות של הישן (OrderSizeSelector :104-121) + האם מנוטרלת
 export function sizeInfo(row, order) {
@@ -380,7 +380,8 @@ export function createItemActions(env) {
       if (res.ok) return { ok: true };
       let data = null;
       try { data = await res.json(); } catch { /* גוף לא תקין - הודעת ברירת מחדל */ }
-      if (res.status !== 409 || !data?.barcodeMismatch) return { ok: false, message: null };
+      // סירובי 409 של ברקוד בלו״ז (docs/schedule-barcode-plan.md): ברקוד כבר רשום בפריט / פתוח בהזמנה אחרת / חסר ברקוד - מציגים את הסיבה מהשרת
+      if (res.status !== 409 || !data?.barcodeMismatch) return { ok: false, message: res.status === 409 && data && data.error && (data.barcodeAlreadyRegistered || data.barcodeElsewhere || data.needBarcode) ? data.error : null };
       const mismatchMsg = describeMismatch(data.expected, data.scanned);
       const auth = await env.approve('feature:barcode_mismatch_override', `${data.overrideRejected ? `${data.error} ` : `${mismatchMsg}. `}להשכיר בכל זאת? נדרש אישור מנהל.`);
       if (!auth) return { ok: false, message: `${mismatchMsg} - ההשכרה בוטלה.` };
@@ -454,7 +455,8 @@ export function createItemActions(env) {
   }
 
   // ---- ביטול השכרה / החזרה (MIM :663-693 + חלון האישור :1151-1161) ----
-  const labelOf = (item) => (item ? `"${itemName(item)}"${itemCode(item) ? ` (קוד: ${itemCode(item)})` : ''}` : 'פריט זה');
+  // שם=קוד (נווה: "522") - הקוד לא חוזר בסוגריים
+  const labelOf = (item) => (item ? `"${itemName(item)}"${itemCode(item) && !isSameModelCode(itemName(item), itemCode(item)) ? ` (קוד: ${itemCode(item)})` : ''}` : 'פריט זה');
   async function cancelRent(item, { confirmed = false } = {}) {
     if (!item || !item.id) return { ok: false };
     if (env.get().isLocked) return { ok: false };

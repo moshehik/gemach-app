@@ -24,7 +24,7 @@ export default function RefundPolicyPage() {
           ויכולים להיות שונים בין גמ&quot;ח לגמ&quot;ח.
         </div>
 
-        <div className="content-toc">
+        <div className="content-toc" data-guide-id="refpol.toc">
           <h4>בעמוד זה</h4>
           <a href="#arp-basic">הרעיון הבסיסי</a>
           <a href="#arp-windows">שלוש המדרגות</a>

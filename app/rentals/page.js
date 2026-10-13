@@ -378,7 +378,7 @@ export default function RentalsPage() {
           <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : totalCount}</div>
         </div>
         <div className="page-actions">
-          <button type="button" className={`btn btn-secondary${advSearchLabel ? '' : ' btn-icon-only'}`} title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
+          <button type="button" className={`btn btn-secondary${advSearchLabel ? '' : ' btn-icon-only'}`} data-guide-id="ren.adv-search" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
             <svg className="icon"><use href="#i-list" /></svg>
             {advSearchLabel && 'חיפוש מתקדם'}
           </button>
@@ -405,7 +405,7 @@ export default function RentalsPage() {
       {activeTabGroup === 'rentals' && <RentedPastEventWidget />}
 
       {/* סרגל חיפוש: חיפוש חופשי (הזמנה/לקוח/דגם) + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה, במסגרת אחת */}
-      <div className="toolbar">
+      <div className="toolbar" data-guide-id="ren.search">
         {aiInputMode ? (
           <form onSubmit={handleAiInputSubmit} className="search-toolbar">
             {aiLoading
@@ -470,7 +470,7 @@ export default function RentalsPage() {
       {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
       {!isAiModeActive && <SearchNotices notices={searchNotices} />}
 
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+      <div className="pill-tabs" data-guide-id="ren.filters" style={{ marginBottom: '20px' }}>
         {activeTabGroup === 'rentals' ? (
           <>
             <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שנמצא כרגע בחוץ (כולל הושכר חלקי)">
@@ -590,7 +590,7 @@ export default function RentalsPage() {
         document.body
       )}
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-guide-id="ren.table">
         <div className="table-scroll">
         <table className="data">
           <thead>
@@ -645,6 +645,7 @@ export default function RentalsPage() {
                         <button
                           type="button"
                           className="btn btn-secondary btn-icon-only btn-sm"
+                          data-guide-id="ren.open-modal"
                           title="פתח השכרה/החזרה"
                           onClick={(e) => { e.stopPropagation(); openOrder(ord.orderId); }}
                         >
@@ -655,6 +656,7 @@ export default function RentalsPage() {
                         <Link
                           href={`/orders/${ord.orderId}`}
                           className="btn btn-secondary btn-sm"
+                          data-guide-id="ren.edit-order"
                           title="פתח את כרטיס ההזמנה המלא (עריכה, משלוח, תשלומים)"
                           onClick={(e) => e.stopPropagation()}
                         >

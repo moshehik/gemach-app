@@ -1,5 +1,6 @@
 'use client';
 
+// מדריך האתר: כשמועבר guide ("ol" / "cl" - lib/aiGuide/areas/ops.targets.js) מוצמדים data-guide-id (ol.view, ol.export-excel, cl.view, cl.export-excel ...).
 // A5Parts - החלקים הקטנים של ערכת הרשימות, מיוצאים גם לשימוש עצמאי (כרטיס דגם: פריטים / השכרות / היסטוריה):
 // ViewSwitch (מתג שורות / טבלה), ExportTrio (xlbtn xlg / xld / xlp), Pager (קפסולת עימוד עם חיצים בפנים וידית חלקה),
 // A5SearchSlot (משבצת החיפוש מתחת לכותרת הדף), HlText (הדגשת מילות החיפוש).
@@ -10,10 +11,10 @@ import { DlGlyph, Ic, PrtGlyph, XlGlyph } from './A5Icon';
 import { pageList, pageRange, splitHighlight } from './listLogic';
 
 /** מתג שורות / טבלה (.vsw + .vknob + .vopt). value: 'list' | 'table'. */
-export function ViewSwitch({ value, onChange }) {
+export function ViewSwitch({ value, onChange, guide = null }) {
   const tbl = value === 'table';
   return (
-    <div className={`vsw${tbl ? ' t' : ''}`} role="group" aria-label="מצב תצוגה">
+    <div className={`vsw${tbl ? ' t' : ''}`} role="group" aria-label="מצב תצוגה" data-guide-id={guide ? `${guide}.view` : undefined}>
       <span className="vknob" aria-hidden="true" />
       <button type="button" className={`vopt${tbl ? '' : ' on'}`} data-view="list" aria-label="תצוגת שורות" aria-pressed={!tbl} data-tip="שורות" onClick={() => onChange('list')}><Ic id="rows" /></button>
       <button type="button" className={`vopt${tbl ? ' on' : ''}`} data-view="table" aria-label="תצוגת טבלה" aria-pressed={tbl} data-tip="טבלה" onClick={() => onChange('table')}><Ic id="table" /></button>
@@ -25,9 +26,9 @@ export function ViewSwitch({ value, onChange }) {
  * שלושת לחצני הייצוא של המערכת (exportBtns בעיצוב): Excel / הורדה (PDF) / הדפסה. what = "רשימת העובדים".
  * onPick('excel' | 'download' | 'print'). kinds: תת-קבוצה של השלושה (ברירת מחדל: כולם).
  */
-export function ExportTrio({ what, onPick, kinds = ['excel', 'download', 'print'], disabled = false }) {
+export function ExportTrio({ what, onPick, kinds = ['excel', 'download', 'print'], disabled = false, guide = null }) {
   const b = (kind, cls, label, tip, glyph) => (kinds.includes(kind)
-    ? <button type="button" className={`xlbtn ${cls}`} data-hx={kind} aria-label={label} data-tip={tip} disabled={disabled} onClick={() => onPick(kind)}>{glyph}</button>
+    ? <button type="button" className={`xlbtn ${cls}`} data-hx={kind} data-guide-id={guide ? `${guide}.export-${kind}` : undefined} aria-label={label} data-tip={tip} disabled={disabled} onClick={() => onPick(kind)}>{glyph}</button>
     : null);
   return (
     <>

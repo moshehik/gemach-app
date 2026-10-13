@@ -82,13 +82,14 @@ export default function NedarimHokSearchPage() {
 
       <form onSubmit={search} className="card card-pad" style={{ display: 'flex', gap: 8, maxWidth: 640, marginBottom: 16 }}>
         <input
+          data-guide-id="ned.search-input"
           className="input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="מספר הוק, שם, טלפון או ת.ז"
           style={{ flex: 1 }}
         />
-        <button type="submit" className="btn btn-primary" disabled={busy || !query.trim()}>
+        <button type="submit" className="btn btn-primary" data-guide-id="ned.search-btn" disabled={busy || !query.trim()}>
           {busy ? 'מחפש...' : 'חפש'}
         </button>
       </form>

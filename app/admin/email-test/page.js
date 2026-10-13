@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 
 // מסך בדיקת מיילים: מקלידים כתובת אחת ושולחים אליה מייל לדוגמה מכל סוג בקטלוג
 // (lib/emailCatalog.js). לעולם לא נשלח ללקוחות/עובדים אמיתיים - רק לכתובת שהוקלדה.
@@ -10,6 +11,7 @@ const STATUS_LABEL = { idle: 'טרם נשלח', sending: 'שולח...', ok: 'נ�
 const STATUS_CLASS = { idle: 'badge', sending: 'badge badge-warning', ok: 'badge badge-success', error: 'badge badge-danger' };
 
 export default function EmailTestPage() {
+  const nf = useNoFill();
   const [types, setTypes] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [to, setTo] = useState('');
@@ -90,7 +92,9 @@ export default function EmailTestPage() {
           <label htmlFor="email-test-to">כתובת מייל לקבלת הדוגמאות</label>
           <input
             id="email-test-to"
+            data-guide-id="mail.to"
             type="email"
+            {...nf('email')}
             dir="ltr"
             className="input"
             value={to}
@@ -102,18 +106,19 @@ export default function EmailTestPage() {
           כל הדוגמאות מסומנות ב-&quot;[דוגמה]&quot; בנושא, נשלחות רק לכתובת הזו, ונרשמות ביומן המיילים. שים לב: לחשבון Gmail יש מכסת שליחה יומית, ושליחת כל 17 הסוגים בנפרד צורכת 17 הודעות ממנה, ו&quot;שלח את כולם במייל אחד&quot; צורכת הודעה אחת. שתי הדוגמאות עם צרופות מצרפות מסמך אמיתי של הזמנה אחרונה כלשהי במערכת.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary" disabled={busy || !emailValid || selectedIds.length === 0} onClick={() => sendMany(selectedIds)}>
+          <button type="button" className="btn btn-primary" data-guide-id="mail.send-selected" disabled={busy || !emailValid || selectedIds.length === 0} onClick={() => sendMany(selectedIds)}>
             {busy ? 'שולח...' : `שלח את המסומנים (${selectedIds.length})`}
           </button>
-          <button type="button" className="btn btn-primary" disabled={types.length === 0} onClick={() => openPreview('ALL', 'כל 17 המיילים')}>
+          <button type="button" className="btn btn-primary" data-guide-id="mail.preview-all" disabled={types.length === 0} onClick={() => openPreview('ALL', 'כל 17 המיילים')}>
             צפייה בכל 17 המיילים
           </button>
-          <button type="button" className="btn" disabled={busy || !emailValid || types.length === 0} onClick={() => sendMany(['ALL'])}>
+          <button type="button" className="btn" data-guide-id="mail.send-all" disabled={busy || !emailValid || types.length === 0} onClick={() => sendMany(['ALL'])}>
             {status.ALL?.state === 'sending' ? 'שולח...' : 'שלח את כולם במייל אחד (עם צרופות)'}
           </button>
           <button
             type="button"
             className="btn"
+            data-guide-id="mail.select-all"
             disabled={busy || types.length === 0}
             onClick={() => setSelected(Object.fromEntries(types.map(t => [t.id, !allSelected])))}
           >

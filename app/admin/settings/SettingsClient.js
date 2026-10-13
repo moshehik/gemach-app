@@ -4,10 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
+import TermsFileManager from '@/app/components/shared/TermsFileManager';
 import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle, { DeviceBackupViewToggle } from './WebBackupModeToggle';
+import BranchesManager from '@/app/components/branches/BranchesManager';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
@@ -810,6 +812,22 @@ export default function SettingsClient({ mode = 'general' }) {
             </div>
           </div>
 
+          {activeTab === 'סניפים' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <BranchesManager compact />
+            </div>
+          )}
+
+          {activeTab === 'יומן' && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <h3 style={{ fontSize: '14.5px', margin: '0 0 4px' }}>טווחי התהליכים בלו&quot;ז</h3>
+                <p className="hint" style={{ color: 'var(--text-3)', margin: 0, fontSize: '12.5px' }}>הכנה, איסוף, החזרה ותיקונים: כמה ימים לפני או אחרי האירוע, פעיל או כבוי, משמרת, וטווח ההתראה על העברת פריטים בין סניפים. נפתח כחלון בדף הלו&quot;ז.</p>
+              </div>
+              <Link href="/schedule?settings=1" className="btn btn-secondary btn-sm">פתיחת ההגדרות בלו&quot;ז</Link>
+            </div>
+          )}
+
           {activeTab === 'מסד נתונים' && (
             <>
               <DeviceBackupViewToggle />
@@ -817,6 +835,8 @@ export default function SettingsClient({ mode = 'general' }) {
               <NeonUsageCard />
             </>
           )}
+
+          {activeTab === 'הזמנות' && <TermsFileManager variant="legacy" />}
 
           {activeTab === 'מיילים' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>

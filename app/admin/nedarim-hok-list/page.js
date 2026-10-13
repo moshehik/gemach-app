@@ -51,7 +51,7 @@ export default function NedarimHokListPage() {
       <NedarimNav current="/admin/nedarim-hok-list" />
 
       {totals && (
-        <div className="card card-pad" style={{ marginBottom: 16, display: 'flex', gap: 24 }}>
+        <div className="card card-pad" data-guide-id="ned.list-totals" style={{ marginBottom: 16, display: 'flex', gap: 24 }}>
           <div>סה&quot;כ חודשי (פעילים): <strong>{totals.TotalMonth} ₪</strong></div>
           <div>צפי הכנסות 12 חודשים: <strong>{totals.TotalYear} ₪</strong></div>
         </div>
@@ -61,7 +61,7 @@ export default function NedarimHokListPage() {
       {loading && <div className="hint">טוען...</div>}
 
       {!loading && !error && (
-        <div className="card card-pad">
+        <div className="card card-pad" data-guide-id="ned.list-table">
           <table className="data">
             <thead>
               <tr>

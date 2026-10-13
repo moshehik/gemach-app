@@ -58,4 +58,7 @@ jobs:
           DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
           DRIVE_BRIDGE_SECRET: ${{ secrets.DRIVE_BRIDGE_SECRET }}
           BACKUP_ALERT_EMAIL: ${{ secrets.BACKUP_ALERT_EMAIL }}
+          # אופציונלי: סודות של נווה יעקב (org 2) להתראת כשל גיבוי דרך Hostinger Mail API. בלעדיהם ההתראה נשארת ב-Apps Script.
+          HOSTINGER_MAIL_TOKEN_ORG2: ${{ secrets.HOSTINGER_MAIL_TOKEN_ORG2 }}
+          HOSTINGER_MAILBOX_ID_ORG2: ${{ secrets.HOSTINGER_MAILBOX_ID_ORG2 }}
         run: node scripts/cloud_backup.js

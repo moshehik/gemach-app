@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ScheduleIcon from './ScheduleIcon';
 import { GoLink } from './StageRow';
-import { UPDATED_META, updatedItems } from './scheduleMeta';
+import { UPDATED_META, updatedItems, customerDisplayName, orderCodeText, ORDER_CODE_TIP } from './scheduleMeta';
 
 // מקטע "הזמנות שעודכנו" - אחרון בדף (אחרי כל השלבים) ואחרון בציר. הגדרה (הבעלים 7.10.2026): הזמנה קיימת שביום הזה נוסף או
 // נערך בה פריט, או נוסף לה תשלום, ובתנאי שאינה מופיעה ב"הזמנות חדשות" של אותו יום (lib/schedule/updatedOrders.js).
@@ -56,7 +56,7 @@ export default function UpdatedSection({ date, branch, onCount, hidden = false }
   const { status, data } = state;
   const rows = (data && data.orders) || [];
   return (
-    <section className="lz-sec" id="st-updated" data-k="updated" style={{ '--pc': 'var(' + UPDATED_META.color + ')', ...(hidden ? { display: 'none' } : null) }} ref={rootRef}>
+    <section className="lz-sec" id="st-updated" data-k="updated" data-guide-id="sched.sec-updated" style={{ '--pc': 'var(' + UPDATED_META.color + ')', ...(hidden ? { display: 'none' } : null) }} ref={rootRef}>
       <div className="lz-hrow">
         <h2 className="adm-h">
           <span className="adm-hi"><ScheduleIcon name={UPDATED_META.icon} /></span>
@@ -73,9 +73,9 @@ export default function UpdatedSection({ date, branch, onCount, hidden = false }
                   <div className="li lrow">
                     <div className="ic-b"><ScheduleIcon name={UPDATED_META.icon} /></div>
                     <div className="t">
-                      <b>{row.customer.name} <bdi>#{row.orderId}</bdi></b>
+                      <b>{customerDisplayName(row.customer)}</b>
                       <span className="ln">
-                        {updatedItems(row).map((part, i) => (
+                        {[{ icon: null, text: orderCodeText(row.orderId), tip: ORDER_CODE_TIP }, ...updatedItems(row)].map((part, i) => (
                           <span key={i} className="lz-p" data-tip={part.tip}>
                             {i > 0 ? ' · ' : ''}
                             <span className="lz-pn">

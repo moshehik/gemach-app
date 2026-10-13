@@ -55,6 +55,13 @@
 .gm-ds.gm-oc .oc-edit-hint{font-size:13px;margin-top:6px}
 .gm-ds.gm-oc .oc-edit-hint.err{color:var(--gm-red)}
 .gm-ds.gm-oc .oc-edit-reopen{margin:14px 0}
+/* אריחי מידה בחלון הכהה: בסיס הפלטה (.sizes button) הוא משטח בהיר בלי צבע טקסט - בחלון כהה הטקסט יורש לבן ולכן המידות נעלמו,
+   והנבחר (נייבי) נבלע ברקע הנייבי של החלון. כאן הצבעים באים ממשתני החלון (--k-*): אריח שקוף-כסוף עם טקסט בהיר, נבחר = זהב מלא עם טקסט כהה */
+.gm-ds.gm-oc #dlg .sizes{display:flex;flex-wrap:wrap;gap:10px}
+.gm-ds.gm-oc #dlg .sizes button{background:var(--k-row);border:1.5px solid var(--k-rowb);color:var(--k-ink);font-weight:600;font-size:15px}
+.gm-ds.gm-oc #dlg .sizes button:not(.on):not(:disabled):hover{border-color:var(--k-ic);background:color-mix(in srgb,var(--k-ic) 16%,transparent)}
+.gm-ds.gm-oc #dlg .sizes button.on{background:var(--k-ic);border-color:var(--k-ic);color:var(--k-solid);font-weight:700}
+.gm-ds.gm-oc #dlg .sizes button:focus-visible{outline:2px solid var(--k-ic);outline-offset:2px;box-shadow:none}
 .gm-ds.gm-oc #dlg .sizes button:disabled{opacity:.4;cursor:not-allowed}
 .gm-ds.gm-oc .oc-dsec{display:block;margin-top:8px}
 .gm-ds.gm-oc .oc-crchip{margin-inline-start:8px}
@@ -77,3 +84,7 @@
 .gm-ds.gm-oc .app .seg.pill.oc-cond{flex:none;width:auto;min-width:0}
 .gm-ds.gm-oc .app .seg.pill.oc-cond button{flex:1 1 auto;padding:5px 14px;min-height:0;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .gm-ds.gm-oc .app .oc-retchip{flex:none}
+
+/* נושא 9 - שורת המשלוח בפריטים (delivery_as_item_row): תצוגה בלבד, בלי חץ פתיחה */
+.gm-ds.gm-oc .oc-delrow .li{cursor:default}
+.gm-ds.gm-oc .oc-delrow-d{font-weight:400;font-size:.85em;opacity:.75;margin-top:2px}

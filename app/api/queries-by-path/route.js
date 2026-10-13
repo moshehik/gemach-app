@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { checkAuth } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// 2026-10-12: was public. Only consumer: components/ClipboardDebugger.js, a development-only tool (NODE_ENV === 'development').
+// Plain checkAuth(): signed-in, or open mode (local dev with require_login off keeps working).
 export async function GET(request) {
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const { searchParams } = new URL(request.url);
     const pathname = searchParams.get('path') || '';

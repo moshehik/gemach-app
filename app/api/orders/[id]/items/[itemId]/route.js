@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma, { auditAs } from '../../../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../../../lib/auth';
-import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
+import { recalculateOrderObligations, applyDeliveryCharge } from '../../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../../../../lib/priceRows';
+import { barcodeFeatureFor } from '@/lib/schedule/barcodeFeature';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash
@@ -96,6 +99,8 @@ export async function PUT(request, { params }) {
     }
 
     const itemData = await request.json();
+    // ברקוד בלו״ז: כשההגדרה פעילה להזמנה, החלפת דגם/מידה מבטלת רישום ברקוד שלא נלקח (H5). נבדק מחוץ לטרנזקציה; כבוי = ההתנהגות הקודמת.
+    const barcodeEntryOn = !!(await barcodeFeatureFor(parsedId));
 
     // dressModelId לא נדרש כאן באופן גורף: פריטים שהוגרו מ-Access בלי DressItem מקושר
     // (currentItem.dressItem === null) מזוהים לפי barcodePrefix/legacyId ולא מחזיקים dressModelId
@@ -227,6 +232,13 @@ export async function PUT(request, { params }) {
 
       const updateData = buildUpdateData(itemData, dressItemIdToUse);
 
+      // ברקוד שנרשם לפריט (בהכנה מהלו״ז) שייך ליחידה הפיזית של הדגם/המידה שהוזמנו. הוחלפו דגם/מידה (הפריט עוד לא נלקח - נלקח חסום למעלה) -
+      // הרישום מתבטל באותה כתיבה (נרשם ביומן עם from/to), והפריט חוזר להיות "חסר ברקוד" (docs/schedule-barcode-plan.md H5).
+      if (barcodeEntryOn && !freshItem.isTaken && !freshItem.takenDate && freshItem.barcode && String(freshItem.barcode).trim() !== ''
+        && (String(updateData.dressItemId || '') !== String(freshItem.dressItemId || '') || String(updateData.sizeText || '') !== String(freshItem.sizeText || ''))) {
+        updateData.barcode = null;
+      }
+
       // עריכה מלאה (דגם/מידה/תיקונים המשפיעים על הסכומים) מותרת רק בתוך 15 דקות מהעדכון
       // האחרון של הפריט. סימון "תיקון בוצע" ופירוט התיקון נשארים פתוחים תמיד — לא כפופים לחלון.
       // forceFullEdit: המשתמש כבר עבר אישור מנהל בצד הלקוח (ר' handleReopenFullEdit
@@ -253,16 +265,25 @@ export async function PUT(request, { params }) {
       // ה-changes המחושב כאן מועבר לתוסף ה-audit כדי שתיווצר שורת היסטוריה אחת בלבד,
       // עם פירוט "לפני ← אחרי". בלי זה נרשמה שורה גנרית עם צילום מלא של כל השדות
       // (גם כשלא השתנה דבר) ועוד שורה ידנית עם הפירוט — שתי שורות כמעט זהות לכל שמירה.
+      const itemChanges = diffFields(freshItem, updateData);
+      if (updateData.barcode === null && freshItem.barcode) {
+        itemChanges.barcode = { from: freshItem.barcode, to: null };
+        itemChanges.note = 'הרישום של הברקוד בוטל: הוחלפו דגם/מידה';
+      }
       const updatedItem = await tx.orderItem.update(auditAs('UPDATE', {
         where: { id: itemId },
         data: updateData
-      }, diffFields(freshItem, updateData)));
+      }, itemChanges));
 
       return updatedItem;
     }, TX_OPTIONS);
 
     // Recalculate obligations asynchronously after updating item
     await recalculateOrderObligations(parsedId);
+    // recalculateOrderObligations מוחק כל חיוב לא-ידני שאינו חלק מ-computeOrderObligations (שלא מכיר משלוח),
+    // כולל חיוב ה"משלוח" - ולכן חייבים ליצור אותו מחדש מיד אחרי, בדיוק כמו ב-PUT של ההזמנה. בלי זה הוספת/עריכת
+    // שמלה בהזמנת משלוח "שכחה" את המשלוח והסכום ירד (דיווח Neve, הזמנה 53636).
+    try { await applyDeliveryCharge(parsedId); } catch (e) { console.error(`Order ${parsedId}: delivery charge after item change failed:`, e); }
 
     // Fetch the fully updated order data to return (like in POST).
     // finalOrder/items/payments/obligations/priceList are independent - fetch concurrently.
@@ -307,6 +328,8 @@ export async function PUT(request, { params }) {
     ]);
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
+    // שם הדגם: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js)
+    const mOpts = await getModelDisplayOpts();
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -314,12 +337,13 @@ export async function PUT(request, { params }) {
       if (!dressName && prefix) {
         dressName = dressModelMap.get(prefix);
       }
+      dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
       
-      let finalDescription = item.description || 'פריט כללי';
+      let finalDescription = scrubPlaceholderInText(item.description, prefix) || 'פריט כללי';
       if (dressName) {
         finalDescription = `${dressName} (קוד: ${prefix || ''})`;
       } else if (item.description) {
-        finalDescription = item.description;
+        finalDescription = scrubPlaceholderInText(item.description, prefix);
       }
 
       return {
@@ -339,7 +363,7 @@ export async function PUT(request, { params }) {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
+                 ob.description = matchedItem ? `${modelDisplayName(matchedItem.dressItem?.dress, { ...mOpts, fallback: '' }) || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
              }
              ob.productName = ob.description;
              if (prod) {

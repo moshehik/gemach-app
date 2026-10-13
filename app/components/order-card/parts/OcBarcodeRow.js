@@ -8,6 +8,7 @@
 // החזרה, ביטול החזרה ומצב החזרה זמינים (כמו בישן :1023-1040).
 // OcItemChooserDialog — "לאיזה פריט לשייך את הברקוד?" (MIM :1200-1255) כחלון כהה של הכרטיס.
 import { useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder, isItemReturned } from '../hooks/useItemActions';
@@ -16,6 +17,7 @@ const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore'
 
 
 export default function OcBarcodeRow({ item, actions, locked, ui }) {
+  const nf = useNoFill();
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);
   const pending = isPendingItem(item);
@@ -41,13 +43,13 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
   // שדה מנוטרל + שני לחצני tgl + "בטל החזרה" btn sm - הוחלף לבקשת הבעלים.)
   if (returned) {
     return (
-      <div className="hv-r hv-act oc-bcrow oc-bcret" data-state="returned">
+      <div className="hv-r hv-act oc-bcrow oc-bcret" data-state="returned" data-guide-id="oc.item-barcode">
         <small>ברקוד</small>
         <b className="hv-btns">
           <span className={`chip ${okCond ? 'green' : 'amber'} oc-retchip`} role="status" data-act="returned-chip">
             <OcIcon name={okCond ? 'check' : 'alert'} size="sm" />{okCond ? 'הוחזרה' : 'הוחזרה · לא תקין'}
           </span>
-          <div className="seg pill oc-cond" role="radiogroup" aria-label="מצב ההחזרה" style={{ '--n': 2, '--i': okCond ? 0 : 1 }}>
+          <div className="seg pill oc-cond" data-guide-id="oc.item-condition" role="radiogroup" aria-label="מצב ההחזרה" style={{ '--n': 2, '--i': okCond ? 0 : 1 }}>
             <span className="pth" aria-hidden="true" />
             <button type="button" role="radio" aria-checked={okCond} className={okCond ? 'on' : ''} data-act="cond-ok" disabled={busy} onClick={() => go(() => actions.setReturnCondition(item, true))}>
               <OcIcon name="check" size="sm" />תקין
@@ -56,7 +58,7 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
               <OcIcon name="alert" size="sm" />לא תקין
             </button>
           </div>
-          <button type="button" className="btn sm ghost" data-act="undoret" disabled={busy} onClick={() => go(() => actions.cancelReturn(item))}>
+          <button type="button" className="btn sm ghost" data-act="undoret" data-guide-id="oc.item-undo-return" disabled={busy} onClick={() => go(() => actions.cancelReturn(item))}>
             <OcIcon name="undo" size="sm" />בטל החזרה
           </button>
           {own ? <span className="faint oc-bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}
@@ -65,14 +67,14 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
     );
   }
   return (
-    <div className="hv-r hv-act oc-bcrow">
+    <div className="hv-r hv-act oc-bcrow" data-guide-id="oc.item-barcode">
       <small>ברקוד</small>
       <b className="hv-btns">
         <div className="inpw oc-bcin">
           <OcIcon name="scan" size="sm" />
           <input
             className="inp"
-            name="bc-nofill"
+            {...nf('barcode')}
             inputMode="numeric"
             dir="ltr"
             value={val}
@@ -81,11 +83,10 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
             disabled={inputOff}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }}
-            {...NO_FILL}
           />
         </div>
         {item.isTaken && !locked ? (
-          <button type="button" className="btn sm" data-act="undorent" disabled={busy} onClick={() => go(() => actions.cancelRent(item))}>
+          <button type="button" className="btn sm" data-act="undorent" data-guide-id="oc.item-undo-rent" disabled={busy} onClick={() => go(() => actions.cancelRent(item))}>
             <OcIcon name="undo" size="sm" />בטל השכרה
           </button>
         ) : null}

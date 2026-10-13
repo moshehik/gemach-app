@@ -7,7 +7,7 @@
 import { useRef, useState } from 'react';
 import CcIcon from './CcIcon';
 import CcSuggest from './CcSuggest';
-import { NO_FILL } from './CcUi';
+import { useNoFill } from '@/lib/autofillGuard';
 
 export function Tip({ text }) {
   return <button type="button" className="tip" data-tip={text} aria-label="עזרה"><CcIcon name="info" size="sm" anim={false} /></button>;
@@ -18,11 +18,12 @@ export function Req({ on }) {
 }
 
 /** שדה טקסט אחד. key = שם השדה ב-Customer; value/onChange שולטים בו. */
-export function CcInput({ id, field, label, icon, value, onChange, placeholder, mode, dir, type = 'text', required, tip, suggest, extra, after, invalid }) {
+export function CcInput({ id, field, label, icon, value, onChange, placeholder, mode, dir, type = 'text', required, tip, suggest, extra, after, invalid, 'data-guide-id': gid }) {
   const inputRef = useRef(null);
+  const nf = useNoFill();
   const v = value === null || value === undefined ? '' : String(value);
   return (
-    <div className={`field${invalid ? ' cc-bad' : ''}`}>
+    <div className={`field${invalid ? ' cc-bad' : ''}`} {...(gid ? { 'data-guide-id': gid } : null)}>
       <label className="lbl" htmlFor={id}>{label}<Req on={required} />{tip ? <Tip text={tip} /> : null}</label>
       <div className="inpw">
         <CcIcon name={icon} size="sm" />
@@ -30,7 +31,6 @@ export function CcInput({ id, field, label, icon, value, onChange, placeholder, 
           ref={inputRef}
           className="inp"
           id={id}
-          name={`${id}-nofill`}
           data-f={field}
           type={type}
           value={v}
@@ -40,8 +40,7 @@ export function CcInput({ id, field, label, icon, value, onChange, placeholder, 
           aria-required={required ? 'true' : undefined}
           aria-invalid={invalid ? 'true' : undefined}
           onChange={(e) => onChange(e.target.value)}
-          {...NO_FILL}
-          autoComplete="nope"
+          {...nf(field || id)}
         />
         {extra}
         <button type="button" className="inpx" data-inpx={id} aria-label="ניקוי" data-tip="ניקוי" hidden={!v} onClick={() => { onChange(''); if (inputRef.current) inputRef.current.focus(); }}><CcIcon name="x" size="sm" /></button>
@@ -53,7 +52,7 @@ export function CcInput({ id, field, label, icon, value, onChange, placeholder, 
 }
 
 /** שדה המייל: העתקה צפה בריחוף + "השלם ל-@gmail.com". */
-export function CcEmailInput({ id, value, onChange, required, invalid, onCopied }) {
+export function CcEmailInput({ id, value, onChange, required, invalid, onCopied, 'data-guide-id': gid }) {
   const [copied, setCopied] = useState(false);
   const v = value || '';
   const copy = async () => {
@@ -64,6 +63,7 @@ export function CcEmailInput({ id, value, onChange, required, invalid, onCopied 
       id={id}
       field="email"
       label="מייל"
+      {...(gid ? { 'data-guide-id': gid } : null)}
       icon="mail"
       value={v}
       onChange={onChange}
@@ -89,13 +89,13 @@ export function CcEmailInput({ id, value, onChange, required, invalid, onCopied 
 }
 
 /** שורת קריאה (העיצוב: vf() - .f > אייקון + small תווית + b ערך / "חסר" / "—"). */
-export function ViewRow({ icon, label, value, bdi, required, extra }) {
+export function ViewRow({ icon, label, value, bdi, required, extra, 'data-guide-id': gid }) {
   const has = String(value === null || value === undefined ? '' : value).trim() !== '';
   const body = has
     ? <b>{bdi ? <bdi>{String(value)}</bdi> : String(value)}</b>
     : required ? <span className="missv"><CcIcon name="alert" size="sm" anim={false} />חסר</span> : <span className="faint">—</span>;
   return (
-    <div className={`f${has || !required ? '' : ' miss'}`}>
+    <div className={`f${has || !required ? '' : ' miss'}`} {...(gid ? { 'data-guide-id': gid } : null)}>
       <CcIcon name={icon} />
       <div><small>{label}</small>{body}{extra}</div>
     </div>

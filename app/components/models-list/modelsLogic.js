@@ -2,6 +2,8 @@
 // לשורת הרשימה, סטטוס (פעיל / לא פעיל / מחוק - אותם כללים כמו סינון ה-filterStatus של השרת), אפשרויות הסינון והמיון, וניסוח המידות.
 // בלי React ובלי imports עם alias (נקרא גם מ-node רגיל).
 
+import { modelDisplayName } from '../../../lib/modelDisplay.js';
+
 export const CATALOG_PAGE = 500; // תקרת limit של fields=summary בשרת
 
 /** השורה של רשימה. d = דגם מ-/api/dresses?fields=summary&counts=1 (ר' app/api/dresses/route.js, wantCounts). */
@@ -19,7 +21,8 @@ export function modelRow(d) {
   return {
     id: d.id,
     code,
-    name: d.name || (code != null ? `דגם ${code}` : 'ללא שם'),
+    // שם אמיתי, אחרת מספר הדגם (שהשרת כבר מציג ב-name לדגם בלי שם); בלי שם ובלי קוד: מקף - לעולם לא "ללא שם" (lib/modelDisplay.js)
+    name: String(d.name == null ? '' : d.name).trim() === '' ? (code != null ? `דגם ${code}` : '—') : modelDisplayName({ name: d.name, barcodePrefix: code }, { fallback: '—' }),
     cat: d.priceCategory || '',
     entry: d.entryDateToRepo || null,
     exit: d.exitDateFromRepo || null,

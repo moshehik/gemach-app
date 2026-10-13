@@ -5,11 +5,13 @@
 // ההזמנה בכרטיס (oc.patchOrder), ואז החלון נסגר עם הכתובת כדי שהקורא ימשיך לשליחה. הכתובת לא נשלחת לשום מקום אחר.
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
+import { useNoFill } from '@/lib/autofillGuard';
 import { DlgBtn, DlgButtons, DlgHead, Field, Inp } from '../OcUi';
 import { saveCustomerEmail } from './ocDocsActions';
 import { isValidEmail } from './ocDocsLogic';
 
 export function OcMissingEmailDialog({ oc, initial = '', close, fetchImpl }) {
+  const nf = useNoFill();
   const [value, setValue] = useState(initial);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,7 +28,7 @@ export function OcMissingEmailDialog({ oc, initial = '', close, fetchImpl }) {
     <>
       <DlgHead id="oc-dlg-t" title="כתובת מייל חסרה" sub="ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח)." />
       <Field label="כתובת מייל" icon="mail" htmlFor="oc-miss-mail">
-        <Inp id="oc-miss-mail" type="email" dir="ltr" placeholder="example@gmail.com" value={value} data-autofocus="true"
+        <Inp id="oc-miss-mail" inputMode="email" dir="ltr" {...nf('email')} placeholder="example@gmail.com" value={value} data-autofocus="true"
           onChange={(e) => { setValue(e.target.value); setMsg(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }} />
       </Field>

@@ -19,6 +19,21 @@ export const STAGE_META = {
 // "הזמנות שעודכנו" (UpdatedSection.js): מקטע מידע אחרון בדף ובציר; לא שלב של השרת ולכן לא ב-STAGE_META/STAGE_ORDER
 export const UPDATED_META = { key: 'updated', label: 'הזמנות שעודכנו', icon: 'pencil', color: '--c-order' };
 
+// שם הלקוחה בכותרת השורה הגדולה: תמיד שם מלא בלבד (פרטי + משפחה, או מה שיש מהם), בלי קוד הזמנה. קוד ההזמנה בשורה הקטנה
+// (orderCodeText). השרת (lib/schedule/loaders.js, updatedOrders.js) שולח "לא ידוע" כשאין שם בכלל; בכותרת מציגים
+// "ללא שם לקוחה" ולא את הקוד (החלטת הבעלים 12.10.2026).
+export const NO_CUSTOMER_NAME = 'ללא שם לקוחה';
+const SERVER_UNKNOWN_NAME = 'לא ידוע';
+export function customerDisplayName(customer) {
+  if (!customer) return NO_CUSTOMER_NAME;
+  const full = [customer.firstName, customer.lastName].map((s) => String(s || '').trim()).filter(Boolean).join(' ');
+  const name = full || String(customer.name || '').trim();
+  return !name || name === SERVER_UNKNOWN_NAME ? NO_CUSTOMER_NAME : name;
+}
+// קוד ההזמנה כחלק משורת הפרטים (השורה הקטנה): קטע ראשון, בלי אייקון ובלי תגית
+export const orderCodeText = (orderId) => 'הזמנה #' + orderId;
+export const ORDER_CODE_TIP = 'מספר הזמנה';
+
 // שעה בשעון ישראל (HH:MM) מרגע ISO
 export function timeText(iso) {
   if (!iso) return '';
@@ -147,7 +162,8 @@ export function subParts(stageKey, row, ctx = {}) {
       return [pb ? 'איסוף בסניף ' + pb : 'איסוף מקומי', count].filter(Boolean);
     }
     case 'event':
-      return ['אירוע ' + (row.eventDateHebrew || '—'), count].filter(Boolean);
+      // שלב "אירוע": בלי תאריך האירוע - הלשונית כבר מציגה אותו (החלטת הבעלים 12.10.2026)
+      return [count].filter(Boolean);
     case 'manret': {
       const addr = formatAddress(row.address);
       return [ctx.tbl ? '' : row.customer?.phone1 || '', addr, itemsCountText(row.dressCount)].filter(Boolean);
@@ -182,6 +198,23 @@ export function alertText(alert) {
   return alert.label || '';
 }
 
+// ריבוי סניפים: שבב "להעביר בין סניפים" בשורת ההכנה (row.transfers מ-lib/schedule/index.js). null כשאין. text = הטקסט הקצר בשורה, tip = כל הפריטים.
+export function transferChip(row) {
+  const list = row && Array.isArray(row.transfers) ? row.transfers : [];
+  if (!list.length) return null;
+  const groups = new Map();
+  for (const t of list) {
+    const k = t.from + '→' + t.to;
+    if (!groups.has(k)) groups.set(k, { from: t.from, to: t.to, n: 0 });
+    groups.get(k).n += 1;
+  }
+  const g = [...groups.values()];
+  const first = g[0];
+  const text = (first.n > 1 ? 'להעביר ' + first.n + ' פריטים' : 'להעביר פריט') + ' מ' + first.from + ' ל' + first.to + (g.length > 1 ? ' +' + (g.length - 1) : '');
+  const tip = list.map((t) => (t.modelName ? t.modelName + ' ' : '') + (t.size !== null && t.size !== undefined ? 'מידה ' + t.size + ' ' : '') + (t.barcode ? '(' + t.barcode + ') ' : '') + 'מ' + t.from + ' ל' + t.to).join(' · ');
+  return { text, tip, count: list.length };
+}
+
 // שם השלב בכותרת המקטע ובציר: שלב 1 = הזמנות שנרשמו באותו יום, לכן "הזמנות חדשות" (השרת שולח "הזמנה")
 const STAGE_LABEL_OVERRIDE = { order: 'הזמנות חדשות' };
 export function stageLabel(stage) {
@@ -195,6 +228,8 @@ export function subItems(stageKey, row, ctx = {}) {
   const add = (icon, text, tip) => { if (text || icon) items.push({ icon, text: text || '', tip }); };
   const cnt = itemsCountText(row.dressCount);
   const dress = () => { if (cnt) add('dress', cnt, 'פריטים בהזמנה'); };
+  // ברקוד בלו״ז (docs/schedule-barcode-plan.md): "2/3" = כמה מהפריטים הנדרשים כבר נרשם להם ברקוד. רק כשיש barcodeInfo בשורה (הגדרה פעילה).
+  const barcodes = () => { const bi = row.barcodeInfo; if (bi && bi.required) add('scan', bi.registered + '/' + bi.required, 'ברקודים שנסרקו'); };
   const branch = row.branch || '';
   const addr = formatAddress(row.address);
   switch (stageKey) {
@@ -219,19 +254,22 @@ export function subItems(stageKey, row, ctx = {}) {
     case 'prep':
       if (branch) add('pin', branch, 'סניף');
       dress();
+      barcodes();
       return items;
     case 'dout':
       add('truck', addr || 'כתובת חסרה', 'כתובת המשלוח');
       dress();
+      barcodes();
       return items;
     case 'pick': {
       const pb = row.pickupBranch || branch;
       if (pb) add('pin', pb, 'איסוף בסניף'); else add('userck', 'איסוף מקומי', 'איסוף מקומי');
       dress();
+      barcodes();
       return items;
     }
     case 'event':
-      add('cal', row.eventDateHebrew || '—', 'תאריך האירוע');
+      // בלי תאריך האירוע בשורה הקטנה של שלב "אירוע" (הלשונית כבר מציגה אותו; החלטת הבעלים 12.10.2026)
       dress();
       return items;
     case 'manret': {

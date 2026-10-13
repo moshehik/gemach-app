@@ -242,24 +242,24 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
       {view !== 'emp' ? (
         <div className="at-vw">
           <span className="lbl">תצוגה</span>
-          <div className="seg pill at-vseg" role="radiogroup" aria-label="תצוגה" style={{ '--n': 2, '--i': view === 'byemp' ? 1 : 0 }}>
+          <div className="seg pill at-vseg" data-guide-id="att.view-seg" role="radiogroup" aria-label="תצוגה" style={{ '--n': 2, '--i': view === 'byemp' ? 1 : 0 }}>
             <span className="pth" aria-hidden="true" />
-            <button type="button" role="radio" data-view="month" className={view === 'month' ? 'on' : ''} aria-checked={view === 'month'} onClick={() => go('month')}>לפי חודש</button>
-            <button type="button" role="radio" data-view="byemp" className={view === 'byemp' ? 'on' : ''} aria-checked={view === 'byemp'} onClick={() => go('byemp', { back: 'month' })}>לפי עובד</button>
+            <button type="button" role="radio" data-guide-id="att.view-month" data-view="month" className={view === 'month' ? 'on' : ''} aria-checked={view === 'month'} onClick={() => go('month')}>לפי חודש</button>
+            <button type="button" role="radio" data-guide-id="att.view-byemp" data-view="byemp" className={view === 'byemp' ? 'on' : ''} aria-checked={view === 'byemp'} onClick={() => go('byemp', { back: 'month' })}>לפי עובד</button>
           </div>
         </div>
       ) : null}
       {view !== 'byemp' ? (
         <>
-          <button type="button" className="ibtn" id="mPrev" aria-label="חודש קודם" data-tip="חודש קודם" onClick={() => setMonth(shiftMonth(per.y, per.m, -1))}><Ic id="arrr" /></button>
-          <div className="at-f"><span className="lbl">חודש</span><Combo id="month" label="חודש" value={per.m} options={MONTHS.map((n, i) => [i, n])} onChange={(v) => setMonth({ y: per.y, m: +v })} /></div>
-          <div className="at-f yr"><span className="lbl">שנה</span><Combo id="year" label="שנה" className="yr" value={per.y} options={years.map((y) => [y, String(y)])} onChange={(v) => setMonth({ y: +v, m: per.m })} /></div>
-          <button type="button" className="ibtn" id="mNext" aria-label="חודש הבא" data-tip="חודש הבא" onClick={() => setMonth(shiftMonth(per.y, per.m, 1))}><Ic id="arrl" /></button>
-          {isCur ? null : <button type="button" className="btn tgl" id="mNow" onClick={() => setMonth({ y: today.y, m: today.m })}>החודש</button>}
+          <button type="button" className="ibtn" id="mPrev" data-guide-id="att.prev-month" aria-label="חודש קודם" data-tip="חודש קודם" onClick={() => setMonth(shiftMonth(per.y, per.m, -1))}><Ic id="arrr" /></button>
+          <div className="at-f"><span className="lbl">חודש</span><Combo id="month" data-guide-id="att.month" label="חודש" value={per.m} options={MONTHS.map((n, i) => [i, n])} onChange={(v) => setMonth({ y: per.y, m: +v })} /></div>
+          <div className="at-f yr"><span className="lbl">שנה</span><Combo id="year" data-guide-id="att.year" label="שנה" className="yr" value={per.y} options={years.map((y) => [y, String(y)])} onChange={(v) => setMonth({ y: +v, m: per.m })} /></div>
+          <button type="button" className="ibtn" id="mNext" data-guide-id="att.next-month" aria-label="חודש הבא" data-tip="חודש הבא" onClick={() => setMonth(shiftMonth(per.y, per.m, 1))}><Ic id="arrl" /></button>
+          {isCur ? null : <button type="button" className="btn tgl" id="mNow" data-guide-id="att.now" onClick={() => setMonth({ y: today.y, m: today.m })}>החודש</button>}
         </>
       ) : null}
       {view !== 'month' && isMgr ? (
-        <div className="at-f"><span className="lbl">עובד</span><Combo id="emp" label="עובד" className="emp" value={empId || ''} options={empOptions} onChange={(v) => { setEmpId(String(v)); setPage(1); }} /></div>
+        <div className="at-f"><span className="lbl">עובד</span><Combo id="emp" data-guide-id="att.emp" label="עובד" className="emp" value={empId || ''} options={empOptions} onChange={(v) => { setEmpId(String(v)); setPage(1); }} /></div>
       ) : null}
       {view === 'byemp' ? (
         <div className="at-per"><b>{nm}</b><small>{months.length ? monthLabel(months[months.length - 1].y, months[months.length - 1].m) + ' – ' + monthLabel(months[0].y, months[0].m) : ''}</small></div>
@@ -296,7 +296,7 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
                 <td className="c" data-l="ס״ה"><Money v={r.pay} /></td>
                 <td className="c" data-l="נסיעות">{r.travels ? 'כן' : 'לא'}</td>
                 <td className="c at-act" data-l="פעולות"><span className="at-rt">
-                  <button type="button" className="ibtn at-open" aria-label={'עריכת נוכחות ' + r.name} data-tip="עריכת נוכחות העובד" onClick={() => go('emp', { empId: r.id, back: 'month' })}><Ic id="pencil" size="sm" /></button>
+                  <button type="button" className="ibtn at-open" data-guide-id={r === sorted[0] ? 'att.row-edit' : undefined} aria-label={'עריכת נוכחות ' + r.name} data-tip="עריכת נוכחות העובד" onClick={() => go('emp', { empId: r.id, back: 'month' })}><Ic id="pencil" size="sm" /></button>
                   <ToolButtons canXl tips={['ייצוא העובד לאקסל', 'הורדת דוח העובד (PDF)', 'הדפסת דוח העובד']} onPick={(md) => openWiz(md, r.id)} />
                 </span></td>
               </tr>,
@@ -325,7 +325,7 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
     }
     const done = monthD.status === 'ok' && rows.length > 0;
     return (
-      <section className="card at-card" aria-labelledby="atCt">
+      <section className="card at-card" aria-labelledby="atCt" data-guide-id="att.month-card">
         <div className="card-h"><div className="ico rose"><Ic id="clock" size="lg" /></div><h2 id="atCt">סיכום חודשי · {monthLabel(per.y, per.m)}</h2></div>
         <div className="tblw">
           <table className="rtbl at-tbl">
@@ -356,11 +356,11 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
     else if (!meAgg.shiftCount) inner = <div className="tblw"><div className="at-empty"><Ic id="cal" /><div>{monthD.status === 'error' ? monthD.error : 'אין משמרות בחודש זה'}</div></div></div>;
     else inner = <div className="tblw"><ShiftsTable shifts={meShifts.filter((s) => !s.isDeleted)} wages={false} /></div>;
     return (
-      <section className="card at-card at-me" aria-label="השעות שלי">
+      <section className="card at-card at-me" data-guide-id="hours.card" aria-label="השעות שלי">
         <div className="at-big">
           <span className="at-av" aria-hidden="true">{initials(e)}</span>
           <div><h2 style={{ margin: 0, fontSize: 20 }}>{e.name}</h2>{e.dept ? <div className="faint">מחלקה: {e.dept}</div> : null}</div>
-          <button type="button" className="btn primary at-edit" disabled={!meInfo} onClick={() => go('emp', { back: 'month' })}><Ic id="pencil" size="sm" />עריכת הנוכחות שלי</button>
+          <button type="button" className="btn primary at-edit" data-guide-id="hours.edit-mine" disabled={!meInfo} onClick={() => go('emp', { back: 'month' })}><Ic id="pencil" size="sm" />עריכת הנוכחות שלי</button>
           {meAgg.shiftCount ? (
             <div className="at-tot"><b>{hm(meAgg.minutes)}</b><small>סה״כ החודש (שעות) · {meAgg.shiftCount} משמרות{meAgg.issues ? ' · ' + meAgg.issues + ' תקלות' : ''}</small></div>
           ) : null}
@@ -406,7 +406,7 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
     }
     const done = byD.status === 'ok' && months.length > 0;
     return (
-      <section className="card at-card" aria-labelledby="atCt">
+      <section className="card at-card" aria-labelledby="atCt" data-guide-id="att.byemp-card">
         <div className="card-h"><div className="ico rose"><Ic id="clock" size="lg" /></div><h2 id="atCt">סיכום לפי עובד · {nm}</h2>{empInfo && empInfo.dept ? <span className="chip gray at-n">{empInfo.dept}</span> : null}</div>
         <div className="tblw">
           <table className="rtbl at-tbl">
@@ -466,11 +466,11 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
   // ----- כלי הכותרת (render()) -----
   let tools = null;
   if (view === 'emp') {
-    tools = <ToolButtons canXl={isMgr} disabled={disTools} tips={['ייצוא העובד לאקסל', 'הורדת דוח העובד (PDF)', 'הדפסת דוח העובד']} onPick={(md) => openWiz(md, self ? 'me' : empId)} />;
+    tools = <ToolButtons guide canXl={isMgr} disabled={disTools} tips={['ייצוא העובד לאקסל', 'הורדת דוח העובד (PDF)', 'הדפסת דוח העובד']} onPick={(md) => openWiz(md, self ? 'me' : empId)} />;
   } else if (view === 'byemp') {
-    tools = <ToolButtons canXl={isMgr} disabled={disTools || (!self && !empId)} tips={['ייצוא כל החודשים לאקסל', 'הורדת דוח כל החודשים (PDF)', 'הדפסת דוח כל החודשים']} onPick={(md) => openWiz(md, self ? 'me' : empId, { type: 'byemp', full: isMgr })} />;
+    tools = <ToolButtons guide canXl={isMgr} disabled={disTools || (!self && !empId)} tips={['ייצוא כל החודשים לאקסל', 'הורדת דוח כל החודשים (PDF)', 'הדפסת דוח כל החודשים']} onPick={(md) => openWiz(md, self ? 'me' : empId, { type: 'byemp', full: isMgr })} />;
   } else {
-    tools = <ToolButtons canXl={isMgr} disabled={disTools} tips={['ייצוא לאקסל (XL)', 'הורדת PDF', 'הדפסת דוח']} onPick={(md) => openWiz(md, null)} />;
+    tools = <ToolButtons guide canXl={isMgr} disabled={disTools} tips={['ייצוא לאקסל (XL)', 'הורדת PDF', 'הדפסת דוח']} onPick={(md) => openWiz(md, null)} />;
   }
 
   let body;

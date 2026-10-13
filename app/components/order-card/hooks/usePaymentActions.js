@@ -804,7 +804,9 @@ export default function usePaymentActions(oc, ui, D) {
   /** D4b פרטי בנק לזיכוי קיים. ctx: {source, href} */
   const openBank = useCallback(async (refund, ctx = {}) => {
     if (!refund) return null;
-    const r = await ui.openDialog(D.Bank, { api, refund, auto: !!ctx.source }, { labelledBy: 'oc-bank-t', className: 'oc-bank' });
+    // credit_bank_details_required: ההקפצה האוטומטית (ctx.source) חובה - אין "אמלא מאוחר יותר" ו-Esc/הרקע לא סוגרים. פתיחה ידנית נשארת רגילה.
+    const forced = !!ctx.source && !!(ocRef.current.settings && ocRef.current.settings.creditBankRequired);
+    const r = await ui.openDialog(D.Bank, { api, refund, auto: !!ctx.source, forced }, { labelledBy: 'oc-bank-t', className: 'oc-bank', dismissable: () => !forced });
     if (r && r.saved) ui.toast('info', 'פרטי הבנק נשמרו', '');
     if (r && ctx.source === 'exit') await continueExit(ctx.href);
     return r;

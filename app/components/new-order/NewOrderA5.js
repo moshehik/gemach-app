@@ -30,7 +30,7 @@ function ProgressBars({ ctl }) {
   const sums = stepSummaries(ctl);
   const doneOf = { customer: !!ctl.order.customerId, dates: ctl.datesFilled, delivery: true, items: ctl.activeItems.length > 0, summary: true, payment: !!ctl.saved };
   return (
-    <div className="pbars" id="pbars" aria-label="התקדמות ההזמנה">
+    <div className="pbars" id="pbars" data-guide-id="no.progress" aria-label="התקדמות ההזמנה">
       {STEP_KEYS.map((k, i) => {
         const cur = i === ctl.step && !ctl.saved;
         const done = (!!ctl.saved || i < ctl.step) && doneOf[k];
@@ -79,12 +79,12 @@ function Nav({ ctl, top = false }) {
     <>
       <div className={cls} data-sec="nav">
         {ctl.step > 0
-          ? <button type="button" className="btn" disabled={busy} onClick={() => ctl.setStep(ctl.step - 1)}><Ic n="arrr" />חזור</button>
-          : <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button>}
-        {ctl.step > 0 ? <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button> : null}
+          ? <button type="button" className="btn" data-guide-id="no.prev" disabled={busy} onClick={() => ctl.setStep(ctl.step - 1)}><Ic n="arrr" />חזור</button>
+          : <button type="button" className="btn ghost" data-guide-id="no.cancel" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button>}
+        {ctl.step > 0 ? <button type="button" className="btn ghost" data-guide-id="no.cancel" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button> : null}
         {next
-          ? <button type="button" className="btn primary" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
-          : <button type="button" className="btn primary" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>}
+          ? <button type="button" className="btn primary" data-guide-id="no.next" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
+          : <button type="button" className="btn primary" data-guide-id="no.finish" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>}
       </div>
     </>
   );
@@ -203,7 +203,7 @@ export default function NewOrderA5() {
         <HomeSprite />
         <div className={`app no-app${wide ? ' wide' : ''}${continuous ? ' no-flowapp' : ''}`} id="app">
           <div className="topbar">
-            <button type="button" className="back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
+            <button type="button" className="back" data-guide-id="no.back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
             <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
             <div className="tools">
               {/* "חזרה לאשף הישן" (6.10.2026): רק להנהלה ראשית / מתכנת (הרשומה new_order ב-lib/uiVariantScreens.js); הטולטיפ - usePageTooltip של הדף (data-tip) */}

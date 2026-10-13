@@ -63,7 +63,7 @@ t('תיקונים: כתובת הייצוא / ההדפסה מקודדת (encodeUR
   lacks(alterations, '&search=${search}');
 });
 t('בוחר לקוח: הודעת שרת + רמז במצב ריק', () => {
-  has(selector, 'setNotice('); has(selector, 'אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה או עיר');
+  has(selector, 'setNotice('); has(selector, 'אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה, ת"ז או עיר'); // + ת"ז: feature/kiosk-a5-skin (חיפוש לקוח לפי ת"ז בבורר)
 });
 
 t('חובות (refunds): ברקוד של 7 ספרות כבר לא נשלח כטלפון; טלפון לפי classifyQuery', () => {

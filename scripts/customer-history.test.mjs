@@ -396,7 +396,7 @@ test('every Customer column that can appear in audit rows has a Hebrew label', (
   const schema = fs.readFileSync(path.join(here, '..', 'prisma', 'schema.prisma'), 'utf8');
   const block = schema.split(/^model Customer \{/m)[1].split(/^\}/m)[0];
   const cols = block.split('\n').map((l) => l.trim()).filter((l) => /^[a-z][A-Za-z0-9]*\s+\S+/.test(l) && !l.startsWith('//') && !l.startsWith('@@'))
-    .map((l) => l.split(/\s+/)[0]).filter((c) => !['orders', 'payments', 'refunds'].includes(c));
+    .map((l) => l.split(/\s+/)[0]).filter((c) => !['orders', 'payments', 'refunds', 'consents'].includes(c));
   assert.ok(cols.length > 25, `parsed ${cols.length} columns`);
   const missing = cols.filter((c) => !CUSTOMER_FIELD_LABELS[c]);
   assert.deepEqual(missing, []);
