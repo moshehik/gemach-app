@@ -9,11 +9,13 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ScreenVariantScope, useCanSelfSwitch } from '../UiVariantContext';
+import { ScreenVariantScope, useCanSelfSwitch, useUiVariant } from '../UiVariantContext';
 import PageVariantToggle from './PageVariantToggle';
+import ReturnToNewDesignButton from './ReturnToNewDesignButton';
 
 export function CornerToggle({ screen, placement = 'corner' }) {
   const allowed = useCanSelfSwitch(screen);
+  const shellVariant = useUiVariant('shell');
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   if (!allowed || !mounted || typeof document === 'undefined') return null;
@@ -21,7 +23,11 @@ export function CornerToggle({ screen, placement = 'corner' }) {
   return (
     <>
       <div className="gm-pvt-spacer" aria-hidden="true" />
-      {createPortal(<PageVariantToggle screen={screen} placement={placement} />, document.body)}
+      {/* דף ישן בתוך המעטפת החדשה (אין כותרת ישנה): הלחצן הבולט "חזרה לממשק החדש" בפינה (12.10.2026); במעטפת הישנה הלחצן בכותרת, והאייקון של המסך נשאר */}
+      {createPortal(
+        shellVariant === 'a5' ? <ReturnToNewDesignButton placement="corner" /> : <PageVariantToggle screen={screen} placement={placement} />,
+        document.body,
+      )}
     </>
   );
 }

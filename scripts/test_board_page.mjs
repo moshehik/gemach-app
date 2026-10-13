@@ -17,7 +17,9 @@ process.env.SPDIR = process.env.SPDIR || path.join(HERE, 'schedule-tests');
 register(pathToFileURL(path.join(HERE, 'schedule-tests', 'hooks.mjs')).href);
 const L = await import('../app/components/board/boardLogic.js');
 
-const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+// data-guide-id הם סימוני מדריך האתר של עוזר ה-AI (lib/aiGuide) ולא חלק מהמראה/ההתנהגות שהבדיקה נועלת - מוסרים לפני ההשוואה לטקסט המקור
+const stripGuide = (s) => s.replace(/ data-guide-id=(?:"[^"]*"|\{[^}]*\})/g, '');
+const read = (p) => stripGuide(readFileSync(new URL(p, import.meta.url), 'utf8'));
 // הקוד בלי הערות (ההערות מתעדות מה הוסר - לא קוד חי)
 const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 const ROUTE = read('../app/board/page.js');
@@ -281,7 +283,7 @@ await t('BD-O3: חלון "הזמנות ליום" נמחק לגמרי - הקבצ�
   hasNot(CSS, /bd-day|bd-dl\b|bd-dh\b|bd-rent|bd-menu|bd-rt\b|bd-info|bd-or\b|bd-cf|bd-scrim|bd-item|bd-dup|#toast/, 'סטייל של החלונות נשאר');
   // הרכיבים המשותפים שחלון ההשכרה של הלוח הסתמך עליהם - נשארים (משמשים את /orders, /rentals)
   assert.ok(existsSync(new URL('../components/orders/useRentalReturn.js', import.meta.url)));
-  has(LEGACY, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui: LEGACY_UI \}\)/);
+  has(LEGACY, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui: LEGACY_UI(, initialBarcode, onSwitchOrder, onItemReturned)? \}\)/);
   assert.ok(existsSync(new URL('../app/components/gate/NoAccessCard.js', import.meta.url)));
   assert.ok(existsSync(new URL('../app/components/schedule/MarkDialogs.js', import.meta.url)), 'שימוש משותף בלו״ז');
 });

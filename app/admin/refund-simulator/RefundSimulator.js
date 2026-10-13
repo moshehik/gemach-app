@@ -655,7 +655,7 @@ export default function RefundSimulator() {
             ) : (
               <>
                 {/* 1 - ההזמנה */}
-                <div className="rp-sec">
+                <div className="rp-sec" data-guide-id="refsim.order">
                   <div className="rp-sec-title"><span className="rs-num">1</span>ההזמנה</div>
                   <div className="field">
                     <label htmlFor="rs-order">מתי בוצעה ההזמנה</label>
@@ -709,11 +709,11 @@ export default function RefundSimulator() {
                     <ItemCard key={it.key} item={it} index={i} cats={cats} priceList={priceList} eventDate={eventD}
                       onChange={updateItem} onDuplicate={duplicateItem} onRemove={removeItem} canDuplicate={items.length < MAX_ITEMS} />
                   ))}
-                  <button type="button" className="btn btn-secondary btn-sm rs-add" onClick={addItem} disabled={items.length >= MAX_ITEMS}><Icon id="i-plus" />הוסף שמלה</button>
+                  <button type="button" className="btn btn-secondary btn-sm rs-add" data-guide-id="refsim.add-item" onClick={addItem} disabled={items.length >= MAX_ITEMS}><Icon id="i-plus" />הוסף שמלה</button>
                 </div>
 
                 {/* 4 - הכללים */}
-                <div className="rp-sec">
+                <div className="rp-sec" data-guide-id="refsim.rules">
                   <div className="rp-sec-title">
                     <span className="rs-num">4</span>הכללים
                     <span className={`rp-src badge ${loadState === 'ok' ? 'badge-success' : loadState === 'failed' ? 'badge-warning' : 'badge-neutral'}`}>
@@ -800,7 +800,7 @@ export default function RefundSimulator() {
           </div>
 
           {ready && (
-            <ApplyPanel policy={policy} pol={pol} baseline={baseline} names={names} loadState={loadState}
+            <ApplyPanel guide="refsim.apply" policy={policy} pol={pol} baseline={baseline} names={names} loadState={loadState}
               onApplied={(p) => setBaseline(p)} onReset={() => baseline && setPolicy(baseline)} />
           )}
         </aside>

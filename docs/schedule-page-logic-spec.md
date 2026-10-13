@@ -99,6 +99,7 @@
 קיימות ונקראות: `enable_deliveries` (מכבה 5/9), `enable_alterations` (`'false'` מכבה 2), `branches_enabled` + `branch_list` (רשימת הסניפים לבורר, נשלחת ב-`settings.branches`), `late_return_threshold_days`, `standard_pickup_hours`, `non_working_days_extra` (רשימת הבעלים — הכלל האחיד), `delivery_*` (בתוך `lib/deliveries.js`).
 חדשות (שורה חסרה = ברירת המחדל): `schedule_stage_<key>_enabled` (`'false'` מכבה), `schedule_stage_<key>_days` (repair/prep/pick/manret, גודל בימי עסקים, 0–60), `schedule_stage_<key>_shift` (`none`/`am`/`pm`/`all` — תגית בלבד, S08), `schedule_max_scan_rows` (3000). **אין** `schedule_skip_chag_all_stages` (בוטל — כלל אחיד).
 כשייווצרו: בשני ה-DB בו-זמנית, לרשום ב-`lib/settingsMetadata.js` (`SETTINGS_HEBREW_NAMES`/`NOTES`/`ORDER`/`BOOLEAN_KEYS`/`NUMBER_KEYS`) ו-`app/lib/settingsValidation.js`.
+**עדכון 12.10.2026:** מסך הכתיבה נבנה - `ScheduleSettingsDialog` + `GET/PUT /api/schedule/settings` (ר' docs/branches-plan.md סעיף 7); הכתיבה בהנהלה ראשית / מתכנת בלבד (`checkAuth('הנהלה ראשית')`).
 **החלטה B3 — מי כותב הגדרות שלבים:** רק הנהלה ראשית. בשלב זה אין שום כתיבה (הנתיב הוא GET בלבד); כשייבנה מסך ההגדרות של השלבים, הכתיבה תעבור שער `isHeadManagement` (כמו `/admin/settings`), לא `page:schedule`.
 **החלטה A2:** אין מפתח `schedule_stage_order_days` — שלב 1 אינו `offsetConfigurable` וערך כזה, אם ייכתב, מתעלמים ממנו (בדיקה: "A2: stage 1 has no days from event").
 

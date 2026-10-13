@@ -329,7 +329,7 @@ const NEW_PLACES = [
   ['app/components/errorReport/ErrorReportWindow.js', 'error_report', 'window'],
   ['app/components/board/BoardPage.js', 'board', 'header'],
   ['app/components/home/HomeA5.js', 'home', 'hero'],
-  ['app/components/AppShell.js', 'shell', 'topbar'],
+
 ];
 await t('האייקון בגרסה החדשה: בכותרת של כל דף חדש (ובחלון הדיווח בשתי הכותרות); במעטפת הישנה - בסרגל העליון', () => {
   for (const [f, screen, placement] of NEW_PLACES) {
@@ -338,12 +338,35 @@ await t('האייקון בגרסה החדשה: בכותרת של כל דף חד�
     assert.match(c, /import PageVariantToggle from '[^']*variant\/PageVariantToggle'/, f);
   }
   assert.equal((code(read('app/components/errorReport/ErrorReportWindow.js')).match(/<PageVariantToggle screen="error_report"/g) || []).length, 2);
-  assert.match(read('app/components/menu/MenuA5Shell.js'), /\/api\/me\/ui-variant\/shell/, 'התפריט החדש שומר את "האתר הישן"');
+  // 12.10.2026: "האתר הישן" מחליף את כל המסכים לישן (POST /api/me/ui-variant), לא רק את המעטפת
+  assert.match(code(read('app/components/menu/MenuA5Shell.js')), /fetch\('\/api\/me\/ui-variant', \{/, 'התפריט החדש שומר את "האתר הישן" לכל המסכים');
+});
+await t('"חזרה לממשק החדש" (12.10.2026): לחצן בולט בכותרת המעטפת הישנה בלבד; POST /api/me/ui-variant { value: a5 }; לא בממשק החדש', () => {
+  const shell = code(read('app/components/AppShell.js'));
+  assert.match(shell, /<ReturnToNewDesignButton placement="topbar" \/>/);
+  assert.ok(!/PageVariantToggle/.test(shell), 'אייקון המעטפת הוחלף בלחצן הבולט');
+  const btn = code(read('app/components/variant/ReturnToNewDesignButton.js'));
+  assert.match(btn, /useCanSelfSwitch\('shell'\)/);
+  assert.match(btn, /if \(!allowed\) return null;/);
+  assert.match(btn, /fetch\('\/api\/me\/ui-variant', \{/);
+  assert.match(btn, /JSON\.stringify\(\{ value: 'a5' \}\)/);
+  assert.match(btn, /window\.location\.reload\(\)/);
+  assert.match(btn, /isPageDirty/);
+  assert.equal(read('lib/pageVariantToggle.js').match(/RETURN_TO_NEW_LABEL = '([^']+)'/)[1], 'חזרה לממשק החדש');
+  for (const dir of ['app/components/menu', 'app/components/home', 'app/components/profile', 'app/components/order-card', 'app/components/new-order', 'app/components/customer-card']) {
+    for (const f of readdirSync(path.join(ROOT, dir))) {
+      if (!/\.js$/.test(f)) continue;
+      assert.ok(!/ReturnToNewDesignButton/.test(read(dir + '/' + f)), dir + '/' + f);
+    }
+  }
+  assert.match(read('app/components/variant/pageVariantToggle.css'), /\.gm-pvt-return-btn\{[^}]*background:var\(--gm-gbtn\)/);
 });
 await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב כל דף ישן; חלון הדיווח הישן - מעל החלון כשהוא פתוח', () => {
   const frame = code(read('app/components/variant/VariantFrame.js'));
   assert.match(frame, /variant === 'legacy' \? <CornerToggle screen=\{screen\} \/> : null/);
-  assert.match(frame, /createPortal\(<PageVariantToggle screen=\{screen\} placement=\{placement\} \/>, document\.body\)/);
+  // 12.10.2026: דף ישן בתוך המעטפת החדשה - הלחצן הבולט "חזרה לממשק החדש"; במעטפת הישנה - האייקון של המסך (והלחצן בכותרת)
+  assert.match(frame, /shellVariant === 'a5' \? <ReturnToNewDesignButton placement="corner" \/> : <PageVariantToggle screen=\{screen\} placement=\{placement\} \/>/);
+  assert.match(frame, /createPortal[(]/);
   const legacyMounts = [
     ['app/profile/page.js', /<VariantFrame screen="profile" variant=\{variant\}>[\s\S]*<LegacyProfilePage \/>/],
     ['app/admin/page.js', /<VariantFrame screen="admin_hub" variant="legacy">\s*<LegacyAdminPage showSite=\{showSite\} \/>/],
@@ -502,7 +525,11 @@ const PINNED_BLOBS = {
   // + המשך אוטומטי כשתשלום שאינו אשראי משלים את הסכום המלא (דיווח 67c0d652, מאחורי new_order_auto_finish_when_paid; כבוי = אפס שינוי)
   // + מעבר אוטומטי לשדה הבא בשדות באורך קבוע / אחרי בחירת עיר ורחוב (דיווח c89234ec, מאחורי auto_advance_fixed_fields; כבוי = אפס שינוי)
   // + נוסח הסכמת הדיוור המאוחד "מאשר/ת קבלת דיוורים" (R06, PR #249) - טקסט בלבד
-  'app/orders/new/LegacyNewOrderPage.js': 'a9c14fc0f36cb3b5ae0341cd869b7596f85849fe',
+  // + שדות הלקוח החדש בלי היסטוריית הצעות של הדפדפן (name אקראי לכל טעינה דרך useNoFill; scripts/test_email_autofill_guard.mjs) - מאפיינים בלבד
+  // + סימון pickerFor=new-order בחיפוש הטלפון ובבורר CustomerSelector (הגדרה new_order_customer_list_filter; ברירת מחדל all = אפס שינוי)
+  // LegacyProfilePage.js: נעול כאן ב-hash במקום RESTORED_EXCEPTIONS - אותו תחליף של "שם מלא" (ר' למעלה) + שדות הפרופיל בלי היסטוריית הצעות של הדפדפן (name אקראי דרך useNoFill, המטפל קורא fieldOf; scripts/test_email_autofill_guard.mjs)
+  'app/profile/LegacyProfilePage.js': '21ba42891a5c4ebbfbc6704f8d2de45938fef26e',
+  'app/orders/new/LegacyNewOrderPage.js': 'fb8d0e4598e97860f55063e8346dfd89d081b7f1',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

@@ -60,6 +60,7 @@ model Customer {
   orders    Order[]
   payments  Payment[]
   refunds   Refund[]
+  consents  CustomerConsent[] // יומן הסכמות (תקנון / דיוור / פרטיות) - ר' CustomerConsent ו-docs/customer-consents.md
   updatedAt DateTime  @updatedAt
 
   @@index([phone1])
@@ -333,6 +334,8 @@ model DressItem {
   deletedAt       DateTime? // תאריך_מחיקה
   orderItems      OrderItem[]
   updatedAt       DateTime    @updatedAt
+  branch          String? // סניף נוכחי של הפריט הפיזי (multi_branch_enabled; ריק = לא שויך, ר' docs/branches-plan.md)
+  locationBeforeRental String? // 'רזרבה' / 'מחסן' כשהפריט יצא להשכרה באישור (rentals/confirm, רק כש-reserve_return_alert_enabled); מתנקה בהחזרה. ר' docs/branches-plan.md
 
   @@index([dressModelId])
   @@index([dressBarcode])
@@ -340,6 +343,7 @@ model DressItem {
   @@index([isDeleted])
   @@index([notInUse])
   @@index([inRepair])
+  @@index([branch])
 }
 
 model Order {
@@ -843,6 +847,31 @@ model Attachment {
   createdAt   DateTime @default(now())
 }
 
+// יומן הסכמות של לקוחות (תקנון / דיוור שיווקי / מדיניות פרטיות) - ראיה משפטית, append-only: שינוי דעה = שורה חדשה, לא עדכון.
+// הטבלה לא קיימת עדיין באף DB: ה-SQL הידני ב-prisma/migrations-pending/2026-10-12-customer-consent.sql, להרצה ידנית בשני הגמ"חים
+// אחרי אישור (לעולם לא db push). עד אז הקוד ממשיך לעבוד (lib/customerConsent.js: כשל כתיבה ליומן נרשם בקונסול ולא מכשיל שמירת לקוח).
+// כל השדות מחושבים בשרת בלבד (createdAt / recordedByEmployeeId מהעוגייה המאומתת / documentVersion / wording) - אף אחד מהם לא נלקח מגוף הבקשה.
+// לא עוברת בתוסף ה-AuditLog (נכתבת ב-createMany) - היא עצמה יומן.
+model CustomerConsent {
+  id                   String   @id @default(uuid())
+  customerId           String
+  customer             Customer @relation(fields: [customerId], references: [id])
+  kind                 String // 'terms' | 'marketing' | 'privacy'
+  granted              Boolean // true = אישרה / חתמה; false = סירבה / ביטלה
+  channel              String // 'staff' (עובד/ת במערכת) | 'kiosk' (עמדת לקוח בחנות) | 'public' (קישור ציבורי, עתידי)
+  method               String // 'staff_recorded' (עובד/ת רשמה בשם הלקוחה) | 'customer_self' (הלקוחה עצמה, בעמדה / בקישור)
+  surface              String? // המסך שבו נרשם: 'new-order' | 'new-customer' | 'customer-card' | 'kiosk-register' ...
+  recordedByEmployeeId String? // עובד/ת מחובר/ת (עוגייה מאומתת); בעמדה / קישור ציבורי - ריק
+  documentVersion      String? // תקנון: sha256 של הקובץ שהיה בתוקף; פרטיות: sha256 (12 תווים) של הטקסט שהוצג; דיוור: מזהה גרסת הנוסח
+  documentRef          String? // תקנון: מזהה ה-Attachment של הקובץ (כדי לשחזר בדיוק מה הוצג)
+  wording              String? // דיוור: הנוסח המלא שהוצג ללקוחה בעת ההסכמה
+  meta                 String? // JSON חופשי לראיה (למשל מזהה עמדה)
+  createdAt            DateTime @default(now())
+
+  @@index([customerId, kind, createdAt])
+  @@index([kind, granted, createdAt])
+}
+
 // הוק (הוראת קבע) בנדרים פלוס - לא קשור ל-Customer.hokBank*/Order.hokDetails
 // (אלו "38 בקשות" - הוראת קבע בנקאית, מנגנון שונה לגמרי). זהו רישום של הוראת
 // קבע שנוצרה מול Nedarim Plus (DebitKeva.aspx, ר' app/lib/nedarim.js) - בדר"כ
@@ -924,4 +953,37 @@ model DeliveryJoin {
   updatedAt       DateTime @default(now())
 
   @@index([joinedToOrderId])
+}
+
+// הגבלת ניסיונות סיסמה בצד השרת (POST /api/auth/verify-pin): מונה כשלונות + נעילה מדורגת לכל מפתח
+// ("ip:<כתובת>" / "pe:<עובד או *>:<כתובת>"). נגיש רק דרך raw SQL (lib/authThrottle.js) - בכוונה לא דרך תוסף היומן.
+// אפוקה במילישניות ולא DateTime (בלי שגיאות אזור-זמן). SQL ידני: prisma/migrations-pending/2026-10-11-auth-throttle.sql;
+// כשהטבלה חסרה הקוד "נכשל פתוח" (אין הגבלה, אין 500). לוגיקה: lib/authThrottleLogic.js, docs/verify-pin-rate-limit.md.
+model AuthThrottle {
+  key           String  @id
+  count         Int     @default(0)
+  level         Int     @default(0)
+  lockedUntilMs BigInt?
+  updatedAtMs   BigInt
+  version       Int     @default(0)
+
+  @@index([updatedAtMs])
+}
+
+// אירועי העמדה הציבורית (/station) למדדי ההמרה של /admin/station-analytics. הטבלה נוצרת ידנית (scripts/station_event_table.sql) - לעולם לא db push.
+// הקוד ניגש אליה ב-SQL גולמי בלבד (lib/stationAnalytics/*), ולכן אין שימוש במודל Prisma הזה בזמן ריצה; ההצהרה כאן לתיעוד ולמניעת סחף סכמה.
+// type: visit | availability | form_start (אנונימיים, sidHash בלבד) | register (customerId פנימי, נכתב בשרת). dayKey = יום בישראל YYYY-MM-DD.
+model StationEvent {
+  id         String   @id @default(uuid())
+  type       String
+  channel    String // public | kiosk
+  dayKey     String
+  at         DateTime @default(now())
+  sidHash    String?
+  customerId String?
+  outcome    String?
+
+  @@unique([dayKey, type, channel, sidHash])
+  @@index([dayKey, type])
+  @@index([customerId])
 }

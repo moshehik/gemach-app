@@ -173,3 +173,34 @@
 שוב, ו-`doGet?action=status&requestId=...` אומר אם בקשה הסתיימה. בתשובה מפוקפקת (HTML / ניתוק / timeout) האתר שואל את הסקריפט:
 הצליח - מדווחים הצלחה; לא ידוע - עד 3 ניסיונות; סקריפט ישן בלי תמיכה - לא מנסים שוב. שגיאה חד-משמעית (כתובת לא תקינה, מכסה יומית) לא
 מנוסה שוב. `doGet?action=quota` מחזיר את מכסת המיילים היומית שנותרה (חשבון Gmail רגיל = 100 נמענים ליום, משותף לכל האתרים).
+
+## מרכז המיילים - `/admin/email-center` (2026-10-12)
+
+עריכת כל המיילים מהממשק: נושא ושורות בצורת "דברי דואר" (שדות מוחלפים כצ'יפים), הפעלה/כיבוי, תזמון (מיד / אחרי X ימים מההזמנה / X ימים לפני האירוע / X ימים אחרי ההחזרה), נתונים קבועים (שם גמ"ח, כתובת, טלפון, לוגו, חתימה) ודיוורים (רק למאשרי דיוור, עם קישור הסרה). מיפוי מלא, אחסון, תזמון, מגבלות ובטיחות: [docs/email-catalog.md](docs/email-catalog.md). הקוד: `lib/emailRegistry.js` (מה ניתן לערוך), `lib/emailConfig.js` (אחסון), `lib/emailCampaign.js` (דיוורים), `app/components/email-center/`. כל מייל חדש חייב רשומה גם ב-`emailRegistry.js` (בדיקה: `node scripts/email-center-tests/run.mjs`). בסביבת פיתוח `EMAIL_DRY_RUN=1` מונע שליחה אמיתית.
+
+## שליחה דרך Hostinger Mail API (נווה יעקב, 2026-10-13)
+
+כשבפרויקט Vercel מוגדרים `HOSTINGER_MAIL_TOKEN` (טוקן Bearer מ-hPanel) ו-`HOSTINGER_MAILBOX_ID` (mailboxResourceId של התיבה, מ-`GET https://api.mail.hostinger.com/api/v1/me`),
+`postToMailer` ב-[lib/mailer.js](lib/mailer.js) שולח מייל רגיל דרך [lib/hostingerMail.js](lib/hostingerMail.js) (`POST /api/v1/mailboxes/{id}/send`) מהתיבה בדומיין, ולא דרך Gmail.
+- משתני סביבה הם לפי פרויקט: מגדירים **רק** בפרויקט `gmach-neve-yaakov`. בגמח הראשי הם לא קיימים והשליחה נשארת Apps Script.
+- נשארים ב-Apps Script: כרטיס הזמנה (המרת HTML ל-PDF, `action`), וקבצים שיעדם דרייב.
+- 401/403/429 = המייל לא יצא, נופלים ל-Apps Script. 422/5xx/timeout/ניתוק = כשל (בלי ניסיון חוזר, מניעת כפילות).
+- בדיקות: `node scripts/email-center-tests/hostinger-mail.test.mjs` (נכלל ב-`run.mjs`).
+- ה-API תומך גם ב-webhook `message.received` למיילים נכנסים (עדיין לא ממומש באתר).
+
+### עדכון (2026-10-13, PR שני): כרטיס הזמנה והתראות גיבוי
+- **כרטיס הזמנה (`action: sendGemachOrderEmail`)** עובר גם הוא ל-Hostinger: [lib/hostingerMail.js](lib/hostingerMail.js) (`orderCardToRegularPayload`) הופך אותו למייל רגיל. ה-PDF הוא הקובץ שהדפדפן כבר שלח (`pdfBase64`), ואם אין, נוצר בשרת מדוח ההזמנה ב-`renderPdf` ([lib/pdf.js](lib/pdf.js), Chromium). הנתיב `/api/orders/[id]/email` קיבל `outputFileTracingIncludes` של Chromium ב-[next.config.mjs](next.config.mjs). יצירת PDF שנכשלה = שגיאה (המייל לא יצא).
+- **נשאר ב-Apps Script רק:** העלאה לדרייב (`sendMode`/`dest` = `drive`/`both`) ופעולות אחרות.
+- **התראת כשל גיבוי** ([scripts/lib/backupAlert.js](scripts/lib/backupAlert.js), רץ ב-GitHub Actions): יוצאת מ-Hostinger רק כשמוגדרים סודות הרפוזיטורי `HOSTINGER_MAIL_TOKEN_ORG2` + `HOSTINGER_MAILBOX_ID_ORG2` (המספר = מספר הארגון). בלעדיהם היא נשארת ב-Apps Script. הגמח הראשי לא מושפע.
+- **מכסות:** תיבת Hostinger מוגבלת לפי החבילה (Business Starter 1,000 ליום, Standard/Premium 3,000, ניסיון 100; עד 100 נמענים למייל). דיוורים גדולים (אלפים) שייכים לשירות דיוור ייעודי.
+- **אין נפילה ל-Gmail (החלטת הבעלים, 2026-10-13):** כשהמשתנים מוגדרים, כל כשל בשליחה (טוקן/הרשאה/קצב/PDF/רשת) מוחזר כשגיאה ונרשם ב-`EmailLog` עם `status=error` לטיפול ידני, ולא יוצא מ-Gmail. חריג יחיד: שליחה עם העלאה לדרייב נשארת ב-Apps Script.
+
+## תיבת מייל באתר (/admin/mailbox, 2026-10-14)
+
+מסך תיבת דואר מלא לתיבת Hostinger של האתר (נווה יעקב; בגמח הראשי ההודעה "לא מחוברת"), **בעיצוב הפלטה החדש** (ערכת `a5-list`, כמו שאר מסכי הניהול): כותרת עם חץ חזרה, חיפוש חצי רוחב, לשוניות = תיקיות (נכנסים / נשלחו / טיוטות / אשפה...) עם ספירת לא נקראו, כרטיס עם לחצן "מייל חדש", רשימה עם עימוד 50 ושורות / טבלה, תאריכים עבריים. לחיצה על שורה פותחת חלון קריאה (`.dlg.mailwin` כהה); תשובה / תשובה לכולם / העברה / סימון / לא נקרא / מחיקה (לאשפה; מהאשפה סופית, באישור כהה), הורדת קבצים מצורפים, וכתיבת מייל חדש עם קבצים (עד 3MB ביחד) ובחירת נמענים מרשימת הלקוחות.
+- קוד: [app/components/mailbox/](app/components/mailbox/) - `MailboxA5.js` (דף: `A5Page` + `A5ListPage` + `A5List` במצב שרת), `MbDialogs.js` (חלונות קריאה וכתיבה), `mailboxLogic.js` (לוגיקה טהורה), `mailboxApi.js`, `mailbox.css`; הדף [app/admin/mailbox/page.js](app/admin/mailbox/page.js) הוא עטיפה דקה. השרת: [lib/hostingerMailbox.js](lib/hostingerMailbox.js) (עטיפת ה-API) + [app/api/admin/mailbox/route.js](app/api/admin/mailbox/route.js) (GET `action=status|folders|messages|message|attachment|customers`, POST `action=send|flags|move|delete`).
+- בדיקות: `scripts/email-center-tests/mailbox.test.mjs` (API) + `mailbox-logic.test.mjs` (לוגיקה); הדף נכלל ב-`scripts/test_a5_list_header.mjs` (כותרת אחידה דרך `A5ListPage`).
+- הרשאה: הנהלה ראשית בלבד, **fail-closed** גם כשחובת ההתחברות כבויה (התיבה חושפת את כל התכתובת). הטוקן נשאר בשרת.
+- אבטחה: גוף HTML מוצג ב-iframe עם `sandbox` (בלי סקריפטים) ו-CSP; תמונות מרוחקות חסומות עד "הצג תמונות"; קבצים מצורפים תמיד מורדים (`attachment`, `nosniff`); נתיב תיקייה ו-uid מאומתים לפני שהם נכנסים ל-URL.
+- שליחה מהמסך נרשמת ב-`EmailLog` (גם כשל), והעתק נשמר ב-`INBOX.Sent` על ידי Hostinger; שם השולח = `resolveSenderName()` (אותו שם כמו שאר מיילי האתר). מייל בלי תוכן דורש אישור. אין שמירת טיוטות ואין תמונות inline (`cid:`).
+- אין נפילה ל-Gmail: כמו שאר השליחה.

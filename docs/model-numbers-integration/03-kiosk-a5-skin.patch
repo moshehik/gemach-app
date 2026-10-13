@@ -1,0 +1,68 @@
+diff --git a/app/components/kiosk/kioskLogic.js b/app/components/kiosk/kioskLogic.js
+index f7cbb1cf..59e2523e 100644
+--- a/app/components/kiosk/kioskLogic.js
++++ b/app/components/kiosk/kioskLogic.js
+@@ -4,23 +4,19 @@
+ 
+ import { HDate, Sedra, Locale, HebrewCalendar, gematriya } from '@hebcal/core';
+ import { HEBREW_DAYS } from '../../../lib/hebrewDate.js';
++import { modelDisplayName, modelHasRealName as sharedModelHasRealName } from '../../../lib/modelDisplay.js';
+ 
+ // הדוחות המודפסים נכתבים ל-document.write של חלון חדש: כל ערך שהוזן בידי משתמש (שם דגם, מידה, חיפוש) חייב escape, אחרת שם עם HTML רץ בהקשר האפליקציה
+ export const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ 
+ // דגמים שנשמרו עם השם הזמני "ללא שם" - ללקוח עדיף מספר הדגם. שימו לב: \b ב-JS לא עובד על אותיות עברית.
+ export function getModelDisplayName(model) {
+-  const rawName = (model.name || '').trim();
+-  if (rawName && !rawName.startsWith('ללא שם')) return rawName;
+-  return model.barcodePrefix ? String(model.barcodePrefix) : rawName;
++  return modelDisplayName(model, { fallback: '' }); // lib/modelDisplay.js: שם אמיתי, אחרת מספר הדגם
+ }
+ 
+ // שם תיאורי אמיתי: לא ריק, לא "ללא שם", ולא בדיוק מספר הדגם (חלק מהדגמים המיובאים מאקסס נשמרו עם name="316" ו-barcodePrefix=316)
+ export function modelHasRealName(model) {
+-  const rawName = (model.name || '').trim();
+-  if (!rawName || rawName.startsWith('ללא שם')) return false;
+-  if (model.barcodePrefix != null && rawName === String(model.barcodePrefix)) return false;
+-  return true;
++  return sharedModelHasRealName(model); // lib/modelDisplay.js (גם "אין שם", "דגם <קוד>" ושם = קוד אינם שם אמיתי)
+ }
+ 
+ // אותיות הדגם לעיגול כשאין תמונה: אות ראשונה משתי המילים הראשונות; מילה בודדת שהיא מספר מלא - עד 3 ספרות
+diff --git a/lib/publicKiosk/catalog.js b/lib/publicKiosk/catalog.js
+index 8c0cb649..19438007 100644
+--- a/lib/publicKiosk/catalog.js
++++ b/lib/publicKiosk/catalog.js
+@@ -4,6 +4,8 @@
+ // כן יוצאים: שם הדגם, מספר הדגם (barcodePrefix - המספר שהלקוחה אומרת "דגם 511"), קטגוריית מחיר, תמונה (רק אם hide_dress_images כבוי), מידות.
+ // מלאי/זמינות (qty, available, inStock) יוצאים אך ורק כש-showInventory דלוק - ואז רק לפי תאריך שנבחר, וכמות מוגבלת ל-QTY_CAP.
+ import prisma from '@/app/lib/prisma';
++import { modelDisplayName } from '@/lib/modelDisplay';
++import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
+ import { modelMatchesQuery } from '@/lib/kioskModelSearch';
+ 
+ export const QTY_CAP = 5;        // כמות פנויה מוצגת עד 5 ("5" = 5 ומעלה) - לא חושפים כמויות מלאי מדויקות לציבור
+@@ -45,10 +47,11 @@ export function uniqueSizes(items) {
+  * הצורה הציבורית של דגם. model: שורת DB (id,name,barcodePrefix,priceCategory,imageUrl,thumbnailUrl,items[{sizeText}]).
+  * availability: { [size]: { available:number } } או null/undefined (= אין מידע זמינות -> לא יוצא כלום על מלאי).
+  */
+-export function shapePublicModel(model, { hideImages = false, availability = null } = {}) {
++export function shapePublicModel(model, { hideImages = false, availability = null, useModelNames } = {}) {
+   const sizes = uniqueSizes(model.items);
+   const out = {
+-    name: String(model.name || '').slice(0, MAX_NAME),
++    // שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם - N" (lib/modelDisplay.js); useModelNames=false (נווה) = מספר בלבד. ה-endpoint ציבורי, לכן מנורמל כאן ולא רק בלקוח.
++    name: modelDisplayName(model, { useModelNames, fallback: '' }).slice(0, MAX_NAME),
+     code: model.barcodePrefix == null ? null : String(model.barcodePrefix).slice(0, 12),
+     priceCategory: model.priceCategory ? String(model.priceCategory).slice(0, 60) : null,
+     sizes: sizes.map((size) => {
+@@ -136,7 +139,9 @@ export async function buildPublicModelsResponse(cfg, { q = '', category = '', si
+   let availabilityByModel = null;
+   const useAvail = !!(cfg.showInventory && eventDateKey);
+   if (useAvail) availabilityByModel = await loadAvailability(eventDateKey, rows.map((r) => r.id));
++  const modelOpts = await getModelDisplayOpts(); // useModelNames=false (נווה): מספר דגם בלבד גם בשם שמוחזר לציבור
+   const shaped = rows.map((r) => shapePublicModel(r, {
++    useModelNames: modelOpts.useModelNames,
+     hideImages: cfg.hideImages,
+     availability: useAvail ? (availabilityByModel[r.id] || {}) : null,
+   }));

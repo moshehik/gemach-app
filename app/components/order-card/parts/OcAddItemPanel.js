@@ -9,6 +9,7 @@
 // Enter = התאמה מדויקת לשם/קוד, "ללא שם" → קוד) ; useSizeRows/SizeButtons ← components/orders/OrderSizeSelector.js (חישוב מקומי
 // ממטמון המלאי, אחרת /api/orders/availability או /api/inventory/sizes; אותו טקסט זמינות, מידה לא זמינה מנוטרלת).
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { calculateDynamicAvailability } from '@/lib/clientInventory';
 import { sortSizeRows } from '@/lib/sizeSort';
@@ -21,6 +22,7 @@ const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore'
 
 // ---------- דגם: שדה עם רשימת הצעות ----------
 export function ModelInput({ id, value, onChange, ui, disabled }) {
+  const nf = useNoFill();
   const [query, setQuery] = useState(value ? displayModelName(value) : '');
   const [models, setModels] = useState([]);
   const [open, setOpen] = useState(false);
@@ -87,7 +89,7 @@ export function ModelInput({ id, value, onChange, ui, disabled }) {
       <input
         className="inp"
         id={id}
-        name={`${id}-nofill`}
+        {...nf(id)}
         inputMode="numeric"
         value={query}
         placeholder="מספר דגם..."
@@ -100,7 +102,6 @@ export function ModelInput({ id, value, onChange, ui, disabled }) {
         onFocus={() => setOpen(true)}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); if (value) onChange(null); }}
         onKeyDown={onKey}
-        {...NO_FILL}
       />
       {query ? <button type="button" className="inpx" aria-label="ניקוי" data-tip="ניקוי" onMouseDown={(e) => e.preventDefault()} onClick={clear}><OcIcon name="x" size="sm" /></button> : null}
       {open ? (
@@ -257,28 +258,28 @@ export default function OcAddItemPanel({ oc, ui, actions, open, onClose, altEnab
     }
   };
   return (
-    <div className={`addpanel${open ? ' open' : ''}`} aria-hidden={!open} hidden={!open}>
+    <div className={`addpanel${open ? ' open' : ''}`} data-guide-id="oc.add-panel" aria-hidden={!open} hidden={!open}>
       <div className="row spread">
         <b className="big oc-addt">הוספת שמלה</b>
         <button type="button" className="ibtn oc-addx" data-act="addtoggle" aria-label="סגירה" data-tip="סגירה" onClick={onClose}><OcIcon name="x" size="sm" /></button>
       </div>
       <div className="grid2">
-        <div className="field">
+        <div className="field" data-guide-id="oc.add-model">
           <label className="lbl" htmlFor="addModel">מספר דגם</label>
           <ModelInput id="addModel" value={model} ui={ui} onChange={(m) => { setModel(m); patch({ sizeText: '' }); }} />
         </div>
-        <div className="field">
+        <div className="field" data-guide-id="oc.add-size">
           <label className="lbl" id="addSizeL">מידה</label>
           {model ? <SizeButtons rows={rows} order={oc.order} value={draft.sizeText} loading={loading} labelledBy="addSizeL" onChange={(s) => patch({ sizeText: s })} /> : <div className="faint oc-sizes-msg">יש לבחור דגם</div>}
         </div>
       </div>
       {altEnabled ? <AltFields value={draft} idPrefix="add" onChange={patch} /> : null}
       <div className="row spread wrap">
-        <span className="muted oc-addprice">
+        <span className="muted oc-addprice" data-guide-id="oc.add-price">
           מחיר השכרה: <b><bdi dir="ltr">{price !== null ? fmtMoney(price) : '—'}</bdi></b>
           {fee !== null ? <> · דמי ביטול <b><bdi dir="ltr">{fmtMoney(fee)}</bdi></b></> : null}
         </span>
-        <button type="button" className="btn navy" data-act="additem" disabled={!canAdd} onClick={add}>
+        <button type="button" className="btn navy" data-act="additem" data-guide-id="oc.add-confirm" disabled={!canAdd} onClick={add}>
           <OcIcon name="plus" />{busy ? 'מוסיף...' : 'הוסף להזמנה'}
         </button>
       </div>

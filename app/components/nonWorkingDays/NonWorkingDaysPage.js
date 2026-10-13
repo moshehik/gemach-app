@@ -474,15 +474,15 @@ export default function NonWorkingDaysPage() {
       <div className="app lz-app">
         <div className="topbar">
           <div className="ttl"><h1 className="pg-ttl"><small>ניהול</small><bdi>ימי אי-פעילות</bdi></h1></div>
-          <div className="tools lz-dtools">{server && server.canBoard ? <Link className="btn sm" href="/board"><Ic id="cal" />ללוח החודשי</Link> : null}</div>
+          <div className="tools lz-dtools">{server && server.canBoard ? <Link className="btn sm" data-guide-id="nwd.board-link" href="/board"><Ic id="cal" />ללוח החודשי</Link> : null}</div>
         </div>
         <div className="lz-bar">
           <div className="lz-quick cl-quick">
-            <button type="button" className={'btn tgl' + (ready && start === monthStartOf(today) ? ' on' : '')} aria-pressed={!!(ready && start === monthStartOf(today))} disabled={!ready} onClick={() => setStart(monthStartOf(today))}>החודש הנוכחי</button>
+            <button type="button" data-guide-id="nwd.today" className={'btn tgl' + (ready && start === monthStartOf(today) ? ' on' : '')} aria-pressed={!!(ready && start === monthStartOf(today))} disabled={!ready} onClick={() => setStart(monthStartOf(today))}>החודש הנוכחי</button>
           </div>
         </div>
         <p className="cl-expl"><Ic id="info" /><span><b>ימי אי-פעילות</b> הם ימים שהגמ״ח סגור בהם: אין בהם הכנה, איסוף ומשלוחים. הם מדולגים כשמחשבים תאריכי משלוח והכנה, לא נספרים בימי איחור בהחזרה, ומסומנים בלו״ז היומי. שישי, שבת, חגים, ערבי חג וחול המועד סגורים אוטומטית. אפשר להוסיף ימים נוספים, ותאריכים עבריים שנסגרים בכל שנה.</span></p>
-        <div className="cl-legend" role="group" aria-label="מקרא">
+        <div className="cl-legend" role="group" data-guide-id="nwd.legend" aria-label="מקרא">
           <span className="chip"><i className="cl-sw a" />סגור אוטומטית (שישי, שבת, חג, חול המועד)</span>
           <span className="chip"><i className="cl-sw m" />סומן ידנית: אין פעילות</span>
           <span className="chip"><i className="cl-sw f" />תאריך עברי קבוע (כל שנה)</span>
@@ -500,7 +500,7 @@ export default function NonWorkingDaysPage() {
           <div className="empty cl-err" role="status"><Ic id="cal" size="lg" /><div>טוען נתונים...</div></div>
         ) : (
           <div className="cl-layout">
-            <div id="nw-month">
+            <div id="nw-month" data-guide-id="nwd.calendar">
               <MonthCalendar start={start} today={today} saved={saved} work={work} sel={sel} onPick={pick} onNav={nav} />
             </div>
             <div className="cl-side rail open">
@@ -559,7 +559,7 @@ function SummaryCard({ work, today, changes, saving, onUndo, onSave, onCancel })
   const nFx = work.fixed.length;
   const dirty = changes.length > 0;
   return (
-    <div className="rcard cart" id="nw-sum">
+    <div className="rcard cart" id="nw-sum" data-guide-id="nwd.summary">
       <div className="sec-h"><Ic id="list" size="sm" /><span>סיכום</span></div>
       <div className="glance">
         <span className="gl itm-c cl-wide" tabIndex={0}><Ic id="lock" /><span className="gv">{plural(nMarked, 'יום אחד מסומן', 'ימים מסומנים')}</span></span>
@@ -581,8 +581,8 @@ function SummaryCard({ work, today, changes, saving, onUndo, onSave, onCancel })
       </div></div>
       {dirty ? (
         <div className="cart-actions">
-          <button type="button" className="btn primary lg block" disabled={saving} onClick={onSave}><Ic id="check" />{saving ? 'שומר...' : 'שמור'}</button>
-          <button type="button" className="btn ghost block sec" data-act="discard" disabled={saving} onClick={onCancel}><Ic id="undo" size="sm" />בטל שינויים</button>
+          <button type="button" className="btn primary lg block" data-guide-id="nwd.save" disabled={saving} onClick={onSave}><Ic id="check" />{saving ? 'שומר...' : 'שמור'}</button>
+          <button type="button" className="btn ghost block sec" data-guide-id="nwd.discard" data-act="discard" disabled={saving} onClick={onCancel}><Ic id="undo" size="sm" />בטל שינויים</button>
         </div>
       ) : null}
     </div>
@@ -645,10 +645,10 @@ function EditorCard({ canEdit, today, work, sel, selList, ana, arm, activity, no
       )}
       <div className="cl-rng">
         <div className="field"><span className="lbl" id="nw-from-l">מתאריך</span>
-          <button type="button" className={'inp cl-fb' + (arm === 'from' ? ' armed' : '')} id="nw-from" aria-labelledby="nw-from-l nw-from" aria-pressed={arm === 'from'} onClick={() => onArm('from')}><Ic id="cal" size="sm" /><bdi>{hShort(a)}</bdi></button>
+          <button type="button" data-guide-id="nwd.from" className={'inp cl-fb' + (arm === 'from' ? ' armed' : '')} id="nw-from" aria-labelledby="nw-from-l nw-from" aria-pressed={arm === 'from'} onClick={() => onArm('from')}><Ic id="cal" size="sm" /><bdi>{hShort(a)}</bdi></button>
         </div>
         <div className="field"><span className="lbl" id="nw-to-l">עד תאריך</span>
-          <button type="button" className={'inp cl-fb' + (arm === 'to' ? ' armed' : '')} id="nw-to" aria-labelledby="nw-to-l nw-to" aria-pressed={arm === 'to'} onClick={() => onArm('to')}><Ic id="cal" size="sm" /><bdi>{hShort(b)}</bdi></button>
+          <button type="button" data-guide-id="nwd.to" className={'inp cl-fb' + (arm === 'to' ? ' armed' : '')} id="nw-to" aria-labelledby="nw-to-l nw-to" aria-pressed={arm === 'to'} onClick={() => onArm('to')}><Ic id="cal" size="sm" /><bdi>{hShort(b)}</bdi></button>
         </div>
       </div>
       {one && cr && cr.k === 'fx' ? <p className="cl-p"><b>{cr.txt}.</b> הגמ״ח סגור ביום הזה לפי התאריך העברי הקבוע. להסרה: ברשימת התאריכים הקבועים למטה.</p> : null}
@@ -666,7 +666,7 @@ function EditorCard({ canEdit, today, work, sel, selList, ana, arm, activity, no
             <label className="lbl" htmlFor="nw-note">הערה (לא חובה)</label>
             <div className="inpw">
               <input
-                id="nw-note" className="inp" maxLength={NOTE_MAX} autoComplete="off" placeholder="למשל: סגור לרגל אירוע משפחתי"
+                id="nw-note" data-guide-id="nwd.note" className="inp" maxLength={NOTE_MAX} autoComplete="off" placeholder="למשל: סגור לרגל אירוע משפחתי"
                 value={noteText} onChange={(e) => onNoteChange(e.target.value)}
                 onBlur={() => { if (oneMarked) onNoteCommit(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (ana.cand.length) onMark(); else { onNoteCommit(); e.currentTarget.blur(); } } }}
@@ -676,7 +676,7 @@ function EditorCard({ canEdit, today, work, sel, selList, ana, arm, activity, no
           <p className="cl-note cl-note-hint">{NOTE_HINT}</p>
         </>
       ) : null}
-      {ana.cand.length ? <button type="button" className="btn primary lg block" onClick={onMark}><Ic id="lock" />{n === 1 ? 'סמן: אין פעילות' : 'סמן'}</button> : null}
+      {ana.cand.length ? <button type="button" className="btn primary lg block" data-guide-id="nwd.mark" onClick={onMark}><Ic id="lock" />{n === 1 ? 'סמן: אין פעילות' : 'סמן'}</button> : null}
       {ana.marked.length ? <button type="button" className="btn ghost lg block" onClick={onRemoveSel}><Ic id="trash" />הסר סימון</button> : null}
       <p className="cl-note">{arm ? `לחצו על יום בלוח כדי לקבוע את ${arm === 'from' ? 'תאריך ההתחלה' : 'תאריך הסיום'}.` : 'הסימון נכנס לשינויים שלא נשמרו, ונשמר רק אחרי "שמור".'}</p>
     </div>
@@ -728,7 +728,7 @@ function FixedCard({ canEdit, today, saved, work, fx, setFx, fxNext, activity, o
   const day = fx.day;
   const act = fxNext && activity[fxNext] ? activity[fxNext] : null;
   return (
-    <div className="rcard" id="nw-fixed">
+    <div className="rcard" id="nw-fixed" data-guide-id="nwd.fixed">
       <div className="sec-h"><Ic id="cal" size="sm" /><span>תאריכים עבריים קבועים</span><span className="cl-cnt">{work.fixed.length}</span></div>
       <p className="cl-p">תאריכים שנסגרים בכל שנה לפי התאריך העברי, בלי להגדיר אותם מחדש.</p>
       {!all.length ? <div className="empty"><Ic id="cal" size="lg" /><div>עוד לא הוגדרו תאריכים קבועים.</div></div> : (
@@ -762,7 +762,7 @@ function FixedCard({ canEdit, today, saved, work, fx, setFx, fxNext, activity, o
           {fx.month === 'Adar I' ? <p className="cl-note cl-note-hint">{ADAR1_NOTE}</p> : null}
           {fx.month === 'Adar' ? <p className="cl-note cl-note-hint">{ADAR_NOTE}</p> : null}
           {fxNext && act && (act.events || act.deliveries) ? <Warn title="בתאריך הקרוב כבר רשומה פעילות" detail={hLong(fxNext) + ' · ' + activityText(act.events, act.deliveries) + ' · ההזמנות עצמן לא ישתנו'} /> : null}
-          <button type="button" className="btn lg block" onClick={onAdd}><Ic id="plus" />הוסף ({fixedLabel({ month: fx.month, day })})</button>
+          <button type="button" className="btn lg block" data-guide-id="nwd.fixed-add" onClick={onAdd}><Ic id="plus" />הוסף ({fixedLabel({ month: fx.month, day })})</button>
         </div>
       ) : null}
     </div>

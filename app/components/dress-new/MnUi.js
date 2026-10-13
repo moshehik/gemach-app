@@ -29,7 +29,7 @@ export function DlgBadge({ icon = 'info' }) {
 
 // בורר קטגוריית מחיר (.cb של הפלטה כמו בכרטיס הדגם): אייקון בתיבה, אפשרות עם שם + שורת משנה (מחיר), וי על הנבחרת; חיצים / Enter / Escape במקלדת, סגירה בלחיצה בחוץ.
 // options = [{ key, title, small }]
-export function MnCatCombo({ id, value, options, open, onToggle, onPick, onClose, bad, disabled, emptyText }) {
+export function MnCatCombo({ id, value, options, open, onToggle, onPick, onClose, bad, disabled, emptyText, 'data-guide-id': gid }) {
   const rootRef = useRef(null);
   const listRef = useRef(null);
   const [act, setAct] = useState(-1);
@@ -60,7 +60,7 @@ export function MnCatCombo({ id, value, options, open, onToggle, onPick, onClose
     if (e.key === 'Enter' && open && act >= 0 && options[act]) { e.preventDefault(); onPick(options[act].key); setAct(-1); }
   };
   return (
-    <div className={`field${bad ? ' bad' : ''}`}>
+    <div className={`field${bad ? ' bad' : ''}`} {...(gid ? { 'data-guide-id': gid } : null)}>
       <label className="lbl with-ic" htmlFor={id}><Ic n="card" c="sm" />קטגוריית מחיר<span className="req">*</span></label>
       <div className={`cb${open ? ' open' : ''}`} id="mnCat" ref={rootRef} onKeyDown={onKey}>
         <button type="button" className="cb-t" id={id} aria-haspopup="listbox" aria-expanded={open ? 'true' : 'false'} aria-controls={`${id}-list`} disabled={disabled} onClick={onToggle}>

@@ -23,7 +23,7 @@ export default function StepSummary({ ctl }) {
   const pr = pickupReturnKeys(o, s);
   return (
     <OneCard>
-      <Blk>
+      <Blk data-guide-id="no.summary">
         <SubH icon="file" tone="gold" title="פרטי ההזמנה">
           <button type="button" className="btn sm" onClick={() => ctl.goStep('customer')}><Ic n="pencil" c="sm" />עריכה</button>
         </SubH>
@@ -68,7 +68,7 @@ export default function StepSummary({ ctl }) {
           ) : null}
         </div>
         <CalcErrorNote ctl={ctl} />
-        <div className="status ok" style={{ marginTop: 14 }}><Ic n="check" c="lg" /><div><small>סה&quot;כ לתשלום</small><div className="n">{money(ctl.totalAmount)}</div></div></div>
+        <div className="status ok" data-guide-id="no.summary-total" style={{ marginTop: 14 }}><Ic n="check" c="lg" /><div><small>סה&quot;כ לתשלום</small><div className="n">{money(ctl.totalAmount)}</div></div></div>
       </Blk>
     </OneCard>
   );

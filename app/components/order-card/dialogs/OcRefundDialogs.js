@@ -7,11 +7,13 @@
 
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
+import { useNoFill } from '@/lib/autofillGuard';
 import { DlgBtn, DlgButtons, Field, Inp } from '../OcUi';
 import { BankFields } from './OcBankDialog';
 import { refundPrefill } from '../hooks/usePaymentActions';
 
 export default function OcRefundRequestDialog({ api, amount, close }) {
+  const nf = useNoFill();
   const oc = api.oc;
   const [data, setData] = useState(() => ({ ...refundPrefill(oc.order?.customer, oc.payments), amount: amount > 0 ? String(amount) : '' }));
   const [ibanErr, setIbanErr] = useState('');
@@ -47,7 +49,7 @@ export default function OcRefundRequestDialog({ api, amount, close }) {
           <Inp id="oc-rf-pd" readOnly value={data.paymentDetails} />
         </Field>
         <Field label="מייל הלקוח" icon="mail" htmlFor="oc-rf-mail">
-          <Inp id="oc-rf-mail" type="email" dir="ltr" value={data.email} onChange={(e) => set({ email: e.target.value })} onKeyDown={key} />
+          <Inp id="oc-rf-mail" inputMode="email" dir="ltr" {...nf('email')} value={data.email} onChange={(e) => set({ email: e.target.value })} onKeyDown={key} />
         </Field>
       </div>
       <div className="amsg" aria-live="polite">{err || ibanErr ? <><OcIcon name="alert" size="sm" />{err || ibanErr}</> : null}</div>

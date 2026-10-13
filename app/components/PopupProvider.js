@@ -1,8 +1,13 @@
 'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import { useUiVariant } from './UiVariantContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getCatalogItem } from '@/lib/permissionsMetadata';
+
+// חלון "השכרה והחזרה" בעיצוב החדש (נטען בנפרד, בלי SSR: קבצי ה-CSS של הפלטה / הלו״ז נטענים רק כשהוא נפתח)
+const RentalReturnA5 = dynamic(() => import('./rental-return/RentalReturnWindow'), { ssr: false });
 
 const PopupContext = createContext(null);
 
@@ -37,13 +42,20 @@ export function PopupProvider({ children }) {
 
   // Global Rental Modal state
   const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
+  const [globalRentalModalBarcode, setGlobalRentalModalBarcode] = useState('');
 
-  const openRentalModal = useCallback((orderId) => {
+  // המעטפת בעיצוב החדש (shell='a5'): החזרה מהירה / היסטוריית החיפוש פותחות את חלון "השכרה והחזרה" בעיצוב החדש
+  // (components של הלוח החודשי המאושר, app/components/rental-return) במקום החלון הישן. מעטפת ישנה - החלון הקיים כמו קודם.
+  const shellVariant = useUiVariant('shell');
+  // opts.barcode: ברקוד שהוקש בחיפוש המהיר - החלון מעבד אותו (החזרה / השכרה) אחרי שההזמנה נטענה (זרימת הברקוד ברצף)
+  const openRentalModal = useCallback((orderId, opts) => {
+    setGlobalRentalModalBarcode((opts && opts.barcode) || '');
     setGlobalRentalModalOrderId(orderId);
   }, []);
 
   const closeRentalModal = useCallback(() => {
     setGlobalRentalModalOrderId(null);
+    setGlobalRentalModalBarcode('');
   }, []);
 
 
@@ -423,11 +435,21 @@ export function PopupProvider({ children }) {
 
       {/* Global Rental Return Modal */}
       {globalRentalModalOrderId && (
-        <RentalReturnModal
-          orderId={globalRentalModalOrderId}
-          onClose={closeRentalModal}
-          onUpdate={() => {}}
-        />
+        shellVariant === 'a5' ? (
+          <RentalReturnA5
+            orderId={globalRentalModalOrderId}
+            initialBarcode={globalRentalModalBarcode}
+            onClose={closeRentalModal}
+            onUpdate={() => {}}
+          />
+        ) : (
+          <RentalReturnModal
+            orderId={globalRentalModalOrderId}
+            initialBarcode={globalRentalModalBarcode}
+            onClose={closeRentalModal}
+            onUpdate={() => {}}
+          />
+        )
       )}
     </PopupContext.Provider>
   );

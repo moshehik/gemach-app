@@ -16,6 +16,8 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     '/api/admin/email-test': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    // כרטיס הזמנה בנווה יעקב: ה-PDF נוצר בשרת (lib/mailer.js -> lib/hostingerMail.js) כשהדפדפן לא שלח אחד
+    '/api/orders/\\[id\\]/email': ['./node_modules/@sparticuz/chromium/bin/**/*'],
   },
 
   // עמדות ברשת המקומית ניגשות לשרת דרך ה-IP של המחשב ולא דרך localhost.

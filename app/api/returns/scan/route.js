@@ -3,7 +3,8 @@ import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
-import { getHebrewDateString } from '@/lib/hebrewDate';
+import { buildReturnAdvices } from '@/lib/returnBranchAdvice';
+import { diagnoseUnrentedBarcode } from '@/lib/barcodeFlow';
 
 // ברקוד תקין הוא ספרות/אותיות בלבד. הקלדה/הדבקה מתוך מסך RTL יכולה להכניס תווים בלתי נראים
 // (סימוני כיווניות U+200E/U+200F, רווח ברוחב אפס...) ש-s לא מסיר - והחיפוש המדויק נכשל על ברקוד
@@ -16,35 +17,8 @@ function normalizeScanBarcode(raw) {
 // השרת את הברקוד כפי שהתקבל (כולל קודי התווים), כדי שכישלון עתידי בהחזרה מהירה יהיה ניתן לאבחון
 // בלי לנחש (דיווח df035847, נווה יעקב 2026-10-04).
 async function barcodeNotRentedResponse(rawBarcode, barcode) {
-  let reason = 'unknown';
-  let error = 'לא נמצא פריט עם הברקוד הזה';
-  let orderId = null;
-  try {
-    const returned = await prisma.orderItem.findFirst({
-      where: { barcode, isTaken: true, isReturned: true, isDeleted: false },
-      orderBy: [{ returnDate: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
-      select: { orderId: true, returnDate: true }
-    });
-    if (returned) {
-      reason = 'already_returned';
-      orderId = returned.orderId;
-      const when = returned.returnDate ? ` ב-${getHebrewDateString(returned.returnDate)}` : '';
-      error = `השמלה הזו כבר סומנה כמוחזרת בהזמנה ${returned.orderId}${when}`;
-    } else {
-      const notTaken = await prisma.orderItem.findFirst({
-        where: { barcode, isTaken: false, isDeleted: false },
-        orderBy: { updatedAt: 'desc' },
-        select: { orderId: true }
-      });
-      if (notTaken) {
-        reason = 'not_taken';
-        orderId = notTaken.orderId;
-        error = `הברקוד הזה קיים בהזמנה ${notTaken.orderId} אבל טרם סומן כנלקח`;
-      }
-    }
-  } catch (diagErr) {
-    console.error('returns/scan diagnostic lookup failed:', diagErr);
-  }
+  // הלוגיקה עצמה ב-lib/barcodeFlow.js (משותפת עם GET /api/barcode-flow/resolve של זרימת הברקוד ברצף)
+  const { reason, error, orderId } = await diagnoseUnrentedBarcode(barcode);
   console.error('returns/scan: no rented item for barcode', JSON.stringify({
     reason, orderId, barcode,
     rawCodePoints: [...String(rawBarcode ?? '')].map((c) => c.codePointAt(0).toString(16)).join(' ')
@@ -164,10 +138,20 @@ export async function POST(request) {
     // החזרה = בוודאי נלקח: הכנה אוטומטית אם עוד לא סומנה (נכשל בשקט)
     await autoMarkPrepBounded(updatedItem.orderId);
 
+    // ריבוי סניפים / רזרבה (docs/branches-plan.md, שלב ד): "להעביר לסניף אחר" / "להחזיר לרזרבה". כבוי כברירת מחדל (null), ולעולם לא מפיל החזרה.
+    // הלקוח (BranchReturnAlertHost) מציג חלון שנסגר ב-Enter; ההודעה כבר נרשמה בפעמון.
+    let branchAdvices = null;
+    try {
+      branchAdvices = await buildReturnAdvices({ barcode, dressItemId: updatedItem.dressItemId, actorId: await getActingEmployeeId() });
+    } catch (adviceErr) {
+      console.error('returns/scan: branch advice failed', adviceErr);
+    }
+
     return NextResponse.json({
       success: true, 
       orderId: updatedItem.orderId,
-      item: updatedItem 
+      item: updatedItem,
+      ...(branchAdvices ? { branchAdvices } : {})
     });
   } catch (error) {
     console.error('Error scanning return barcode:', error);

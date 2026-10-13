@@ -11,6 +11,8 @@ import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash } from './HomeParts';
 import { unifiedRows, tableRecords, TABLE_COLUMNS, highlightParts, highlightQuery } from './homeLogic';
+import { ResultRow, Stx } from './ResultRow';
+import { leadKeys, dropCovered, leadCount } from '@/lib/searchPanelRows';
 
 const LIMIT = 8;
 
@@ -21,38 +23,11 @@ function Hl({ text, q }) {
   return parts.map(([t, m], i) => (m ? <mark key={i}>{t}</mark> : <Fragment key={i}>{t}</Fragment>));
 }
 
-function Stx({ s }) {
-  return <span className={`stx ${s.cls}`}><Ic id={s.icon} />{s.label}</span>;
-}
-
 // שורה קטנה אחת מרכיבי טקסט (מפרידה ב"·"); רכיב ריק נשמט
 function Parts({ items }) {
   const shown = items.filter(Boolean);
   if (!shown.length) return null;
   return <span className="ln">{shown.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>)}</span>;
-}
-
-function InvBody({ inv }) {
-  const own = inv.size ? <>מידה <bdi>{inv.size}</bdi></> : null;
-  const head = inv.type === 'barcode'
-    ? [inv.barcode ? <>ברקוד <bdi dir="ltr">{inv.barcode}</bdi></> : null, inv.modelCode !== '' ? <>דגם <bdi dir="ltr">{inv.modelCode}</bdi></> : null, own,
-      inv.serial !== '' ? <>מס׳ סידורי <bdi dir="ltr">{inv.serial}</bdi></> : null, inv.location ? <>מיקום <bdi>{inv.location}</bdi></> : null]
-    : [inv.modelCode !== '' ? <>דגם <bdi dir="ltr">{inv.modelCode}</bdi></> : null];
-  return (
-    <>
-      <b>{inv.modelName || 'דגם'}{inv.status ? <span className={`stx ${inv.status === 'מושכר' ? '' : inv.status === 'פנוי' ? 'ok' : 'warn'}`}>{inv.status}</span> : null}</b>
-      <Parts items={head} />
-      {inv.itemMissing ? <span className="ln">הברקוד לא נמצא במלאי; הדגם נקבע לפי קידומת הברקוד</span> : null}
-      <span className="ln invs" aria-label={`זמינות ל${inv.dateLabel}`}>
-        <span className="invd">זמינות ל{inv.dateLabel}:</span>
-        {inv.sizes.length === 0 ? <span className="chip">אין מידות במלאי</span> : inv.sizes.map((s, i) => (
-          <span key={i} className={`chip invz${s.own ? ' gold' : s.available === 0 ? ' rose' : ''}`} data-tip={`סה״כ ${s.total} · מוזמנות ${s.booked} · פנויות ${s.available}`}>
-            <b>{s.size}</b> <bdi>{s.available}/{s.total}</bdi>
-          </span>
-        ))}
-      </span>
-    </>
-  );
 }
 
 function RowBody({ r, hq }) {
@@ -74,7 +49,6 @@ function RowBody({ r, hq }) {
       </>
     );
   }
-  if (r.kind === 'מלאי') return <InvBody inv={r.inv} />;
   // פריט: בדיוק שתי שורות (5.10.2026). כותרת = הברקוד + מצב הפריט; שורה קטנה = הזמנה, שם מלא של הלקוחה, תאריך אירוע עברי. חלק שחסר בנתונים ישנים פשוט לא מוצג.
   return (
     <>
@@ -88,7 +62,7 @@ function RowBody({ r, hq }) {
 // ולכן הצ'יפים תמיד קישורים ל-/schedule?date=... (בלי הרשאה לא מגיע כלום).
 function DateChips({ d }) {
   return (
-    <div className="dchips" aria-label="הלו״ז ליום שהוקלד">
+    <div className="dchips" data-guide-id="srch.date-chips" aria-label="הלו״ז ליום שהוקלד">
       <div className="dchips-h">
         <Ic id="cal" size="sm" />
         <b>לו״ז ליום {d.dateHebrew}</b>
@@ -109,9 +83,13 @@ function DateChips({ d }) {
   );
 }
 
-export default function HomeResults({ res, none, table, onTable, onExport, note, query = '' }) {
+// lead = שורות פאנל התפוסה (search/SearchPanel.js useSearchPanelModel): [{ key, node, count, orderId?, barcode? }] - מוצגות בראש אותה רשימה, באותו מקטע
+// "תוצאות", וה-N בכותרת סופר אותן יחד עם שאר התוצאות. תוצאה רגילה שכבר מוצגת כשורת פאנל (אותה הזמנה / אותו פריט) לא מוצגת פעם שנייה.
+export default function HomeResults({ res, none, table, onTable, onExport, note, query = '', lead = [] }) {
   const [more, setMore] = useState(false);
-  const rows = useMemo(() => (none ? [] : unifiedRows(res, query)), [res, none, query]);
+  const keys = useMemo(() => leadKeys(lead), [lead]);
+  const rows = useMemo(() => (none ? [] : dropCovered(unifiedRows(res, query), keys)), [res, none, query, keys]);
+  const leadN = leadCount(lead);
   const records = useMemo(() => tableRecords(rows), [rows]);
   const hq = useMemo(() => highlightQuery(query), [query]);
   const chips = !none && res && res.dateChips ? res.dateChips : null;
@@ -143,10 +121,10 @@ export default function HomeResults({ res, none, table, onTable, onExport, note,
   };
 
   return (
-    <div className="card res-one">
+    <div className="card res-one" data-guide-id="srch.results">
       <div className="card-h">
         <h2 id="rc-a">
-          תוצאות <span className="faint">({rows.length})</span>
+          תוצאות <span className="faint">({rows.length + leadN})</span>
           <button type="button" className="tip" aria-label="עזרה" data-tip={'סטטוס ההזמנה מחושב כמו במסך ההזמנות: לפי מצב הפריטים (נלקחו / הוחזרו) ותאריך האירוע. הסכום הוא השדה הישן של ההזמנה.'}><Ic id="info" size="sm" /></button>
         </h2>
         {trio}
@@ -162,37 +140,37 @@ export default function HomeResults({ res, none, table, onTable, onExport, note,
       {rows.length > 0 && (
         <div className="vbar"><ViewSwitch table={table} onChange={onTable} /></div>
       )}
-      {rows.length === 0 ? (
+      {rows.length === 0 && lead.length === 0 ? (
         <div className="empty"><Ic id="search" size="lg" /><div>{chips ? 'אין הזמנות שהאירוע שלהן ביום הזה' : 'אין תוצאות לחיפוש הזה'}</div>{note ? <div className="muted">{note}</div> : null}</div>
       ) : (
         <>
+          {table && lead.length ? (
+            <div className="list" aria-label="תוצאות הפאנל" onKeyDown={onListKey}>
+              {lead.map((x) => <Fragment key={x.key}>{x.node}</Fragment>)}
+            </div>
+          ) : null}
           {table ? (
-            <ResultsTable
-              columns={TABLE_COLUMNS}
-              records={records}
-              linkCol={1}
-              rowLimit={more ? 0 : LIMIT}
-              renderCell={(c, j) => {
-                if (j === 0) return <span className="chip rtype">{c}</span>;
-                if (j === 2 || j === 4 || j === 5) return c ? <bdi dir="ltr">{c}</bdi> : <Dash />;
-                return c ? c : <Dash />;
-              }}
-            />
+            rows.length ? (
+              <ResultsTable
+                columns={TABLE_COLUMNS}
+                records={records}
+                linkCol={1}
+                rowLimit={more ? 0 : LIMIT}
+                renderCell={(c, j) => {
+                  if (j === 0) return <span className="chip rtype">{c}</span>;
+                  if (j === 2 || j === 4 || j === 5) return c ? <bdi dir="ltr">{c}</bdi> : <Dash />;
+                  return c ? c : <Dash />;
+                }}
+              />
+            ) : null
           ) : (
             <div className="list" aria-label="תוצאות החיפוש" onKeyDown={onListKey}>
-              {shown.map((r) => (r.url ? (
-                <Link key={r.key} className="li rlink lrow" href={r.url}>
-                  <div className="ic-b"><Ic id={r.icon} /><span className="rlbl">{r.kind}</span></div>
-                  <div className="t"><RowBody r={r} hq={hq} /></div>
-                  <Ic id="chev" size="sm" className="go" />
-                </Link>
-              ) : (
-                // שורה בלי קישור (מלאי למי שאין לה הרשאה לכרטיס הדגם): אותה צורה, בלי חץ, ניתנת למיקוד כדי שמקלדת תעבור עליה
-                <div key={r.key} className="li lrow nolink" tabIndex={0}>
-                  <div className="ic-b"><Ic id={r.icon} /><span className="rlbl">{r.kind}</span></div>
-                  <div className="t"><RowBody r={r} hq={hq} /></div>
-                </div>
-              )))}
+              {lead.map((x) => <Fragment key={x.key}>{x.node}</Fragment>)}
+              {shown.map((r) => (
+                <ResultRow key={r.key} icon={r.icon} kind={r.kind} url={r.url}>
+                  <RowBody r={r} hq={hq} />
+                </ResultRow>
+              ))}
             </div>
           )}
           {rows.length > LIMIT && <MoreButton open={more} extra={rows.length - LIMIT} onToggle={() => setMore((v) => !v)} />}

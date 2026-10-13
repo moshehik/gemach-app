@@ -32,6 +32,7 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { orderItemModelName } from '../../../lib/modelDisplay';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
@@ -188,6 +189,10 @@ export function parseSettings(rows) {
     refreshOnReturn: bool('order_card_refresh_on_return', false),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
+    // credit_bank_prompt_auto: חלון פרטי הבנק קופץ אוטומטית כשנוצר זיכוי בלי פרטי בנק (ברירת מחדל דולק = כמו שהיה תמיד).
+    // credit_bank_details_required: חובה למלא - החלון האוטומטי לא נסגר בלי שמירה והיציאה מההזמנה חסומה עד אז (ברירת מחדל כבוי = אופציונלי).
+    creditBankPromptAuto: notFalse('credit_bank_prompt_auto', true),
+    creditBankRequired: bool('credit_bank_details_required', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),
     enableEditSummaryConfirm: bool('enable_order_edit_summary_confirm', false),
     consolidateManualPaymentCredit: bool('consolidate_manual_payment_credit_ui', false),
@@ -202,6 +207,8 @@ export function parseSettings(rows) {
     enableDeliveryJoin: bool('enable_delivery_join', false),
     enableBarcodeSequenceMode: bool('enable_barcode_sequence_mode', false),
     enableDressLocationAlert: bool('enable_dress_location_alert', false),
+    // ריבוי סניפים (docs/branches-plan.md): הצגת סניף הביצוע / האיסוף של ההזמנה בלשונית פרטים. חסר = כבוי
+    multiBranch: bool('multi_branch_enabled', false),
     orderQuickMailEnabled: bool('order_quick_mail_enabled', false),
     enableAlterations: bool('enable_alterations', false),
     // SystemSetting auto_alteration_done_on_take (ברירת מחדל כבוי): בלקיחה התיקון נרשם "בוצע (משוער)" - השרת (lib/schedule/autoAlterationDone.js) והשיקוף המקומי בכרטיס נשלטים באותה הגדרה, רק 'true'
@@ -559,7 +566,7 @@ export function hebDateOf(value) {
 
 export function itemLabel(it) {
   if (!it) return '';
-  const model = it.dressItem?.dress?.name || it.dressModelName || it.modelName || it.description || '';
+  const model = orderItemModelName(it) || it.description || ''; // שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם" (lib/modelDisplay.js)
   const size = it.sizeText || it.size || '';
   return `${model ? `דגם ${model}` : 'פריט'}${size ? `, מידה ${size}` : ''}`;
 }

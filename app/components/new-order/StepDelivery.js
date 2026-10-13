@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { Blk, ClearX, Field, Ic, Note, NoCombo, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest from './NoSuggest';
-import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
+import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility, pickupBranchesOf, trackBranchOn } from './newOrderLogic';
 
 const ORDER_TYPES = [
   { v: false, label: 'הזמנה רגילה', icon: 'user', tip: 'הזמנה טלפונית וסניף ביצוע מוציאים זה את זה' },
@@ -51,19 +51,19 @@ export default function StepDelivery({ ctl, part }) {
               <div className="field">
                 <div className="lbl with-ic"><Ic n="phone" c="sm" />סוג הזמנה</div>
                 {/* בורר גלולה בן שתי אפשרויות (בעיצוב: #orderSeg) - אותו state ואותו handler כמו המתג שהיה (isPhoneOrder; טלפונית וסניף ביצוע מוציאים זה את זה) */}
-                <SegPill id="orderSeg" label="סוג הזמנה" options={ORDER_TYPES} value={!!o.isPhoneOrder} onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} />
+                <SegPill id="orderSeg" guide="no.order-type" label="סוג הזמנה" options={ORDER_TYPES} value={!!o.isPhoneOrder} onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} />
               </div>
             ) : null}
-            {s.track_branch_on_order === 'true' ? (
+            {trackBranchOn(s) ? (
               <Field label="סניף ביצוע" icon="pin" htmlFor="noBranchSel">
                 <NoCombo id="noBranchSel" label="סניף ביצוע" placeholder={o.isPhoneOrder ? 'לא רלוונטי בהזמנה טלפונית' : 'בחר סניף...'} disabled={!!o.isPhoneOrder} value={o.branch || ''} options={[['', ''], ...branches.map(b => [b, b])]} onChange={(val) => {
                   set({ branch: val, isPhoneOrder: val ? false : o.isPhoneOrder });
                 }} />
               </Field>
             ) : null}
-            {s.branches_enabled === 'true' ? (
+            {s.branches_enabled === 'true' || s.multi_branch_enabled === 'true' ? (
               <Field label="סניף איסוף" icon="bag" htmlFor="noPickupSel">
-                <NoCombo id="noPickupSel" label="סניף איסוף" placeholder="בחר סניף..." value={o.pickupBranch || ''} options={[['', ''], ...branches.map(b => [b, b])]} onChange={(val) => set({ pickupBranch: val })} />
+                <NoCombo id="noPickupSel" label="סניף איסוף" placeholder="בחר סניף..." value={o.pickupBranch || ''} options={[['', ''], ...pickupBranchesOf(s).map(b => [b, b])]} onChange={(val) => set({ pickupBranch: val })} />
               </Field>
             ) : null}
           </div>
@@ -71,7 +71,7 @@ export default function StepDelivery({ ctl, part }) {
       ) : null}
       {deliveryBlock ? (
         <>
-          <Blk className={`dhero${o.isDelivery ? '' : ' off'}`}>
+          <Blk className={`dhero${o.isDelivery ? '' : ' off'}`} data-guide-id="no.delivery-switch">
             <div className="ico"><Ic n="truck" c="lg" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="trow"><Switch id="noDelOn" checked={o.isDelivery} label="הזמנת משלוח" onChange={(v) => set({ isDelivery: v })} /><b className="big">הזמנת משלוח</b></div>
@@ -81,7 +81,7 @@ export default function StepDelivery({ ctl, part }) {
           {o.isDelivery ? (<>
               <Blk className="card dfields">
                 <SubH icon="arrlr" title="כיוון משלוח" />
-                <SegPill id="dirSeg" label="כיוון משלוח" options={DELIVERY_DIRECTIONS.map(d => ({ v: d.v, label: d.v, icon: d.icon }))} value={o.deliveryDirection} onChange={(v) => set({ deliveryDirection: v })} />
+                <SegPill id="dirSeg" guide="no.delivery-direction" label="כיוון משלוח" options={DELIVERY_DIRECTIONS.map(d => ({ v: d.v, label: d.v, icon: d.icon }))} value={o.deliveryDirection} onChange={(v) => set({ deliveryDirection: v })} />
               </Blk>
               <Blk className="card dfields">
                 <SubH icon="pin" title="יעד" />
@@ -94,14 +94,14 @@ export default function StepDelivery({ ctl, part }) {
                       </div>
                     </Field>
                   ) : (<>
-                  <Field label={<>עיר משלוח (לחישוב מחיר){ctl.deliveryCityRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelCity">
+                  <Field label={<>עיר משלוח (לחישוב מחיר){ctl.deliveryCityRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelCity" guide="no.delivery-city">
                     {/* כמו ה-select בישן: רק ערים מהרשימה (delivery_price_by_city, או ערי הלקוחות כשהיא ריקה) - ערך שהוקלד ואינו ברשימה מתנקה ביציאה מהשדה */}
                     <NoSuggest id="noDelCity" value={o.deliveryCity || ''} options={cityOptions} onChange={(v) => set({ deliveryCity: v })}
                       onBlurValue={(v) => { if (v && !cityOptions.includes(v)) set({ deliveryCity: '' }); }} inputProps={{ placeholder: 'עיר' }} />
                     <ClearX show={!!o.deliveryCity} onClear={() => set({ deliveryCity: '' })} />
                   </Field>
                   {(s.delivery_allow_address_override === 'true' || ctl.deliveryAddressRequired || differentOpen) ? (
-                    <Field label={<>כתובת משלוח שונה{ctl.deliveryAddressRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelAddr">
+                    <Field label={<>כתובת משלוח שונה{ctl.deliveryAddressRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelAddr" guide="no.delivery-address">
                       <input className="inp" id="noDelAddr" placeholder="כתובת למשלוח (שונה ממגורים)" autoComplete="off" {...NO_FILL} value={o.deliveryAddress || ''} onChange={(e) => set({ deliveryAddress: e.target.value })} />
                       <ClearX show={!!o.deliveryAddress} onClear={() => set({ deliveryAddress: '' })} />
                     </Field>
@@ -117,7 +117,7 @@ export default function StepDelivery({ ctl, part }) {
                 </div>
                 {s.delivery_one_day_before_option === 'true' ? (
                   <div className="row wrap" style={{ marginTop: 24, gap: 16 }}>
-                    <button type="button" className={`btn tgl${o.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" aria-pressed={!!o.deliveryOneDayBefore} onClick={() => set({ deliveryOneDayBefore: !o.deliveryOneDayBefore })}>
+                    <button type="button" className={`btn tgl${o.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" data-guide-id="no.delivery-one-day" aria-pressed={!!o.deliveryOneDayBefore} onClick={() => set({ deliveryOneDayBefore: !o.deliveryOneDayBefore })}>
                       {o.deliveryOneDayBefore ? <Ic n="check" c="sm evck" /> : null}<Ic n="truck" c="sm" />משלוח יוצא יום לפני האירוע (במקום יומיים)
                     </button>
                   </div>

@@ -155,8 +155,8 @@ function EditForm() {
       <NedarimNav current="/admin/nedarim-hok-edit" />
 
       <div className="card card-pad" style={{ display: 'flex', gap: 8, maxWidth: 640, marginBottom: 16 }}>
-        <input className="input" dir="ltr" value={kevaId} onChange={(e) => setKevaId(e.target.value)} placeholder="מספר הוק (KevaId)" style={{ flex: 1 }} />
-        <button type="button" className="btn btn-primary" disabled={loading || !kevaId} onClick={() => load(kevaId)}>
+        <input className="input" data-guide-id="ned.edit-id" dir="ltr" value={kevaId} onChange={(e) => setKevaId(e.target.value)} placeholder="מספר הוק (KevaId)" style={{ flex: 1 }} />
+        <button type="button" className="btn btn-primary" data-guide-id="ned.edit-load" disabled={loading || !kevaId} onClick={() => load(kevaId)}>
           {loading ? 'טוען...' : 'טען'}
         </button>
       </div>

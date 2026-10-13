@@ -8,6 +8,7 @@
 // ובהצעות לשדות מועתקת מ-public/a5/index.html.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import { Ic } from './HomeParts';
 import {
   ADV_FOCI, OST, ORD_CHECK, RST, RTN, RCHK, DFLAGS, AFLAGS, MFLAGS, EFLAGS, AST, DST, F,
@@ -48,6 +49,7 @@ function ClearX({ show, onClick }) {
 
 // שדה טקסט עם הצעות מהאתר
 function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
+  const nf = useNoFill();
   const [key, label, icon, ph] = spec;
   const id = idPrefix + key;
   const suggest = OPT_KEYS.includes(key);
@@ -91,7 +93,7 @@ function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
   };
 
   return (
-    <div className="field">
+    <div className="field" data-guide-id={`srch.adv-f-${key}`}>
       <label className="lbl" htmlFor={id} data-tip={tip || undefined}>{label}</label>
       <div className="inpw" data-tip={tip || undefined}>
         <Ic id={icon} size="sm" />
@@ -99,10 +101,9 @@ function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
           ref={inputRef}
           className="inp"
           id={id}
-          name={id + '-nofill'}
+          {...nf(id)}
           value={value}
           placeholder={ph}
-          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
@@ -175,7 +176,7 @@ export function DateField({ dkey, label, value, onChange, rangeKeys, adv, cleara
 
   const grid = open && first ? hebMonthGrid(first) : null;
   return (
-    <div className="field">
+    <div className="field" data-guide-id={`srch.adv-d-${dkey}`}>
       <label className="lbl" htmlFor={id}>{label}</label>
       <div className="inpw" ref={boxRef}>
         <Ic id="cal" size="sm" />
@@ -264,7 +265,7 @@ function Toggles({ list, selected, onToggle, more, label, tipFor }) {
   return (
     <>
       {more && <div className="advmore">עוד</div>}
-      <div className="advflags" role="group" aria-label={label}>
+      <div className="advflags" role="group" data-guide-id="srch.adv-flags" aria-label={label}>
         {list.map(([v, l, i, tip]) => {
           const on = selected.includes(v);
           const t = tipFor ? tipFor(v, tip) : tip;
@@ -472,7 +473,7 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
   };
 
   const enter = entering ? ' adv-in' : '';
-  const close = <button type="button" className="ibtn" aria-label="סגירת החיפוש המתקדם" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>;
+  const close = <button type="button" className="ibtn" aria-label="סגירת החיפוש המתקדם" data-guide-id="srch.adv-close" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>;
 
   if (!f) {
     return (
@@ -482,14 +483,14 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
           <button type="button" className="ibtn" aria-label="חזרה לחיפוש הראשי" data-tip="חזרה" onClick={onClose}><Ic id="back" size="sm" /></button>
           <h2 id="adv-h">סינון מתקדם</h2>
         </div>
-        <section className="advq" aria-labelledby="adv-q">
+        <section className="advq" data-guide-id="srch.adv-focus-list" aria-labelledby="adv-q">
           <h3 id="adv-q">במה נתמקד?</h3>
           <div className="advfocus">
             {foci.main.map((k) => (
-              <button key={k} type="button" className="advfb" onClick={() => onPick(k)}><Ic id={ADV_FOCI[k].icon} size="sm" />{ADV_FOCI[k].label}</button>
+              <button key={k} type="button" className="advfb" data-guide-id={`srch.adv-focus-${k}`} onClick={() => onPick(k)}><Ic id={ADV_FOCI[k].icon} size="sm" />{ADV_FOCI[k].label}</button>
             ))}
             {foci.extra.length > 0 && (
-              <button type="button" className={`advplus${more ? ' open' : ''}`} aria-expanded={more} aria-controls="advExtra" aria-label={`תחומים נוספים: ${foci.extra.map((k) => ADV_FOCI[k].label).join(', ')}`} data-tip="עוד תחומים" onClick={() => setMore((v) => !v)}>
+              <button type="button" data-guide-id="srch.adv-plus" className={`advplus${more ? ' open' : ''}`} aria-expanded={more} aria-controls="advExtra" aria-label={`תחומים נוספים: ${foci.extra.map((k) => ADV_FOCI[k].label).join(', ')}`} data-tip="עוד תחומים" onClick={() => setMore((v) => !v)}>
                 <Ic id="plus" className="ic-p" /><Ic id="minus" className="ic-m" />
               </button>
             )}
@@ -497,7 +498,7 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
           {foci.extra.length > 0 && (
             <div className={`advextra${more ? ' open' : ''}`} id="advExtra" inert={!more}>
               {foci.extra.map((k, i) => (
-                <button key={k} type="button" className="advfb" style={{ '--i': i }} onClick={() => onPick(k)}><Ic id={ADV_FOCI[k].icon} size="sm" />{ADV_FOCI[k].label}</button>
+                <button key={k} type="button" className="advfb" data-guide-id={`srch.adv-focus-${k}`} style={{ '--i': i }} onClick={() => onPick(k)}><Ic id={ADV_FOCI[k].icon} size="sm" />{ADV_FOCI[k].label}</button>
               ))}
             </div>
           )}
@@ -507,22 +508,22 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
   }
 
   const smart = f.ai && aiAllowed
-    ? <button type="button" className="btn smart" disabled={loading} onClick={() => onApply(true)}><Ic id="sparkle" />חיפוש חכם</button>
+    ? <button type="button" className="btn smart" data-guide-id="srch.adv-smart" disabled={loading} onClick={() => onApply(true)}><Ic id="sparkle" />חיפוש חכם</button>
     : null;
   return (
     <div className={`card res-one advp${enter}`} aria-busy={loading || undefined}>
       <div className="card-h">
         {close}
-        <button type="button" className="ibtn" aria-label="חזרה לבחירת תחום" data-tip="חזרה" onClick={onBack}><Ic id="back" size="sm" /></button>
+        <button type="button" className="ibtn" aria-label="חזרה לבחירת תחום" data-guide-id="srch.adv-back" data-tip="חזרה" onClick={onBack}><Ic id="back" size="sm" /></button>
         <h2 id="adv-h">{'חיפוש ' + f.label}</h2>
         <button type="button" className="ibtn" data-act="adv-apply" aria-label="חיפוש" data-tip="חיפוש" disabled={loading} onClick={apply}><Ic id="search" size="sm" /><span>חיפוש</span></button>
         <button type="button" className="ibtn" data-act="adv-clear" aria-label="נקה" data-tip="נקה" onClick={onClear}><Ic id="eraser" size="sm" /><span>נקה</span></button>
       </div>
       {f.blocks.map(block)}
       <div className="advact">
-        <button type="button" className="btn primary lg" aria-label={loading ? 'מחפשים' : undefined} disabled={loading} onClick={apply}>{loading ? <span className="mspin" aria-hidden="true" /> : <Ic id="search" />}חיפוש</button>
+        <button type="button" className="btn primary lg" data-guide-id="srch.adv-apply" aria-label={loading ? 'מחפשים' : undefined} disabled={loading} onClick={apply}>{loading ? <span className="mspin" aria-hidden="true" /> : <Ic id="search" />}חיפוש</button>
         {smart}
-        <button type="button" className="lrow" onClick={onClear}><Ic id="eraser" size="sm" />נקה</button>
+        <button type="button" className="lrow" data-guide-id="srch.adv-clear" onClick={onClear}><Ic id="eraser" size="sm" />נקה</button>
       </div>
     </div>
   );

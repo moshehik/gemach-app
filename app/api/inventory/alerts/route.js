@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
+import { modelDisplayName, modelNamesEnabled } from '@/lib/modelDisplay';
 import { addDaysSkippingWeekends } from '../../../../lib/inventory';
 import { checkAuth } from '@/lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
@@ -13,6 +14,7 @@ export async function GET() {
     // 1. Fetch settings for buffer and weekends (cached 30s)
     // המודל בסכימה הוא SystemSetting; prisma.setting לא קיים והפיל את כל הראוט ב-500
     const settingsRaw = await getAllCachedSettings();
+    const useModelNames = modelNamesEnabled(settingsRaw);
     let bufferDays = 3;
     let skipWeekends = true;
     
@@ -33,7 +35,8 @@ export async function GET() {
         inRepair: true,
         notInUse: true,
         location: true,
-        dress: { select: { name: true } }
+        barcodePrefix: true,
+        dress: { select: { name: true, barcodePrefix: true } }
       }
     });
 
@@ -48,7 +51,8 @@ export async function GET() {
       if (!inventoryMap[key]) {
         inventoryMap[key] = {
           dressModelId: item.dressModelId,
-          dressName: item.dress?.name || item.dressName || 'דגם לא ידוע',
+          // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js); בנווה (useModelNames=false) מספר בלבד
+          dressName: modelDisplayName({ name: item.dress?.name || item.dressName, barcodePrefix: item.dress?.barcodePrefix ?? item.barcodePrefix }, { useModelNames, fallback: 'דגם לא ידוע' }),
           sizeText: size,
           totalInStock: 0,
           inRepair: 0,

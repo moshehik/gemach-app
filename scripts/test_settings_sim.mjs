@@ -126,9 +126,9 @@ t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממ�
     assert.equal(s.view, M.SETTINGS_DEVELOPER_CATEGORIES.includes(cat) ? 'site' : 'sys', k);
   }
 });
-t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / מצב מסד / Neon תמיד מוצגים', () => {
+t('לשונית בלי שורות ובלי בלוק לא מוצגת; לוגו / הרשאות / סניפים / לו"ז / מצב מסד / Neon תמיד מוצגים', () => {
   const sys = L.buildViewModel('sys', []);
-  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['brand', 'disp']);
+  assert.deepEqual(sys.tabs.map((tb) => tb.id), ['cfg', 'brand', 'auto', 'ord', 'inv', 'disp']); // cfg: שורת הקישור לניהול הסניפים (special 'branches'); auto: הקישור למרכז המיילים (special 'emailcenter'); ord: בלוק התקנון (special 'terms'); inv: הקישור ל"הגדרות תהליכים" של הלו"ז (special 'schedule')
   const site = L.buildViewModel('site', []);
   assert.deepEqual(site.tabs.map((tb) => tb.id), ['db']);
 });
@@ -136,7 +136,7 @@ t('הסדר בתוך סעיף = הסדר בעיצוב (לא סדר ה-DB)', () =
   const rows = [...fakeRows].reverse();
   const sys = L.buildViewModel('sys', rows);
   const org = sys.tabs.find((tb) => tb.id === 'cfg').sections.find((s) => s.id === 'org');
-  assert.deepEqual(org.rows.map((r) => r.key), ['gmach_name', 'gmach_phone', 'main_email', 'gmach_address']);
+  assert.deepEqual(org.rows.map((r) => r.key), ['gmach_name', 'gmach_phone', 'main_email', 'gmach_address', 'gmach_pickup_address', 'gmach_pickup_maps_url']);
 });
 
 console.log('controls (same field classification as legacy)');
@@ -315,7 +315,7 @@ t('חיפוש לפי שם, הערה, מפתח וכותרת סעיף (בלי גר
 t('קישור עמוק ?tab=<קטגוריה>&highlight=<key> (SettingQuickPanel / AI) נפתח בלשונית הנכונה', () => {
   const sys = L.buildViewModel('sys', fakeRows);
   assert.equal(L.tabForDeepLink(sys, 'כללי', 'item_locations'), 'cfg');
-  assert.equal(L.tabForDeepLink(sys, 'אוטומציה', 'late_return_email_text'), 'msg');
+  assert.equal(L.tabForDeepLink(sys, 'אוטומציה', 'late_return_email_text'), 'auto'); // 2026-10-12: מיילים אוטומטיים חזרו ללשונית אוטומציה
   assert.equal(L.tabForDeepLink(sys, 'יומן', null), 'inv');
   assert.equal(L.tabForDeepLink(sys, 'nonsense', null), null);
 });

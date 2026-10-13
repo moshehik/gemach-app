@@ -53,8 +53,8 @@ export async function resolve(spec, ctx, next) {
 export async function load(url, ctx, next) {
   const mod = (source) => ({ format: 'module', shortCircuit: true, source });
   if (url === 'mock:prisma') return mod('export default globalThis.__T.prisma; export const auditAs = (a, b) => b; export const getActingEmployeeId = async () => null;');
-  if (url === 'mock:auth') return mod('const T=globalThis.__T; export const HEAD_MANAGEMENT_ROLES=[0,2]; export const DEVELOPER_ONLY_ROLES=[0]; export const checkAuth=async()=>T.authed; export const checkPageAccess=async()=>true; export const getSessionEmployee=async()=>null; export const readVerifiedSession=()=>null;');
-  if (url === 'mock:permissions') return mod('const T=globalThis.__T; export const checkAiAccess=async()=>T.aiAccess; export const hasPermission=async()=>T.manager; export const canOpenPage=async()=>true;');
+  if (url === 'mock:auth') return mod('const T=globalThis.__T; export const HEAD_MANAGEMENT_ROLES=[0,2]; export const DEVELOPER_ONLY_ROLES=[0]; export const checkAuth=async()=>T.authed; export const checkPageAccess=async()=>true; export const getSessionEmployee=async()=>null; export const readVerifiedSession=()=>null; export const getSettingsViewerTier=async()=>"admin";');
+  if (url === 'mock:permissions') return mod('const T=globalThis.__T; export const checkAiAccess=async()=>T.aiAccess; export const hasPermission=async()=>T.manager; export const canOpenPage=async()=>true; export const resolvePageAccess=async()=>({});');
   if (url === 'mock:settings') return mod('export const getAllCachedSettings=async()=>[]; export const getCachedSetting=async()=>null; export const invalidateSettingsCache=()=>{};');
   if (url === 'mock:gemini') return mod('export const generateContent=async(p)=>{ const T=globalThis.__T; T.modelCalls.push(p); return T.modelAnswer; };');
   if (url === 'mock:geminiFiles') return mod('export const uploadAndWaitForFile=async()=>{throw new Error("no media in tests")};');

@@ -52,19 +52,56 @@ eq('huge number: no 500, treated as text', [res.status, vals(res)], [200, []]);
 
 /* ---------- מידות ---------- */
 res = await get('?key=size');
-eq('sizes: every active spelling, merged by normalized key, shown as in DB, sorted by value', vals(res),
-  ['2', '04', '06', '06.1', '8', '10', '12', '14', '34', '36', '36א', '38', '38-40', '40', 'כללי']) // "  2" נחתך; "08"/"8" שקולים (1:1) -> הקצר);
+// נושא 12 (12.10.2026): התפריט מציע מידות שלמות בלבד — "06.1" / "36א" / "38-40" / "כללי" שבנתונים לא מוצעות; "  2" נחתך; "08"/"8" שקולים (1:1) -> הקצר.
+eq('sizes: whole sizes only, merged by normalized key, shown as in DB, sorted by value', vals(res),
+  ['2', '04', '06', '8', '10', '12', '14', '34', '36', '38', '40']);
+eq('sizes: no decimal / letter / range / general entry in the default menu', vals(res).filter((v) => !/^\d{1,3}$/.test(v)), []);
 globalThis.__DB.dressItem.push({ id: 'x1', dressModelId: 'mF', sizeText: '8', quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 700 });
 res = await get('?key=size');
 eq('"8" x2 vs "08" x1 -> the more common spelling wins', vals(res).includes('8') && !vals(res).includes('08'), true);
 res = await get('?key=size&typed=0');
-eq('typed "0": spellings containing 0 and keys starting with 0', vals(res), ['04', '06', '06.1', '10', '38-40', '40']);
+eq('typed "0": spellings containing 0 and keys starting with 0 (whole only)', vals(res), ['04', '06', '10', '40']);
 res = await get('?key=size&typed=3');
-eq('typed "3": keys starting with 3 + spellings containing 3', vals(res), ['34', '36', '36א', '38', '38-40']);
+eq('typed "3": keys starting with 3 + spellings containing 3 (whole only)', vals(res), ['34', '36', '38']);
+// כתיבים שקולים של מידה שלמה מתאחדים; מידות חריגות מופיעות רק כשהוקלד תו שאינו ספרה
+res = await get('?key=size&typed=06.');
+eq('typed "06." -> the decimal size appears (explicit request)', vals(res), ['06.1']);
+res = await get('?key=size&typed=36%D7%90');
+eq('typed "36א" -> the lettered size appears', vals(res), ['36א']);
+res = await get('?key=size&typed=%D7%9B');
+eq('typed "כ" -> "כללי" appears', vals(res), ['כללי']);
+const add = (id, sizeText, over = {}) => globalThis.__DB.dressItem.push({ id, dressModelId: 'mF', sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 700, ...over });
+add('z1', '38.0'); add('z2', '038'); add('z3', ' 36 '); add('z4', '36.00'); add('z5', '00.5'); add('z6', '38.5'); add('z7', 'XL'); add('z8', '12,0'); add('z9', '');
+res = await get('?key=size');
+eq('"38.0" / "038" / "36.00" / "12,0" fold into the whole size (no duplicate rows, no decimals)', vals(res), ['2', '04', '06', '8', '10', '12', '14', '34', '36', '38', '40']);
+res = await get('?key=size&typed=38.');
+eq('typed "38." -> only the true decimal 38.5 (38.0 is the whole size 38)', vals(res), ['38.5']);
+res = await get('?key=size&typed=00.');
+eq('typed "00." -> the small decimal size', vals(res), ['00.5']);
+globalThis.__DB.dressItem.splice(globalThis.__DB.dressItem.findIndex((i) => i.id === 'z1'), 9);
 // פריט לא בשימוש / מחוק לא תורם מידה
 globalThis.__DB.dressItem.push({ id: 'x2', dressModelId: 'mF', sizeText: '99', quantity: 1, location: null, inRepair: false, notInUse: true, isDeleted: false, barcodePrefix: 700 });
 res = await get('?key=size');
 eq('notInUse item does not add a size', vals(res).includes('99'), false);
+
+/* ---------- דגם שיצא מהמאגר: לא מוצע (דגמים ומידות) — נושא 12 ---------- */
+reset();
+const sizesBefore = vals(await get('?key=size'));
+const modelsBefore = vals(await get('?key=model'));
+globalThis.__DB.dressModel.push({ id: 'xOut', name: 'שמלה שיצאה', barcodePrefix: 880, isDeleted: false, exitDateFromRepo: new Date('2024-06-24T00:00:00Z') }, { id: 'xNull', name: 'שמלה חדשה', barcodePrefix: 882, isDeleted: false, exitDateFromRepo: null });
+const xi = (id, dressModelId, sizeText) => ({ id, dressModelId, sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: dressModelId === 'xOut' ? 880 : 882 });
+globalThis.__DB.dressItem.push(xi('xo1', 'xOut', '58'), xi('xo2', 'xOut', '06.9'), xi('xn1', 'xNull', '60'));
+res = await get('?key=size');
+eq('sizes: a size that exists only on an exited model is not offered; a null-exit model contributes', vals(res), [...sizesBefore, '60']);
+res = await get('?key=size&typed=58');
+eq('sizes typed "58" (exited-only) -> nothing', vals(res), []);
+res = await get('?key=model');
+eq('models: exited model not suggested; null-exit one is', vals(res).filter((v) => v.includes('שמלה שיצאה') || v.includes('שמלה חדשה')), ['שמלה חדשה']);
+res = await get('?key=model&typed=880');
+eq('models typed by the exited model code -> nothing', vals(res), []);
+res = await get('?key=model&typed=882');
+eq('models typed by the active model code -> found', vals(res), ['שמלה חדשה']);
+eq('models: the rest of the list is unchanged', vals(await get('?key=model')).filter((v) => modelsBefore.includes(v)), modelsBefore);
 
 globalThis.__DB = null;
 res = await get('?key=model');

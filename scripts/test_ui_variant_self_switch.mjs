@@ -2,7 +2,7 @@
 //   POST /api/me/ui-variant/<screen> — כל עובד פעיל (החלטת הבעלים 11.10.2026: הכול זמין לכולם, כל אחד בוחר לעצמו), לרשומה של עצמו בלבד.
 // לא נוגעת ב-DB (לקוח prisma מזויף) ולא ב-Next. הרצה: node scripts/test_ui_variant_self_switch.mjs (קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
-import { applyUiVariantRequest, canEmployeeSelfSwitch, describeSelfSwitch, isSelfSwitchScreen, SELF_SWITCH_ONLY_ROLE_IDS, SELF_SWITCH_SCREENS } from '../lib/uiVariantSelfSwitch.js';
+import { applyUiVariantRequest, applyUiVariantAllRequest, canEmployeeSelfSwitch, describeSelfSwitch, isSelfSwitchScreen, SELF_SWITCH_ONLY_ROLE_IDS, SELF_SWITCH_SCREENS } from '../lib/uiVariantSelfSwitch.js';
 import { buildUiVariantOverride, buildLegacyShellOverride } from '../lib/designPrefsSchema.js';
 import { resolveUiVariant } from '../lib/uiVariant.js';
 import { getScreenEntry } from '../lib/uiVariantScreens.js';
@@ -201,6 +201,49 @@ await ta('buildLegacyShellOverride עדיין דוחה a5 ועובד כמו קו
   assert.equal(buildLegacyShellOverride('{"v":1}', 'a5').ok, false);
   const r = buildLegacyShellOverride(JSON.stringify({ v: 1, palette: 'wine', uiVariants: { home: 'a5' } }), 'legacy');
   assert.deepEqual(r.next.uiVariants, { home: 'a5', shell: 'legacy' }); assert.equal(r.changed, true);
+});
+
+console.log('כל המסכים בבת אחת (12.10.2026: "חזרה לממשק החדש" / "האתר הישן")');
+await ta('applyUiVariantAllRequest: a5 -> כל SELF_SWITCH_SCREENS בכתיבה אחת; שאר ההעדפות נשמרות; employee_card לא נוגע', async () => {
+  const fp = fakePrisma();
+  const e = emp({ roleId: 4, themeColor: JSON.stringify({ v: 1, palette: 'wine', uiVariants: { shell: 'legacy', order_card: 'legacy' } }) });
+  const r = await applyUiVariantAllRequest({ body: { value: 'a5' }, employee: e, prisma: fp.prisma });
+  assert.equal(r.status, 200); assert.equal(fp.calls.length, 1, 'כתיבה אחת');
+  assert.deepEqual(fp.calls[0].where, { id: 'emp-me' });
+  const s = stored(fp.calls);
+  assert.equal(s.palette, 'wine');
+  for (const sc of SELF_SWITCH_SCREENS) assert.equal(s.uiVariants[sc], 'a5', sc);
+  assert.ok(!('employee_card' in s.uiVariants));
+  assert.equal(r.json.changed, true); assert.deepEqual(r.json.screens, [...SELF_SWITCH_SCREENS]);
+  // שרשרת מלאה: אחרי "הכול חדש" כל מסך מוכרע לחדש גם בארגון שמכריח ישן
+  for (const sc of SELF_SWITCH_SCREENS) assert.equal(resolveUiVariant(sc, { userVariants: s.uiVariants, settings: { [`ui_variant_${sc}`]: 'legacy' }, roleId: 4 }), 'a5', sc);
+});
+await ta('applyUiVariantAllRequest: legacy ("האתר הישן") לכל המסכים; כבר הכול באותו ערך -> בלי כתיבה', async () => {
+  const fp = fakePrisma();
+  const r = await applyUiVariantAllRequest({ body: { value: 'legacy' }, employee: emp({ roleId: 4 }), prisma: fp.prisma });
+  assert.equal(r.status, 200);
+  const s = stored(fp.calls);
+  for (const sc of SELF_SWITCH_SCREENS) assert.equal(s.uiVariants[sc], 'legacy', sc);
+  const fp2 = fakePrisma();
+  const r2 = await applyUiVariantAllRequest({ body: { value: 'legacy' }, employee: emp({ roleId: 4, themeColor: JSON.stringify(s) }), prisma: fp2.prisma });
+  assert.equal(r2.status, 200); assert.equal(r2.json.changed, false); assert.equal(fp2.calls.length, 0);
+});
+await ta('applyUiVariantAllRequest: themeColor שאינו JSON (צבע ישן) לא נשבר; לא מאומת 401, מושבת 403, גוף לא תקין 400, null / ערך זר נדחה', async () => {
+  const fp = fakePrisma();
+  const r = await applyUiVariantAllRequest({ body: { value: 'a5' }, employee: emp({ themeColor: '#aa3366' }), prisma: fp.prisma });
+  assert.equal(r.status, 200); assert.equal(fp.calls.length, 1);
+  assert.equal((await applyUiVariantAllRequest({ body: { value: 'a5' }, employee: null, prisma: fakePrisma().prisma })).status, 401);
+  assert.equal((await applyUiVariantAllRequest({ body: { value: 'a5' }, employee: emp({ isActive: false }), prisma: fakePrisma().prisma })).status, 403);
+  assert.equal((await applyUiVariantAllRequest({ body: null, bodyParseFailed: true, employee: emp(), prisma: fakePrisma().prisma })).status, 400);
+  for (const body of [{}, { value: null }, { value: 'x' }, { value: 'A5' }, [], 'a5', null]) {
+    const f = fakePrisma();
+    assert.equal((await applyUiVariantAllRequest({ body, employee: emp(), prisma: f.prisma })).status, 400, JSON.stringify(body));
+    assert.equal(f.calls.length, 0);
+  }
+  // גוף שמנסה לכוון עובד אחר - מתעלמים; הכתיבה תמיד על העובד המאומת
+  const f = fakePrisma();
+  await applyUiVariantAllRequest({ body: { value: 'a5', employeeId: 'other', id: 'other' }, employee: emp(), prisma: f.prisma });
+  assert.deepEqual(f.calls[0].where, { id: 'emp-me' });
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' - WITH FAILURES' : ''}`);

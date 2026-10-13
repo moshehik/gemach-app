@@ -1,0 +1,33 @@
+diff --git a/lib/orderConfirmationMail.js b/lib/orderConfirmationMail.js
+index 790c1506..be514022 100644
+--- a/lib/orderConfirmationMail.js
++++ b/lib/orderConfirmationMail.js
+@@ -6,6 +6,8 @@
+ // מחזיר { sent:false, reason } כשאין למי לשלוח; אחרת התוצאה של sendSystemEmail (מחכה לה כש-wait=true, אחרת "ירה ושכח").
+ 
+ import prisma from '@/app/lib/prisma';
++import { orderItemModelName } from '@/lib/modelDisplay';
++import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
+ import { getCachedSetting } from '@/lib/settingsCache';
+ import { getHebrewDateString, getHebrewWeekdayLabel } from '@/lib/hebrewDate';
+ import { subtractBusinessDays, israelLocalDate } from '@/lib/businessDays';
+@@ -48,8 +50,9 @@ export async function sendOrderConfirmationEmail(updatedOrder, { emailCfg, wait
+     where: { orderId: updatedOrder.orderId, isDeleted: false },
+     include: { dressItem: { include: { dress: true } } }
+   });
++  const mailModelOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם - N" (lib/modelDisplay.js)
+   const itemsList = itemsWithDress.map(i => {
+-    const modelName = i.dressItem?.dress?.name || i.description || 'פריט';
++    const modelName = orderItemModelName(i, mailModelOpts) || i.description || 'פריט';
+     const sizeText = i.sizeText || i.dressItem?.sizeText;
+     return sizeText ? `${modelName} (מידה: ${sizeText})` : modelName;
+   }).join(', ') || 'ללא פירוט';
+@@ -62,7 +65,7 @@ export async function sendOrderConfirmationEmail(updatedOrder, { emailCfg, wait
+   const html = renderOrderConfirmationEmailHtml({
+     customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
+     orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
+-    items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
++    items: itemsWithDress.map(i => ({ name: orderItemModelName(i, mailModelOpts) || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
+     totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone, cfg: emailCfg, delivery,
+   });
+   const sending = sendSystemEmail({

@@ -8,6 +8,7 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { renderInternalMessageEmailHtml } from '../../../lib/emailTemplates';
 import { sendSystemEmail } from '../../../lib/mailer';
 import { emailSubject } from '../../../lib/emailCatalog';
+import { getEmailConfig } from '../../../lib/emailConfig';
 
 // #24/#25 — קטגוריות הודעה מותרות. כל ערך אחר (כולל undefined) = הודעה כללית.
 const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
@@ -159,10 +160,14 @@ export async function POST(request) {
     // Always try to send emails, filtering by receiveEmailAlerts
     try {
       const settings = (await getAllCachedSettings()).filter(s => s.key === 'gmach_name');
-      const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
+      // מרכז המיילים (/admin/email-center): אפשר לכבות מיילי התראה על הודעות פנימיות / לערוך את המסגרת. בלי עריכה - כמו תמיד.
+      const cfg = await getEmailConfig('internalMessageAlert');
+      const gmachName = cfg.fixed.gmachName || settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
 
       let receivers = [];
-      if (parsedReceiver) {
+      if (!cfg.enabled) {
+        receivers = [];
+      } else if (parsedReceiver) {
         const emp = await prisma.employee.findUnique({ where: { id: parsedReceiver } });
         if (emp && emp.email && emp.receiveEmailAlerts) receivers.push(emp.email);
       } else {
@@ -170,10 +175,10 @@ export async function POST(request) {
         receivers = emps.map(e => e.email).filter(Boolean);
       }
 
-      const subject = emailSubject('internalMessageAlert', { title });
+      const subject = emailSubject('internalMessageAlert', { title }, cfg);
       const sender = await prisma.employee.findUnique({ where: { id: employeeId }, select: { firstName: true, lastName: true } });
       const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ');
-      const htmlBody = renderInternalMessageEmailHtml({ title: title || 'הודעה חדשה', bodyText: content, senderName, gmachName });
+      const htmlBody = renderInternalMessageEmailHtml({ title: title || 'הודעה חדשה', bodyText: content, senderName, gmachName, cfg });
 
       // דרך המערכת המרכזית (lib/mailer.js): ניתוב לפי הגדרות, יישור RTL, בלי קובץ ממלא מקום
       // בגוף המייל, וגם רישום ב-EmailLog (עד כה מיילי ההתראה האלה לא נרשמו בכלל).

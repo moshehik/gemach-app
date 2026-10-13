@@ -1,0 +1,123 @@
+diff --git a/app/api/orders/[id]/email/route.js b/app/api/orders/[id]/email/route.js
+index 601ef4e2..66a84c0e 100644
+--- a/app/api/orders/[id]/email/route.js
++++ b/app/api/orders/[id]/email/route.js
+@@ -1,4 +1,6 @@
+ import { NextResponse } from 'next/server';
++import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
++import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
+ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
+ import prisma, { getActingEmployeeId } from '../../../../lib/prisma';
+ import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
+@@ -215,6 +217,8 @@ export async function POST(request, { params }) {
+       });
+     }
+ 
++    // שם הדגם במייל / ב-PDF: אמיתי אם יש, אחרת מספר הדגם - לעולם לא "ללא שם - N" (lib/modelDisplay.js; נווה useModelNames=false = מספר בלבד)
++    const mOpts = await getModelDisplayOpts();
+     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0)
+       ? `<tr><td colspan="${colCount}" style="text-align: center; padding: 30px; color: #999;">אין פריטים פעילים בהזמנה זו</td></tr>`
+       : order.items.filter(i => !i.isDeleted).map(item => {
+@@ -233,8 +237,8 @@ export async function POST(request, { params }) {
+           // exists but doesn't already contain the model name - so the emailed report
+           // never shows less than the in-app print view.
+           const itemPrefix = item.dressItem?.dress?.barcodePrefix ?? item.dressItem?.barcodePrefix ?? item.barcodePrefix;
+-          const dressName = item.dressItem?.dress?.name || prefixNameMap.get(Number(itemPrefix));
+-          let finalDescription = item.description;
++          const dressName = modelDisplayName({ name: item.dressItem?.dress?.name || prefixNameMap.get(Number(itemPrefix)), barcodePrefix: itemPrefix }, { ...mOpts, fallback: '' });
++          let finalDescription = scrubPlaceholderInText(item.description, itemPrefix);
+           if (!finalDescription || finalDescription === 'פריט כללי') {
+             if (dressName) {
+               finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''}`;
+@@ -244,7 +248,7 @@ export async function POST(request, { params }) {
+               finalDescription = 'פריט כללי';
+             }
+           } else if (dressName && !finalDescription.includes(dressName)) {
+-            finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''} - ${finalDescription}`;
++            finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''} - ${finalDescription}`; // finalDescription כבר מנוקה מ-"ללא שם - N"
+           }
+           const modelName = stripCodeLabel(finalDescription) || '-';
+           const sizeText = item.sizeText || item.dressItem?.sizeText || '-';
+diff --git a/app/api/orders/route.js b/app/api/orders/route.js
+index 242dd97b..f1307998 100644
+--- a/app/api/orders/route.js
++++ b/app/api/orders/route.js
+@@ -1,5 +1,7 @@
+ import { withCpuTiming } from '@/lib/cpuTiming';
+ import { NextResponse } from 'next/server';
++import { orderItemModelName } from '@/lib/modelDisplay';
++import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
+ 
+ import prisma from '@/app/lib/prisma';
+ import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/pricingEngine';
+@@ -1117,8 +1119,9 @@ async function POST(request) {
+             where: { orderId: updatedOrder.orderId, isDeleted: false },
+             include: { dressItem: { include: { dress: true } } }
+           });
++          const mailModelOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת מספר הדגם - לעולם לא "ללא שם - N" (lib/modelDisplay.js)
+           const itemsList = itemsWithDress.map(i => {
+-            const modelName = i.dressItem?.dress?.name || i.description || 'פריט';
++            const modelName = orderItemModelName(i, mailModelOpts) || i.description || 'פריט';
+             const sizeText = i.sizeText || i.dressItem?.sizeText;
+             return sizeText ? `${modelName} (מידה: ${sizeText})` : modelName;
+           }).join(', ') || 'ללא פירוט';
+@@ -1138,7 +1141,7 @@ async function POST(request) {
+           const html = renderOrderConfirmationEmailHtml({
+             customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
+             orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
+-            items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
++            items: itemsWithDress.map(i => ({ name: orderItemModelName(i, mailModelOpts) || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
+             totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone,
+             delivery: deliverySection,
+           });
+diff --git a/app/components/order-card/parts/ocDocsLogic.js b/app/components/order-card/parts/ocDocsLogic.js
+index e1621540..a08e4ad9 100644
+--- a/app/components/order-card/parts/ocDocsLogic.js
++++ b/app/components/order-card/parts/ocDocsLogic.js
+@@ -12,6 +12,7 @@ import { hebDateOf } from '../orderCardLogic';
+ import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
+ import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
+ import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_FILES, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
++import { modelDisplayName, orderItemModelName } from '../../../../lib/modelDisplay';
+ 
+ // ---------------------------------------------------------------------------------------------
+ // כתובת מייל
+@@ -157,7 +158,7 @@ export function mailSentToast(to, fileCount, driveCount = 0) {
+ // ייצוא Excel (A1) - עברית בלבד בכל תאריך (ENG-11); מספרים כמספרים; טלפון/ת״ז כטקסט
+ // ---------------------------------------------------------------------------------------------
+ const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+-const itemName = (it) => it?.dressItem?.dress?.name || it?.dressModelName || it?.modelName || it?.description || '';
++const itemName = (it) => orderItemModelName(it) || it?.description || ''; // שם אמיתי, אחרת מספר הדגם (lib/modelDisplay.js)
+ const methodOf = (p) => p?.paymentMethod || p?.method || '';
+ 
+ /** גיליונות הקובץ: הזמנה (שדה/ערך), פריטים, חיובים, תשלומים. מקור: מצב השרת האחרון (snapshot) - מה שנשמר. */
+@@ -309,7 +310,7 @@ export function modelPhotosOf(items = []) {
+     const urls = [dress && dress.imageUrl, dress && dress.thumbnailUrl].filter((u) => typeof u === 'string' && u.trim());
+     if (!urls.length) continue;
+     const key = String(dress.id || dress.name || urls[0]);
+-    if (!byModel.has(key)) byModel.set(key, { key, name: String(dress.name || it.description || 'דגם'), urls, sizes: [] });
++    if (!byModel.has(key)) byModel.set(key, { key, name: String(modelDisplayName(dress, { fallback: '' }) || it.description || 'דגם'), urls, sizes: [] });
+     const size = it.sizeText || (it.dressItem && it.dressItem.sizeText);
+     const entry = byModel.get(key);
+     if (size && !entry.sizes.includes(String(size))) entry.sizes.push(String(size));
+diff --git a/app/print/order/page.js b/app/print/order/page.js
+index 5a147f98..8740a366 100644
+--- a/app/print/order/page.js
++++ b/app/print/order/page.js
+@@ -10,6 +10,7 @@ import { printPageEventBodies } from '../../../lib/history/orderEvents';
+ import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
+ import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
+ import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
++import { orderItemModelName } from '../../../lib/modelDisplay';
+ import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
+ import { pickupAddressFromList } from '../../../lib/gmachContact';
+ 
+@@ -486,7 +487,7 @@ export default function PrintOrderPage() {
+               return (
+                 <Fragment key={item.id}>
+                   <tr>
+-                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
++                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || orderItemModelName(item) || item.dressItem?.dressName) || '-'}</td>
+                     <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
+                     {enableAlterations && (
+                       <td>{renderRepairChips(item)}</td>

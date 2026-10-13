@@ -242,7 +242,7 @@ test('5: "הזמנת משלוח" מוצגת רק כשכרטיס המשלוח/ס�
   assert.deepEqual(v({ delivery_show_in_order: 'true', phone_order_marker_enabled: 'true' }), { showMode: true, showDelivery: false }, 'בלי enable_deliveries אין משלוח');
   assert.deepEqual(v({}), { showMode: false, showDelivery: false });
   // אותו תנאי כמו בישן: (דגלים || delivery_show_in_order !== 'false') && enable_deliveries === 'true'
-  assert.match(LEGACY_SRC, /phone_order_marker_enabled === 'true' \|\| settings\.track_branch_on_order === 'true' \|\| settings\.branches_enabled === 'true' \|\| settings\.delivery_show_in_order !== 'false'/);
+  assert.match(LEGACY_SRC, /phone_order_marker_enabled === 'true' \|\| settings\.track_branch_on_order === 'true' \|\| settings\.branches_enabled === 'true' \|\| settings\.multi_branch_enabled === 'true' \|\| settings\.delivery_show_in_order !== 'false'/);
   assert.match(strip(read('StepDelivery.js')), /deliveryStepVisibility\(s\)/);
 });
 

@@ -188,7 +188,7 @@ export default function AttendanceWizard({ params, own, isMgr, self, me, onClose
         <div className="sub" id="wzS">{sub}</div>
         {quick ? null : (
           <div className="lz-wm">
-            <div className="seg pill" id="wzMode" role="radiogroup" aria-label="סוג הפעולה" style={{ '--n': modes.length, '--i': Math.max(0, modes.indexOf(mode)) }}>
+            <div className="seg pill" id="wzMode" data-guide-id="att.wiz-mode" role="radiogroup" aria-label="סוג הפעולה" style={{ '--n': modes.length, '--i': Math.max(0, modes.indexOf(mode)) }}>
               <span className="pth" aria-hidden="true" />
               {modes.map((md) => <button key={md} type="button" role="radio" data-m={md} className={md === mode ? 'on' : ''} aria-checked={md === mode} onClick={() => { setMode(md); setMsg(null); }}>{MODE_LBL[md]}</button>)}
             </div>
@@ -204,14 +204,14 @@ export default function AttendanceWizard({ params, own, isMgr, self, me, onClose
         {quick || own ? null : (
           <div className="lz-wm lz-wtyp">
             <span className="lz-wfl">סוג הדוח:</span>
-            <div className="seg pill" id="wzType" role="radiogroup" aria-label="סוג הדוח" style={{ '--n': 3, '--i': typeIdx }}>
+            <div className="seg pill" id="wzType" data-guide-id="att.wiz-type" role="radiogroup" aria-label="סוג הדוח" style={{ '--n': 3, '--i': typeIdx }}>
               <span className="pth" aria-hidden="true" />
               {TYPES.map((t) => <button key={t} type="button" role="radio" data-t={t} className={t === effType ? 'on' : ''} aria-checked={t === effType} onClick={() => { setType(t); setMsg(null); }}>{TYPE_LABEL[t]}</button>)}
             </div>
           </div>
         )}
         <div className="lz-wb">
-          <div className="lz-wl" id="wzList">
+          <div className="lz-wl" id="wzList" data-guide-id="att.wiz-list">
             {quick || own ? null : (
               <div className="lz-wall">
                 <button type="button" className="hf-allb" data-wall="1" onClick={() => setSel(Object.fromEntries(allIds.map((id) => [id, true])))}>סמן הכל</button>
@@ -246,8 +246,8 @@ export default function AttendanceWizard({ params, own, isMgr, self, me, onClose
         </div>
         <div id="wzMsg">{msg ? <div className={'lz-wmsg ' + msg.kind} role="alert">{msg.text}</div> : null}</div>
         <div className="dbtns mact lz-wf">
-          <button type="button" className="btn primary lg" id="wzGo" disabled={!n || busy} onClick={() => run(selIds)}><Ic id={badge} />{busy ? 'מכין…' : goLabel}</button>
-          {quick ? null : <button type="button" className="btn" id="wzAll" hidden={own} disabled={!rows.length || busy} onClick={() => { setSel(Object.fromEntries(allIds.map((id) => [id, true]))); run(allIds); }}>{allLabel}</button>}
+          <button type="button" className="btn primary lg" id="wzGo" data-guide-id="att.wiz-go" disabled={!n || busy} onClick={() => run(selIds)}><Ic id={badge} />{busy ? 'מכין…' : goLabel}</button>
+          {quick ? null : <button type="button" className="btn" id="wzAll" data-guide-id="att.wiz-all" hidden={own} disabled={!rows.length || busy} onClick={() => { setSel(Object.fromEntries(allIds.map((id) => [id, true]))); run(allIds); }}>{allLabel}</button>}
           <button type="button" className="btn ghost" data-wclose onClick={onClose}>סגירה<Ic id="x" size="sm" /></button>
         </div>
       </div>

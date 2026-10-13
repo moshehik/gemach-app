@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import ScheduleIcon, { CheckCircleIcon, ChecksIcon } from './ScheduleIcon';
-import { MARK_TIPS, RETURN_STAGES, STAGE_META, subText } from './scheduleMeta';
+import { MARK_TIPS, RETURN_STAGES, STAGE_META, subText, customerDisplayName, orderCodeText } from './scheduleMeta';
 import { ConfirmDialog, DetailRows, confirmEffect, doneTip } from './MarkDialogs';
 
 // לחצני "בוצע" של הלו״ז. המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, statusHTML שורות 1976-1978 ו-allBtn
@@ -24,7 +24,7 @@ function isTouch(pt) {
   try { return window.matchMedia('(hover:none)').matches; } catch { return false; }
 }
 
-export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
+export function MarkButton({ stage, row, doneState, onMarkDone, onBarcodes, dayLabel }) {
   const [ask, setAsk] = useState(null); // { done, outcome }
   const [pairOpen, setPairOpen] = useState(false);
   const lastPT = useRef('');
@@ -63,7 +63,7 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
         ? (ask.outcome === 'not_ok' ? 'בטוח שהשמלה הוחזרה לא תקינה?' : 'בטוח שהשלב "' + stage.label + '" בוצע' + (rk ? ' (הוחזר תקין)' : '') + '?')
         : 'לבטל את סימון הביצוע?'}
       sub={'הזמנה #' + row.orderId + (name ? ' · ' + name : '')}
-      effect={confirmEffect(stage.key, ask)}
+      effect={confirmEffect(stage.key, ask, row)}
       body={<DetailRows stage={stageInfo} row={row} dayLabel={dayLabel} />}
       yes={ask.done ? (ask.outcome === 'not_ok' ? 'כן, סמן כלא תקין' : 'כן, סמן כבוצע') : 'כן, בטל סימון'}
       onYes={run}
@@ -75,17 +75,19 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
     return (
       <>
         {rk && cond && cond !== 'ok' ? <span className="chip rose lz-rc">לא תקין</span> : null}
-        <button type="button" className="btn tgl lz-mark on" aria-pressed="true" data-tip={doneTip(doneState)} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(false)}>
+        <button type="button" className="btn tgl lz-mark on" data-guide-id="sched.mark-done" aria-pressed="true" data-tip={doneTip(doneState)} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(false)}>
           <ScheduleIcon name="check" className="sm evck" />בוצע
         </button>
         {dialog}
       </>
     );
   }
-  const onMark = confirm(true, rk ? 'ok' : undefined);
+  // ברקוד בלו״ז: שורה שחסר בה ברקוד - "בוצע" פותח את חלונית הברקוד (אחרי הסריקה היא עצמה מסמנת) במקום חלון "בטוח?"
+  const needsBarcodes = !!(row.barcodeInfo && !row.barcodeInfo.complete && onBarcodes);
+  const onMark = needsBarcodes ? () => { if (live) onBarcodes(stage, row); } : confirm(true, rk ? 'ok' : undefined);
   const markBtn = (
     <button
-      type="button" className="btn tgl lz-mark" aria-pressed="false" data-tip={rk ? MARK_TIPS.markReturn : MARK_TIPS.mark} disabled={disabled} aria-busy={busy || undefined}
+      type="button" className="btn tgl lz-mark" data-guide-id="sched.mark-done" aria-pressed="false" data-tip={rk ? MARK_TIPS.markReturn : MARK_TIPS.mark} disabled={disabled} aria-busy={busy || undefined}
       onPointerDown={(e) => { lastPT.current = e.pointerType || ''; }}
       onClick={() => { if (rk && !pairOpen && isTouch(lastPT.current)) { setPairOpen(true); return; } onMark(); }}
     >
@@ -96,7 +98,7 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
   return (
     <>
       <span className={'lz-retw' + (pairOpen ? ' open' : '')} ref={wrapRef}>
-        <button type="button" className="btn tgl lz-mark lz-bad" aria-pressed="false" data-tip={MARK_TIPS.markBad} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(true, 'not_ok')}>
+        <button type="button" className="btn tgl lz-mark lz-bad" data-guide-id="sched.mark-bad" aria-pressed="false" data-tip={MARK_TIPS.markBad} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(true, 'not_ok')}>
           <ScheduleIcon name="alert" className="sm" />הוחזר לא תקין
         </button>
         {markBtn}
@@ -117,7 +119,7 @@ export function MarkAllButton({ stage, pending, busy, onMarkAll, dayLabel }) {
   const live = !!onMarkAll && n > 0;
   return (
     <>
-      <button type="button" className="ibtn lz-all" aria-label={MARK_TIPS.all} data-tip={MARK_TIPS.all} disabled={!live || busy} aria-busy={busy || undefined} onClick={live ? () => setAsk(true) : undefined}>
+      <button type="button" className="ibtn lz-all" data-guide-id="sched.mark-all" aria-label={MARK_TIPS.all} data-tip={MARK_TIPS.all} disabled={!live || busy} aria-busy={busy || undefined} onClick={live ? () => setAsk(true) : undefined}>
         <ChecksIcon />
       </button>
       <ConfirmDialog
@@ -131,7 +133,7 @@ export function MarkAllButton({ stage, pending, busy, onMarkAll, dayLabel }) {
             {rows.slice(0, 5).map((r) => (
               <div className="li" key={r.orderId}>
                 <div className="ic-b"><ScheduleIcon name={meta.icon} /></div>
-                <div className="t"><b>{(r.customer && r.customer.name) || 'לא ידוע'} <bdi>#{r.orderId}</bdi></b><small>{subText(stage.key, r)}</small></div>
+                <div className="t"><b>{customerDisplayName(r.customer)}</b><small>{[orderCodeText(r.orderId), subText(stage.key, r)].filter(Boolean).join(' · ')}</small></div>
               </div>
             ))}
             {n > 5 ? <div className="lz-more">ועוד {n - 5} פריטים</div> : null}

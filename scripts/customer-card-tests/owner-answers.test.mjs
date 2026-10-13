@@ -101,7 +101,9 @@ await t('CC-O6: בלי הדגל במטען החתימה נגזרת מההזמנ�
   assert.ok(!/hasSignedRegulations|regulationsSignedAt/.test(code(read(`${CC}/useCustomerCard.js`))), 'ה-hook לא מכיר את העמודות (ה-PUT נבנה מ-CARD_FIELDS)');
   const route = code(read('app/api/customers/[id]/route.js'));
   assert.ok(!/body\.regulationsSignedAt|body\[['"]regulationsSignedAt/.test(route), 'החותמת מהשרת בלבד');
-  assert.match(route, /planSignatureWrite/);
+  // 12.10.2026: התוכנית עברה ל-lib/customerConsent.js (prepareStaffConsent -> planConsentWrite -> planSignatureWrite)
+  assert.match(route, /prepareStaffConsent/);
+  assert.match(code(read('lib/customerConsent.js')), /planSignatureWrite\(/);
 });
 
 // ---- חתימה: החלקים הבטוחים של ההפעלה העתידית (SIGNATURE-FLIP-PLAN) - בלי נגיעה בסכמה / ב-PUT ----

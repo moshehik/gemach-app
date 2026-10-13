@@ -169,6 +169,7 @@ export const ACTION_TRANSLATIONS = {
   CANCEL_RENTAL: 'ביטול השכרה',
   CANCEL_RETURN: 'ביטול החזרה',
   CANCEL_SCAN: 'ביטול סריקה',
+  REGISTER_BARCODE: 'רישום ברקוד בהכנה',
   CANCEL_ITEM: 'ביטול פריט מההזמנה',
   RESTORE_ITEM: 'שחזור פריט להזמנה',
   CANCEL_OBLIGATION: 'ביטול התחייבות תשלום',

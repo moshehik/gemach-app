@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { checkAuth, getSessionEmployee } from '@/lib/auth';
+import { checkAuth, getSessionEmployee, getSettingsViewerTier } from '@/lib/auth';
+import { settingsRowsForTier } from '@/lib/adminOnlySettings';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { buildSettingsGuide } from '@/lib/settingsMetadata';
 import { NUMBER_FIELD_LIMITS } from '@/app/lib/settingsValidation';
@@ -16,7 +17,8 @@ export async function GET(request) {
   if (!me || ![0, 1, 2].includes(me.roleId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const key = new URL(request.url).searchParams.get('key') || '';
-    const rows = await getAllCachedSettings();
+    // מנהל סניף (roleId 1): מפתח "ניהול בלבד" נראה כמו מפתח שלא קיים (404); הנהלה ראשית / מתכנת - הכול
+    const rows = settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier());
     const found = buildSettingsGuide(rows).find((s) => s.key === key);
     if (!found) return NextResponse.json({ error: 'not found' }, { status: 404 });
     const limits = NUMBER_FIELD_LIMITS[key] || null;

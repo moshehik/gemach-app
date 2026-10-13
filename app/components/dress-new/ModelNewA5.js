@@ -49,7 +49,7 @@ export default function ModelNewA5() {
         <MnSprite />
         <div className="app mn-app no-app no-flowapp" id="app">
           <div className="topbar">
-            <button type="button" className="back" data-act="exit" aria-label="חזרה לרשימת הדגמים" data-tip="חזרה לרשימת הדגמים" onClick={ctl.exit} disabled={S.busy}><Ic n="back" /></button>
+            <button type="button" className="back" data-guide-id="mn.back" data-act="exit" aria-label="חזרה לרשימת הדגמים" data-tip="חזרה לרשימת הדגמים" onClick={ctl.exit} disabled={S.busy}><Ic n="back" /></button>
             <div className="ttl"><h1><small>דגמים</small>דגם חדש</h1></div>
             <div className="tools"><PageVariantToggle screen="model_new" placement="header" systemTip /></div>
           </div>

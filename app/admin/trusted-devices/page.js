@@ -123,6 +123,7 @@ export default function TrustedDevicesPage() {
                 <label htmlFor="admin-trusted-devices-label">שם למחשב (לדוגמה: &quot;עמדה קדמית&quot;) - אופציונלי</label>
                 <input
                   id="admin-trusted-devices-label"
+                  data-guide-id="td.label"
                   className="input"
                   type="text"
                   value={label}
@@ -133,6 +134,7 @@ export default function TrustedDevicesPage() {
               <button
                 type="button"
                 onClick={handleMark}
+                data-guide-id="td.mark"
                 disabled={marking}
                 className="btn btn-primary"
               >
@@ -150,7 +152,7 @@ export default function TrustedDevicesPage() {
         )}
       </div>
 
-      <h2 className="section-title">רשימת מחשבים מהימנים</h2>
+      <h2 className="section-title" data-guide-id="td.list">רשימת מחשבים מהימנים</h2>
 
       {devices.length === 0 ? (
         <div className="empty-state">

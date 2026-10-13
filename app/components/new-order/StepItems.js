@@ -27,7 +27,7 @@ function ModelField({ ctl }) {
   const list = ctl.modelList;
   const code = m ? modelCodeSuffix(m) : '';
   return (
-    <div className="addstep">
+    <div className="addstep" data-guide-id="no.item-model">
       <div className="lbl with-ic"><Ic n="dress" c="sm" />דגם</div>
       <div className="mdl-wrap">
       <div className="inpw ico-in">
@@ -79,7 +79,7 @@ function SizesAndAlt({ ctl }) {
         {sizes.length === 0 ? (
           <div className="muted sm">{checking ? 'בודק זמינות...' : 'אין מידות זמינות לתאריך זה.'}</div>
         ) : (
-          <div className="sizes" id="addSizes">
+          <div className="sizes" id="addSizes" data-guide-id="no.item-sizes">
             {sizes.map(z => {
               const normal = (z.withNormalBuffer && z.withNormalBuffer.availableQuantity) ?? z.availableQuantity ?? 0;
               const avail = z.withCustomSpacing ? z.withCustomSpacing.availableQuantity : normal;
@@ -94,7 +94,7 @@ function SizesAndAlt({ ctl }) {
       {alt ? (
         <div className="addstep">
           <div className="lbl with-ic"><Ic n="scissors" c="sm" />תיקונים<span className="muted sm" style={{ fontWeight: 400 }}>לא חובה</span></div>
-          <div className="altopts">
+          <div className="altopts" data-guide-id="no.item-alts">
             <button type="button" className={`opt${it.neckAlteration ? ' on' : ''}`} aria-pressed={!!it.neckAlteration} onClick={() => ctl.setNewItemField('neckAlteration', !it.neckAlteration)}>
               {it.neckAlteration ? <Ic n="check" c="sm evck" /> : null}<Ic n="scissors" c="lg" /><div><b>צוואר</b>{priceTag('neck')}</div>
             </button>
@@ -119,7 +119,7 @@ function SizesAndAlt({ ctl }) {
       {/* .addbar2 של העיצוב: "להוספה" + המחיר החי (S06) משמאל לכותרת, הלחצן בקצה */}
       <div className="addbar2 addbar">
         <div className="addsum"><small>{it.selectedSizes.length ? 'להוספה' : 'מחיר'}</small><b>{it.selectedSizes.length ? (pv ? money(pv.total) : '...') : '—'}</b></div>
-        <button type="button" className="btn primary lg" disabled={!it.selectedSizes.length} onClick={ctl.addItemToOrder}><Ic n="plus" />{label}</button>
+        <button type="button" className="btn primary lg" data-guide-id="no.item-add" disabled={!it.selectedSizes.length} onClick={ctl.addItemToOrder}><Ic n="plus" />{label}</button>
       </div>
     </>
   );
@@ -140,7 +140,7 @@ function Cart({ ctl }) {
   const s = ctl.settings;
   const items = ctl.order.items;
   return (
-    <Blk>
+    <Blk data-guide-id="no.cart">
       <SubH icon="cart" tone="green" title={`בסל · ${ctl.activeItems.length}`}>
         {ctl.calculating ? <span className="muted sm">מחשב מחירים...</span> : null}
         {items.length ? <b className="cart-total">סה&quot;כ {moneyTxt(ctl.totalAmount)}</b> : null}
@@ -161,9 +161,9 @@ function Cart({ ctl }) {
                 <div className="a">{money(price)}</div>
               </div>
               <div className="row" style={{ gap: 6, flex: 'none' }}>
-                <button type="button" className="ibtn" data-tip="בדוק תפוסה לתאריך האירוע" aria-label="בדוק תפוסה" onClick={() => ctl.setCapacityItem(item)}><Ic n="cal" c="sm" /></button>
-                <button type="button" className="ibtn" data-tip="ערוך פריט" aria-label="ערוך פריט" onClick={() => ctl.editItem(idx)}><Ic n="pencil" c="sm" /></button>
-                <button type="button" className="ibtn" data-tip="הסר פריט" aria-label="הסר פריט" onClick={() => ctl.confirmRemoveItem(idx)}><Ic n="trash" c="sm" /></button>
+                <button type="button" className="ibtn" data-guide-id="no.cart-capacity" data-tip="בדוק תפוסה לתאריך האירוע" aria-label="בדוק תפוסה" onClick={() => ctl.setCapacityItem(item)}><Ic n="cal" c="sm" /></button>
+                <button type="button" className="ibtn" data-guide-id="no.cart-edit" data-tip="ערוך פריט" aria-label="ערוך פריט" onClick={() => ctl.editItem(idx)}><Ic n="pencil" c="sm" /></button>
+                <button type="button" className="ibtn" data-guide-id="no.cart-remove" data-tip="הסר פריט" aria-label="הסר פריט" onClick={() => ctl.confirmRemoveItem(idx)}><Ic n="trash" c="sm" /></button>
               </div>
             </div>
           );

@@ -1,4 +1,4 @@
-// בדיקות השרת של החיפוש הראשי (app/api/global-search + lib/globalSearch.js + lib/homeSearchPlan.js + lib/homeSearchInventory.js) - בלי DB ובלי Next:
+// בדיקות השרת של החיפוש הראשי (app/api/global-search + lib/globalSearch.js + lib/homeSearchPlan.js) - בלי DB ובלי Next:
 //   סדר ומדויק-קודם (מס' הזמנה), טלפון לפי ספרות (+972, phone2), הברחת LIKE, תאריך עברי/לועזי בהתאמה מדויקת (לא תת-מחרוזת),
 //   סטטוס הזמנה מחושב, שורות "מלאי" לברקוד (כל המידות, קריאה אחת, בלי N+1), הרשאה (קישור ושדות מוסתרים), מילות מפתח עם מידה מדויקת ('02' = '2'),
 //   צ'יפים של הלו"ז (שער page:schedule בשרת, מטמון), וגבולות המטען (LIMIT, מינימום תווים).
@@ -103,7 +103,6 @@ const RENTALS_SQL = /FROM "OrderItem" oi\s+LEFT JOIN "DressItem"/;
 const gs = await import('../lib/globalSearch.js');
 const route = await import('../app/api/global-search/route.js');
 const { planGlobalSearch, rowLimit } = await import('../lib/homeSearchPlan.js');
-const inv = await import('../lib/homeSearchInventory.js');
 
 // ---------------------------------------------------------------- תכנית החיפוש
 console.log('תכנית חיפוש (סיווג לפי כללי הספרות)');
@@ -319,138 +318,33 @@ await t('טיוטה: מוצגת "מחוק" כשההגדרה draft_orders_show_as
   assert.equal((await run('כהן')).orders[0].computedStatus, 'טיוטה');
 });
 
-// ---------------------------------------------------------------- extras: מלאי
-console.log('שורות "מלאי"');
+// ---------------------------------------------------------------- extras: שורות "מלאי" הוסרו (12.10.2026)
+console.log('שורות "מלאי" הוסרו (הוחלפו בפאנל התפוסה / הפריט: lib/searchPanel.js)');
 const MODEL = { id: 'm-632', name: 'שמלת ורד', barcodePrefix: 632, isDeleted: false };
 const ITEM = { id: 'di1', dressBarcode: '6323401', sizeText: '34', serialNumber: 1, location: 'מדף 7', inRepair: false, notInUse: false, dress: MODEL };
 const BULK = (d, ids) => ({ 'm-632': { '30': { available: 1, total: 2, booked: 1 }, '34': { available: 0, total: 1, booked: 1 }, '6': { available: 1, total: 1, booked: 0 }, '06': { available: 2, total: 2, booked: 0 }, '12': { available: 1, total: 1, booked: 0 } } });
-await t('בלי extras: אין inventory ואין dateChips, ולא נקראים המלאי / הלו"ז (תאימות לצרכנים הישנים)', async () => {
+await t('extras: אין inventory / inventoryTruncated, ולא נקרא מנוע המלאי - לא לברקוד, לא למילות מפתח; ההשכרות והפריטים של הברקוד עדיין חוזרים', async () => {
+  reset(['page:dresses_catalog']);
+  T.dressItem = ITEM; T.bulk = BULK;
+  T.rentals = [{ id: 'oi1', orderId: 500, barcode: '6323401', sizeText: '34', isTaken: true, isReturned: false }];
+  for (const q of ['6323401', 'מידה 02 דגם 3', 'דגם 511,455 מידה 4', 'ברקוד 6323401']) {
+    const r = await run(q, { extras: true });
+    assert.ok(!('inventory' in r), q);
+    assert.ok(!('inventoryTruncated' in r), q);
+    assert.equal(T.bulkCalls.length, 0, q + ': לא נקרא getBulkAvailableInventory');
+    assert.deepEqual(Object.keys(r).sort(), ['customers', 'dateChips', 'notices', 'orders', 'rentals'], q);
+  }
+  const r = await run('6323401', { extras: true });
+  assert.equal(r.rentals.length, 1);
+  assert.equal(r.rentals[0].isTaken, true);
+});
+await t('בלי extras: אותו מבנה כמו תמיד (customers / orders / rentals), בלי הלו"ז ובלי מלאי', async () => {
   reset(['page:dresses_catalog', 'page:schedule']);
   T.dressItem = ITEM; T.bulk = BULK;
   const r = await run('6323401');
   assert.deepEqual(Object.keys(r).sort(), ['customers', 'orders', 'rentals']);
   assert.equal(T.bulkCalls.length, 0);
   assert.equal(T.calls.length, 0);
-});
-await t('ברקוד 7 ספרות: שורת מלאי עם פרטי הפריט + כל המידות של הדגם בקריאה אחת (בלי N+1), להיום', async () => {
-  reset(['page:dresses_catalog']);
-  T.dressItem = ITEM; T.bulk = BULK;
-  T.rentals = [{ id: 'oi1', orderId: 500, barcode: '6323401', sizeText: '34', isTaken: true, isReturned: false }];
-  const r = await run('6323401', { extras: true });
-  assert.equal(r.inventory.length, 1);
-  assert.equal(T.bulkCalls.length, 1, 'קריאה אחת בלבד');
-  assert.deepEqual(T.bulkCalls[0].ids, ['m-632']);
-  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-05T12:00:00.000Z', 'היום הישראלי, 12:00 UTC');
-  assert.equal(T.calls.filter(([n]) => n === 'dressItem.findFirst')[0][1].where.dressBarcode, '6323401');
-  const row = r.inventory[0];
-  assert.deepEqual([row.modelName, row.modelCode, row.barcode, row.size, row.status, row.dateLabel], ['שמלת ורד', 632, '6323401', '34', 'מושכר', 'היום']);
-  // כל המידות, כולל זו בלי פנוי (34: 0 מתוך 1) ומיזוג "06" + "6"; ממוינות; המידה של הפריט מסומנת
-  assert.deepEqual(row.sizes.map((s) => [s.size, s.total, s.booked, s.available, s.own]), [
-    ['6', 3, 0, 3, false], ['12', 1, 0, 1, false], ['30', 2, 1, 1, false], ['34', 1, 1, 0, true],
-  ]);
-});
-await t('הרשאה: עם page:dresses_catalog - קישור לכרטיס הדגם, מס\' סידורי ומיקום; בלעדיה - בלי קישור ובלי שדות מוסתרים', async () => {
-  reset(['page:dresses_catalog']);
-  T.dressItem = ITEM; T.bulk = BULK;
-  const withPerm = (await run('6323401', { extras: true })).inventory[0];
-  assert.equal(withPerm.link, '/dashboard/dresses/m-632');
-  assert.equal(withPerm.serial, 1);
-  assert.equal(withPerm.location, 'מדף 7');
-
-  reset([]);
-  T.dressItem = { ...ITEM, inRepair: true };
-  T.bulk = BULK;
-  const r = await run('6323401', { extras: true });
-  const without = r.inventory[0];
-  assert.deepEqual(Object.keys(without).sort(), [...inv.INVENTORY_PUBLIC_FIELDS].sort());
-  for (const hidden of ['link', 'serial', 'location', 'modelId', 'price', 'priceCategory']) assert.ok(!(hidden in without), 'דלף: ' + hidden);
-  const json = JSON.stringify(r);
-  assert.ok(!json.includes('m-632') && !json.includes('מדף 7'), 'מזהה הדגם והמיקום לא נשלחים');
-  assert.equal(without.status, 'לא זמין', 'בלי הרשאה: מושכר / פנוי / לא זמין בלבד - לא חושפים "בתיקון"');
-  assert.deepEqual(T.asked.filter((k) => k === 'page:dresses_catalog').length, 1, 'בדיקת ההרשאה פעם אחת');
-  // עם ההרשאה הסיבה המדויקת
-  reset(['page:dresses_catalog']);
-  T.dressItem = { ...ITEM, inRepair: true }; T.bulk = BULK;
-  assert.equal((await run('6323401', { extras: true })).inventory[0].status, 'בתיקון');
-});
-await t('ברקוד שמעולם לא הושכר (אין שורות השכרה) עדיין מקבל שורת מלאי; פנוי', async () => {
-  reset([]);
-  T.dressItem = ITEM; T.bulk = BULK; T.rentals = [];
-  const r = await run('6323401', { extras: true });
-  assert.equal(r.rentals.length, 0);
-  assert.equal(r.inventory[0].status, 'פנוי');
-});
-await t('ברקוד שאינו פריט: הדגם לפי הקידומת רק כשהוא חד-משמעי; אחרת בלי שורה', async () => {
-  reset([]);
-  T.dressItem = null; T.models = [{ id: 'm-632', name: 'שמלת ורד', barcodePrefix: 632 }]; T.bulk = BULK;
-  const r = await run('6323401', { extras: true });
-  assert.equal(r.inventory[0].itemMissing, true);
-  assert.equal(r.inventory[0].status, '');
-  assert.equal(r.inventory[0].sizes.find((s) => s.own).size, '34');
-  reset([]);
-  T.dressItem = null; T.models = [{ id: 'a', name: 'א', barcodePrefix: 632 }, { id: 'b', name: 'ב', barcodePrefix: 632 }]; T.bulk = BULK;
-  assert.deepEqual((await run('6323401', { extras: true })).inventory, []);
-  assert.equal(T.bulkCalls.length, 0);
-});
-await t('5 ספרות: הזמנה ראשונה (שאילתה) וגם בדיקת ברקוד; מספר הזמנה בן 4 ספרות לא בודק ברקוד', async () => {
-  reset([]);
-  T.dressItem = null; T.models = [];
-  await run('25734', { extras: true });
-  assert.ok(T.calls.some(([n]) => n === 'dressItem.findFirst'));
-  reset([]);
-  await run('2573', { extras: true });
-  assert.ok(!T.calls.some(([n]) => n === 'dressItem.findFirst'));
-});
-await t('5-6 ספרות: אין ניחוש דגם לפי קידומת (מספר הזמנה קודם); 7 ספרות עדיין מנחשות', async () => {
-  reset([]);
-  T.dressItem = null; T.models = [{ id: 'm-5', name: 'חמש', barcodePrefix: 5 }]; T.bulk = BULK;
-  assert.deepEqual((await run('52103', { extras: true })).inventory, [], 'הזמנה 52103 לא מציגה "דגם 5"');
-  assert.equal(T.calls.filter(([n]) => n === 'dressModel.findMany').length, 0);
-});
-await t('מילות מפתח: "מידה 02 דגם 3" - התאמה מדויקת למידה (02 = 2 = " 2", לעולם לא 12), שורה לכל דגם עם המידה, בקריאת מלאי אחת', async () => {
-  reset([]);
-  T.models = [{ id: 'm-3', name: 'שלוש', barcodePrefix: 3 }, { id: 'm-33', name: 'שלושים', barcodePrefix: 33 }];
-  T.bulk = () => ({
-    'm-3': { '02': { available: 1, total: 2, booked: 1 }, '2': { available: 1, total: 1, booked: 0 }, '12': { available: 5, total: 5, booked: 0 }, '20': { available: 4, total: 4, booked: 0 } },
-    'm-33': { '12': { available: 3, total: 3, booked: 0 } },
-  });
-  const r = await run('מידה 02 דגם 3', { extras: true });
-  assert.equal(T.bulkCalls.length, 1);
-  assert.deepEqual(T.bulkCalls[0].ids, ['m-3']);
-  assert.equal(r.inventory.length, 1);
-  assert.deepEqual(r.inventory[0].sizes.map((s) => [s.size, s.available, s.total]), [['2', 2, 3]], '02 ו-2 מאוחדים; 12 ו-20 לא');
-  assert.equal(r.inventory[0].type, 'model');
-  assert.deepEqual(T.sql.length, 0, 'בלי טקסט חופשי לא נשאלו לקוחות / הזמנות / פריטים');
-});
-await t('מידה בלבד: groupBy של הכתיבים הקיימים -> in מדויק (בלי "12"), ואז דגמים; "מידה 36" לא מוצאת 136', async () => {
-  reset([]);
-  T.sizeTexts = ['36', ' 36', '136', '26', '36א'];
-  T.modelIdsBySize = ['m-3'];
-  T.models = [{ id: 'm-3', name: 'שלוש', barcodePrefix: 3 }];
-  T.bulk = () => ({ 'm-3': { '36': { available: 2, total: 2, booked: 0 }, ' 36': { available: 1, total: 1, booked: 0 }, '38': { available: 9, total: 9, booked: 0 } } });
-  const r = await run('מידה 36', { extras: true });
-  const second = T.calls.filter(([n, a]) => n === 'dressItem.groupBy' && a.by[0] === 'dressModelId')[0][1];
-  assert.deepEqual(second.where.sizeText.in.sort(), [' 36', '36']);
-  assert.deepEqual(r.inventory[0].sizes.map((s) => [s.size, s.available]), [['36', 3]]);
-});
-await t('תקרת שורות: מוצגות עד 20 וטופל truncated', async () => {
-  reset([]);
-  T.models = Array.from({ length: 25 }, (_, i) => ({ id: 'm' + i, name: 'ד' + i, barcodePrefix: 100 + i }));
-  T.bulk = (d, ids) => Object.fromEntries(ids.map((id) => [id, { '34': { available: 1, total: 1, booked: 0 } }]));
-  const r = await run('דגם ד', { extras: true });
-  assert.equal(r.inventory.length, 20);
-  assert.equal(r.inventoryTruncated, true);
-  assert.equal(T.bulkCalls.length, 1);
-  assert.ok(T.bulkCalls[0].ids.length <= 20, 'חישוב הזמינות לכל היותר ל-20 דגמים: ' + T.bulkCalls[0].ids.length);
-  assert.equal(T.calls.find(([n]) => n === 'dressModel.findMany')[1].take, 21, 'take = תקרה + 1 (כדי לדעת אם נחתכנו)');
-});
-await t('תאריך בשאילתת מילות מפתח: הזמינות לאותו יום (תווית עברית)', async () => {
-  reset([]);
-  T.models = [{ id: 'm-3', name: 'שלוש', barcodePrefix: 3 }];
-  T.bulk = () => ({ 'm-3': { '2': { available: 1, total: 1, booked: 0 } } });
-  const r = await run('דגם 3 מידה 2 כז תשרי', { extras: true });
-  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-08T12:00:00.000Z');
-  assert.match(r.inventory[0].dateLabel, /כ.?ז תשרי/);
 });
 
 // ---------------------------------------------------------------- extras: צ'יפים של הלו"ז
@@ -502,53 +396,13 @@ await t('תווית עברית לכותרת הזמינות: "יום ד׳ י״ז 
   assert.equal(gs.hebrewDateLabel('2026-10-06'), 'יום ג׳ כ״ה תשרי תשפ״ז');
   for (const k of ['2026-10-28', '2026-10-31', '2027-03-12']) assert.ok(!/\d/.test(gs.hebrewDateLabel(k)), 'אין ספרות לועזיות בתווית');
 });
-await t('"מידה 4 תאריך כ חשוון": שורת המלאי מחושבת לתאריך ההוא ובכותרת התאריך העברי (לא "היום")', async () => {
-  reset([]);
-  T.models = [{ id: 'm-5', name: 'חמש', barcodePrefix: 5 }]; T.sizeTexts = ['04', '6']; T.modelIdsBySize = ['m-5'];
-  T.bulk = () => ({ 'm-5': { '04': { available: 1, total: 2, booked: 1 }, '6': { available: 1, total: 1, booked: 0 } } });
-  const r = await run('מידה 4 תאריך כ חשוון', { extras: true });
-  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-31T12:00:00.000Z');
-  assert.equal(r.inventory[0].date, '2026-10-31');
-  assert.equal(r.inventory[0].dateLabel, 'שבת כ׳ חשוון תשפ״ז');
-  assert.deepEqual(r.inventory[0].sizes.map((s) => s.size), ['04']);
-});
-await t('כמה דגמים ומידות: "מידה 4,6 דגם 511 ו455" - שורה לכל דגם עם המידות, קריאת מלאי אחת לכולם, שליפת דגמים אחת', async () => {
-  reset([]);
-  T.models = [{ id: 'm-455', name: 'ארבע', barcodePrefix: 455 }, { id: 'm-511', name: 'חמש', barcodePrefix: 511 }];
-  T.bulk = () => ({
-    'm-455': { '4': { available: 1, total: 1, booked: 0 }, '6': { available: 0, total: 1, booked: 1 }, '8': { available: 9, total: 9, booked: 0 } },
-    'm-511': { '04': { available: 2, total: 3, booked: 1 }, '12': { available: 5, total: 5, booked: 0 } },
-  });
-  const r = await run('מידה 4,6 דגם 511 ו455 כ חשוון', { extras: true });
-  assert.equal(T.bulkCalls.length, 1, 'getBulk פעם אחת');
-  assert.deepEqual([...T.bulkCalls[0].ids].sort(), ['m-455', 'm-511']);
-  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-31T12:00:00.000Z');
-  assert.equal(r.inventory.length, 2);
-  const by = Object.fromEntries(r.inventory.map((x) => [x.modelCode, x.sizes.map((s) => s.size)]));
-  assert.deepEqual(by, { 455: ['4', '6'], 511: ['04'] }, '8 / 12 לא מוצגות; 6 לא קיימת בדגם 511');
-  const find = T.calls.filter(([n]) => n === 'dressModel.findMany');
-  assert.equal(find.length, 1, 'שליפת דגמים אחת');
-  const or = find[0][1].where.OR;
-  assert.ok(or.some((c) => c.barcodePrefix === 511) && or.some((c) => c.barcodePrefix === 455));
-  assert.ok(T.sql.every((x) => /FROM "Order" o/.test(x.sql)), 'בלי טקסט חופשי: רק שאילתת ההזמנות של אותו יום (התאריך), בלי לקוחות / פריטים');
-});
-await t('רק מידות מרובות בלי דגם: "מידה 4,6" - דגמים שיש להם אחת מהמידות', async () => {
-  reset([]);
-  T.sizeTexts = ['04', '6', '12', '40']; T.modelIdsBySize = ['m-1'];
-  T.models = [{ id: 'm-1', name: 'אחת', barcodePrefix: 1 }];
-  T.bulk = () => ({ 'm-1': { '04': { available: 1, total: 1, booked: 0 }, '6': { available: 1, total: 1, booked: 0 }, '12': { available: 1, total: 1, booked: 0 } } });
-  const r = await run('מידה 4,6', { extras: true });
-  const gb = T.calls.find(([n, a]) => n === 'dressItem.groupBy' && a.by[0] === 'dressModelId');
-  assert.deepEqual([...gb[1].where.sizeText.in].sort(), ['04', '6'], 'רק 04 ו-6 (לא 12 / 40)');
-  assert.deepEqual(r.inventory[0].sizes.map((s) => s.size), ['04', '6']);
-});
-await t('שמות ו"ו": "ורד כהן" / "ויקי" / "ו455" לא מפעילים מלאי ולא מחפשים מילת מפתח', async () => {
+await t('שמות ו"ו": "ורד כהן" / "ויקי" / "ו455" לא מחפשים מילת מפתח', async () => {
   for (const q of ['ורד כהן', 'ויקי', 'ו455', 'דבורה ושרה']) {
     reset([]);
     const p = planGlobalSearch(q, { now: NOW });
     assert.equal(p.keywords, null, q); assert.equal(p.wantsInventory, false, q);
     const r = await run(q, { extras: true });
-    assert.deepEqual(r.inventory, [], q); assert.equal(T.bulkCalls.length, 0, q);
+    assert.ok(!('inventory' in r), q); assert.equal(T.bulkCalls.length, 0, q);
   }
 });
 
@@ -568,7 +422,7 @@ await t('יום שלא קיים בחודש (שנה מפורשת / אדר בלי 
     const p = planGlobalSearch(q, { now: NOW });
     assert.equal(p.dateInvalid, true, q);
     const r = await run(q, { extras: true });
-    assert.deepEqual(r.inventory, [], q + ': אין מלאי "להיום" בשקט'); assert.equal(T.bulkCalls.length, 0, q);
+    assert.ok(!('inventory' in r), q); assert.equal(T.bulkCalls.length, 0, q);
     assert.deepEqual(r.notices, [{ kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' }], q);
   }
   // תקף: אין הודעה
@@ -581,21 +435,14 @@ await t('יום שלא קיים בחודש (שנה מפורשת / אדר בלי 
   assert.deepEqual(r2.notices.map((n) => n.kind), ['dateInvalid']);
   assert.deepEqual(r2.orders, []);
 });
-await t('הודעות: נחתך ל-20 שורות ("מוצגים 20 הראשונים"), ערכים מעבר ל-10 נזרקו ("נלקחו 10 הערכים הראשונים"); בלי הודעות כשהכול תקין; לא בלי extras', async () => {
+await t('הודעות: רק "תאריך לא קיים" נשארה (נחתך / ערכים נזרקו שייכים לשורות המלאי שהוסרו); בלי notices בלי extras', async () => {
   reset([]);
   T.models = Array.from({ length: 25 }, (_, i) => ({ id: 'm' + i, name: 'ד' + i, barcodePrefix: 100 + i }));
-  T.bulk = (d, ids) => Object.fromEntries(ids.map((id) => [id, { '34': { available: 1, total: 1, booked: 0 } }]));
   const r = await run('דגם ד', { extras: true });
-  assert.deepEqual(r.notices, [{ kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }]);
+  assert.deepEqual(r.notices, []);
   assert.equal('notices' in (await run('דגם ד')), false, 'בלי extras אין notices (תאימות לצרכנים ישנים)');
-  reset([]);
-  T.models = [{ id: 'm-1', name: 'אחת', barcodePrefix: 1 }]; T.bulk = () => ({ 'm-1': { '34': { available: 1, total: 1, booked: 0 } } });
   const many = 'מידה 34 דגם ' + Array.from({ length: 12 }, (_, i) => i + 1).join(',');
-  const p = planGlobalSearch(many, { now: NOW });
-  assert.equal(p.keywords.valuesDropped, true); assert.equal(p.keywords.models.length, 10);
-  const r3 = await run(many, { extras: true });
-  assert.deepEqual(r3.notices.map((n) => n.kind), ['valuesDropped']);
-  assert.deepEqual((await run('מידה 34 דגם 1,2', { extras: true })).notices, []);
+  assert.deepEqual((await run(many, { extras: true })).notices, []);
 });
 
 console.log('צ\'יפים של הלו"ז');
@@ -642,7 +489,7 @@ await t('לו"ז נופל / תאריך מחוץ לטווח: התוצאות הר�
   reset(['page:schedule']);
   T.orders = [order({ orderId: 3, itemStats: { n: 1, all: 1, taken: 0, returned: 0 } })];
   const mod = await import('../lib/globalSearch.js');
-  const r = await mod.runGlobalSearch('כז תשרי', { extras: true, now: NOW, deps: { getBulk: async () => async () => ({}), getDay: async () => async () => { throw new Error('boom'); } } });
+  const r = await mod.runGlobalSearch('כז תשרי', { extras: true, now: NOW, deps: { getDay: async () => async () => { throw new Error('boom'); } } });
   assert.equal(r.dateChips, null);
   assert.equal(r.orders.length, 1);
 });
@@ -666,7 +513,8 @@ await t('route: 401 בלי התחברות; q ריק = שלוש רשימות רי
   const plain = await (await route.GET(req('q=' + encodeURIComponent('6323401')))).json();
   assert.ok(!('inventory' in plain));
   const ex = await (await route.GET(req('q=' + encodeURIComponent('6323401') + '&extras=1'))).json();
-  assert.equal(ex.inventory.length, 1);
+  assert.ok(!('inventory' in ex));
+  assert.ok('dateChips' in ex);
 });
 await t('route: שגיאת DB = 500 עם הודעה כללית (בלי פרטי שגיאה)', async () => {
   reset([]);

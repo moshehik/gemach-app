@@ -7,6 +7,8 @@ import { hasPermission } from '@/lib/permissions';
 import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
 import { normalizeAttachments, buildGasPayload, postToMailer } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig } from '@/lib/emailConfig';
+import { makeTx } from '@/lib/emailRegistry';
 
 export async function POST(request) {
   try {
@@ -65,11 +67,13 @@ export async function POST(request) {
 
     // 3. Call Google Apps Script - URL resolved centrally (lib/mailer.js)
     const settings = (await getAllCachedSettings()).filter(s => ['gmach_name', 'email_drive_folder_id'].includes(s.key));
-    const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
+    // מרכז המיילים (/admin/email-center): תגית המסגרת והשדות הקבועים. בלי עריכה - כמו תמיד.
+    const cfg = await getEmailConfig('managerFreeText');
+    const gmachName = cfg.fixed.gmachName || settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
     const defaultDriveFolder = settings.find(s => s.key === 'email_drive_folder_id')?.value || '';
     const driveFolderId = (driveFolderIdRaw || defaultDriveFolder || '').trim();
 
-    const emailHtml = renderGenericEmailHtml({ title: subject, bodyText: emailBody, gmachName, subtitle: 'הודעה מהגמ"ח' });
+    const emailHtml = renderGenericEmailHtml({ title: subject, bodyText: emailBody, gmachName, subtitle: makeTx('managerFreeText', cfg.texts)('kicker'), cfg });
 
     const googlePayload = buildGasPayload({
       to,

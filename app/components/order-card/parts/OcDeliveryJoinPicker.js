@@ -108,7 +108,7 @@ export default function OcDeliveryJoinPicker({ oc }) {
   const mi = eff.mode === 'join' ? 1 : 0;
 
   return (
-    <div className={`card dfields oc-join${on ? '' : ' off'}`} id="oc-join" inert={on ? undefined : true}>
+    <div className={`card dfields oc-join${on ? '' : ' off'}`} id="oc-join" data-guide-id="oc.delivery-join" inert={on ? undefined : true}>
       <div className="card-h"><div className="ico teal"><OcIcon name="users" size="lg" /></div><h2>הצטרפות למשלוח</h2></div>
       <div className="seg pill" role="radiogroup" aria-label="סוג המשלוח" style={{ '--n': 2, '--i': mi }}>
         <span className="pth" aria-hidden="true" />

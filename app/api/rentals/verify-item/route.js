@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
@@ -128,7 +130,8 @@ export async function POST(request) {
         barcodePrefix: barcodePrefix,
         sizeText: sizeText,
         dressModelId: dressModelId,
-        dressName: dressName || (barcodePrefix ? `דגם ${barcodePrefix}` : null),
+        // שם אמיתי אם יש, אחרת מספר הדגם (lib/modelDisplay.js) - לעולם לא "ללא שם"
+        dressName: modelDisplayName({ name: dressName, barcodePrefix }, { ...(await getModelDisplayOpts()), fallback: '' }) || null,
         location: dressItem?.location || 'חנות'
       }
     });

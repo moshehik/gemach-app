@@ -127,7 +127,7 @@ export default async function Dashboard() {
       </div>
 
       <h2 className="section-title">מדדים מרכזיים</h2>
-      <div className="kpi-grid">
+      <div className="kpi-grid" data-guide-id="dash.kpis">
         <div className="kpi-card">
           <div className="kpi-top">
             <div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}>
@@ -169,7 +169,7 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      <h2 className="section-title">פילוח נתונים</h2>
+      <h2 className="section-title" data-guide-id="dash.charts">פילוח נתונים</h2>
       <DashboardCharts
         revenueByMethod={revenueByMethod}
         revenueTrend={revenueTrend}

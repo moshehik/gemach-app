@@ -68,6 +68,7 @@ export default function OcTabs({ oc, ui, tabs }) {
               aria-controls={`p-${t.id}`}
               tabIndex={on ? 0 : -1}
               data-tab={t.id}
+              data-guide-id={`oc.tab-${t.id}`}
               onClick={() => oc.setTab(t.id)}
             >
               <span className="tico">

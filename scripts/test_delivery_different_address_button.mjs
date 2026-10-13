@@ -44,7 +44,7 @@ t('המפתח רשום: שם + הערה + קטגוריית משלוחים + בו
   const M = read('lib/settingsMetadata.js');
   assert.equal((M.match(new RegExp(`\n  ${KEY}: '`, 'g')) || []).length, 2, 'שם + הערה');
   assert.equal(M.split(`'${KEY}'`).length, 3, 'קטגוריה + בוליאנים');
-  assert.ok(M.includes(`'delivery_show_in_order', 'delivery_allow_address_override', '${KEY}',\n`));
+  assert.ok(M.includes(`'delivery_allow_address_override', '${KEY}',\n`));
   const SIM = read('lib/settingsSimLayout.js');
   assert.ok(SIM.includes(`'${KEY}'`) && SIM.includes(`  ${KEY}: { icon: 'pin' },`));
   const seed = read(`scripts/seed_${KEY}_setting.js`);

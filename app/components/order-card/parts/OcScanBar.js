@@ -6,6 +6,7 @@
 // החזרה מוקדמת באישור מנהל). השדה מתאפס ונשאר בפוקוס אחרי כל סריקה — סריקה ברצף. #scanMsg (העיצוב) מציג את התוצאה לרגע.
 // כש-enable_barcode_sequence_mode דלוק והוזרק SequencePanel (W2b) — הוא מוצג בתוך #sbar במקום השדה (REQUESTS-W3.md #4).
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import useItemActions, { createScanQueue, itemName } from '../hooks/useItemActions';
 import { OcItemChooserDialog } from './OcBarcodeRow';
@@ -13,6 +14,7 @@ import { OcItemChooserDialog } from './OcBarcodeRow';
 const MSG_MS = 2600;
 
 export default function OcScanBar({ oc, ui, SequencePanel }) {
+  const nf = useNoFill();
   const chooseItem = ({ candidates, barcode }) => ui.openDialog(OcItemChooserDialog, { candidates, barcode });
   const actions = useItemActions(oc, ui, { chooseItem });
   const [val, setVal] = useState('');
@@ -45,7 +47,7 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
   }, [msg]);
 
   if (SequencePanel && oc.settings.enableBarcodeSequenceMode) {
-    return <div className="sbar" id="sbar"><SequencePanel oc={oc} ui={ui} /></div>;
+    return <div className="sbar" id="sbar" data-guide-id="oc.scan"><SequencePanel oc={oc} ui={ui} /></div>;
   }
 
   // סריקה שנייה בזמן שהראשונה רצה: השדה מתנקה מיד (הסריקה הבאה לא מצטרפת לטקסט ישן) והקוד נכנס לתור (createScanQueue)
@@ -57,14 +59,14 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
   };
 
   return (
-    <div className="sbar" id="sbar">
+    <div className="sbar" id="sbar" data-guide-id="oc.scan">
       <div className="inpw">
         <OcIcon name="scan" />
         <input
           ref={inRef}
           className="inp"
           id="scanIn"
-          name="barcode-nofill"
+          {...nf('barcode')}
           inputMode="numeric"
           placeholder="ברקוד: סרקו או הקלידו..."
           aria-label="הקלדת ברקוד — השכרה / החזרה"
@@ -72,7 +74,6 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }}
-          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

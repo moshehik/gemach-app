@@ -3,6 +3,7 @@
 // DcParts - רכיבי עזר קטנים של כרטיס הדגם: טולטיפ-עזרה (.tip), קופסת סימון דו-מצבית (.seg.pill עם הנפשת הידית), טקסט עם הדגשה,
 // ושדה/קריאה-בלבד של העיצוב המאושר (fld / vf ב-scratch/emp-models-build/model-card.js).
 import { useLayoutEffect, useRef } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../order-card/OcIcon';
 
 export const Ic = OcIcon;
@@ -24,7 +25,7 @@ export function Segs({ parts }) {
  * .seg.pill - בורר דו/תלת-מצבי של העיצוב (pillOpen/pillRun): ידית שמחליקה בין המצבים (WAAPI, 420ms) כשהערך משתנה.
  * options: [{key,label,icon}]  value: key  onChange(key)
  */
-export function DcPill({ id, value, options, onChange, label, className = '' }) {
+export function DcPill({ id, value, options, onChange, label, className = '', 'data-guide-id': gid }) {
   const ref = useRef(null);
   const n = options.length;
   const idx = Math.max(0, options.findIndex((o) => o.key === value));
@@ -40,7 +41,7 @@ export function DcPill({ id, value, options, onChange, label, className = '' }) 
     th.animate([{ insetInlineStart: pos(from) }, { insetInlineStart: pos(idx) }], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' });
   }, [idx, n]);
   return (
-    <div className={`seg pill${className ? ` ${className}` : ''}`} id={id} ref={ref} role="radiogroup" aria-label={label} style={{ '--n': n, '--i': idx }} data-to={idx}>
+    <div className={`seg pill${className ? ` ${className}` : ''}`} id={id} ref={ref} {...(gid ? { 'data-guide-id': gid } : null)} role="radiogroup" aria-label={label} style={{ '--n': n, '--i': idx }} data-to={idx}>
       <span className="pth" aria-hidden="true" />
       {options.map((o) => (
         <button key={o.key} type="button" role="radio" aria-checked={value === o.key} className={value === o.key ? 'on' : ''} onClick={() => onChange(o.key)}>
@@ -51,18 +52,18 @@ export function DcPill({ id, value, options, onChange, label, className = '' }) 
   );
 }
 
-const NOFILL = { autoComplete: 'nope', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
 /** שדה טקסט עם אייקון וכפתור ניקוי (fld בעיצוב) */
-export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, mode, tip, hint, inputStyle, error }) {
+export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, mode, tip, hint, inputStyle, error, 'data-guide-id': gid }) {
+  const nf = useNoFill();
   const v = value == null ? '' : value;
   return (
-    <div className={`field${error ? ' bad' : ''}`}>
+    <div className={`field${error ? ' bad' : ''}`} {...(gid ? { 'data-guide-id': gid } : null)}>
       <label className="lbl" htmlFor={id}>{label}{tip ? <Tip text={tip} /> : null}</label>
       <div className="inpw">
         <OcIcon name={icon} size="sm" />
-        <input className="inp" id={id} name={`${id}-nofill`} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-err` : undefined} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
-          onChange={lock ? undefined : (e) => onChange(e.target.value)} {...NOFILL} />
+        <input className="inp" id={id} {...nf(id)} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-err` : undefined} disabled={!!lock} value={v} placeholder={placeholder} dir={dir} inputMode={mode} style={inputStyle}
+          onChange={lock ? undefined : (e) => onChange(e.target.value)} />
         {lock ? null : <button type="button" className="inpx" aria-label="ניקוי" hidden={!v} onClick={() => { onChange(''); const el = document.getElementById(id); if (el) el.focus(); }}><OcIcon name="x" size="sm" /></button>}
       </div>
       {error ? <div className="dc-err" id={`${id}-err`} role="alert" style={{ marginTop: 6 }}><OcIcon name="alert" size="sm" />{error}</div> : null}
@@ -72,10 +73,10 @@ export function Fld({ id, label, icon, value, onChange, placeholder, lock, dir, 
 }
 
 /** שדה קריאה בלבד (vf בעיצוב): אייקון, תווית (+טולטיפ), ערך או "חסר" */
-export function Vf({ icon, label, value, bdi, opt, tipx, extra }) {
+export function Vf({ icon, label, value, bdi, opt, tipx, extra, 'data-guide-id': gid }) {
   const has = String(value == null ? '' : value).trim() !== '';
   return (
-    <div className={`f${has || opt ? '' : ' miss'}`}>
+    <div className={`f${has || opt ? '' : ' miss'}`} {...(gid ? { 'data-guide-id': gid } : null)}>
       <OcIcon name={icon} />
       <div>
         <small>{label}{tipx ? <Tip text={tipx} /> : null}</small>

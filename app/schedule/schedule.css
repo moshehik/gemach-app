@@ -26,6 +26,15 @@
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .ibtn.lz-top{transition:none}}
 .gm-ds.gm-lz .lz-app .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;display:flex;align-items:center;gap:14px;flex-wrap:nowrap}
 .gm-ds.gm-lz .lz-app .topbar .ttl{position:relative;flex:0 1 auto;display:flex;align-items:center;flex-wrap:nowrap;gap:12px;min-width:0}
+/* גודל אחיד לכל לחצני הפעולה העגולים בסרגל הכלים (הגדרות / הדפסה / הורדה / XL בכותרת הדף ובכותרות השלבים) ולמתג התצוגה:
+   כלל אחד - אותו קוטר (--lz-tool), אותה מסגרת (1px), אותו אייקון (--lz-tool-ic), יישור מרכזי. לפני כן .ibtn (גלגל השיניים) היה 44px
+   ו-.xlbtn 36px. הצבעים של כל לחצן (הגדרות / הדפסה / הורדה / XL) נשארים של הפלטה - כאן רק מידות. */
+.gm-ds.gm-lz{--lz-tool:36px;--lz-tool-ic:18px}
+.gm-ds.gm-lz :is(.lz-dtools,.lz-stools) :is(.xlbtn,.ibtn){box-sizing:border-box;flex:none;width:var(--lz-tool);height:var(--lz-tool);min-width:0;min-height:0;padding:0;border-width:1px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.gm-ds.gm-lz :is(.lz-dtools,.lz-stools) :is(.xlbtn,.ibtn) :is(.ic,.xlic,.prtic,.dlic){width:var(--lz-tool-ic);height:var(--lz-tool-ic);flex:none}
+.gm-ds.gm-lz .lz-app .topbar .lz-dtools{flex-wrap:nowrap}
+.gm-ds.gm-lz .lz-hb .vsw{box-sizing:border-box;width:calc(var(--lz-tool)*2);height:var(--lz-tool)}
+.gm-ds.gm-lz .lz-hb .vsw .vopt .ic{width:var(--lz-tool-ic);height:var(--lz-tool-ic)}
 /* כלי XL / הורדה / הדפסה בקצה השמאלי של שורת הכותרת (עיצוב 1091, 1485, 1492: grid [1fr auto] במסך רחב) */
 .gm-ds.gm-lz .lz-dtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
 @media (min-width:641px){
@@ -303,3 +312,22 @@
 .gm-ds.gm-lz .lz-rail{display:none}
 .gm-ds.gm-lz .lz-layout{display:block}
 }
+/* ===== חלונית ברקוד (BarcodeDialog.js; docs/schedule-barcode-plan.md) - על רכיבי החלון הקיים lz-cf / lz-det ===== */
+.gm-ds.gm-lz .dlg.lz-bc{max-width:560px}
+.gm-ds.gm-lz .lz-bc-inp{position:relative;margin:14px 0 6px}
+.gm-ds.gm-lz .lz-bc-inp>.ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;color:var(--gold-300);stroke:var(--gold-300);pointer-events:none;z-index:1}
+.gm-ds.gm-lz .lz-bc-inp .inp{width:100%;min-height:46px;padding-inline-start:44px;font-size:18px;letter-spacing:.06em;text-align:start}
+.gm-ds.gm-lz .lz-bc-status{min-height:22px;margin:2px 4px 4px;font-size:14px;text-align:start}
+.gm-ds.gm-lz .lz-bc-err{color:#fa9e84;font-weight:600}
+.gm-ds.gm-lz .lz-bc-ok{color:var(--gold-300)}
+.gm-ds.gm-lz .lz-bc-hint{color:var(--k-faint)}
+.gm-ds.gm-lz .lz-bc-list{max-height:min(46vh,360px);overflow:auto}
+.gm-ds.gm-lz .lz-bc-it.miss{box-shadow:inset -3px 0 0 #fa9e84}
+.gm-ds.gm-lz .lz-bc-it .t{flex:1 1 auto}
+.gm-ds.gm-lz .lz-bc-it .ibtn{flex:none}
+.gm-ds.gm-lz .lz-bc-panel{display:flex;flex-direction:column;gap:8px;margin:8px 0;padding:12px;border-radius:12px;background:rgba(255,255,255,.08);text-align:start}
+.gm-ds.gm-lz .lz-bc-panel small{color:var(--k-faint)}
+.gm-ds.gm-lz .lz-bc-panel .li{cursor:pointer}
+.gm-ds.gm-lz .lz-bc-btns{display:flex;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-lz .lz-bc-chk{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-lz .lz-bc-relall{margin:6px 0 2px;align-self:flex-start}

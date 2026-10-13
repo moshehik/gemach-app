@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import HebrewDateRangePicker from './HebrewDateRangePicker';
 import { getHebrewDateString, getIsraelTodayKey, addMonthsToDateKey } from '@/lib/hebrewDate';
 import { CapacityCalendar } from './CapacityCalendar';
+import { modelNameWithParenCode, isSameModelCode } from '@/lib/modelCodeLabel';
 
 export default function CapacitySearchModal({ isOpen, onClose }) {
   const [barcodePrefix, setBarcodePrefix] = useState('');
@@ -88,7 +89,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!barcodePrefix) { setModelQuery(''); return; }
     const m = models.find(mm => mm.barcodePrefix === barcodePrefix);
-    if (m) setModelQuery(`${m.name} (${m.barcodePrefix})`);
+    if (m) setModelQuery(modelNameWithParenCode(m.name, m.barcodePrefix));
   }, [barcodePrefix, models]);
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   }, []);
 
   const selectedModel = models.find(m => String(m.barcodePrefix) === String(barcodePrefix));
-  const selectedDisplay = selectedModel ? `${selectedModel.name} (${selectedModel.barcodePrefix})` : '';
+  const selectedDisplay = selectedModel ? modelNameWithParenCode(selectedModel.name, selectedModel.barcodePrefix) : '';
   const isShowingSelectedDisplay = showModelDropdown && selectedDisplay && modelQuery === selectedDisplay;
   const filteredModels = isShowingSelectedDisplay
     ? models
@@ -364,14 +365,14 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                         className="combobox-option"
                         onClick={() => {
                           setBarcodePrefix(m.barcodePrefix);
-                          setModelQuery(`${m.name} (${m.barcodePrefix})`);
+                          setModelQuery(modelNameWithParenCode(m.name, m.barcodePrefix));
                           setSize('');
                           setShowModelDropdown(false);
                         }}
                       >
                         <svg className="icon"><use href="#i-tag" /></svg>
                         <span>{m.name}</span>
-                        <span className="meta">{m.barcodePrefix}</span>
+                        {!isSameModelCode(m.name, m.barcodePrefix) && <span className="meta">{m.barcodePrefix}</span>}
                       </div>
                     ))}
                   </div>

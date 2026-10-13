@@ -243,7 +243,8 @@ test('a5/adv "החזרה היום/מחר": under v2 the event->due gap exceeds t
 
 test('every customer-visible call site was switched (no leftover old return-date computation)', () => {
   const read = (f) => fs.readFileSync(path.join(process.env.PROJ, f), 'utf8');
-  for (const f of ['app/print/order/page.js', 'app/api/orders/[id]/email/route.js', 'app/api/orders/route.js']) {
+  // מייל אישור ההזמנה: הלוגיקה עברה מ-app/api/orders/route.js ל-lib/orderConfirmationMail.js (מרכז המיילים, 12.10.2026) - שני אתרי הקריאה משתמשים בו
+  for (const f of ['app/print/order/page.js', 'app/api/orders/[id]/email/route.js', 'lib/orderConfirmationMail.js']) {
     const src = read(f);
     assert.doesNotMatch(src, /addDaysSkippingWeekends\(/, `${f}: old return-date formula`);
     assert.doesNotMatch(src, /subtractSkippingWeekendsAndChag\(/, `${f}: old pickup formula`);

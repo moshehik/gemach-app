@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
@@ -117,12 +118,13 @@ export async function GET(request, { params }) {
         : Promise.resolve([]),
     ]);
 
+    const historyModelOpts = await getModelDisplayOpts(); // useModelNames=false (נווה): אין "שם הדגם" ביומן, רק קוד
     const items = itemRows.map(r => ({
       id: r.id,
       sizeText: r.sizeText,
       description: r.description,
       prefix: r.dm_prefix ?? r.di_prefix ?? r.oi_prefix ?? null,
-      modelName: r.dm_name || null,
+      modelName: historyModelOpts.useModelNames === false ? null : (r.dm_name || null),
       isDeleted: r.isDeleted,
       isTaken: r.isTaken,
       takenDate: r.takenDate,

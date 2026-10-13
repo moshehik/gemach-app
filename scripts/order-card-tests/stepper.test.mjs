@@ -8,7 +8,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const PROJ = process.env.PROJ;
-const read = (p) => fs.readFileSync(path.join(PROJ, p), 'utf8').split('\r\n').join('\n');
+// data-guide-id are the AI site-guide markers (lib/aiGuide), not part of the look/behaviour this test pins - removed before matching the source text
+const stripGuide = (s) => s.replace(/ data-guide-id=(?:"[^"]*"|\{[^}]*\})/g, '');
+const read = (p) => stripGuide(fs.readFileSync(path.join(PROJ, p), 'utf8')).split('\r\n').join('\n');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 const P = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 const S = await P('app/components/order-card/parts/ocStepperLogic.js');

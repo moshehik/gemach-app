@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
@@ -166,9 +168,11 @@ export async function GET(request) {
       });
       modelByPrefix = Object.fromEntries(models.map(m => [m.barcodePrefix, m.name]));
     }
+    // שם הדגם להצגה: שם אמיתי, אחרת מספר הדגם (לעולם לא "ללא שם"; בנווה useModelNames=false = מספר בלבד) - lib/modelDisplay.js
+    const mOpts = await getModelDisplayOpts();
     items.forEach(i => {
-      i.dressModelName = i.dressItem?.dress?.name || modelByPrefix[i.barcodePrefix] || null;
       i.dressPrefix = i.dressItem?.dress?.barcodePrefix ?? i.barcodePrefix ?? null;
+      i.dressModelName = modelDisplayName({ name: i.dressItem?.dress?.name || modelByPrefix[i.barcodePrefix] || null, barcodePrefix: i.dressPrefix }, { ...mOpts, fallback: '' }) || null;
     });
 
     const sortedItems = items.sort((a, b) => {
@@ -193,8 +197,8 @@ export async function GET(request) {
       const custB = (b.order?.customer?.firstName || '') + ' ' + (b.order?.customer?.lastName || '');
       if (custA !== custB) return custA.localeCompare(custB);
 
-      const dressA = a.dressItem?.dress?.name || a.dressItem?.dressName || '';
-      const dressB = b.dressItem?.dress?.name || b.dressItem?.dressName || '';
+      const dressA = a.dressModelName || a.dressItem?.dress?.name || a.dressItem?.dressName || '';
+      const dressB = b.dressModelName || b.dressItem?.dress?.name || b.dressItem?.dressName || '';
       return dressA.localeCompare(dressB);
     });
 
@@ -204,7 +208,7 @@ export async function GET(request) {
       filteredItems = sortedItems.filter(item => {
         const custFirst = item.order?.customer?.firstName?.toLowerCase() || '';
         const custLast = item.order?.customer?.lastName?.toLowerCase() || '';
-        const dressName = item.dressItem?.dress?.name?.toLowerCase() || item.dressItem?.dressName?.toLowerCase() || '';
+        const dressName = `${item.dressModelName || ''} ${item.dressItem?.dress?.name || ''} ${item.dressItem?.dressName || ''}`.toLowerCase(); // גם לפי שם וגם לפי מספר הדגם המוצג
         const orderId = item.order?.orderId?.toString() || '';
         return custFirst.includes(lowerSearch) || custLast.includes(lowerSearch) || dressName.includes(lowerSearch) || orderId.includes(lowerSearch);
       });

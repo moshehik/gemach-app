@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { isKioskBarePath } from '@/lib/shellBare';
 import SettingQuickPanel from './SettingQuickPanel';
+import GuideChips from './guide/GuideChips';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { CopyChip, splitCopyable, renderCopyable } from './CopyableText';
 import useElementPicker, { ElementPickerOverlay } from './useElementPicker';
@@ -13,6 +15,7 @@ import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/u
 import { formatActionSteps } from '../../lib/actionRecorderCore';
 import { useUiVariant } from './UiVariantContext';
 import { useAiDialogs } from './ai-widget/AiDialogs';
+import { extractSafeOpenLinks } from './home/homeLogic';
 import { AI_FILE_INPUT_ACCEPT, validateAiFiles, isAiImageName } from '../../lib/aiAttachmentTypes';
 
 // תפריט צץ שנסגר בלחיצה/מיקוד מחוץ אליו (וגם מחוץ לכפתור שפותח אותו, שמטפל בפתיחה/סגירה בעצמו - אחרת הסגירה
@@ -100,20 +103,7 @@ function extractFilterTerm(content) {
   return { displayText: content.replace(tagRegex, '').trim(), term };
 }
 
-// מפריד תגיות [OPEN_LINK:route|תווית] שה-AI מוסיף (app/api/ai/route.js, ACTION:
-// HOWTO_GUIDE) - מקביל ל-extractOpenSettingKeys אבל לניווט ישיר לעמוד, לא לפתיחת
-// פאנל עריכת הגדרה.
-function extractOpenLinks(content) {
-  if (typeof content !== 'string') return { displayText: content, links: [] };
-  const links = [];
-  const tagRegex = /\[OPEN_LINK:([^\]|]+)\|([^\]]+)\]/g;
-  let match;
-  while ((match = tagRegex.exec(content)) !== null) {
-    links.push({ route: match[1].trim(), label: match[2].trim() });
-  }
-  const displayText = content.replace(tagRegex, '').trim();
-  return { displayText, links };
-}
+// תגיות [OPEN_LINK:route|תווית] (ACTION: HOWTO_GUIDE הישן): extractSafeOpenLinks (home/homeLogic.js) משאירה רק route פנימי תקין - מתחיל ב-"/" ולא ב-"//".
 
 export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
   // במעטפת החדשה (A5) הכפתור והחלונית בכחול-זהב של האתר (class ai-a5, globals.css) במקום צבע הערכה הישנה (--primary-solid).
@@ -185,6 +175,22 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     setShowCaptureMenu(false);
     setIsOpen(false);
   };
+
+  // "הצג לי" (GuideProvider): כשהחלונית מסתירה את האלמנט המודגש (או במסך צר) היא נסגרת כדי שההדגשה תיראה. השיחה נשמרת וחוזרת בפתיחה.
+  useEffect(() => {
+    const onGuide = (e) => {
+      const r = e && e.detail && e.detail.rect;
+      const panel = document.querySelector('.ai-widget-panel');
+      let overlaps = window.innerWidth < 900;
+      if (!overlaps && r && panel) {
+        const p = panel.getBoundingClientRect();
+        overlaps = r.left < p.right && r.left + r.width > p.left && r.top < p.bottom && r.top + r.height > p.top;
+      }
+      if (overlaps) { setShowCaptureMenu(false); setIsOpen(false); }
+    };
+    window.addEventListener('gm:guide-started', onGuide);
+    return () => window.removeEventListener('gm:guide-started', onGuide);
+  }, []);
 
   const openFilePicker = () => {
     setShowCaptureMenu(false);
@@ -442,6 +448,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         body: JSON.stringify({
           prompt: userMsg,
           history: historyContext,
+          // הדף הנוכחי: מדריך האתר (lib/ai/siteGuide.js) מתאים את התשובה ואת ההצבעה לדף שבו העובדת נמצאת
+          currentPath: pathname,
           // השאלה הראשונה בשיחה (קיימת רק הודעת הפתיחה של ה-AI): השרת מצרף לתשובה כותרת לשיחה
           firstQuestion: messages.filter((m) => m.role === 'assistant').length <= 1 && !imageToSend && !recordingMetaToSend && filesToSend.length === 0,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`,
@@ -455,7 +463,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.data, ...(data.title ? { title: String(data.title).slice(0, 60) } : {}) }
+        ? { role: 'assistant', content: data.response, tableData: data.data, ...(data.title ? { title: String(data.title).slice(0, 60) } : {}), ...(Array.isArray(data.guide) && data.guide.length ? { guide: data.guide, guideHref: data.guideHref || null } : {}) }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       const finalMessages = [...newMessages, assistantMessage];
@@ -577,7 +585,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     setShowHistory(false);
   };
 
-  if (pathname === '/customer-interface' || hideAIFeatures) {
+  if (isKioskBarePath(pathname) || hideAIFeatures) {
     return null;
   }
 
@@ -589,6 +597,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       <>
         <button data-element-name="כפתור_AIFloatingWidget_2"
           type="button"
+          data-guide-id="ai.fab"
           className={`print-hide ai-widget-fab${a5Class}`}
           onClick={() => setIsOpen(true)}
           style={{
@@ -624,7 +633,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   return (
     <>
-      <div className={`print-hide card ai-widget-panel${a5Class}`} style={{
+      <div data-guide-id="ai.panel" className={`print-hide card ai-widget-panel${a5Class}`} style={{
         position: 'fixed',
         bottom: '20px',
         insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
@@ -662,6 +671,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               onClick={() => setShowHistory(!showHistory)}
               style={{ color: showHistory ? 'var(--accent)' : 'var(--text-on-primary)' }}
               title="היסטוריית שיחות"
+              data-guide-id="ai.history"
             >
               <svg data-element-name="רכיב_AIFloatingWidget_6" className="icon"><use href="#i-history" /></svg>
             </button>
@@ -671,6 +681,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               onClick={clearChat}
               style={{ color: 'var(--text-on-primary)' }}
               title="שיחה חדשה"
+              data-guide-id="ai.new-chat"
             >
               <svg data-element-name="רכיב_AIFloatingWidget_8" className="icon"><use href="#i-plus" /></svg>
             </button>
@@ -680,6 +691,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               onClick={() => { setShowCaptureMenu(false); setIsExpanded(!isExpanded); }}
               style={{ color: 'var(--text-on-primary)' }}
               title={isExpanded ? 'הקטן' : 'הגדל'}
+              data-guide-id="ai.expand"
             >
               {isExpanded ? (
                 <svg data-element-name="רכיב_AIFloatingWidget_10" className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" /></svg>
@@ -693,6 +705,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               onClick={closeWidget}
               style={{ color: 'var(--text-on-primary)' }}
               title="סגור"
+              data-guide-id="ai.close"
             >
               <svg data-element-name="רכיב_AIFloatingWidget_13" className="icon"><use href="#i-x" /></svg>
             </button>
@@ -743,7 +756,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <div className="chat-thread">
               {messages.map((msg, idx) => {
                 const { displayText: afterSettings, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
-                const { displayText: afterLinks, links: openLinks } = extractOpenLinks(afterSettings);
+                const { displayText: afterLinks, links: openLinks } = extractSafeOpenLinks(afterSettings);
                 const { displayText, term: filterTerm } = extractFilterTerm(afterLinks);
                 return (
                   <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
@@ -806,6 +819,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                         </a>
                       </div>
                     )}
+                    {Array.isArray(msg.guide) && msg.guide.length > 0 && <GuideChips guide={msg.guide} guideHref={msg.guideHref} />}
                     {openLinks.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                         {openLinks.map((link, i) => (
@@ -893,6 +907,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                   onClick={() => setShowCaptureMenu((v) => !v)}
                   className="icon-btn"
                   title="צרף צילום/הסרטת מסך/קובץ"
+                  data-guide-id="ai.attach"
                   aria-haspopup="menu"
                   aria-expanded={showCaptureMenu}
                   aria-controls={showCaptureMenu ? 'ai-capture-menu' : undefined}
@@ -906,21 +921,21 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                     boxShadow: 'var(--shadow-lg)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
                     minWidth: 190, zIndex: 10,
                   }}>
-                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={startElementCaptureForChat}>
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} data-guide-id="ai.capture-area" onClick={startElementCaptureForChat}>
                       <svg className="icon"><use href="#i-pin" /></svg>
                       צלם אזור באתר
                     </button>
-                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={captureFullScreenForChat}>
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} data-guide-id="ai.capture-screen" onClick={captureFullScreenForChat}>
                       <svg className="icon"><use href="#i-grid" /></svg>
                       צלם את כל המסך
                     </button>
                     {recordingEnabled && (
-                      <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={toggleRecording}>
+                      <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} data-guide-id="ai.record-screen" onClick={toggleRecording}>
                         <svg className="icon"><use href="#i-activity" /></svg>
                         הסרטת מסך
                       </button>
                     )}
-                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={openFilePicker} title="תמונה, PDF, טקסט או CSV - עד 3MB בסך הכל">
+                    <button type="button" role="menuitem" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} data-guide-id="ai.upload-file" onClick={openFilePicker} title="תמונה, PDF, טקסט או CSV - עד 3MB בסך הכל">
                       <svg className="icon"><use href="#i-upload" /></svg>
                       העלאת קובץ
                     </button>
@@ -938,6 +953,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                   animation: isListening ? 'pulse 1.5s infinite' : 'none'
                 }}
                 title="הקלט הודעה"
+                data-guide-id="ai.mic"
               >
                 <svg data-element-name="רכיב_AIFloatingWidget_17" className="icon"><use href="#i-mic" /></svg>
               </button>
@@ -947,10 +963,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="שאל שאלה..."
+                data-guide-id="ai.input"
                 className="input"
                 style={{ flex: 1, borderRadius: 'var(--radius-full)' }}
               />
               <button data-element-name="כפתור_AIFloatingWidget_19"
+                data-guide-id="ai.send"
                 type="submit"
                 disabled={loading}
                 className="btn btn-primary btn-icon-only"

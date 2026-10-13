@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.718",
+  "version": "0.1.805",
   "lastUpdated": "2026-07-27",
   "private": true,
   "engines": {
@@ -11,6 +11,7 @@
     "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "test:ai-guide": "node --no-warnings --import ./scripts/ai-reliability/register.mjs scripts/test_ai_site_guide.mjs",
     "test:home": "node scripts/test_home_logic.mjs && node scripts/test_home_css_guard.mjs",
     "backup:prod": "node scripts/backup_prod_db.js",
     "cleanup:logs": "node scripts/cleanup_old_logs.js",

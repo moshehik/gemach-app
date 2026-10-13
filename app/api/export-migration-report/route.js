@@ -1,7 +1,10 @@
 ﻿import fs from 'fs';
 import path from 'path';
+import { checkAuth } from '../../../lib/auth';
 
+// 2026-10-12: was public - the report is built from prisma/schema.prisma + the migration data files (whole DB structure). Developer only.
 export async function GET() {
+  if (!(await checkAuth('מתכנת'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const cwd = process.cwd();
     

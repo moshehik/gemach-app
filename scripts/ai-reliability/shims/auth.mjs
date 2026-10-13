@@ -11,3 +11,6 @@ export async function getSessionEmployee() {
   return prisma.employee.findUnique({ where: { id } });
 }
 export function readVerifiedSession() { return null; }
+
+// GET-settings reader tier (lib/auth.js getSettingsViewerTier): the AI route tests run as a head-management user
+export async function getSettingsViewerTier() { return globalThis.__TIER || 'admin'; }

@@ -1,0 +1,41 @@
+/* ConsentFields - שלוש ההסכמות (תקנון כן/לא, דיוורים כן/לא, אישור פרטיות). עיצוב עצמאי שמשתמש בטוקנים של הפלטה (--gm-*) עם ערכי גיבוי, כך שנראה זהה
+   בעמודי הפלטה (כרטיס לקוח, לקוח חדש, הזמנה חדשה) ובעמודים הישנים (LegacyNewOrderPage / LegacyCustomerPage) וגם בעמדת הלקוח.
+   לחצן כן/לא = גלולה בצורת .seg.pill של הפלטה (מסגרת כחולה, האפשרות הנבחרת מלאה); "טרם נענה" = אף אפשרות לא מלאה. */
+.cnf { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; --cnf-ink: var(--gm-ink, #0a2242); --cnf-muted: var(--gm-ink3, #4d6787); --cnf-navy: var(--gm-navy, #0f2c52);
+  --cnf-line: var(--gm-line, #bcc2c8); --cnf-bg: var(--gm-surface2, #eef0f2); --cnf-bad: var(--gm-red, #a83d6c); --cnf-bad-t: var(--gm-red-t, #fff0f4); --cnf-focus: var(--gm-gold, #c9a227); }
+.cnf-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--cnf-line); border-radius: 14px; background: var(--cnf-bg); }
+.cnf-row-bad { border-color: var(--cnf-bad); background: var(--cnf-bad-t); }
+.cnf-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; text-align: start; }
+.cnf-lbl { font-weight: 600; color: var(--cnf-ink); line-height: 1.35; }
+.cnf-sub { font-size: .875em; color: var(--cnf-muted); line-height: 1.4; }
+.cnf-st { font-size: .8125em; color: var(--cnf-navy); font-weight: 500; }
+.cnf-muted { color: var(--cnf-muted); }
+.cnf-req { color: var(--cnf-bad); font-weight: 700; }
+.cnf-link { color: var(--cnf-navy); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; }
+.cnf-link:hover { text-decoration-thickness: 2px; }
+.cnf-link:focus-visible { outline: 3px solid var(--cnf-focus); outline-offset: 2px; border-radius: 4px; }
+
+.cnf-yn { display: inline-flex; flex: none; position: relative; border: 1.5px solid var(--cnf-navy); border-radius: 999px; padding: 3px; background: #fff; gap: 0; }
+.cnf-bad.cnf-yn { border-color: var(--cnf-bad); }
+.cnf-opt { appearance: none; border: 0; background: transparent; color: var(--cnf-navy); font: inherit; font-weight: 500; min-width: 64px; min-height: 38px; padding: 0 16px; border-radius: 999px; cursor: pointer; transition: background-color .18s, color .18s; }
+.cnf-opt:hover:not(.on):not(:disabled) { background: var(--gm-sky-100, #d3d7dc); }
+.cnf-opt.on { background: var(--cnf-navy); color: #fff; font-weight: 600; }
+.cnf-opt:focus-visible { outline: 3px solid var(--cnf-focus); outline-offset: 2px; }
+.cnf-opt:disabled { cursor: default; opacity: .6; }
+
+.cnf-row-chk { justify-content: flex-start; flex-wrap: wrap; }
+.cnf-chk { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; flex: 1 1 auto; }
+.cnf-chk input { width: 22px; height: 22px; flex: none; accent-color: var(--cnf-navy); cursor: pointer; margin: 0; }
+.cnf-chk input:focus-visible { outline: 3px solid var(--cnf-focus); outline-offset: 2px; }
+
+/* עמדת הלקוח / מסכים כהים: משתמשים בצבעי טקסט בהירים כשהקונטקסט כהה */
+.cnf-dark { --cnf-ink: #f4f6fb; --cnf-muted: #c9d3e6; --cnf-navy: #fff; --cnf-line: rgba(255, 255, 255, .35); --cnf-bg: rgba(255, 255, 255, .08); }
+.cnf-dark .cnf-yn { background: transparent; }
+.cnf-dark .cnf-opt.on { background: #fff; color: #0f2c52; }
+
+@media (max-width: 560px) {
+  .cnf-row { flex-direction: column; align-items: stretch; }
+  .cnf-yn { align-self: stretch; }
+  .cnf-opt { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .cnf-opt { transition: none; } }

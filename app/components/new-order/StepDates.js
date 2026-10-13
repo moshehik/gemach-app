@@ -36,11 +36,11 @@ export default function StepDates({ ctl }) {
       <Blk>
         <SubH icon="cal" tone="gold" title="אירוע" />
         {/* 1cbaf995 / fdce699f: allow_abroad_long_stay_orders='false' - בלי בורר סוג האירוע; תמיד אירוע רגיל (תאריך בודד) */}
-        {ctl.allowAbroad ? <SegPill id="evSeg" label="סוג האירוע" options={EVT} value={!!o.isAbroad} onChange={(v) => { ctl.setRangePending(null); ctl.handleDateChangeWithValidation('isAbroad', v); }} /> : null}
+        {ctl.allowAbroad ? <SegPill id="evSeg" guide="no.event-type" label="סוג האירוע" options={EVT} value={!!o.isAbroad} onChange={(v) => { ctl.setRangePending(null); ctl.handleDateChangeWithValidation('isAbroad', v); }} /> : null}
         {/* אירוע רגיל: בלי כיתוב "תאריך אירוע" - התאריך המוצג מתחת לכותרת "אירוע" מספיק; טווח (חו"ל) שומר על הכיתוב */}
         {o.isAbroad ? <div className="lbl" style={{ marginTop: ctl.allowAbroad ? 18 : 0 }}>טווח תאריכים (מתאריך עד תאריך)</div> : null}
         <div className="big" id="dateBig" style={{ margin: '4px 0 12px' }}>{big}</div>
-        <div id="hcWrap">
+        <div id="hcWrap" data-guide-id="no.date-calendar">
           {o.isAbroad ? (
             <NoHebrewCalendar key="range" mode="range" from={o.fromDate} to={o.toDate} today={ctl.todayKey} onPending={ctl.setRangePending}
               onRange={(a, b) => ctl.handleDateChangeWithValidation({ fromDate: a, toDate: b })} />
@@ -50,16 +50,16 @@ export default function StepDates({ ctl }) {
         </div>
       </Blk>
       <Blk as="details" className="coll">
-        <summary><Ic n="note" />{hideSpacing ? 'הערות' : 'הערות וריווח ימים'}<Ic n="chev" c="chev" /></summary>
+        <summary data-guide-id="no.notes"><Ic n="note" />{hideSpacing ? 'הערות' : 'הערות וריווח ימים'}<Ic n="chev" c="chev" /></summary>
         <div className="in">
           <div className="field">
             <label className="lbl with-ic" htmlFor="noEvNotes"><Ic n="note" c="sm" />הערות כלליות להזמנה</label>
-            <textarea className="inp" id="noEvNotes" rows={2} placeholder="בקשות מיוחדות, סיכומים עם הלקוח..." value={o.notes} onChange={(e) => ctl.setOrder(prev => ({ ...prev, notes: e.target.value }))} />
+            <textarea className="inp" id="noEvNotes" data-guide-id="no.event-notes" rows={2} placeholder="בקשות מיוחדות, סיכומים עם הלקוח..." value={o.notes} onChange={(e) => ctl.setOrder(prev => ({ ...prev, notes: e.target.value }))} />
           </div>
           {!hideSpacing ? (
             <div className="field">
               <div className="lbl with-ic"><Ic n="sliders" c="sm" />ריווח ימים בין השכרות <Tip t="ברירת המחדל: 3 ימים" /></div>
-              <SegPill id="spSeg" label="ריווח ימים בין השכרות" options={spacingOpts} value={o.customSpacing === undefined ? null : o.customSpacing} onChange={(v) => ctl.handleSpacingChange(v)} />
+              <SegPill id="spSeg" guide="no.spacing" label="ריווח ימים בין השכרות" options={spacingOpts} value={o.customSpacing === undefined ? null : o.customSpacing} onChange={(v) => ctl.handleSpacingChange(v)} />
             </div>
           ) : null}
         </div>

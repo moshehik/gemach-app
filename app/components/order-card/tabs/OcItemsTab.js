@@ -20,10 +20,11 @@ import OcAddItemPanel from '../parts/OcAddItemPanel';
 import OcItemEditDialog from '../parts/OcItemEditDialog';
 import OcItemDetailsDialog from '../parts/OcItemDetailsDialog';
 import OcCapacityDialog from '../parts/OcCapacityDialog';
+import { useDeliveryItemRow, DeliveryItemListRow, DeliveryItemTableRow } from '../parts/OcDeliveryItemRow';
 import { OcItemChooserDialog } from '../parts/OcBarcodeRow';
 
 
-function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
+function ItemsTable({ list, mode, order, sort, setSort, altEnabled, deliveryRows }) {
   const cols = altEnabled ? IT_COLS : IT_COLS.filter(([k]) => k !== 'alt');
   const rows = sortItems(list, sort, order, mode);
   return (
@@ -53,6 +54,7 @@ function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
               <td><bdi dir="ltr">{fmtMoney(itemPrice(i))}</bdi></td>
             </tr>
           ))}
+          {deliveryRows ? deliveryRows.map(r => <DeliveryItemTableRow key={r.key} row={r} cols={cols.length} />) : null}
         </tbody>
       </table>
     </div>
@@ -60,9 +62,9 @@ function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
 }
 
 // לחצן סרגל (A10): כולם btn tgl באותו גובה, ✓ (evck) כשנבחר — כמו "מחוקים"
-function BarToggle({ on, onClick, icon, children, id, act }) {
+function BarToggle({ on, onClick, icon, children, id, act, guide }) {
   return (
-    <button type="button" id={id} className={`btn tgl oc-bt${on ? ' on' : ''}`} data-act={act} aria-pressed={!!on} onClick={onClick}>
+    <button type="button" id={id} className={`btn tgl oc-bt${on ? ' on' : ''}`} data-act={act} data-guide-id={guide} aria-pressed={!!on} onClick={onClick}>
       {on ? <OcIcon name="check" size="sm" className="evck" /> : null}
       {id === 'delToggle' ? <span className="dtico"><OcIcon name="trash" size="sm" /></span> : <OcIcon name={icon} size="sm" />}
       {children}
@@ -91,6 +93,9 @@ export default function OcItemsTab({ oc, ui }) {
   const del = useMemo(() => items.filter(i => i.isDeleted && (i.id || i._localId)), [items]);
   const mode = sub === 'del' ? 'del' : 'active';
   const list = mode === 'del' ? del : act;
+  // נושא 9 (delivery_as_item_row): המשלוח כשורה אחרי הפריטים - תצוגה בלבד, לא חלק מ-items ולא נספר ב"פריטים N". null כשההגדרה כבויה / אין משלוח.
+  const deliveryRows = useDeliveryItemRow(oc);
+  const showDeliveryRows = mode !== 'del' ? deliveryRows : null;
 
   // יומן הפריט (A11 "פרטי הוספה" + חלון הפרטים) — נטען פעם אחת לפריט, רק כשצריך
   const loadLogs = useCallback((id) => {
@@ -138,7 +143,7 @@ export default function OcItemsTab({ oc, ui }) {
         <div className="ico teal"><OcIcon name="dress" size="lg" /></div>
         <h2>פריטים</h2>
         {showAdd ? (
-          <button type="button" className="btn navy" data-act="addtoggle" aria-expanded={addOpen} onClick={() => setAddOpen(v => !v)}>
+          <button type="button" className="btn navy" data-act="addtoggle" data-guide-id="oc.add-item" aria-expanded={addOpen} onClick={() => setAddOpen(v => !v)}>
             <OcIcon name="plus" />הוסף פריט
           </button>
         ) : null}
@@ -149,17 +154,17 @@ export default function OcItemsTab({ oc, ui }) {
         </div>
       ) : null}
       {showAdd ? <OcAddItemPanel oc={oc} ui={ui} actions={actions} open={addOpen} onClose={() => setAddOpen(false)} altEnabled={altEnabled} /> : null}
-      <div className="hres-bar">
+      <div className="hres-bar" data-guide-id="oc.items-bar">
         <span className="hres-n">פריטים <b>{list.length}</b></span>
         <OcViewSwitch value={view} onChange={setView} act="view" />
-        {altEnabled ? <BarToggle on={altShow} icon="scissors" act="altshow" onClick={() => setAltShow(v => !v)}>פרטי תיקונים</BarToggle> : null}
-        {del.length || sub === 'del' ? <BarToggle id="delToggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
+        {altEnabled ? <BarToggle guide="oc.alt-toggle" on={altShow} icon="scissors" act="altshow" onClick={() => setAltShow(v => !v)}>פרטי תיקונים</BarToggle> : null}
+        {del.length || sub === 'del' ? <BarToggle id="delToggle" guide="oc.deleted-toggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
       </div>
-      <div className="hres">
-        {!list.length ? (
+      <div className="hres" data-guide-id="oc.items-list">
+        {!list.length && !showDeliveryRows ? (
           <div className="empty">{mode === 'del' ? 'אין פריטים שנמחקו' : 'אין פריטים פעילים'}</div>
         ) : tbl ? (
-          <ItemsTable list={list} mode={mode} order={oc.order} sort={sort} setSort={setSort} altEnabled={altEnabled} />
+          <ItemsTable list={list} mode={mode} order={oc.order} sort={sort} setSort={setSort} altEnabled={altEnabled} deliveryRows={showDeliveryRows} />
         ) : (
           <div className="hgrp">
             {list.map(item => {
@@ -185,6 +190,7 @@ export default function OcItemsTab({ oc, ui }) {
                 />
               );
             })}
+            {showDeliveryRows ? showDeliveryRows.map(r => <DeliveryItemListRow key={r.key} row={r} />) : null}
           </div>
         )}
       </div>

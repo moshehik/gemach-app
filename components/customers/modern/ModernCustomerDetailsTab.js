@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { useNoFill } from '../../../lib/autofillGuard';
+import useEnterNavigation from '../../../app/components/shared/useEnterNavigation';
+import ConsentFields from '../../../app/components/shared/ConsentFields';
+import { consentAnswersOfDraft } from '../../../app/components/customer-card/customerCardLogic';
 
 const renderCustomerNotes = (notes) => {
   if (!notes) return null;
@@ -42,7 +46,8 @@ const renderCustomerNotes = (notes) => {
   });
 };
 
-export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {} }) {
+export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {}, explicitConsent = false, consentInfo = null }) {
+  const nf = useNoFill();
   const [isEditing, setIsEditing] = useState(false);
   const [customerLocations, setCustomerLocations] = useState({ cities: [], streets: [] });
   const isFirstCancelSignal = useRef(true);
@@ -94,6 +99,9 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
     await attemptSave(e);
   };
 
+  // Enter עובר לשדה הבא (גם דרך תיבות סימון / בחירות כן-לא; Enter עליהן רק מקדם) ובשדה האחרון שומר - lib/enterNavigation.js
+  const onFormKeyDown = useEnterNavigation(() => attemptSave({ preventDefault() {} }));
+
   const customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'לקוח ללא שם';
   const address = [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ');
 
@@ -138,28 +146,28 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
         )}
 
         {isEditing && (
-          <form onSubmit={handleSubmit} autoComplete="off">
+          <form onSubmit={handleSubmit} onKeyDown={onFormKeyDown} autoComplete="off">
             <div className="form-grid">
               <div className="field">
                 <label>שם פרטי *</label>
-                <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={onChange} required />
+                <input type="text" className="input" {...nf('firstName')} value={customer.firstName || ''} onChange={onChange} required />
               </div>
               <div className="field">
                 <label>שם משפחה *</label>
-                <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={onChange} required />
+                <input type="text" className="input" {...nf('lastName')} value={customer.lastName || ''} onChange={onChange} required />
               </div>
               <div className="field">
                 <label>טלפון *</label>
                 <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={onChange} required />
+                  <input type="text" className="input" style={{ direction: 'ltr' }} {...nf('phone1')} value={customer.phone1 || ''} onChange={onChange} required />
                 </div>
               </div>
               <div className="field">
                 <label>טלפון נוסף</label>
                 <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={onChange} />
+                  <input type="text" className="input" style={{ direction: 'ltr' }} {...nf('phone2')} value={customer.phone2 || ''} onChange={onChange} />
                 </div>
               </div>
               <div className="field">
@@ -169,7 +177,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <div className="input-icon-wrap" style={{ flex: 1 }}>
                     <svg className="icon"><use href="#i-mail" /></svg>
-                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
+                    <input type="email" className="input" style={{ direction: 'ltr' }} {...nf('email')} value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
                   </div>
                   {customer.email && (
                     <>
@@ -195,27 +203,39 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
               </div>
               <div className="field">
                 <label>עיר</label>
-                <input type="text" className="input" name="city" list="modern-cust-city-list" autoComplete="new-password" value={customer.city || ''} onChange={onChange} />
+                <input type="text" className="input" {...nf('city')} list="modern-cust-city-list" value={customer.city || ''} onChange={onChange} />
                 <datalist id="modern-cust-city-list">
                   {customerLocations.cities.map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
               <div className="field">
                 <label>רחוב</label>
-                <input type="text" className="input" name="street" list="modern-cust-street-list" autoComplete="new-password" value={customer.street || ''} onChange={onChange} />
+                <input type="text" className="input" {...nf('street')} list="modern-cust-street-list" value={customer.street || ''} onChange={onChange} />
                 <datalist id="modern-cust-street-list">
                   {customerLocations.streets.map(s => <option key={s} value={s} />)}
                 </datalist>
               </div>
               <div className="field">
                 <label>מספר בית</label>
-                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
+                <input type="number" className="input" {...nf('houseNum')} value={customer.houseNum || ''} onChange={onChange} />
               </div>
               <div className="field">
                 <label>תעודת זהות (לעריכה/ביטול)</label>
-                <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
+                <input type="text" className="input" style={{ direction: 'ltr' }} {...nf('zeout')} value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
               </div>
-              {settings.hide_marketing_consent_field !== 'true' && (
+              {explicitConsent ? (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ConsentFields
+                    idPrefix="mcCn" settings={settings} info={consentInfo} privacyLocked={customer.consentPrivacy === true && !!(customer.consents && customer.consents.privacy)}
+                    value={consentAnswersOfDraft(customer)}
+                    onChange={(patch) => {
+                      if ('acceptedTerms' in patch) onChange({ target: { name: 'consentTerms', value: patch.acceptedTerms } });
+                      if ('marketingConsent' in patch) { onChange({ target: { name: 'consentMarketing', value: patch.marketingConsent } }); onChange({ target: { name: 'marketingConsent', value: patch.marketingConsent === true } }); }
+                      if ('acceptedPrivacy' in patch) onChange({ target: { name: 'consentPrivacy', value: patch.acceptedPrivacy ? true : null } });
+                    }}
+                  />
+                </div>
+              ) : settings.hide_marketing_consent_field !== 'true' && (
                 <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
                   <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
                   <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>

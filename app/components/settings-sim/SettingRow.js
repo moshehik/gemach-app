@@ -494,6 +494,7 @@ export default function SettingRow({ row, raw, saved, dirty, onChange, departmen
       className={`li st-row st-ctlrow${row.wide ? ' st-wide' : ''}${dirty ? ' st-dirty' : ''}${highlighted ? ' st-flash' : ''}`}
       id={`setting-row-${row.key}`}
       data-set={row.key}
+      data-guide-id={`set.key-${row.key.toLowerCase().replace(/_/g, '-')}`}
       hidden={hidden || undefined}
     >
       <div className="ic-b"><Ic id={row.icon} /></div>

@@ -7,18 +7,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { sortRecords } from './homeLogic';
 import { MenuSprite } from '../menu/menuParts';
-import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import { useA5Shell } from '../menu/A5ShellContext';
 
-// אייקון מה-sprite של הפלטה, בהפניה פנימית (#gmi-<שם>) ל-sprite שמוטמע בתוך הדף (ר' HomeSprite).
-// לא הפניה חיצונית לקובץ sprite.svg: מסנני תוכן של אינטרנט מסונן (Netspark וכד') מחליפים את
-// קובץ ה-SVG בריבוע לבן 2x2 והאייקונים נעלמים (אותה בעיה והסבר מלא ב-app/components/menu/menuParts.js).
-export function Ic({ id, size, className }) {
-  const cls = 'ic' + (size ? ' ' + size : '') + (className ? ' ' + className : '');
-  return (
-    <svg className={cls} aria-hidden="true" focusable="false"><use href={`#${SPRITE_ID_PREFIX}${id}`} /></svg>
-  );
-}
+// אייקון מה-sprite (homeIcon.js): נשאר מיוצא מכאן כדי שכל הייבואים הקיימים יעבדו.
+import { Ic } from './homeIcon';
+export { Ic };
 
 // ה-sprite המוטמע חייב להיות בדף בדיוק פעם אחת. במעטפת החדשה (MenuA5Shell) הוא כבר שם; כשהמעטפת 'legacy'
 // (דף הבית החדש עם תפריט ישן) או שה-layout נפל חזרה ל-AppShell (למשל מסך כניסה: menuTree=null) אין מי שמטמיע אותו,
@@ -43,15 +36,16 @@ export function ViewSwitch({ table, onChange }) {
 export function XlButtons({ onExcel, onPrint, onDownload, onPdf }) {
   return (
     <>
-      <button type="button" className="xlbtn xlg" aria-label="ייצוא ל-Excel" data-tip="ייצוא לקובץ Excel" onClick={onExcel}>
+      <button type="button" className="xlbtn xlg" data-guide-id="srch.export-excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא לקובץ Excel" onClick={onExcel}>
         <svg className="xlic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#107C41" /><path d="M5 4.5l6 7M11 4.5l-6 7" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" fill="none" /></svg>
       </button>
-      <button type="button" className="xlbtn xlp" aria-label="הדפסה" data-tip="הדפסת התוצאות" onClick={onPrint}>
+      <button type="button" className="xlbtn xlp" data-guide-id="srch.export-print" aria-label="הדפסה" data-tip="הדפסת התוצאות" onClick={onPrint}>
         <PrintGlyph />
       </button>
       <button
         type="button"
         className="xlbtn xld"
+        data-guide-id="srch.export-pdf"
         aria-label={onPdf ? 'הורדת PDF' : 'הורדה'}
         data-tip={onPdf ? 'הורדת התוצאות כקובץ PDF' : 'הורדת התוצאות כקובץ'}
         onClick={onPdf || onDownload}

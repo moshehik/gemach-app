@@ -1,0 +1,43 @@
+/* schedule-settings.css - החלון "הגדרות תהליכים" של הלו"ז: פורט מהעיצוב המאושר (תצוגות-עיצוב/סיימתי-לעבוד/לוז-יומי.html, כללי .lz-setd / .lz-s*).
+   כל הכללים בהיקף .gm-ds.gm-lz (כמו שאר schedule.css). */
+.gm-ds.gm-lz .dlg.lz-setd{max-width:940px}
+.gm-ds.gm-lz .lz-setd .lz-sbody{max-height:max(250px,calc(100dvh - 480px));overflow-y:auto;overscroll-behavior:contain;margin:4px -10px 0;padding:0 10px 4px;text-align:start;scrollbar-width:thin;scrollbar-color:rgba(154,122,31,.55) transparent}
+.gm-ds.gm-lz .lz-setd .lz-sg+.lz-sg{margin-top:20px}
+.gm-ds.gm-lz .lz-setd .lz-sgh.adm-h{font-size:18px;margin:0 0 12px;gap:10px}
+.gm-ds.gm-lz .lz-setd .lz-sgh .adm-hi{width:34px;height:34px}
+.gm-ds.gm-lz .lz-setd .lz-sgh .adm-hi .ic{width:18px;height:18px}
+.gm-ds.gm-lz .dlg .lz-scard{padding:4px 20px;border-radius:var(--r);background:var(--sky-50)!important;border:1.5px solid var(--sky-300)!important;box-shadow:none}
+.gm-ds.gm-lz .lz-scard .li{align-items:center;padding:14px 0;gap:14px;border-bottom:1px solid var(--sky-300)}
+.gm-ds.gm-lz .lz-scard .li:last-child{border-bottom:0}
+.gm-ds.gm-lz .lz-srow.st-ctlrow{flex-wrap:wrap}
+.gm-ds.gm-lz .lz-srow .t{flex:1 1 200px;min-width:0}
+.gm-ds.gm-lz .lz-srow .t b{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:600}
+.gm-ds.gm-lz .lz-srow .t small{display:block;margin:2px 0 0;color:var(--ink3)}
+.gm-ds.gm-lz .lz-fx{padding:1px 10px;font-size:12px;font-weight:600}
+.gm-ds.gm-lz .lz-sctl{flex:none;display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap}
+.gm-ds.gm-lz .lz-sf{display:flex;flex-direction:column;align-items:center;gap:5px}
+.gm-ds.gm-lz .lz-sfl{font-size:12px;font-weight:600;color:var(--ink3);line-height:1.2}
+.gm-ds.gm-lz .lz-sfon{min-width:54px}
+.gm-ds.gm-lz .lz-step{display:inline-flex;align-items:center;gap:6px}
+.gm-ds.gm-lz .lz-step .ibtn{width:36px;height:36px;min-height:0;border-radius:50%}
+.gm-ds.gm-lz .lz-sv{display:flex;flex-direction:column;align-items:center;min-width:84px;line-height:1.2;color:var(--ink)}
+.gm-ds.gm-lz .lz-sv b{font-size:18px;font-weight:600}
+.gm-ds.gm-lz .lz-sv small{font-size:12px;color:var(--ink3)}
+.gm-ds.gm-lz .lz-scard .lz-shift{width:228px;margin:0}
+.gm-ds.gm-lz .lz-scard .seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid var(--navy);border-radius:999px;padding:3px;gap:0}
+.gm-ds.gm-lz .lz-scard .seg.pill .pth{position:absolute;top:3px;bottom:3px;width:calc((100% - 6px)/var(--n));inset-inline-start:calc(3px + (100% - 6px)/var(--n)*var(--i));background:var(--navy);border-radius:999px;pointer-events:none;transition:inset-inline-start .28s var(--ease)}
+.gm-ds.gm-lz .lz-scard .seg.pill button{position:relative;z-index:1;flex:1;min-width:0;min-height:0;border:0;background:transparent;box-shadow:none;border-radius:999px;padding:7px 6px;font-size:13px;font-weight:500;color:var(--navy);transition:color .25s;white-space:nowrap}
+.gm-ds.gm-lz .lz-scard .seg.pill button.on,.gm-ds.gm-lz .lz-scard .seg.pill button.on:hover{background:transparent;color:#fff}
+.gm-ds.gm-lz .lz-scard .seg.pill button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.gm-ds.gm-lz .lz-scard .seg.pill button:disabled{cursor:not-allowed}
+.gm-ds.gm-lz .lz-shf{display:flex;align-items:center;gap:12px;min-height:38px;width:270px}
+.gm-ds.gm-lz .lz-shoff{font-size:14px;color:var(--ink3);white-space:nowrap}
+.gm-ds.gm-lz .lz-scard .lz-shf .lz-shift{flex:1;width:auto;min-width:0}
+.gm-ds.gm-lz .lz-scard .ic-b{background:#fff;color:var(--navy);box-shadow:inset 0 0 0 1px var(--sky-300)}
+.gm-ds.gm-lz .lz-srow.lz-off .t,.gm-ds.gm-lz .lz-srow.lz-off .lz-sf:not(.lz-sfon){opacity:.5}
+.gm-ds.gm-lz .lz-srow.lz-off .ic-b{background:var(--sky-100);color:var(--ink3)}
+.gm-ds.gm-lz .lz-setd .lz-note{display:flex;align-items:flex-start;gap:8px;margin:14px 0 12px;padding:10px 14px;border-radius:12px;background:var(--sky-50);border:1px solid var(--sky-200);color:var(--ink2);font-size:14px;line-height:1.5;text-align:start}
+.gm-ds.gm-lz .lz-setd .lz-note .ic{margin-top:2px;color:var(--navy-500)}
+.gm-ds.gm-lz .lz-setd .lz-serr{color:var(--k-err);font-size:14px;margin:8px 0 0;text-align:start}
+@media (max-width:820px){.gm-ds.gm-lz .lz-sctl{flex:1 0 100%;justify-content:space-between;padding-top:2px}.gm-ds.gm-lz .lz-scard .lz-shift{width:200px}}
+@media (max-width:640px){.gm-ds.gm-lz .lz-shf{width:100%}.gm-ds.gm-lz .lz-sfsh{order:3;flex:1 0 100%}.gm-ds.gm-lz .lz-sfon{order:2}.gm-ds.gm-lz .lz-scard{padding:2px 14px}.gm-ds.gm-lz .lz-sctl{gap:14px;align-items:flex-end}.gm-ds.gm-lz .lz-sf{flex:1 1 auto}.gm-ds.gm-lz .lz-sfon{flex:none}.gm-ds.gm-lz .lz-scard .lz-shift{width:100%;min-width:150px}.gm-ds.gm-lz .lz-setd .lz-sbody{max-height:max(220px,calc(100dvh - 520px))}}

@@ -239,7 +239,7 @@ function DesignSwitchCard() {
   }
 
   return (
-    <div className="card card-pad settings-card" id="design-switch-card">
+    <div className="card card-pad settings-card" id="design-switch-card" data-guide-id="disp.design-switch">
       <div className="section-title">מעבר בין העיצוב הישן לחדש</div>
       <div className="settings-two-col">
         {screens.map((screen) => (
@@ -463,7 +463,7 @@ export default function DisplaySettingsPage() {
       {/* 1 — מצב תצוגה */}
       <div className="card card-pad settings-card">
         <div className="section-title">מצב תצוגה</div>
-        <div className="mode-row mode-row-4">
+        <div className="mode-row mode-row-4" data-guide-id="disp.mode">
           {MODES.map((m) => (
             <button
               key={m.key}
@@ -481,7 +481,7 @@ export default function DisplaySettingsPage() {
       {/* 2 — פלטות מובנות */}
       <div className="card card-pad settings-card">
         <div className="section-title">פלטות מובנות</div>
-        <div className="swatch-row">
+        <div className="swatch-row" data-guide-id="disp.palettes">
           {PALETTES.map((p) => (
             <button
               key={p.key}
@@ -501,7 +501,7 @@ export default function DisplaySettingsPage() {
 
       {/* 3 — הפלטות שלי + עורך */}
       <div className="card card-pad settings-card">
-        <div className="section-title">הפלטות שלי</div>
+        <div className="section-title" data-guide-id="disp.my-palettes">הפלטות שלי</div>
 
         {savedPalettes.length > 0 && (
           <div className="saved-palette-list">
@@ -616,7 +616,7 @@ export default function DisplaySettingsPage() {
               maxLength={40}
               onChange={(e) => setNewPaletteName(e.target.value)}
             />
-            <button type="button" className="btn btn-primary btn-sm" onClick={saveCurrentAsPalette}>
+            <button type="button" className="btn btn-primary btn-sm" data-guide-id="disp.palette-save" onClick={saveCurrentAsPalette}>
               שמירה כפלטה חדשה
             </button>
           </div>
@@ -629,7 +629,7 @@ export default function DisplaySettingsPage() {
 
         <div className="field">
           <label>גופן</label>
-          <div className="font-grid">
+          <div className="font-grid" data-guide-id="disp.font">
             {QUICK_FONTS.map((f) => (
               <button
                 key={f.key}
@@ -667,7 +667,7 @@ export default function DisplaySettingsPage() {
 
         <div className="settings-two-col">
           <div className="field" style={{ marginBottom: 0 }}>
-            <label>צפיפות</label>
+            <label data-guide-id="disp.density">צפיפות</label>
             <div className="density-row">
               {DENSITIES.map((d) => (
                 <button
@@ -683,7 +683,7 @@ export default function DisplaySettingsPage() {
             </div>
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label>גודל טקסט</label>
+            <label data-guide-id="disp.text-size">גודל טקסט</label>
             <div className="density-row">
               {TEXT_SCALES.map((t) => (
                 <button
