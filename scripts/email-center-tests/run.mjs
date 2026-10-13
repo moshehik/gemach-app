@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 let failed = 0;
-for (const f of ['templates-parity.test.mjs', 'registry.test.mjs', 'campaign.test.mjs', 'hostinger-mail.test.mjs', 'mailbox.test.mjs', 'confirmation-wiring.test.mjs', 'ui-smoke.test.mjs', '../test_email_log_secrets.mjs']) {
+for (const f of ['templates-parity.test.mjs', 'registry.test.mjs', 'campaign.test.mjs', 'hostinger-mail.test.mjs', 'mailbox.test.mjs', 'mailbox-logic.test.mjs', 'confirmation-wiring.test.mjs', 'ui-smoke.test.mjs', '../test_email_log_secrets.mjs']) {
   console.log(`\n=== ${f}`);
   const r = spawnSync(process.execPath, [path.join(dir, f)], { stdio: 'inherit', env: { ...process.env, NODE_NO_WARNINGS: '1' } });
   if (r.status !== 0) failed++;

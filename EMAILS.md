@@ -197,10 +197,10 @@
 
 ## תיבת מייל באתר (/admin/mailbox, 2026-10-14)
 
-מסך תיבת דואר מלא לתיבת Hostinger של האתר (נווה יעקב; בגמח הראשי ההודעה "לא מחוברת"): תיקיות (נכנסים/נשלחו/אשפה...), חיפוש, קריאה, תשובה/תשובה לכולם/העברה, כוכב, לא נקרא, מחיקה (לאשפה; מהאשפה סופית), הורדת קבצים מצורפים וכתיבת מייל חדש עם קבצים (עד 3MB ביחד).
-- קוד: [lib/hostingerMailbox.js](lib/hostingerMailbox.js) (עטיפת ה-API), [app/api/admin/mailbox/route.js](app/api/admin/mailbox/route.js) (GET `action=status|folders|messages|message|attachment`, POST `action=send|flags|move|delete`), [app/admin/mailbox/page.js](app/admin/mailbox/page.js). בדיקות: `scripts/email-center-tests/mailbox.test.mjs`.
+מסך תיבת דואר מלא לתיבת Hostinger של האתר (נווה יעקב; בגמח הראשי ההודעה "לא מחוברת"), **בעיצוב הפלטה החדש** (ערכת `a5-list`, כמו שאר מסכי הניהול): כותרת עם חץ חזרה, חיפוש חצי רוחב, לשוניות = תיקיות (נכנסים / נשלחו / טיוטות / אשפה...) עם ספירת לא נקראו, כרטיס עם לחצן "מייל חדש", רשימה עם עימוד 50 ושורות / טבלה, תאריכים עבריים. לחיצה על שורה פותחת חלון קריאה (`.dlg.mailwin` כהה); תשובה / תשובה לכולם / העברה / סימון / לא נקרא / מחיקה (לאשפה; מהאשפה סופית, באישור כהה), הורדת קבצים מצורפים, וכתיבת מייל חדש עם קבצים (עד 3MB ביחד) ובחירת נמענים מרשימת הלקוחות.
+- קוד: [app/components/mailbox/](app/components/mailbox/) - `MailboxA5.js` (דף: `A5Page` + `A5ListPage` + `A5List` במצב שרת), `MbDialogs.js` (חלונות קריאה וכתיבה), `mailboxLogic.js` (לוגיקה טהורה), `mailboxApi.js`, `mailbox.css`; הדף [app/admin/mailbox/page.js](app/admin/mailbox/page.js) הוא עטיפה דקה. השרת: [lib/hostingerMailbox.js](lib/hostingerMailbox.js) (עטיפת ה-API) + [app/api/admin/mailbox/route.js](app/api/admin/mailbox/route.js) (GET `action=status|folders|messages|message|attachment|customers`, POST `action=send|flags|move|delete`).
+- בדיקות: `scripts/email-center-tests/mailbox.test.mjs` (API) + `mailbox-logic.test.mjs` (לוגיקה); הדף נכלל ב-`scripts/test_a5_list_header.mjs` (כותרת אחידה דרך `A5ListPage`).
 - הרשאה: הנהלה ראשית בלבד, **fail-closed** גם כשחובת ההתחברות כבויה (התיבה חושפת את כל התכתובת). הטוקן נשאר בשרת.
 - אבטחה: גוף HTML מוצג ב-iframe עם `sandbox` (בלי סקריפטים) ו-CSP; תמונות מרוחקות חסומות עד "הצג תמונות"; קבצים מצורפים תמיד מורדים (`attachment`, `nosniff`); נתיב תיקייה ו-uid מאומתים לפני שהם נכנסים ל-URL.
-- שליחה מהמסך נרשמת ב-`EmailLog` (גם כשל), והעתק נשמר ב-`INBOX.Sent` על ידי Hostinger. אין שמירת טיוטות ואין תמונות inline (`cid:`).
-- נתיב תיקייה/כשל: כמו שאר השליחה - אין נפילה ל-Gmail.
-
+- שליחה מהמסך נרשמת ב-`EmailLog` (גם כשל), והעתק נשמר ב-`INBOX.Sent` על ידי Hostinger; שם השולח = `resolveSenderName()` (אותו שם כמו שאר מיילי האתר). מייל בלי תוכן דורש אישור. אין שמירת טיוטות ואין תמונות inline (`cid:`).
+- אין נפילה ל-Gmail: כמו שאר השליחה.

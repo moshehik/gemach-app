@@ -12,7 +12,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm,
 
 const PAGES = [
   'app/components/employees-list/EmployeesListA5.js', 'app/components/models-list/ModelsListA5.js', 'app/components/orders-list/OrdersListA5.js',
-  'app/components/customers-list/CustomersListA5.js', 'app/components/email-logs/EmailLogsA5.js', 'app/components/departments/DepartmentsA5.js',
+  'app/components/customers-list/CustomersListA5.js', 'app/components/email-logs/EmailLogsA5.js', 'app/components/departments/DepartmentsA5.js', 'app/components/mailbox/MailboxA5.js',
 ];
 // כל קובץ בתיקיות הרשימות הנוספות (היסטוריות) שמצייר A5List
 for (const dir of ['app/components/history-lists']) {

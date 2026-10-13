@@ -1,0 +1,65 @@
+/* תיבת מייל (/admin/mailbox): תוספות לעמוד בלבד, בטוקני הפלטה (--gm-*) ובהיקף .gm-ds.gm-mbx. המבנה והרכיבים (A5ListPage, A5List, .dlg.mailwin,
+   .mto, .mfld, .mfile, .mpills, .methods, .btn) מהפלטה ומערכת a5-list - כאן רק מה שהם לא מכסים: שורה שלא נקראה, מסגרת גוף ההודעה, בוחר הלקוחות. */
+
+/* ===== רשימה ===== */
+.gm-ds.gm-mbx :where(.a5l) .mbx-unread .t b{font-weight:800;color:var(--gm-navy-900)}
+.gm-ds.gm-mbx :where(.a5l) .mbx-unread .ic-b{background:var(--gm-gold-100);color:var(--gm-gold-700)}
+.gm-ds.gm-mbx .mbx-foot{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center;padding:12px 4px 2px;color:var(--gm-ink3);font-size:14px}
+.gm-ds.gm-mbx .mbx-foot>span{display:inline-flex;align-items:center;gap:6px}
+.gm-ds.gm-mbx .mbx-state{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:24px 8px;color:var(--gm-ink2);line-height:1.7}
+.gm-ds.gm-mbx .mbx-state .mspin{margin-inline-end:8px}
+
+/* ===== חלונות (.dlg.mailwin) ===== */
+.gm-ds.gm-mbx .dlg.mailwin.mbx-read{max-width:860px}
+.gm-ds.gm-mbx .dlg.mailwin.mbx-compose{max-width:680px}
+.gm-ds.gm-mbx .mh h2{min-width:0;overflow-wrap:anywhere}
+.gm-ds.gm-mbx .mh h2 .msub{display:block;margin-top:2px;font-size:14px;font-weight:400;color:var(--gm-ink3)}
+.gm-ds.gm-mbx .mbx-load{display:flex;align-items:center;gap:10px;padding:28px 4px;color:var(--gm-ink2)}
+.gm-ds.gm-mbx .mbx-err{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:var(--gm-rose-50);border:1px solid var(--gm-rose-200);color:var(--gm-rose-700);font-size:15px}
+
+/* פרטי ההודעה: .mto של הפלטה (תיבה תכלת) עם שורות "תווית + ערך" */
+.gm-ds.gm-mbx .mbx-meta{gap:8px}
+.gm-ds.gm-mbx .mbx-mr{display:flex;align-items:baseline;gap:12px}
+.gm-ds.gm-mbx .mbx-mr>small{flex:none;min-width:48px}
+.gm-ds.gm-mbx .mbx-mr>b{flex:1;min-width:0;font-weight:500;color:var(--gm-navy-900);overflow-wrap:anywhere}
+.gm-ds.gm-mbx .mbx-addr{color:var(--gm-ink3);font-weight:400}
+.gm-ds.gm-mbx a.mbx-att{text-decoration:none;color:inherit}
+
+/* גוף ההודעה: iframe מבודד (sandbox, בלי סקריפטים) או טקסט רגיל */
+.gm-ds.gm-mbx .mbx-body{display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-mbx .mbx-body iframe{width:100%;height:min(44vh,420px);border:1px solid var(--gm-sky-200);border-radius:14px;background:#fff}
+.gm-ds.gm-mbx .mbx-plain{margin:0;padding:14px 16px;max-height:min(44vh,420px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.7;border:1px solid var(--gm-sky-200);border-radius:14px;background:#fff;color:var(--gm-ink)}
+.gm-ds.gm-mbx .mbx-imgbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 14px;border-radius:14px;background:var(--gm-gold-50);border:1px solid var(--gm-gold-100);font-size:14px;color:var(--gm-ink2)}
+.gm-ds.gm-mbx .mbx-acts{display:flex;flex-wrap:wrap;gap:8px}
+
+/* כתיבה */
+.gm-ds.gm-mbx .mbx-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.gm-ds.gm-mbx .mbx-bccbtn{justify-content:flex-end}
+.gm-ds.gm-mbx .mbx-pickbtn{align-self:flex-start}
+.gm-ds.gm-mbx .mbx-picker{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px dashed var(--gm-sky-300);border-radius:14px;background:var(--gm-sky-50)}
+.gm-ds.gm-mbx #dlg .methods.mbx-target{grid-template-columns:repeat(3,1fr);gap:8px;margin:0}
+.gm-ds.gm-mbx #dlg .methods.mbx-target button:not(.zz){padding:8px 6px;border-radius:12px;font-size:14px}
+.gm-ds.gm-mbx .mbx-results{max-height:220px;overflow:auto}
+.gm-ds.gm-mbx .mbx-results .mfile{width:100%;text-align:start;font:inherit}
+.gm-ds.gm-mbx .mbx-results .mfile:disabled{cursor:default}
+.gm-ds.gm-mbx .mbx-hint{display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--gm-ink3);font-size:14px}
+
+@media (max-width:600px){
+  .gm-ds.gm-mbx .mbx-two{grid-template-columns:1fr}
+  .gm-ds.gm-mbx .mbx-acts .btn{flex:1 1 calc(50% - 8px)}
+}
+
+/* ===== החלונות כהים (.dlg-dark): צבעי טקסט / רקע מטוקני החלון (--k-*) ולא מטוקני הדף ===== */
+.gm-ds.gm-mbx #dlg .mbx-addr,.gm-ds.gm-mbx #dlg .mbx-mr>small,.gm-ds.gm-mbx #dlg .mbx-hint,.gm-ds.gm-mbx #dlg .mtot{color:var(--k-faint)}
+.gm-ds.gm-mbx #dlg .mbx-mr>b{color:var(--k-ink)}
+.gm-ds.gm-mbx #dlg .mbx-load{color:var(--k-sub)}
+.gm-ds.gm-mbx #dlg .mbx-err{background:rgba(251,191,169,.12);border-color:rgba(251,191,169,.35);color:var(--k-err)}
+.gm-ds.gm-mbx #dlg .mbx-imgbar{background:var(--k-row);border-color:var(--k-rowb);color:var(--k-sub)}
+.gm-ds.gm-mbx #dlg .mbx-picker{background:var(--k-row);border-color:var(--k-bd)}
+.gm-ds.gm-mbx #dlg .methods.mbx-target button{background:var(--k-row);border:1.5px solid var(--k-rowb);color:var(--k-ink)}
+.gm-ds.gm-mbx #dlg .methods.mbx-target button.on{background:var(--k-chargebg);border-color:var(--k-ic);color:var(--k-charge)}
+.gm-ds.gm-mbx #dlg .mbx-results .mfile:not(.on){background:var(--k-row);border-color:var(--k-rowb);color:var(--k-ink)}
+.gm-ds.gm-mbx #dlg .mbx-results .mfile:not(.on) .mft{background:rgba(255,255,255,.1);color:var(--k-ic)}
+.gm-ds.gm-mbx #dlg .mbx-results .mfile:not(.on) .mfk{border-color:var(--k-bd)}
+.gm-ds.gm-mbx #dlg .mbx-results .mfx b{color:var(--k-ink)}
+.gm-ds.gm-mbx #dlg .mbx-results .mfx small{color:var(--k-faint)}
