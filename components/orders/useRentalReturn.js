@@ -38,6 +38,11 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
   const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
+  // דיווח 14c58422 (נווה יעקב, 11.10.2026): rental_auto_confirm_on_scan = ברקוד תקין מאשר את ההשכרה מיד (בלי "אשר השכרה" נפרד);
+  // rental_confirm_print_prompt_off = בלי השאלה "להדפיס את פרטי ההשכרה?" אחרי אישור. שניהם כבויים כברירת מחדל = כמו קודם. refs - כדי שגם
+  // קריאות חוזרות של הסריקה (עקיפת מנהל / נסיון חוזר) יראו את הערך העדכני.
+  const autoConfirmOnScanRef = useRef(false);
+  const skipPrintPromptRef = useRef(false);
 
   const [modalBarcode, setModalBarcode] = useState('');
   const modalBarcodeRef = useRef(null);
@@ -132,6 +137,8 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
+        autoConfirmOnScanRef.current = Array.isArray(data) && data.some(s => s.key === 'rental_auto_confirm_on_scan' && s.value === 'true');
+        skipPrintPromptRef.current = Array.isArray(data) && data.some(s => s.key === 'rental_confirm_print_prompt_off' && s.value === 'true');
         const thresholdSetting = Array.isArray(data) ? data.find(s => s.key === 'late_return_threshold_days') : null;
         if (thresholdSetting?.value) setLateReturnThresholdDays(Number(thresholdSetting.value) || LATE_RETURN_THRESHOLD_DAYS);
         // ימים ללא פעילות שהבעלים סימן (ניהול היומן) - משלימים את שישי/שבת/חג/ערב חג במועד ההחזרה הצפוי
@@ -161,6 +168,27 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
   const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
   const overallStatusColor = getStatusColor(overallStatus);
 
+  // rental_auto_confirm_on_scan: אחרי ברקוד תקין ההשכרה מאושרת מיד (אותה קריאה כמו "אשר השכרה", בלי שאלות). נכשל (למשל חסימת ברקוד בלו"ז) -
+  // הפריט נשאר ממתין לאישור רגיל, שמציג את הסיבה. כשכל הפריטים נלקחו - החלון נסגר כמו אחרי אישור ידני.
+  const autoConfirmScanned = async () => {
+    try {
+      const res = await fetch('/api/rentals/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: selectedOrder.orderId })
+      });
+      if (!res.ok) return;
+      const fresh = await fetch(`/api/orders/${selectedOrder.orderId}`);
+      if (!fresh.ok || !isMountedRef.current) return;
+      const order = await fresh.json();
+      setSelectedOrder(order);
+      if (onUpdate) onUpdate(order);
+      if (!order.items.some(i => !i.isDeleted && !i.isTaken)) onClose();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleRentalScan = async (barcodeToScan, itemIdToForce = null, overrideAuth = null, manualParams = null) => {
     setIsBusy(true);
     try {
@@ -189,6 +217,8 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
             setManualBarcode2('');
             setManualSigned(false);
           }
+          // הזמנה עם ברקוד שנרשם בהכנה מהלו״ז (מסירה = פעולה מפורשת) לא מאשרת אוטומטית - האישור לוקח את כל הפריטים הממתינים, גם אותם
+          if (autoConfirmOnScanRef.current && !data.isTaken && !selectedOrder.items.some(i => !i.isDeleted && i.barcode && !i.isTaken && i.barcodeRegisteredAtPrep)) await autoConfirmScanned();
         }
       } else {
         if (data.unreturned) {
@@ -472,7 +502,7 @@ export function useRentalReturn({ orderId, onClose, onUpdate, ui, initialBarcode
       if (res.ok) {
         // לפני שסוגרים אוטומטית - לתת הזדמנות מפורשת להדפיס את פרטי ההשכרה (בקשת
         // הנהלה: לא לסגור ישר בלי הצעה להדפיס אחרי סריקת הברקוד האחרון).
-        const wantsPrint = await ui.confirm('השכרה אושרה בהצלחה! להדפיס את פרטי ההשכרה?');
+        const wantsPrint = skipPrintPromptRef.current ? false : await ui.confirm('השכרה אושרה בהצלחה! להדפיס את פרטי ההשכרה?');
         if (wantsPrint) {
           window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank');
         }
