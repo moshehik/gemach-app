@@ -137,27 +137,29 @@ await t('כרטיס הזמנה: צרופות נוספות נשמרות ובדו�
   assert.equal(sent.text, 'מצורף כרטיס הזמנה/השכרה.');
 });
 
-await t('כרטיס הזמנה: יצירת ה-PDF נכשלה = נופל ל-Apps Script (המייל לא יצא)', async () => {
+await t('כרטיס הזמנה: יצירת ה-PDF נכשלה = שגיאה לטיפול, בלי נפילה ל-Gmail', async () => {
   enable();
   _setPdfRenderer(async () => { throw new Error('chromium missing'); });
   mockFetch(() => res(200, { status: 'success' }));
   const r = await postToMailer(orderCard());
-  assert.equal(r.isSuccess, true);
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /script\.google\.com/);
-  assert.equal(JSON.parse(calls[0].init.body).action, 'sendGemachOrderEmail');
+  assert.equal(r.isSuccess, false);
+  assert.match(r.message, /PDF.*chromium missing/);
+  assert.equal(calls.length, 0, 'לא נשלח כלום - לא ל-Hostinger ולא ל-Apps Script');
 });
 
-await t('401/403/429 נופלים ל-Apps Script (המייל לא יצא)', async () => {
+await t('401/403/429 = שגיאה לטיפול, בלי נפילה ל-Gmail', async () => {
   enable();
-  mockFetch((url) => (url.includes('hostinger') ? res(401, { error: 'Unauthenticated', code: 'ERR_UNAUTHENTICATED' }) : res(200, { status: 'success' })));
-  const r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));
-  assert.equal(r.isSuccess, true);
-  assert.equal(calls.length, 2);
-  assert.match(calls[1].url, /script\.google\.com/);
+  for (const status of [401, 403, 429]) {
+    mockFetch((url) => (url.includes('hostinger') ? res(status, { error: 'nope', code: 'ERR' }) : res(200, { status: 'success' })));
+    const r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));
+    assert.equal(r.isSuccess, false);
+    assert.match(r.message, new RegExp('HTTP ' + status));
+    assert.equal(calls.length, 1, 'רק ניסיון אחד ל-Hostinger');
+    assert.ok(calls.every((c) => !/script\.google\.com/.test(c.url)));
+  }
 });
 
-await t('422 ושגיאת שרת/רשת = כשל ולא כפילות: אין נפילה ל-Apps Script', async () => {
+await t('422 ושגיאת שרת/רשת = כשל, בלי ניסיון שני', async () => {
   enable();
   mockFetch(() => res(422, { error: 'The given data was invalid.', code: 'ERR_VALIDATION_FAILED', params: { to: ['bad'] } }));
   let r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));

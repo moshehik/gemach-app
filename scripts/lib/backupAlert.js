@@ -28,7 +28,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // Hostinger Mail API (נווה יעקב): אם מוגדרים סודות HOSTINGER_MAIL_TOKEN_ORG<N> + HOSTINGER_MAILBOX_ID_ORG<N> של הארגון הזה,
-// ההתראה יוצאת מתיבת הדומיין. כל כשל (או היעדר סודות) = נפילה ל-Apps Script כמו קודם. התראה כפולה לא מזיקה.
+// ההתראה יוצאת מתיבת הדומיין ובכוונה בלי נפילה ל-Gmail: כשל נרשם ב-EmailLog (status=error) ובלוג הריצה. בלי הסודות - Apps Script כמו קודם.
 async function sendViaHostinger(org, { to, subject, body, html, senderName }) {
   const token = process.env[`HOSTINGER_MAIL_TOKEN_ORG${org}`];
   const mailbox = process.env[`HOSTINGER_MAILBOX_ID_ORG${org}`];
@@ -170,9 +170,10 @@ ${link ? `<p><a href="${esc(link)}">הרצה ב-GitHub Actions</a></p>` : ''}
       let ok = false;
       let errMsg = null;
       const hs = await sendViaHostinger(org, { to: addr, subject, body, html, senderName: gmachName });
+      const viaHostinger = !hs.skipped;
       if (hs.ok) ok = true;
-      else if (!hs.skipped) console.warn(`[backup-alert] ${hs.message} - falling back to Apps Script`);
-      if (!ok) try {
+      else if (viaHostinger) errMsg = hs.message;
+      if (!viaHostinger) try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
