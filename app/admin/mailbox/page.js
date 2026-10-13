@@ -295,6 +295,7 @@ function ComposeModal({ state, nf, onClose, onSent }) {
   const [showBcc, setShowBcc] = useState(!!state.bcc);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [picker, setPicker] = useState(false);
   const total = useMemo(() => f.files.reduce((s, x) => s + x.size, 0), [f.files]);
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const title = { new: 'מייל חדש', reply: 'תשובה', replyAll: 'תשובה לכולם', forward: 'העברה' }[f.kind];
@@ -316,6 +317,16 @@ function ComposeModal({ state, nf, onClose, onSent }) {
     });
   }
 
+  // הוספת כתובות (מהבוחר) לשדה אל / עותק / עותק מוסתר, בלי כפילויות
+  function addRecipient(field, email) {
+    setF((s) => {
+      const cur = String(s[field] || '').split(/[,;\s]+/).filter(Boolean);
+      if (cur.some((x) => x.toLowerCase() === email.toLowerCase())) return s;
+      return { ...s, [field]: [...cur, email].join(', ') };
+    });
+    if (field === 'bcc') setShowBcc(true);
+  }
+
   async function send() {
     setBusy(true); setErr('');
     try {
@@ -332,6 +343,8 @@ function ComposeModal({ state, nf, onClose, onSent }) {
     <div className="mb-modal-bg" role="dialog" aria-modal="true" aria-label={title}>
       <div className="mb-modal">
         <h3>{title}</h3>
+        <div><button type="button" className="btn btn-sm" onClick={() => setPicker((v) => !v)} aria-expanded={picker}>👥 בחר מרשימת הלקוחות</button></div>
+        {picker && <CustomerPicker nf={nf} fields={f} onAdd={addRecipient} />}
         <div className="mb-fieldrow"><label htmlFor="mb-to">אל</label><input id="mb-to" className="input" dir="ltr" {...nf('email')} value={f.to} onChange={set('to')} placeholder="name@example.com, ..." /></div>
         <div className="mb-fieldrow"><label htmlFor="mb-cc">עותק</label><input id="mb-cc" className="input" dir="ltr" {...nf('email')} value={f.cc} onChange={set('cc')} /></div>
         {showBcc
@@ -357,6 +370,60 @@ function ComposeModal({ state, nf, onClose, onSent }) {
           <small>{total > 0 ? `${fmtBytes(total)} מתוך ${fmtBytes(MAX_ATT_BYTES)}` : `עד ${fmtBytes(MAX_ATT_BYTES)} לקבצים`}</small>
           <button className="btn" style={{ marginInlineStart: 'auto' }} disabled={busy} onClick={onClose}>ביטול</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+const FIELD_LABEL = { to: 'אל', cc: 'עותק', bcc: 'עותק מוסתר' };
+
+// בוחר לקוחות לנמענים: חיפוש לפי שם / טלפון / מייל (/api/admin/mailbox?action=customers), לחיצה מוסיפה את הכתובת לשדה שנבחר.
+function CustomerPicker({ nf, fields, onAdd }) {
+  const [q, setQ] = useState('');
+  const [target, setTarget] = useState('to');
+  const [rows, setRows] = useState([]);
+  const [state, setState] = useState('idle'); // idle | loading | done | error
+  const [error, setError] = useState('');
+  const seq = useRef(0);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) { setRows([]); setState('idle'); return undefined; }
+    const my = ++seq.current;
+    setState('loading');
+    const t = setTimeout(async () => {
+      try {
+        const data = await api(`${API}?action=customers&q=${encodeURIComponent(term)}`);
+        if (my === seq.current) { setRows(data.customers || []); setState('done'); setError(''); }
+      } catch (e) { if (my === seq.current) { setError(e.message); setState('error'); } }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const has = (email) => String(fields[target] || '').split(/[,;\s]+/).some((x) => x.toLowerCase() === email.toLowerCase());
+
+  return (
+    <div className="mb-picker">
+      <div className="mb-picker-head">
+        <input className="input" {...nf('search')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="שם, טלפון או מייל של לקוח" aria-label="חיפוש לקוח" autoFocus />
+        <select className="input" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="להוסיף לשדה">
+          {Object.entries(FIELD_LABEL).map(([k, v]) => <option key={k} value={k}>להוסיף ל{v}</option>)}
+        </select>
+      </div>
+      <div className="mb-picker-list">
+        {state === 'idle' && <div className="mb-empty">הקלד לפחות 2 תווים</div>}
+        {state === 'loading' && !rows.length && <div className="mb-empty">מחפש...</div>}
+        {state === 'error' && <div className="mb-empty mb-error">{error}</div>}
+        {state === 'done' && !rows.length && <div className="mb-empty">לא נמצאו לקוחות עם מייל</div>}
+        {rows.map((c) => {
+          const added = has(c.email);
+          return (
+            <button type="button" key={c.id} className={`mb-pick-row${added ? ' is-added' : ''}`} onClick={() => onAdd(target, c.email)} disabled={added}>
+              <span><strong>{c.name}</strong>{(c.phone || c.city) && <small> · {[c.phone, c.city].filter(Boolean).join(' · ')}</small>}</span>
+              <bdi dir="ltr" className="mb-pick-mail">{added ? '✓ ' : '+ '}{c.email}</bdi>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

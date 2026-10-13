@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { normalizeEmail } from '@/lib/emailUtils';
 import { getCachedSetting } from '@/lib/settingsCache';
 import {
   MailboxError, MAX_SEND_ATTACHMENT_BYTES, isMailboxEnabled, validFolder, validUid,
@@ -95,10 +96,31 @@ export async function GET(request) {
         },
       });
     }
+    if (action === 'customers') return json({ customers: await searchCustomers(sp.get('q')) });
     return json({ error: 'פעולה לא מוכרת' }, 400);
   } catch (e) {
     return fail(e);
   }
+}
+
+// בחירת נמענים מרשימת הלקוחות (חלון הכתיבה): חיפוש לפי שם / טלפון / מייל, רק לקוחות עם מייל, עד 20 תוצאות.
+async function searchCustomers(raw) {
+  const tokens = String(raw || '').trim().slice(0, 80).split(/\s+/).filter(Boolean).slice(0, 4);
+  if (!tokens.length || tokens.join('').length < 2) return [];
+  const ins = (field, v) => ({ [field]: { contains: v, mode: 'insensitive' } });
+  const rows = await prisma.customer.findMany({
+    where: {
+      isDeleted: false,
+      email: { not: null, notIn: [''] },
+      AND: tokens.map((tk) => ({ OR: [ins('firstName', tk), ins('lastName', tk), ins('email', tk), ins('phone1', tk), ins('phone2', tk)] })),
+    },
+    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    take: 20,
+    select: { id: true, firstName: true, lastName: true, phone1: true, city: true, email: true, emailSuffix: true },
+  });
+  return rows
+    .map((c) => ({ id: c.id, name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'ללא שם', phone: c.phone1 || '', city: c.city || '', email: normalizeEmail(c.email, c.emailSuffix) }))
+    .filter((c) => c.email && EMAIL_RE.test(c.email));
 }
 
 async function logSend({ to, cc, subject, text, ok, error }) {

@@ -59,3 +59,13 @@
   .mb-shell[data-view='read'] .mb-side, .mb-shell[data-view='read'] .mb-list-col { display: none; }
   .mb-back { display: inline-flex; }
 }
+
+/* בוחר לקוחות בחלון הכתיבה */
+.mb-picker { border: 1px solid var(--border); border-radius: 10px; background: var(--bg); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.mb-picker-head { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 6px; }
+.mb-picker-list { max-height: 200px; overflow-y: auto; background: var(--surface); border-radius: 8px; }
+.mb-pick-row { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; width: 100%; padding: 7px 10px; border: 0; border-bottom: 1px solid var(--border); background: transparent; font: inherit; color: var(--text); text-align: start; cursor: pointer; }
+.mb-pick-row:hover:not(:disabled) { background: var(--primary-tint); }
+.mb-pick-row.is-added { opacity: .55; cursor: default; }
+.mb-pick-mail { font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+@media (max-width: 600px) { .mb-picker-head { grid-template-columns: 1fr; } .mb-pick-row { flex-direction: column; gap: 2px; } }

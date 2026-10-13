@@ -13,7 +13,7 @@ export async function resolve(spec, ctx, next) {
   return next(spec, ctx);
 }
 export async function load(url, ctx, next) {
-  if (url === 'stub:prisma') return { format: 'module', shortCircuit: true, source: 'export default { emailLog: { create: async (a) => { (globalThis.__logs ||= []).push(a.data); return {}; } } };' };
+  if (url === 'stub:prisma') return { format: 'module', shortCircuit: true, source: 'export default { emailLog: { create: async (a) => { (globalThis.__logs ||= []).push(a.data); return {}; } }, customer: { findMany: async (a) => { globalThis.__custQuery = a; return globalThis.__custRows || []; } } };' };
   if (url === 'stub:settings') return { format: 'module', shortCircuit: true, source: 'export const getCachedSetting = async () => "גמח נווה יעקב";' };
   if (url === 'stub:auth') return { format: 'module', shortCircuit: true, source: 'export const checkAuth = async (role, opts) => { globalThis.__authCalls = (globalThis.__authCalls || []).concat([[role, opts]]); return globalThis.__authOk !== false; };' };
   if (url === 'stub:next-server') return { format: 'module', shortCircuit: true, source: 'export class NextResponse extends Response { static json(b, i) { return Response.json(b, i); } }' };
@@ -173,6 +173,35 @@ await t('שליחה שנכשלה ב-Hostinger: שגיאה למשתמש + שור�
   assert.equal(r.status, 502);
   assert.match((await r.json()).error, /401.*Unauthenticated/);
   assert.equal(globalThis.__logs[0].status, 'error');
+});
+
+await t('בחירת לקוחות: חיפוש לפי שם/טלפון/מייל, רק עם מייל תקין, עד 20', async () => {
+  mock();
+  globalThis.__custRows = [
+    { id: 'c1', firstName: 'רחל', lastName: 'כהן', phone1: '050-1', city: 'בני ברק', email: 'rachel@example.test', emailSuffix: null },
+    { id: 'c2', firstName: 'שרה', lastName: 'לוי', phone1: '', city: '', email: 'sara@gmail', emailSuffix: null },
+    { id: 'c3', firstName: 'דינה', lastName: 'בלי מייל תקין', phone1: '', city: '', email: '@gmail.com', emailSuffix: null },
+  ];
+  const j = await (await get('action=customers&q=' + encodeURIComponent('רחל כהן'))).json();
+  const w = globalThis.__custQuery;
+  assert.equal(w.take, 20);
+  assert.equal(w.where.isDeleted, false);
+  assert.deepEqual(w.where.email, { not: null, notIn: [''] });
+  assert.equal(w.where.AND.length, 2, 'כל מילה בחיפוש חייבת להתאים');
+  assert.deepEqual(w.where.AND[0].OR[0], { firstName: { contains: 'רחל', mode: 'insensitive' } });
+  assert.deepEqual(j.customers.map((c) => c.email), ['rachel@example.test', 'sara@gmail.com'], 'שם מלא, כתובת מנורמלת, ובלי כתובת לא תקינה');
+  assert.equal(j.customers[0].name, 'רחל כהן');
+  assert.equal(calls.length, 0, 'לא פונים ל-Hostinger');
+});
+
+await t('בחירת לקוחות: חיפוש קצר מדי לא פונה ל-DB, ובלי הרשאה נחסם', async () => {
+  mock(); globalThis.__custQuery = null;
+  assert.deepEqual(await (await get('action=customers&q=א')).json(), { customers: [] });
+  assert.deepEqual(await (await get('action=customers')).json(), { customers: [] });
+  assert.equal(globalThis.__custQuery, null);
+  globalThis.__authOk = false;
+  assert.equal((await get('action=customers&q=' + encodeURIComponent('רחל'))).status, 401);
+  globalThis.__authOk = true;
 });
 
 await t('תיבה לא מחוברת (הגמח הראשי): enabled=false, בלי פנייה לרשת', async () => {
