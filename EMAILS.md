@@ -187,3 +187,9 @@
 - 401/403/429 = המייל לא יצא, נופלים ל-Apps Script. 422/5xx/timeout/ניתוק = כשל (בלי ניסיון חוזר, מניעת כפילות).
 - בדיקות: `node scripts/email-center-tests/hostinger-mail.test.mjs` (נכלל ב-`run.mjs`).
 - ה-API תומך גם ב-webhook `message.received` למיילים נכנסים (עדיין לא ממומש באתר).
+
+### עדכון (2026-10-13, PR שני): כרטיס הזמנה והתראות גיבוי
+- **כרטיס הזמנה (`action: sendGemachOrderEmail`)** עובר גם הוא ל-Hostinger: [lib/hostingerMail.js](lib/hostingerMail.js) (`orderCardToRegularPayload`) הופך אותו למייל רגיל. ה-PDF הוא הקובץ שהדפדפן כבר שלח (`pdfBase64`), ואם אין, נוצר בשרת מדוח ההזמנה ב-`renderPdf` ([lib/pdf.js](lib/pdf.js), Chromium). הנתיב `/api/orders/[id]/email` קיבל `outputFileTracingIncludes` של Chromium ב-[next.config.mjs](next.config.mjs). יצירת PDF שנכשלה = נפילה ל-Apps Script (המייל עוד לא יצא).
+- **נשאר ב-Apps Script רק:** העלאה לדרייב (`sendMode`/`dest` = `drive`/`both`) ופעולות אחרות.
+- **התראת כשל גיבוי** ([scripts/lib/backupAlert.js](scripts/lib/backupAlert.js), רץ ב-GitHub Actions): יוצאת מ-Hostinger רק כשמוגדרים סודות הרפוזיטורי `HOSTINGER_MAIL_TOKEN_ORG2` + `HOSTINGER_MAILBOX_ID_ORG2` (המספר = מספר הארגון). בלעדיהם, או בכל כשל, היא נשארת ב-Apps Script. הגמח הראשי לא מושפע.
+- **מכסות:** תיבת Hostinger מוגבלת לפי החבילה (Business Starter 1,000 ליום, Standard/Premium 3,000, ניסיון 100; עד 100 נמענים למייל). דיוורים גדולים (אלפים) שייכים לשירות דיוור ייעודי.
