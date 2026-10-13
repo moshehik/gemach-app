@@ -150,10 +150,10 @@ t('הנהלה ראשית: פאנל "ניהול" מקוצר (4.10.2026) — בל�
   assert.equal(tab(neve, 'admin').pool.find((x) => x.id === 'ad-deliveries').href, '/deliveries');
 });
 t('הנהלה ראשית: תפריט הזמנה בלי משלוחים (הם תחת "ניהול", לא כאן) ובלי בדיקת מלאי (לא קיים)', () => {
-  assert.deepEqual(ids(tab(HEAD_TREE, 'order').items), ['order-new', 'order-kiosk', 'order-station']);
+  assert.deepEqual(ids(tab(HEAD_TREE, 'order').items), ['order-new', 'order-kiosk', 'order-station', 'order-capacity']);
   assert.equal(tab(HEAD_TREE, 'order').href, '/orders/new');
   const neve = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) });
-  assert.deepEqual(ids(tab(neve, 'order').items), ['order-new', 'order-kiosk', 'order-station']);
+  assert.deepEqual(ids(tab(neve, 'order').items), ['order-new', 'order-kiosk', 'order-station', 'order-capacity']);
 });
 t('הנהלה ראשית: פאנל משתמש בלי "הודעות" (R08), בלי ריענון (R03), בלי ערכת נושא (R04); בלי היסטוריית הודעות (לא מתכנת)', () => {
   assert.deepEqual(ids(HEAD_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-logout']);
@@ -240,7 +240,7 @@ t('עובדת עם הרשאות עמוד פתוחות: בית מלא, לוח ל�
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: [] });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-refunds', 'ad-nwd']); assert.equal(tab(tree, 'admin').href, null);
-  assert.deepEqual(ids(tab(tree, 'order').items), ['order-new', 'order-kiosk', 'order-station']);
+  assert.deepEqual(ids(tab(tree, 'order').items), ['order-new', 'order-kiosk', 'order-station', 'order-capacity']);
   const noDresses = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false }, settings: [] });
   assert.deepEqual(noDresses.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(tab(noDresses, 'admin').items), ['ad-nwd']);
@@ -537,17 +537,24 @@ t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב"
   const all = flattenMenuTree(HEAD_TREE).map((x) => x.id);
   for (const id of NOT_BUILT_ITEM_IDS) assert.ok(!all.includes(id), `${id} לא יעד ניווט`);
   for (const x of tabsOf(HEAD_TREE).filter((i) => i.kind === 'soon')) { assert.ok(!('href' in x) && !('action' in x), x.id); assert.ok(x.label && x.icon); }
-  assert.deepEqual(tab(HEAD_TREE, 'order').items.map((x) => `${x.kind}:${x.id}`), ['link:order-new', 'link:order-kiosk', 'link:order-station', 'soon:order-stock']);
+  assert.deepEqual(tab(HEAD_TREE, 'order').items.map((x) => `${x.kind}:${x.id}`), ['link:order-new', 'link:order-kiosk', 'link:order-station', 'soon:order-stock', 'link:order-capacity']);
   const withStock = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], available: { 'order-stock': true, 'recent-all': true, 'home-adv': true } });
-  assert.deepEqual(ids(tab(withStock, 'order').items), ['order-new', 'order-kiosk', 'order-station', 'order-stock']);
+  assert.deepEqual(ids(tab(withStock, 'order').items), ['order-new', 'order-kiosk', 'order-station', 'order-stock', 'order-capacity']);
   // בדיקת מלאי (2.10.2026): עם available - קישור אמיתי ל-/stock-check; הנראות לפי page:orders (GQ-06a), כמו "הזמנות"
   const stockRow = tab(withStock, 'order').items.find((x) => x.id === 'order-stock');
   assert.deepEqual([stockRow.kind, stockRow.href, stockRow.icon], ['link', '/stock-check', 'sn-inv']);
   assert.deepEqual(findActive(withStock, '/stock-check'), { tabId: 'order', itemId: 'order-stock' });
   const noOrders = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], available: { 'order-stock': true } });
-  assert.deepEqual(ids(tab(noOrders, 'order').items), ['order-kiosk', 'order-station'], 'בלי page:orders אין בדיקת מלאי (ולא הזמנה חדשה) - נשארת רק עמדת לקוח');
+  assert.deepEqual(ids(tab(noOrders, 'order').items), ['order-kiosk', 'order-station'], 'בלי page:orders אין בדיקת מלאי / תפוסה (ולא הזמנה חדשה) - נשארת רק עמדת לקוח');
   const noNew = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders_new': false }, settings: [], available: { 'order-stock': true } });
-  assert.deepEqual(ids(tab(noNew, 'order').items), ['order-kiosk', 'order-station', 'order-stock'], 'page:orders בלי page:orders_new: בדיקת מלאי כן, הזמנה חדשה לא');
+  assert.deepEqual(ids(tab(noNew, 'order').items), ['order-kiosk', 'order-station', 'order-stock', 'order-capacity'], 'page:orders בלי page:orders_new: בדיקת מלאי ותפוסה כן, הזמנה חדשה לא');
+  // תפוסה (12.10.2026): קישור ישיר לתחום "תפוסה" בחיפוש המתקדם; בלי דף הבית החדש - שורת "בקרוב" (כמו home-adv)
+  const capRow = tab(withStock, 'order').items.find((x) => x.id === 'order-capacity');
+  assert.deepEqual([capRow.kind, capRow.href, capRow.label], ['link', '/?adv=capacity', 'תפוסה']);
+  assert.deepEqual(findActive(withStock, '/', '', '?adv=capacity'), { tabId: 'order', itemId: 'order-capacity' });
+  assert.deepEqual(findActive(withStock, '/', '', '?adv=1').itemId, 'home-adv', 'adv=1 נשאר "חיפוש מתקדם", לא תפוסה');
+  const capLegacy = buildMenuTreeRaw({ user: HEAD, permissions: ALL_OPEN, settings: [], homeA5: false });
+  assert.equal(tab(capLegacy, 'order').items.find((x) => x.id === 'order-capacity').kind, 'soon');
   assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-all')); assert.ok(ids(tab(withStock, 'home').items).includes('home-adv'));
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-mine'));
