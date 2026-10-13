@@ -9,7 +9,7 @@ import '@/design-system/components.css';
 import './mailbox.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { A5List, A5ListPage, A5Page, A5Tabs, Ic, hDateFull, timeHM, useA5 } from '../a5-list';
+import { A5List, A5ListPage, A5Page, Ic, hDateFull, timeHM, useA5 } from '../a5-list';
 import { API, api } from './mailboxApi';
 import { MbCompose, MbRead } from './MbDialogs';
 import { PER_PAGE, composeDraft, fmtBytes, folderIcon, folderLabel, isOutgoingFolder, isTrashFolder, mailRow, normAddr } from './mailboxLogic';
@@ -117,10 +117,30 @@ function Mailbox() {
     { t: 'קבצים', tdClass: (r) => `num${r.files ? '' : ' zero'}`, cell: (r) => (r.files ? r.files : '') },
   ];
 
-  const tabs = (
-    <A5Tabs id="mbxTabs" label="תיקיות הדואר" items={folders.map((f) => ({
-      key: f.path, label: `${folderLabel(f)}${f.unreadCount > 0 ? ` (${f.unreadCount})` : ''}`, icon: folderIcon(f), on: f.path === folder, onClick: () => pickFolder(f.path),
-    }))} />
+  // העמודה הכחולה בצד ימין (כמו ציר השלבים בדף הלו"ז): כותרת, לחצן "מייל חדש" ובורר התיקיות עם ספירת הלא-נקראו
+  const rail = (
+    <aside className="rail mbx-rail" aria-label="תיקיות הדואר">
+      <div className="st-sidenav mbx-snav">
+        <div className="mbx-rh">תיבת מייל</div>
+        <button type="button" className="btn primary block mbx-new" id="btnNew" onClick={() => openCompose('new')}><Ic id="plus" />מייל חדש</button>
+        <nav className="st-stabs" aria-label="תיקיות">
+          {folders.map((f) => (
+            <button
+              key={f.path} type="button" className={`st-stab${f.path === folder ? ' on' : ''}`} aria-pressed={f.path === folder}
+              data-tip={`${folderLabel(f)} · ${f.messageCount || 0} הודעות${f.unreadCount ? ` · ${f.unreadCount} לא נקראו` : ''}`}
+              onClick={() => pickFolder(f.path)}
+            >
+              <span className="st-sic">
+                <Ic id={folderIcon(f)} />
+                {f.unreadCount > 0 ? <span className="sn-badge mbx-rem" role="img" aria-label={`${f.unreadCount} לא נקראו`}>{f.unreadCount}</span> : null}
+              </span>
+              <span className="st-slb"><span className="mbx-nm">{folderLabel(f)}</span></span>
+              <span className="st-sgo"><Ic id="chev" size="sm" /></span>
+            </button>
+          ))}
+        </nav>
+      </div>
+    </aside>
   );
   const q = status && status.quota && status.quota.supported && status.quota.totalLimit > 0 ? status.quota : null;
 
@@ -172,7 +192,7 @@ function Mailbox() {
             {q ? <span><Ic id="box" size="sm" />נפח: {fmtBytes(q.totalUsage)} מתוך {fmtBytes(q.totalLimit)}</span> : null}
           </div>
         </>,
-        { cardAction: <button type="button" className="btn navy" id="btnNew" onClick={() => openCompose('new')}><Ic id="plus" />מייל חדש</button>, tabs, tabpanel: true },
+        { rail },
       )}
       {reading ? (
         <MbRead

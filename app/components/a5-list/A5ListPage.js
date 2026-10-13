@@ -5,12 +5,13 @@
 // (חצי רוחב מתחת לכותרת) / הכרטיס, בדיוק כמו /admin/orders-list. זו אותה מבנה (.app > .topbar + A5SearchSlot + .layout.one > .main > .panel > .card.hist) שהיה כתוב ידנית
 // בכל דף - עכשיו במקום אחד. בלי CSS משלו: כל העיצוב מ-a5-page.css / הפלטה (המבנה והמחלקות זהים, לכן המידות זהות).
 //
+// rail (אופציונלי, תוספת תואמת-לאחור 14.10.2026): עמודה כחולה בצד ימין (aside.rail) כמו ציר השלבים של דף הלו"ז - הדף מצייר אותה בעצמו; הפריסה הופכת ל-.layout.has-rail (שתי עמודות).
 // props: small ('ניהול'), title (h1), backId, backLabel (aria + טולטיפ), onBack, tools (לדוגמה <PageVariantToggle/> בצד הכותרת), slotId (מזהה משבצת החיפוש - אותו id נשלח ל-A5List searchSlot),
 //        cardIcon (שם אייקון), cardTitle (h2 של כותרת הכרטיס), cardAction (כפתור בכותרת הכרטיס, אופציונלי), tabpanel (role=tabpanel כשיש לשוניות), tabs (שורת לשוניות אופציונלית - בתוך .main לפני הכרטיס, כמו ברשימת העובדים; ר' A5Tabs), children (A5List).
 import { A5SearchSlot } from './A5Parts';
 import { Ic } from './A5Icon';
 
-export default function A5ListPage({ small = 'ניהול', title, backId, backLabel = 'חזרה למרכז הניהול', onBack, tools = null, slotId, cardIcon, cardTitle, cardAction = null, tabs = null, tabpanel = false, guide = null, children }) {
+export default function A5ListPage({ small = 'ניהול', title, backId, backLabel = 'חזרה למרכז הניהול', onBack, tools = null, slotId, cardIcon, cardTitle, cardAction = null, tabs = null, tabpanel = false, rail = null, guide = null, children }) {
   return (
     <div className="app" id="app">
       <div className="topbar">
@@ -19,7 +20,8 @@ export default function A5ListPage({ small = 'ניהול', title, backId, backLa
         {tools ? <div className="a5-tools">{tools}</div> : null}
       </div>
       <A5SearchSlot id={slotId} />
-      <div className="layout one">
+      <div className={rail ? 'layout has-rail' : 'layout one'}>
+        {rail}
         <main className="main">
           {tabs}
           <section className="panel on" id="p-list" role={tabpanel ? 'tabpanel' : undefined}>
