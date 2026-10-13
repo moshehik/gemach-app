@@ -35,11 +35,12 @@ export function BoardStageFilter({ stages, totals, selected, onToggle, onShowAll
   const metaOf = (k) => STAGE_META[k] || STAGE_META.order;
   const stageOf = (k) => stages.find((s) => s.key === k);
   return (
-    <div className="hf-bar bd-search" id="bdSearch">
+    <div className="hf-bar bd-search" id="bdSearch" data-guide-id="board.filter-bar">
       <div className={'hf-sel' + (open ? ' on' : '')} ref={selRef}>
         <button
           type="button"
           className="hf-t"
+          data-guide-id="board.filter-btn"
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls="bdStageList"
@@ -53,7 +54,7 @@ export function BoardStageFilter({ stages, totals, selected, onToggle, onShowAll
         </button>
         <div className="hf-scrim" onClick={() => setOpen(false)} />
         <div className="hf-p">
-          <div className="hf-all"><button type="button" className="hf-allb" onClick={onShowAll}>הצג הכל</button></div>
+          <div className="hf-all"><button type="button" className="hf-allb" data-guide-id="board.filter-all" onClick={onShowAll}>הצג הכל</button></div>
           <div className="hf-l" id="bdStageList" role="listbox" aria-multiselectable="true" aria-label="סינון לפי שלב">
             {stages.filter((s) => s.enabled).map((s, n) => {
               const on = selected.includes(s.key);
@@ -114,11 +115,12 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
   const todayTitle = monthTitle(today);
   return (
     <div className="hc-h">
-      <button type="button" className="hc-n" aria-label="החודש הקודם" data-tip="החודש הקודם" onClick={onPrev}><Ic name="chev" className="sm" /></button>
+      <button type="button" className="hc-n" aria-label="החודש הקודם" data-guide-id="board.month-prev" data-tip="החודש הקודם" onClick={onPrev}><Ic name="chev" className="sm" /></button>
       <span className="lz-jw" ref={wrapRef}>
         <button
           type="button"
           className="hc-t lz-jump"
+          data-guide-id="board.month-jump"
           id="mJump"
           aria-haspopup="dialog"
           aria-expanded={open}
@@ -128,7 +130,7 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
           {monthTitle(date)}<Ic name="chev" className="sm" />
         </button>
         {open ? (
-          <div className="lz-pop bd-mp" role="dialog" aria-label="קפיצה לחודש">
+          <div className="lz-pop bd-mp" data-guide-id="board.month-picker" role="dialog" aria-label="קפיצה לחודש">
             <div className="hc">
               <div className="hc-h">
                 <button type="button" className="hc-n" aria-label="חודשים קודמים" data-tip="חודשים קודמים" onClick={() => setWin((w) => w - 1)}><Ic name="chev" className="sm" /></button>
@@ -157,7 +159,7 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
           </div>
         ) : null}
       </span>
-      <button type="button" className="hc-n hc-nn" aria-label="החודש הבא" data-tip="החודש הבא" onClick={onNext}><Ic name="chev" className="sm" /></button>
+      <button type="button" className="hc-n hc-nn" aria-label="החודש הבא" data-guide-id="board.month-next" data-tip="החודש הבא" onClick={onNext}><Ic name="chev" className="sm" /></button>
     </div>
   );
 }
@@ -200,6 +202,7 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay })
         {/* הקישור הסמנטי של התא (ממצא נגישות 3): רק כותרת היום. לחיצה בעכבר בכל שטח התא עושה אותו דבר (S06) */}
         <a
           className="bd-dlink"
+          data-guide-id="board.day-link"
           href={href}
           aria-label={label}
           onClick={(e) => goTo(e, cell, onOpenDay)}
@@ -235,7 +238,7 @@ function StageCounters({ rows, className }) {
 // ---------- גריד החודש (MATCH-3: שורת ימי השבוע; S08: תאים ריקים בקצוות) ----------
 export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay }) {
   return (
-    <div className="hc lz-hc">
+    <div className="hc lz-hc" data-guide-id="board.grid">
       {head}
       <div className="hc-w" aria-hidden="true">{WD_SHORT.map((x) => <span key={x}>{x}</span>)}</div>
       <div className="hc-g lz-g" role="list" aria-label="ימי החודש">
@@ -273,7 +276,7 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
     <div className="card items-card lz-lcard bd-lcard res-one">
       {head}
       {days.length ? (
-        <div className="list bd-list" aria-label="ימי החודש">
+        <div className="list bd-list" data-guide-id="board.list" aria-label="ימי החודש">
           {days.map(({ cell, rows, alert, late }) => {
             const total = rows.reduce((a, r) => a + r.total, 0);
             return (

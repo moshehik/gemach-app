@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { modelDisplayName, scrubPlaceholderInText } from '@/lib/modelDisplay';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import PrintWizardModal from '../components/PrintWizardModal';
@@ -12,6 +13,14 @@ import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
 import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP, detailsWithoutMarker } from '@/lib/alterationEstimate';
+
+// תווית הדגם בשורת תיקון: שם אמיתי + (קוד), או המספר לבדו - לעולם לא "ללא שם" (lib/modelDisplay.js). dressModelName מגיע מהשרת לפי הגדרת useModelNames.
+function alterationDressLabel(item) {
+  const code = item.dressPrefix ?? item.dressItem?.dress?.barcodePrefix ?? item.dressItem?.barcodePrefix ?? item.barcodePrefix;
+  const name = item.dressModelName || modelDisplayName(item.dressItem?.dress, { fallback: '' }) || (code != null ? String(code) : '');
+  if (name) return code != null && name !== String(code) ? `${name} (קוד: ${code})` : name;
+  return scrubPlaceholderInText(item.description || item.dressItem?.dressName, code);
+}
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const alterationsCache = cacheNamespace('alterations');
@@ -231,9 +240,7 @@ export default function AlterationsPage() {
         ...item,
         orderId: item.order?.orderId,
         customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-        dressName: item.dressItem?.dress?.name
-          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-          : (item.description || item.dressItem?.dressName),
+        dressName: alterationDressLabel(item),
         eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
         alterationStatus: alterationDoneLabel(item) || 'ממתין',
         neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
@@ -286,6 +293,7 @@ export default function AlterationsPage() {
         <div className="page-actions">
           <button
             type="button"
+            data-guide-id="alt.mark-day"
             onClick={markAllDone}
             disabled={!startDate}
             className="btn btn-primary"
@@ -294,10 +302,10 @@ export default function AlterationsPage() {
             <svg className="icon"><use href="#i-check-circle" /></svg>
             סמן יום כבוצע
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="alt.print" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
             <svg className="icon"><use href="#i-printer" /></svg>
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="מקרא" onClick={() => setIsLegendOpen(true)}>
+          <button type="button" className="btn btn-secondary btn-icon-only" data-guide-id="alt.legend" title="מקרא" onClick={() => setIsLegendOpen(true)}>
             <svg className="icon"><use href="#i-info" /></svg>
           </button>
           <ExportButtons
@@ -305,9 +313,7 @@ export default function AlterationsPage() {
               ...item,
               orderId: item.order?.orderId,
               customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-              dressName: item.dressItem?.dress?.name
-                ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                : (item.description || item.dressItem?.dressName),
+              dressName: alterationDressLabel(item),
               eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
               alterationStatus: alterationDoneLabel(item) || 'ממתין',
               neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
@@ -337,8 +343,8 @@ export default function AlterationsPage() {
       {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה.
           align-items:stretch + .range-flat: בורר הטווח ושורת החיפוש באותו עיצוב (אותו רדיוס)
           ובאותו גובה/קו — בלי label צף שמושך את הבורר מעל הקו של שורת החיפוש */}
-      <div className="toolbar" style={{ alignItems: 'stretch' }}>
-        <div title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
+      <div className="toolbar" data-guide-id="alt.toolbar" style={{ alignItems: 'stretch' }}>
+        <div data-guide-id="alt.date-range" title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
           <HebrewDateRangePicker
             className="range-flat"
             startDate={startDate}
@@ -409,7 +415,7 @@ export default function AlterationsPage() {
       </div>
 
       {/* סינון סטטוס תיקון: הכל / ממתינים / בוצע */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+      <div className="pill-tabs" data-guide-id="alt.filters" style={{ marginBottom: '20px' }}>
         <button type="button" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
           <svg className="icon"><use href="#i-list" /></svg>
           הכל
@@ -438,7 +444,7 @@ export default function AlterationsPage() {
           </div>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" data-guide-id="alt.table">
           <div className="table-scroll">
             <table className="data">
               <thead>
@@ -480,9 +486,7 @@ export default function AlterationsPage() {
                         <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
                         <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
                         <td>
-                          {item.dressItem?.dress?.name
-                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                            : (item.description || item.dressItem?.dressName)}
+                          {alterationDressLabel(item)}
                         </td>
                         <td>
                           <span className="badge badge-neutral">{item.sizeText || item.size}</span>
@@ -508,6 +512,7 @@ export default function AlterationsPage() {
                             <Link
                               href={`/orders/${item.order?.orderId}`}
                               className="btn btn-ghost btn-icon-only btn-sm"
+                              data-guide-id="alt.order-link"
                               title="כרטיס הזמנה"
                             >
                               <svg className="icon"><use href="#i-file" /></svg>
@@ -521,6 +526,7 @@ export default function AlterationsPage() {
                                 type="button"
                                 className="btn btn-ghost btn-icon-only btn-sm"
                                 style={{ color: 'var(--success)' }}
+                                data-guide-id="alt.mark-done"
                                 onClick={() => markDone(item.id)}
                                 title="סמן שבוצע"
                               >

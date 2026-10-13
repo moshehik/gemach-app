@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { modelDisplayName } from '../../../lib/modelDisplay';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { ChangesChips } from '../../modern/ChangesChips';
@@ -94,7 +95,7 @@ export default function ModernDressInfoTab({ dress, items, active }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
             <div>
               <svg className="icon" style={{ color: 'var(--text-3)', verticalAlign: '-2px' }}><use href="#i-tag" /></svg>{' '}
-              שם דגם: <strong>{dress.name || '—'}</strong>
+              שם דגם: <strong>{modelDisplayName(dress, { fallback: '—' })}</strong>
             </div>
             <div>
               <svg className="icon" style={{ color: 'var(--text-3)', verticalAlign: '-2px' }}><use href="#i-box" /></svg>{' '}

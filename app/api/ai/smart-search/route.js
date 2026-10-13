@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '../../../../lib/modelDisplay';
+import { getModelDisplayOpts } from '../../../../lib/modelDisplayServer';
 import crypto from 'crypto';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
@@ -390,6 +392,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
           }
         });
 
+        const mOpts = await getModelDisplayOpts(); // שם דגם אמיתי, אחרת המספר - לעולם לא "ללא שם" (lib/modelDisplay.js)
         const uniquePrefixes = new Set();
         fullOrders.forEach(order => {
           order.items.forEach(i => {
@@ -444,6 +447,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
               if (!dressName && prefix) {
                 dressName = dressModelMap.get(prefix);
               }
+              dressName = modelDisplayName({ name: dressName, barcodePrefix: prefix }, { ...mOpts, fallback: '' });
               
               return {
                 id: i.id,

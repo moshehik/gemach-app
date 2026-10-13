@@ -184,16 +184,16 @@ export default function BellBody({ nf, rows, onNavigate, onAction, activeItemId 
   const cnt = un ? `${un} ${un === 1 ? 'חדשה' : 'חדשות'}` : (tot ? 'הכול נקרא' : '');
   const loadingFirst = nf.loading && nf.list === null;
   return (
-    <div className="nf-w">
+    <div className="nf-w" data-guide-id="bell.panel">
       <div className="sn-ph"><strong>התראות</strong><span className="nf-cnt">{cnt}</span></div>
       {tot > 0 && (
         <div className="nf-tools">
-          <button type="button" data-nf-all disabled={!un} onClick={nf.markAll}>סמן הכל כנקרא</button>
-          <button type="button" data-nf-clear onClick={nf.clearAll}>ניקוי</button>
+          <button type="button" data-nf-all data-guide-id="bell.mark-all" disabled={!un} onClick={nf.markAll}>סמן הכל כנקרא</button>
+          <button type="button" data-nf-clear data-guide-id="bell.clear" onClick={nf.clearAll}>ניקוי</button>
         </div>
       )}
       {tot > 0 && (
-        <div className="nf-list" role="group" aria-label="רשימת התראות">
+        <div className="nf-list" data-guide-id="bell.list" role="group" aria-label="רשימת התראות">
           {shown.map((n) => <NfRow key={n.id} n={n} onRead={nf.markOne} onArchive={nf.archiveOne} />)}
         </div>
       )}
@@ -204,7 +204,7 @@ export default function BellBody({ nf, rows, onNavigate, onAction, activeItemId 
         </div>
       )}
       {tot > SHOW && (
-        <button type="button" className="nf-more" data-nf-more onClick={() => setShowAll((v) => !v)}>
+        <button type="button" className="nf-more" data-guide-id="bell.more" data-nf-more onClick={() => setShowAll((v) => !v)}>
           {showAll ? 'הצג פחות' : `הצג עוד ${tot - SHOW}`}
         </button>
       )}

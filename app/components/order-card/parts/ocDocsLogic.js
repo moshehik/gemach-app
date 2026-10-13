@@ -9,6 +9,8 @@
 // קבצי המייל המהיר (A8, AMB-11 - החלטת הבעלים: לבנות את כל שישת הסוגים): פרטי ההזמנה, תקנון חתום (דוח ההשכרה), דף תשלומים, דף משלוח (PP-12),
 // חשבונית/קבלה (אין באתר מסמך קבלה קיים - נבנה אישור תשלומים להדפסה/PDF מתשלומי ההזמנה) ותמונות דגמים (PDF מתמונות הדגמים השמורות, לא ZIP).
 import { hebDateOf } from '../orderCardLogic';
+import { collapseSameCodeLabel } from '../../../../lib/modelCodeLabel';
+import { modelDisplayName, orderItemModelName } from '../../../../lib/modelDisplay';
 import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
 import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_FILES, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
@@ -157,11 +159,11 @@ export function mailSentToast(to, fileCount, driveCount = 0) {
 // ייצוא Excel (A1) - עברית בלבד בכל תאריך (ENG-11); מספרים כמספרים; טלפון/ת״ז כטקסט
 // ---------------------------------------------------------------------------------------------
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-const itemName = (it) => it?.dressItem?.dress?.name || it?.dressModelName || it?.modelName || it?.description || '';
+const itemName = (it) => collapseSameCodeLabel(orderItemModelName(it) || it?.description || ''); // description נשמר כ-"522 (קוד: 522)"
 const methodOf = (p) => p?.paymentMethod || p?.method || '';
 
 /** גיליונות הקובץ: הזמנה (שדה/ערך), פריטים, חיובים, תשלומים. מקור: מצב השרת האחרון (snapshot) - מה שנשמר. */
-export function orderExportSheets({ order, items = [], obligations = [], payments = [] }) {
+export function orderExportSheets({ order, items = [], obligations = [], payments = [], deliveryRows = [] }) {
   const o = order || {};
   const c = o.customer || {};
   const activeItems = items.filter((i) => !i.isDeleted);
@@ -196,7 +198,11 @@ export function orderExportSheets({ order, items = [], obligations = [], payment
         '#': i + 1, 'דגם': itemName(it), 'מידה': String(it.sizeText || it.dressItem?.sizeText || ''),
         'מחיר': num(it.finalPrice ?? it.price), 'נלקח': it.isTaken || it.takenDate ? 'כן' : 'לא', 'הוחזר': it.isReturned || it.returnDate ? 'כן' : 'לא',
         'תיקונים': [it.neckAlteration > 0 ? 'צוואר' : '', it.sleeveAlteration > 0 ? 'שרוול' : '', it.lengthAlteration && !['', 'null', '0'].includes(String(it.lengthAlteration)) ? `אורך ${it.lengthAlteration}` : ''].filter(Boolean).join(', '),
-      })),
+      })).concat((deliveryRows || []).map((r) => ({
+        // delivery_as_item_row (נושא 9): שורת תצוגה בלבד, שורה לכל כיוון - לא פריט (בלי מספר סידורי/נלקח/הוחזר); המחיר הוא חיוב המשלוח שכבר בגיליון "חיובים"
+        '#': '', 'דגם': [r.label, r.detail].filter(Boolean).join(' - '), 'מידה': '',
+        'מחיר': r.amount === null || r.amount === undefined ? '' : num(r.amount), 'נלקח': '', 'הוחזר': '', 'תיקונים': '',
+      }))),
     },
     { sheetName: 'חיובים', rows: activeObl.map((x) => ({ 'תיאור': String(x.description || ''), 'סכום': num(x.amount) })) },
     {
@@ -305,7 +311,7 @@ export function modelPhotosOf(items = []) {
     const urls = [dress && dress.imageUrl, dress && dress.thumbnailUrl].filter((u) => typeof u === 'string' && u.trim());
     if (!urls.length) continue;
     const key = String(dress.id || dress.name || urls[0]);
-    if (!byModel.has(key)) byModel.set(key, { key, name: String(dress.name || it.description || 'דגם'), urls, sizes: [] });
+    if (!byModel.has(key)) byModel.set(key, { key, name: String(modelDisplayName(dress, { fallback: '' }) || it.description || 'דגם'), urls, sizes: [] });
     const size = it.sizeText || (it.dressItem && it.dressItem.sizeText);
     const entry = byModel.get(key);
     if (size && !entry.sizes.includes(String(size))) entry.sizes.push(String(size));

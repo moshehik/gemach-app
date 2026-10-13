@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { runAgentDigest } from '@/lib/agentDigest';
+import { processDueCampaigns } from '@/lib/emailCampaign';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // Cron עדכון PR-ים ממתינים לאישור (ר' lib/agentDigest.js לכל הלוגיקה). מופעל ע"י שני
 // crons קבועים ב-vercel.json - אחד עם ?slot=evening (מטרה 17:00 IL) ואחד עם
@@ -22,7 +24,13 @@ export async function GET(request) {
 
   const slot = new URL(request.url).searchParams.get('slot') || '';
   const result = await runAgentDigest({ slot });
-  return NextResponse.json({ success: true, slot, ...result });
+  // דיוורים מתוזמנים (מרכז המיילים) - הריצה הזו (~17:30 / ~00:30 שעון ישראל) מוסיפה שתי נקודות זמן ביום מעבר ל-cron היומי. כשל לא פוגע בעדכון הענפים.
+  let campaigns = null;
+  try {
+    const r = await processDueCampaigns({ deadlineMs: Date.now() + 30000 });
+    if (r.processed) campaigns = r;
+  } catch (e) { console.error('campaigns run from agent-digest cron failed', e); }
+  return NextResponse.json({ success: true, slot, ...result, ...(campaigns ? { campaigns } : {}) });
 }
 
 export async function POST(request) { return GET(request); }

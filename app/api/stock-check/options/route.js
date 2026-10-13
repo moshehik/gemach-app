@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
-import { compareSizeText, normalizeSizeKey } from '@/lib/sizeSort';
-import { STOCK_CHECK_PAGE_KEY } from '@/lib/stockCheck';
+import { compareSizeText, normalizeSizeKey, groupSizeRows, pickSizeMenu } from '@/lib/sizeSort';
+import { STOCK_CHECK_PAGE_KEY, ACTIVE_MODEL_WHERE } from '@/lib/stockCheck';
 
 // GET /api/stock-check/options?key=model|size&typed=<טקסט>
 // רשימות ההצעות (רשימת גלילה) לשדות "דגם" ו"מידה" בדף בדיקת מלאי — החלטת הבעלים Q03 (1.10.2026):
 // לא טקסט חופשי בלבד, אלא רשימת הצעות כמו בפלטת האתר, בשני השדות. קריאה בלבד.
 //   model → { options: [{ v: שם הדגם, c: קידומת ברקוד }] }  עד 50, לפי מה שהוקלד (שם מכיל / קידומת מתחילה ב-)
-//   size  → { options: [{ v: מידה }] }                      כל המידות שיש להן פריט פעיל, ממוינות לפי ערך
+//   size  → { options: [{ v: מידה }] }                      כל המידות השלמות שיש להן פריט פעיל, ממוינות לפי ערך (בלי עשרוניות/אותיות, ר' sizeOptions)
 // הרשאה: אותו שער כמו הבדיקה עצמה (checkAuth + page:orders, STOCK_CHECK_PAGE_KEY) — ההצעות חושפות
 // את קטלוג הדגמים, ולכן לא ניתנות למי שאינו רשאי לפתוח את הדף.
 export const dynamic = 'force-dynamic';
@@ -17,7 +19,6 @@ export const dynamic = 'force-dynamic';
 const LIMIT = 50;
 const POOL = 400;
 const INT32_MAX = 2147483647;
-const GENERAL_SIZE = 'כללי'; // פריט בלי sizeText נספר במנוע כ"כללי" (lib/inventory.js)
 
 const json = (body, status = 200) => NextResponse.json(body, { status });
 const clean = (s) => (s == null ? '' : String(s).trim());
@@ -37,7 +38,7 @@ function prefixRanges(typed) {
 }
 
 async function modelOptions(typed) {
-  const where = { isDeleted: false };
+  const where = { ...ACTIVE_MODEL_WHERE }; // דגם שיצא מהמאגר לא מוצע (כמו בבדיקה עצמה)
   if (typed) {
     where.OR = [{ name: { contains: typed, mode: 'insensitive' } }, ...prefixRanges(typed)];
   }
@@ -47,10 +48,11 @@ async function modelOptions(typed) {
     orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' },
     take: typed ? POOL : LIMIT,
   });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
   const seen = new Set();
   const list = [];
   for (const r of rows) {
-    const v = clean(r.name);
+    const v = clean(modelDisplayName(r, { ...mOpts, fallback: '' }));
     if (!v) continue;
     const key = v + '|' + (r.barcodePrefix ?? '');
     if (seen.has(key)) continue;
@@ -70,30 +72,21 @@ async function modelOptions(typed) {
 }
 
 async function sizeOptions(typed) {
-  // כל המידות שיש להן פריט פעיל (לא מחוק, בשימוש). פריט בתיקון עדיין "קיים" — המידה מוצעת, והפנוי בה יוכרע במנוע.
-  // כתיבים שונים של אותה מידה ("08", "8", " 8") מאוחדים לפי normalizeSizeKey (כמו בבדיקה עצמה, lib/stockCheck.js);
+  // כל המידות השלמות שיש להן פריט פעיל (לא מחוק, בשימוש). פריט בתיקון עדיין "קיים" — המידה מוצעת, והפנוי בה יוכרע במנוע.
+  // כתיבים שונים של אותה מידה ("08", "8", " 8", "8.0") מאוחדים לפי normalizeSizeKey (כמו בבדיקה עצמה, lib/stockCheck.js);
   // מוצג הכתיב הנפוץ ביותר ב-DB (בגמ"ח הראשי: תמיד בשתי ספרות, "08").
+  // מידות עשרוניות/אותיות/טווחים ("06.1", "36א", "38-40" — בנווה יעקב) לא מוצעות ברשימה (נושא 12, 12.10.2026): רק אם הוקלד
+  // תו שאינו ספרה (lib/sizeSort.js pickSizeMenu). הנתונים והבדיקה עצמה לא משתנים — הקלדה ידנית של "06.1" עדיין נבדקת.
   const rows = await prisma.dressItem.groupBy({
     by: ['sizeText'],
-    where: { isDeleted: false, notInUse: false },
+    where: { isDeleted: false, notInUse: false, dressModelId: { not: null }, dress: { exitDateFromRepo: null } }, // פריטי דגם שיצא לא תורמים מידה (נושא 12)
     _count: { _all: true },
   });
-  const groups = new Map(); // key -> { display, count }
-  for (const r of rows) {
-    const raw = clean(r.sizeText);
-    const key = normalizeSizeKey(raw);
-    const n = (r._count && r._count._all) || 0;
-    const display = raw || GENERAL_SIZE;
-    const g = groups.get(key);
-    if (!g || n > g.count || (n === g.count && display.length < g.display.length)) groups.set(key, { display, count: n });
-  }
-  let list = [...groups.entries()].map(([key, g]) => ({ key, v: g.display }));
-  if (typed) {
-    const tk = normalizeSizeKey(typed);
-    list = list.filter((o) => o.v.includes(typed) || o.key.startsWith(tk));
-  }
-  list.sort((a, b) => compareSizeText(a.key, b.key));
-  return list.slice(0, LIMIT).map((o) => ({ v: o.v }));
+  const groups = groupSizeRows(rows.map((r) => ({ sizeText: r.sizeText, count: (r._count && r._count._all) || 0 })));
+  const tk = typed ? normalizeSizeKey(typed) : '';
+  const picked = pickSizeMenu(groups, typed, (g, t) => !t || g.v.includes(t) || g.key.startsWith(tk));
+  picked.sort((a, b) => compareSizeText(a.key, b.key));
+  return picked.slice(0, LIMIT).map((o) => ({ v: o.v }));
 }
 
 export async function GET(request) {

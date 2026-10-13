@@ -58,7 +58,7 @@ function StateBanner({ oc }) {
   if (!oc.flags.isDeletedOrder && !oc.flags.isDraft) return null;
   const deleted = oc.flags.isDeletedOrder;
   return (
-    <div className="nb-area oc-banner" data-oc-banner={deleted ? 'deleted' : 'draft'}>
+    <div className="nb-area oc-banner" data-oc-banner={deleted ? 'deleted' : 'draft'} data-guide-id="oc.state-banner">
       <div className="nb-w">
         <section className={`nb ${deleted ? 'nb-warning' : 'nb-info'}`} role="status" aria-labelledby="oc-state-t">
           <div className="nb-main">
@@ -138,7 +138,7 @@ function OrderCardBody({ orderRef, rootRef }) {
                 <OcTabs oc={oc} ui={ui} tabs={TABS} />
               </OcJournalContext.Provider>
             </main>
-            <aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref={railRef}>
+            <aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref={railRef} data-guide-id="oc.rail">
               <Rail oc={oc} ui={ui} />
             </aside>
           </div>

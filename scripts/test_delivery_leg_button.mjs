@@ -294,7 +294,7 @@ t('הגדרה: שם + הערה + קטגוריית משלוחים + רשימת ב
   assert.ok(M.includes(`'delivery_charge_customer_city_fallback', '${key}',\n    'delivery_show_in_order'`), 'קטגוריית משלוחים');
   assert.ok(M.includes(`'delivery_charge_customer_city_fallback', '${key}',\n`) && M.split(`'${key}'`).length === 3, 'קטגוריה + בוליאני');
   const SIM = read('lib/settingsSimLayout.js');
-  assert.ok(SIM.includes(`'delivery_charge_customer_city_fallback', '${key}'] },`));
+  assert.ok(SIM.includes(`'delivery_charge_customer_city_fallback', '${key}'`)); // (אחריו נוספו delivery_as_item_row וכו' - order-docs-delivery)
   assert.ok(SIM.includes(`  ${key}: { icon: 'truck' },`));
   // אין שום קוד שמניח שהמפתח קיים: רק === 'true'
   assert.ok(!/delivery_leg_button_marks_order\s*[!=]==?\s*'false'/.test(MPM));

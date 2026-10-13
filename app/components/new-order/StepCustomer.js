@@ -6,14 +6,18 @@
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
+import { useNoFill } from '@/lib/autofillGuard';
 import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
+import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
+import ConsentFields from '@/app/components/shared/ConsentFields';
+import { invalidConsentFields } from '@/lib/consentForm';
 
 const TABS = [
-  { v: 'phone', label: 'לפי טלפון', icon: 'phone' },
-  { v: 'name', label: 'מהרשימה', icon: 'users' },
-  { v: 'new', label: 'לקוח חדש', icon: 'plus' },
+  { v: 'phone', label: 'לפי טלפון', icon: 'phone', guide: 'no.cust-mode-phone' },
+  { v: 'name', label: 'מהרשימה', icon: 'users', guide: 'no.cust-mode-list' },
+  { v: 'new', label: 'לקוח חדש', icon: 'plus', guide: 'no.cust-mode-new' },
 ];
 
 function custSub(c) {
@@ -26,7 +30,7 @@ function CustRow({ c, open, onClick }) {
       <div className="li rlink lrow" role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick(); } }}>
         <div className="ic-b"><Ic n="user" /></div>
         <div className="t">
-          <b>{getCustomerFullName(c)}{c.isBlocked ? <> <span className="chip red"><Ic n="lock" />לקוח חסום</span></> : null}</b>
+          <b>{getCustomerFullName(c)}{c.isBlocked ? <> <span className="chip red"><Ic n="lock" />לקוח חסום</span></> : null}{c.kioskReg === 'pending' || c.kioskReg === 'repeat' ? <> <span className="chip gold" data-tip="הלקוחה מילאה פרטים בעמדת הלקוח. לאמת איתה את הפרטים לפני שממשיכים בהזמנה (באישור: כרטיס הלקוח).">{c.kioskReg === 'repeat' ? 'נרשמה שוב בעמדה - לאמת פרטים' : 'נרשמה בעמדה - לאמת פרטים'}</span></> : null}</b>
           <span className="ln"><bdi>{custSub(c)}</bdi></span>
         </div>
         <span className="go" aria-hidden="true"><Ic n={open ? 'check' : 'chev'} c="sm" /></span>
@@ -50,13 +54,14 @@ function MissLine({ c, ctl, mode = 'use' }) {
 
 // פרטי הוראת קבע (hok_enabled) - ללקוח קיים נשמרים על order.hok*, ללקוח חדש על newCustomer.hok*
 function HokCard({ value, onChange }) {
+  const nf = useNoFill();
   return (
     <div className="card" style={{ marginTop: 18 }}>
       <div className="card-h"><div className="ico blue"><Ic n="bank" c="lg" /></div><h2>פרטי הוראת קבע (3)</h2></div>
       <div className="grid2">
-        <Field label="בנק" icon="bank" htmlFor="noHokBank"><input className="inp" id="noHokBank" autoComplete="off" {...NO_FILL} value={value.bankName || ''} onChange={(e) => onChange('BankName', e.target.value)} /></Field>
-        <Field label="סניף" icon="pin" htmlFor="noHokBranch"><input className="inp" id="noHokBranch" autoComplete="off" {...NO_FILL} value={value.bankBranch || ''} onChange={(e) => onChange('BankBranch', e.target.value)} /></Field>
-        <Field label="חשבון" icon="card" htmlFor="noHokAcc"><input className="inp" id="noHokAcc" dir="ltr" autoComplete="off" {...NO_FILL} value={value.bankAccount || ''} onChange={(e) => onChange('BankAccount', e.target.value)} /></Field>
+        <Field label="בנק" icon="bank" htmlFor="noHokBank"><input className="inp" id="noHokBank" {...nf('hokBank')} value={value.bankName || ''} onChange={(e) => onChange('BankName', e.target.value)} /></Field>
+        <Field label="סניף" icon="pin" htmlFor="noHokBranch"><input className="inp" id="noHokBranch" {...nf('hokBranch')} value={value.bankBranch || ''} onChange={(e) => onChange('BankBranch', e.target.value)} /></Field>
+        <Field label="חשבון" icon="card" htmlFor="noHokAcc"><input className="inp" id="noHokAcc" dir="ltr" {...nf('hokAcc')} value={value.bankAccount || ''} onChange={(e) => onChange('BankAccount', e.target.value)} /></Field>
       </div>
       <div className="trow" style={{ marginTop: 14 }}><Switch checked={value.consent} onChange={(v) => onChange('Consent', v)} label="אישור גביה" /><span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span></div>
     </div>
@@ -66,6 +71,7 @@ const orderHok = (ctl) => ({ bankName: ctl.order.hokBankName, bankBranch: ctl.or
 const setOrderHok = (ctl) => (k, v) => ctl.setOrder(prev => ({ ...prev, [`hok${k}`]: v }));
 
 function PhoneTab({ ctl }) {
+  const nf = useNoFill();
   const res = ctl.foundCustomersFromPhone;
   const sel = ctl.pickedFound;
   const anyMissing = res.some(c => ctl.missingOf(c).length || unsatisfiedFieldGroupShortLabels(c, ctl.fieldGroups).length);
@@ -73,13 +79,13 @@ function PhoneTab({ ctl }) {
   return (
     <>
       <Field label="מספר טלפון *" icon="phone" htmlFor="noPhoneQ">
-        <input className="inp" id="noPhoneQ" type="tel" dir="ltr" inputMode="tel" placeholder="05..." autoComplete="off" {...NO_FILL} autoFocus
+        <input className="inp" id="noPhoneQ" dir="ltr" inputMode="tel" placeholder="05..." {...nf('phoneQ')} autoFocus
           value={ctl.phoneSearchInput} onChange={(e) => ctl.setPhoneSearchInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ctl.handleCheckPhone(); } }} />
         <ClearX show={!!ctl.phoneSearchInput} onClear={() => { ctl.setPhoneSearchInput(''); ctl.setFoundCustomersFromPhone([]); }} />
       </Field>
       <div className="row wrap" style={{ marginTop: 24, gap: 16, alignItems: 'center' }}>
-        <button type="button" className="btn navy" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
+        <button type="button" className="btn navy" data-guide-id="no.cust-phone-check" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
       </div>
       <div id="phoneRes" style={{ marginTop: 16 }}>
         {res.length ? (
@@ -89,7 +95,7 @@ function PhoneTab({ ctl }) {
             {sel ? <MissLine c={sel} ctl={ctl} /> : null}
             {one && ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
             <div className="row wrap" style={{ marginTop: 14, gap: 10 }}>
-              <button type="button" className="btn primary" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
+              <button type="button" className="btn primary" data-guide-id="no.cust-use" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
               {anyMissing && (sel || one) ? (ctl.inlineCustomerEdit
                 ? <button type="button" className="btn" onClick={() => ctl.editCustomerInline(sel || one, 'use')}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
                 : <a className="btn" href={`/customers/${(sel || one).id}`} target="_blank" rel="noreferrer"><Ic n="pencil" c="sm" />עריכת פרטי לקוח</a>) : null}
@@ -103,12 +109,13 @@ function PhoneTab({ ctl }) {
 }
 
 function ListTab({ ctl }) {
+  const nf = useNoFill();
   const c = ctl.order.selectedCustomer;
   const list = ctl.listResults || [];
   return (
     <>
       <Field label="חיפוש לפי שם, טלפון או עיר" icon="search" htmlFor="noListQ">
-        <input className="inp" id="noListQ" placeholder="חפש לקוח לפי שם, טלפון, עיר..." autoComplete="off" {...NO_FILL} readOnly={!!c}
+        <input className="inp" id="noListQ" placeholder="חפש לקוח לפי שם, טלפון, עיר..." {...nf('listQ')} readOnly={!!c}
           value={c ? `${getCustomerFullName(c)}${c.phone1 ? ` (${c.phone1})` : ''}` : ctl.listQuery} onChange={(e) => ctl.setListQuery(e.target.value)} />
         {c ? <ClearX show onClear={() => ctl.pickFromList(null)} label="נקה בחירה" tip="נקה בחירה" /> : null}
       </Field>
@@ -134,17 +141,21 @@ function ListTab({ ctl }) {
 }
 
 function NewTab({ ctl }) {
+  const nf = useNoFill();
   const s = ctl.settings;
   const n = ctl.newCustomer;
   const set = (k) => (v) => { ctl.setNewCustomerError(null); ctl.setNewCustomer(prev => ({ ...prev, [k]: v })); };
-  const onEnter = (e) => {
+  // Enter עובר לשדה הבא בכל הסדר (גם דרך מתגים ובחירות כן/לא; Enter עליהם רק מקדם) ובשדה האחרון שומר - lib/enterNavigation.js
+  const navKeyDown = useEnterNavigation(() => ctl.handleSaveNewCustomerAndProceed());
+  // חתימה על התקנון (חובה): Enter עליה מסמן אותה וממשיך לשדה הבא / שומר, כמו בשאר השדות
+  const onSignEnter = (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
+    ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
     const box = e.target.closest('.blk');
-    if (!box) return;
-    const all = Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
-    const next = all[all.indexOf(e.target) + 1];
-    if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed();
+    const all = box ? Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null) : [];
+    const next = all.find(el => (el.compareDocumentPosition(e.target) & Node.DOCUMENT_POSITION_PRECEDING) !== 0);
+    if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed(false, true);
   };
   const star = (on) => (on ? ' *' : '');
   const err = ctl.newCustomerError;
@@ -154,9 +165,9 @@ function NewTab({ ctl }) {
   // c89234ec (auto_advance_fixed_fields): נייד מלא -> השדה הבא; עיר/רחוב שנבחרו מהרשימה -> הרחוב / מספר הבית
   const aa = s.auto_advance_fixed_fields === 'true';
   const phoneAdvance = (k, nextId) => ({ onChange: (e) => { set(k)(e.target.value); if (aa && justCompleted(isMobilePhoneComplete, n[k], e.target.value)) focusField(nextId); } });
-  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
+  const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, ...nf(k), value: n[k] || '', onChange: (e) => set(k)(e.target.value), ...extra });
   return (
-    <>
+    <div style={{ display: 'contents' }} onKeyDown={navKeyDown}>
       {ctl.phoneSearchInput.trim() ? (
         <Note style={{ marginBottom: 14 }} icon="alert">
           לא נמצא לקוח עם הטלפון שהוזן. יתכן שהמספר במערכת שונה מעט - כדאי לנסות{' '}
@@ -166,21 +177,21 @@ function NewTab({ ctl }) {
       <div className="grid2 col1">
         <Field label="שם פרטי *" icon="user" htmlFor="noNcFirst"><input id="noNcFirst" {...inp('firstName')} /></Field>
         <Field label="שם משפחה *" icon="user" htmlFor="noNcLast"><input id="noNcLast" {...inp('lastName')} /></Field>
-        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
-        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
+        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" inputMode="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
+        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" inputMode="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
         <Field label={`אימייל${star(s.require_customer_email === 'true' || isFieldMandatoryFromPicker(s, 'email') || isFieldRequiredByGroup('email', n, ctl.fieldGroups))}`} icon="mail" htmlFor="noNcEmail"
           after={<>
             {n.email && !n.email.includes('@') ? <div style={{ marginTop: 8 }}><button type="button" className="btn sm" onClick={() => set('email')(`${n.email}@gmail.com`)}><Ic n="mail" c="sm" />השלם ל- @gmail.com</button></div> : null}
             {errFor('email')}
             {groupErrors.map(m => <div key={m} className="no-grp" role="note"><Ic n="alert" c="sm" />{m}</div>)}
           </>}>
-          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ type: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל', onKeyDown: onEnter }} />
+          <NoSuggest id="noNcEmail" value={n.email} onChange={set('email')} options={emailSuggestions} prefix inputProps={{ inputMode: 'email', dir: 'ltr', placeholder: 'לשליחת ההזמנה במייל' }} />
         </Field>
       </div>
       <div className="ncmore">
         <div className="grid2 col1">
-          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} onPick={aa ? () => focusField('noNcStreet') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
-          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} onPick={aa ? () => focusField('noNcHouse') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
+          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} onPick={aa ? () => focusField('noNcStreet') : undefined} /></Field>
+          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} onPick={aa ? () => focusField('noNcHouse') : undefined} /></Field>
           <Field label={`מספר בית${star(addrReq('houseNum'))}`} icon="home" htmlFor="noNcHouse"><input id="noNcHouse" {...inp('houseNum')} /></Field>
           <Field
             label={<>תעודת זהות{s.require_customer_id_number === 'true' ? ' *' : (s.require_id_for_edit_cancel === 'true' ? <> <span className="muted sm">(לעריכה/ביטול עתידי)</span></> : null)}</>}
@@ -188,16 +199,36 @@ function NewTab({ ctl }) {
             <input id="noNcId" dir="ltr" inputMode="numeric" placeholder="ת״ז" {...inp('zeout')} />
           </Field>
         </div>
-        {s.hide_marketing_consent_field !== 'true' ? (
+        {ctl.explicitConsent ? (
+          // הסכמות מפורשות (explicit_consent_enabled): תקנון כן/לא, דיוורים כן/לא, אישור פרטיות - בלי ברירת מחדל; lib/consentForm.js + שרת: lib/customerConsent.js
+          <ConsentFields
+            idPrefix="noNcCn" isNew settings={s} info={ctl.consentInfo}
+            value={{ acceptedTerms: n.acceptedTerms ?? null, marketingConsent: n.marketingAnswer ?? null, acceptedPrivacy: !!n.acceptedPrivacy }}
+            invalid={err && err.field === 'consent' ? invalidConsentFields({ acceptedTerms: n.acceptedTerms, marketingConsent: n.marketingAnswer, acceptedPrivacy: n.acceptedPrivacy }, s, { isNew: true }) : {}}
+            onChange={(patch) => {
+              ctl.setNewCustomerError(null);
+              // חתימה על התקנון בהזמנה (Order.hasSignedRegulations, חובה בכל הזמנה) נגזרת מהתשובה המפורשת "חתם/ה על התקנון: כן" - שאלה אחת, לא שתיים
+              if ('acceptedTerms' in patch) ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: patch.acceptedTerms === true }));
+              ctl.setNewCustomer(prev => {
+                const next = { ...prev };
+                if ('acceptedTerms' in patch) next.acceptedTerms = patch.acceptedTerms;
+                if ('acceptedPrivacy' in patch) next.acceptedPrivacy = patch.acceptedPrivacy;
+                if ('marketingConsent' in patch) { next.marketingAnswer = patch.marketingConsent; next.marketingConsent = patch.marketingConsent === true; }
+                return next;
+              });
+            }}
+          />
+        ) : s.hide_marketing_consent_field !== 'true' ? (
           <div className="trow"><Switch checked={n.marketingConsent} onChange={set('marketingConsent')} label="אישור דיוור" /><span>מאשר/ת קבלת דיוורים{star(s.require_marketing_consent === 'true')}</span></div>
         ) : null}
+        {!ctl.explicitConsent ? <div className="trow"><Switch id="noNcSign" checked={ctl.order.hasSignedRegulations} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} onKeyDown={onSignEnter} label="חתימה על התקנון" /><span>חתם/ה על התקנון *</span></div> : null}
       </div>
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
-      {err && !err.field ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
+      {err && (!err.field || err.field === 'consent') ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
       <div className="row" style={{ marginTop: 24 }}>
-        <button type="button" className="btn primary" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
+        <button type="button" className="btn primary" data-guide-id="no.cust-save" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -206,7 +237,7 @@ export default function StepCustomer({ ctl }) {
     <OneCard>
       <Blk>
         <SubH icon="search" tone="rose" title="בחירת לקוח" />
-        <SegPill id="custSeg" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
+        <SegPill id="custSeg" guide="no.cust-modes" label="אופן בחירת הלקוח" options={TABS} value={ctl.searchMode}
           onChange={(v) => { ctl.setSearchMode(v); if (v === 'phone') ctl.setFoundCustomersFromPhone([]); }} />
         <div style={{ marginTop: 18 }}>
           {ctl.searchMode === 'phone' ? <PhoneTab ctl={ctl} /> : ctl.searchMode === 'name' ? <ListTab ctl={ctl} /> : <NewTab ctl={ctl} />}

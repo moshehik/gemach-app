@@ -125,8 +125,8 @@ test('static: every non-all consumer asks for ?slim=1; the all=true consumers an
   const lines = out.split('\n').filter((l) => l && !/\/\/|\*/.test(l.split(/:\d+:/)[1] || '') && !l.includes('desktop.ini'));
   const slimFiles = lines.filter((l) => l.includes('/api/employees?slim=1')).map((l) => l.split(':')[0]).sort();
   assert.deepEqual(slimFiles, [
-    'app/components/PopupProvider.js', 'app/components/customer-card/CcApproval.js', 'app/components/employee-card/EcApproval.js', 'app/components/new-order/NoDialogs.js',
-    'app/components/order-card/OcApproval.js', 'app/components/order-card/tabs/OcItemsTab.js', 'app/components/settings-sim/SettingsDialogs.js', 'app/customer-interface/page.js',
+    'app/components/PopupProvider.js', 'app/components/customer-card/CcApproval.js', 'app/components/employee-card/EcApproval.js', 'app/components/kiosk/KioskA5.js', 'app/components/new-order/NoDialogs.js',
+    'app/components/order-card/OcApproval.js', 'app/components/order-card/tabs/OcItemsTab.js', 'app/components/settings-sim/SettingsDialogs.js', 'app/customer-interface/LegacyKioskPage.js',
     'app/management/history/page.js', 'app/messages/page.js', 'components/SendEmailModal.js',
   ].sort());
   const read = (p) => fs.readFileSync(process.env.PROJ + '/' + p, 'utf8');

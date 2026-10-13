@@ -1,19 +1,23 @@
 import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
-import prisma from '../../lib/prisma';
+import prisma, { getActingEmployeeId } from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
-import { customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS, validateCustomerBankFields } from '@/lib/customerBankFields';
+import { CUSTOMER_BANK_FIELD_KEYS } from '@/lib/customerBankFields';
+import { collectNewCustomerErrors } from '@/lib/customerCreateValidation';
+import { kioskRegistrationState, kioskUnverifiedWhere } from '@/lib/kioskRegistration';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 import {
   planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, phoneKeysFromInput,
 } from '@/lib/listSearch';
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
-import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
-import { planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
+import { readSignatureFlag } from '@/lib/customerSignature';
+import { prepareStaffConsent, recordConsentEntries } from '@/lib/customerConsent';
+import { loadConsentContext } from '@/lib/consentDocsLoad';
+import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
+import { newOrderPickerConditions } from '@/lib/customerPickerFilter';
 
 async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -96,6 +100,13 @@ async function queryCustomersList(searchParams, opts) {
     }
     if (advCity) conditions.push({ city: { contains: advCity } });
     if (advEmail) conditions.push({ email: { contains: advEmail } });
+    // בורר "לקוח קיים" של הזמנה חדשה (?pickerFor=new-order): לפי ההגדרה new_order_customer_list_filter - 'complete' משאיר רק לקוחות עם כל הפרטים
+    // הנדרשים ביצירת לקוח (lib/customerCompleteness.js). ללא הפרמטר (/customers, כרטיס הזמנה, בדיקת כפילות לפי ?phone=) - אין שום סינון.
+    if (searchParams.get(NEW_ORDER_PICKER_PARAM) === NEW_ORDER_PICKER_VALUE) {
+      conditions.push(...await memoLookup(opts.cache, 'pickerFilter', () => newOrderPickerConditions()));
+    }
+    // kioskPending=1: רק לקוחות שנרשמו בעמדת הלקוח וממתינות לאימות פרטים (lib/kioskRegistration.js) - רשימה לצוות
+    if (searchParams.get('kioskPending') === '1') conditions.push(kioskUnverifiedWhere());
 
     const where = { AND: conditions };
 
@@ -126,15 +137,19 @@ async function queryCustomersList(searchParams, opts) {
           // getMissingMandatoryCustomerFields ב-app/orders/new/page.js) הייתה מסמנת
           // אותם כחסרים גם כשהם מולאים אצל הלקוח בפועל.
           zeout: true,
-          marketingConsent: true
+          marketingConsent: true,
+          // נגזר בלבד (kioskReg): הערות המשרד עצמן לא נשלחות ברשימה
+          officeNotes: true
         }
       }),
       prisma.customer.count({ where })
     ]);
 
-    const formattedCustomers = customers.map(c => ({
+    // kioskReg: 'pending' (נרשמה בעמדה - לאמת פרטים) | 'repeat' (נרשמה שוב בעמדה, כבר קיימת) | 'verified' | null - מוצג כתג בבוחר הלקוחות
+    const formattedCustomers = customers.map(({ officeNotes, ...c }) => ({
       ...c,
-      email: normalizeEmail(c.email, c.emailSuffix)
+      email: normalizeEmail(c.email, c.emailSuffix),
+      kioskReg: kioskRegistrationState(officeNotes)
     }));
 
     return {
@@ -161,60 +176,11 @@ async function POST(request) {
     try {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));
-      bankOn = customerBankFieldsEnabled(sMap);
-      const errors = [];
-      if (sMap.get('require_customer_email') === 'true') {
-        const rawEmail = String(body.email || (body.emailSuffix && String(body.emailSuffix).includes('@') ? body.emailSuffix : '') || '').trim();
-        if (!rawEmail || !rawEmail.includes('@')) errors.push('מייל חובה');
-      }
-      if (sMap.get('require_full_address') === 'true') {
-        if (!String(body.city || '').trim()) errors.push('עיר חובה');
-        if (!String(body.street || '').trim()) errors.push('רחוב חובה');
-        if (!String(body.houseNum || '').trim()) errors.push('מספר בית חובה');
-      }
-      if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
-        if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
-      }
-      // "לפחות שדה אחד מהקבוצה" (mandatory_field_groups, ר' lib/customerValidation.js) - למשל
-      // טלפון נוסף/אימייל. לא היה נאכף בשרת כלל לפני זה, רק כוכבית דינמית ב-UI (client-only).
-      errors.push(...unsatisfiedFieldGroupErrors(body, parseFieldGroups(sMap.get('mandatory_field_groups'))));
-      // require_customer_id_number - הגדרה ייעודית לגמח נווה יעקב בלבד (מופעלת רק
-      // ב-DB שלהם), נפרדת בכוונה מ-mandatory_fields (שמשמש את מסך "מילוי פרטי הזמנה"
-      // ולא את טופס יצירת הלקוח עצמו - ר' getMissingMandatoryCustomerFields ב-
-      // app/orders/new/page.js). ברירת מחדל 'false'/שורה חסרה = ת"ז נשארת אופציונלית
-      // (התנהגות קודמת, כמו הגמח הראשי).
-      if (sMap.get('require_customer_id_number') === 'true') {
-        const zeoutVal = String(body.zeout || body.idNumber || '').trim();
-        if (!zeoutVal) errors.push('תעודת זהות חובה');
-      }
-      // אם mandatory_fields מכיל שדות נוספים ו-strict מופעל, אוכפים גם אותם
-      if (sMap.get('strict_mandatory_fields') === 'true') {
-        const mandatory = (sMap.get('mandatory_fields') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        const aliasMap = {
-          firstname: 'firstName', 'שם פרטי': 'firstName', 'שם_פרטי': 'firstName',
-          lastname: 'lastName', 'שם משפחה': 'lastName', 'שם_משפחה': 'lastName',
-          phone1: 'phone1', 'טלפון ראשי (נייד)': 'phone1', 'טלפון_1': 'phone1',
-          email: 'email', 'אימייל': 'email',
-          city: 'city', 'עיר': 'city',
-          street: 'street', 'רחוב': 'street',
-          housenum: 'houseNum', 'מספר בית': 'houseNum', 'מספר_בית': 'houseNum'
-        };
-        for (const m of mandatory) {
-          const field = aliasMap[m.toLowerCase()] || aliasMap[m] || null;
-          if (field && !String(body[field] || '').trim()) {
-            const label = field === 'firstName' ? 'שם פרטי' : field === 'lastName' ? 'שם משפחה' : field === 'phone1' ? 'טלפון' : field;
-            if (!errors.includes(`${label} חובה`)) errors.push(`${label} חובה`);
-          }
-        }
-      }
-      // שדות החובה של כרטיס הלקוח החדש (customer_required_fields) - רק לטופס הלקוח החדש של העיצוב החדש (cardVariant:'a5');
-      // הטופס הישן והוספת לקוח מהירה בהזמנה לא שולחים cardVariant ולכן לא מושפעים.
-      if (body.cardVariant === 'a5') {
-        for (const e of requiredFieldErrors(body, requiredFieldsFromSettings(sMap))) if (!errors.includes(e)) errors.push(e);
-      }
-      // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
-      errors.push(...validateCustomerFieldFormats(body));
-      if (bankOn === true) errors.push(...validateCustomerBankFields(body));
+      // כל בדיקות השדות מבוססות-ההגדרות (חובה + תבנית) יושבות ב-lib/customerCreateValidation.js - משותפות גם לרישום העצמי בעמדה
+      // (POST /api/public-kiosk/register). הסדר והנוסח של ההודעות זהים למה שהיה כאן.
+      const collected = collectNewCustomerErrors(body, sMap, { a5Required: body.cardVariant === 'a5' });
+      bankOn = collected.bankOn;
+      const errors = collected.errors;
 
       // 5 - חסימת כפילות ת"ז בין לקוחות: המערכת אפשרה עד כה לשמור 2 לקוחות עם אותה
       // תעודת זהות. ת"ז אמורה להיות ייחודית ללקוח (בניגוד לטלפון, שיכול להיות משותף
@@ -243,7 +209,16 @@ async function POST(request) {
     if (requestedSignature === 'invalid') {
       return NextResponse.json({ error: 'ערך חתימה על התקנון לא תקין' }, { status: 400 });
     }
-    const signaturePlan = planSignatureWrite({ requested: requestedSignature, current: null, now: new Date() });
+
+    // הסכמות מפורשות (תקנון כן/לא, דיוור כן/לא, אישור פרטיות) - lib/customerConsent.js: ולידציה בשרת + תוכנית כתיבה (כולל החתימה
+    // על התקנון דרך planSignatureWrite הקיים) + שורות ליומן CustomerConsent. מערכת כבויה והבקשה בלי consentExplicit = בדיוק כמו קודם.
+    let consentCtx = { map: new Map(), docs: {} };
+    try { consentCtx = await loadConsentContext(); } catch (e) { console.error('consent docs unavailable (fail-open)', e); }
+    const consent = await prepareStaffConsent({
+      prisma, body, settings: consentCtx.map, existing: null, docs: consentCtx.docs, employeeId: await getActingEmployeeId(),
+      legacyTerms: typeof requestedSignature === 'boolean' ? requestedSignature : undefined,
+    });
+    if (consent.errors.length) return NextResponse.json({ error: consent.errors.join(', '), ...(consent.status === 409 ? { code: 'CONSENT_DOC_CHANGED' } : {}) }, { status: consent.status || 400 });
 
     // Auto-generate a short legacyId for new customers so it displays nicely
     const maxCustomer = await prisma.customer.findFirst({
@@ -275,10 +250,11 @@ async function POST(request) {
         ...(body.hokBankBranch !== undefined ? { hokBankBranch: body.hokBankBranch || null } : {}),
         ...(body.hokBankAccount !== undefined ? { hokBankAccount: body.hokBankAccount || null } : {}),
         ...(body.hokConsent !== undefined ? { hokConsent: !!body.hokConsent } : {}),
-        ...(signaturePlan ? signaturePlan.data : {}),
+        ...consent.plan.data,
       }
     });
-    return NextResponse.json(newCustomer);
+    const journal = await recordConsentEntries(prisma, newCustomer.id, consent.plan.entries);
+    return NextResponse.json(journal.ok ? newCustomer : { ...newCustomer, consentWarning: 'הלקוח נשמר, אך ההסכמות לא נרשמו ביומן ההסכמות - יש לעדכן את מנהל המערכת' });
   } catch (error) {
     console.error('Error creating customer:', error);
     return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 });

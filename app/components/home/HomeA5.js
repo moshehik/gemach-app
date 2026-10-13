@@ -18,6 +18,7 @@ import { Ic, HomeSprite } from './HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
+import { useSearchPanelModel } from '../search/SearchPanel';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
@@ -57,7 +58,7 @@ async function getJson(url) {
   return res.json();
 }
 
-// שורת התוצאה הראשונה (קישור או שורת מלאי בלי קישור) - למעבר מקלדת מהשורת חיפוש; false כשאין
+// שורת התוצאה הראשונה (קישור) - למעבר מקלדת מהשורת חיפוש; false כשאין
 function focusFirstResult() {
   const el = document.querySelector('.res-one .lrow');
   if (!el) return false;
@@ -252,7 +253,7 @@ export default function HomeA5() {
     const sc = scopeRef.current;
     if (sc && HOME_SCOPES[sc].via === 'adv') { runScopedAdv(query, sc, my); return; }
     try {
-      // extras=1: שורות "מלאי" (ברקוד / מידה / דגם) וצ'יפים של הלו"ז ליום שהוקלד - רק לבית החדש (הצרכנים האחרים של הנתיב לא מבקשים)
+      // extras=1: צ'יפים של הלו"ז ליום שהוקלד - רק לבית החדש (הצרכנים האחרים של הנתיב לא מבקשים)
       const d = await getJson('/api/global-search?q=' + encodeURIComponent(query) + '&extras=1');
       if (my !== seq.current) return;
       const norm = normalizeSearch(d);
@@ -411,7 +412,7 @@ export default function HomeA5() {
       if (saved && saved.res && Array.isArray(saved.res.customers) && Array.isArray(saved.res.orders) && Array.isArray(saved.res.rentals)) {
         setQ(saved.q || '');
         setResQuery(saved.q || '');
-        setRes({ inventory: [], inventoryTruncated: false, dateChips: null, ...saved.res }); // תשובה ישנה (נשמרה לפני שדות המלאי / הצ'יפים) עדיין תקפה
+        setRes({ dateChips: null, ...saved.res }); // תשובה ישנה (נשמרה לפני שדה הצ'יפים; ייתכן שיש בה שדה inventory ישן - מתעלמים ממנו) עדיין תקפה
         setResKey((k) => k + 1);
         setView(resultsCount(saved.res) ? 'results' : 'none');
       }
@@ -594,6 +595,9 @@ export default function HomeA5() {
   /* ---------- תצוגה ---------- */
   const joined = view === 'results' || view === 'none' || view === 'adv' || view === 'ai';
   const advResults = view === 'results' && advRes;
+  // פאנל התפוסה / הפריט: הכותרת והריבועים מעל כרטיס התוצאות; שורותיו (איפה אני? / בחוץ / הוחזרו / ממתינות) נכנסות לרשימת התוצאות עצמה (lead)
+  const panelOn = (view === 'results' && !advRes) || view === 'none';
+  const panel = useSearchPanelModel(resQuery, { enabled: panelOn });
   const noBar = view === 'adv' || view === 'ai' || advResults;
   const compact = view !== 'start';
   const canAi = aiAllowed;
@@ -670,6 +674,7 @@ export default function HomeA5() {
         <button
           type="button"
           className="cmode-b"
+          data-guide-id="srch.scope-chip"
           aria-pressed="true"
           aria-label={`סינון פעיל: חיפוש רק ${scopeDef.only}. לחיצה מסירה את הסינון`}
           data-tip="הסרת הסינון"
@@ -679,12 +684,12 @@ export default function HomeA5() {
         </button>
       )}
       {canAi && (
-        <button type="button" className="cmode-b" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
+        <button type="button" className="cmode-b" data-guide-id="srch.mode-ai" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
           {ai ? <><Ic id="search" />לחיפוש רגיל</> : <><Ic id="sparkle" />לחיפוש חכם</>}
         </button>
       )}
       {advAvailable && (
-        <button type="button" className="cmode-b" aria-pressed={view === 'adv'} aria-expanded={view === 'adv'} onClick={advToggle}>
+        <button type="button" className="cmode-b" data-guide-id="srch.mode-adv" aria-pressed={view === 'adv'} aria-expanded={view === 'adv'} onClick={advToggle}>
           <Ic id="sliders" />לחיפוש מתקדם
         </button>
       )}
@@ -726,9 +731,11 @@ export default function HomeA5() {
                 <input
                   ref={inputRef}
                   id="sq"
+                  data-guide-id="srch.input"
                   aria-label={ai ? 'שאלה לחיפוש החכם' : scopeDef ? `חיפוש רק ${scopeDef.only}` : 'חיפוש לקוח, הזמנה או פריט'}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
+                  placeholder={ai || scopeDef ? undefined : 'הקלד ברקוד או חפש...'}
                   disabled={loading}
                   name="gm-home-search"
                   type="text"
@@ -750,11 +757,11 @@ export default function HomeA5() {
                   onBlur={qp.onBlur}
                 />
                 {q && !loading && (
-                  <button type="button" className="ibtn" aria-label="ניקוי החיפוש" data-tip="ניקוי הכול" onClick={() => { resetAll(); if (inputRef.current) inputRef.current.focus(); }}><Ic id="x" size="sm" /></button>
+                  <button type="button" className="ibtn" data-guide-id="srch.clear" aria-label="ניקוי החיפוש" data-tip="ניקוי הכול" onClick={() => { resetAll(); if (inputRef.current) inputRef.current.focus(); }}><Ic id="x" size="sm" /></button>
                 )}
                 {!loading && <SaveIconButton text={q} saved={saved} ibtn />}
                 {joined && modeButtons}
-                <button type="submit" className="btn primary" aria-label={loading ? (ai ? 'חושבים' : 'מחפשים') : label} data-tip={label} disabled={loading}>
+                <button type="submit" className="btn primary" data-guide-id="srch.submit" aria-label={loading ? (ai ? 'חושבים' : 'מחפשים') : label} data-tip={label} disabled={loading}>
                   {loading ? <span className="mspin" aria-hidden="true" /> : <Ic id={ai ? 'send' : 'search'} />}
                 </button>
                 <QuickPrefixList qp={qp} />
@@ -809,11 +816,13 @@ export default function HomeA5() {
               onExport={onExportAdv}
             />
           )}
+          {panelOn ? panel.head : null}
           {(view === 'results' && !advRes) || view === 'none' ? (
             <HomeResults
               key={resKey}
               res={shownRes}
               query={resQuery}
+              lead={panel.lead}
               none={view === 'none'}
               table={asTable}
               onTable={setAsTable}
@@ -855,7 +864,7 @@ export default function HomeA5() {
 
       {/* שורת "למצגת הסבר" (9.10.2026): קישור לדף הנחיתה /landing (נפתח בלשונית חדשה, כמו הקישור שבתחתית הדף); רק בדף הבית הריק, לא בתוצאות / בחיפוש מתקדם */}
       {!noBar && view === 'start' && showGuide && (
-        <a className="tour-line" href="/landing" target="_blank" rel="noopener">
+        <a className="tour-line" data-guide-id="home.tour-line" href="/landing" target="_blank" rel="noopener">
           <span className="tour-ic"><Ic id="sparkle" size="sm" /></span>
           <span className="tour-t">למצגת הסבר על האתר <b>לחצי כאן</b></span>
         </a>

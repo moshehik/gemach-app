@@ -52,7 +52,9 @@ const legacySaveExpr = balanced(LEGACY, 'const normalizedCustomer = {', '{');
 t('PUT: הביטוי של הכרטיס הישן נשלף (normalizedCustomer = {...customer, email: normalizeEmail(...)})', () => {
   assert.match(legacySaveExpr, /\.\.\.customer/);
   assert.match(legacySaveExpr, /normalizeEmail\(customer\.email, customer\.emailSuffix\)/);
-  assert.match(LEGACY, /body: JSON\.stringify\(normalizedCustomer\)/);
+  // 12.10.2026: ההסכמות המפורשות (explicit_consent_enabled) מוסיפות sendBody = normalizedCustomer בלי שדות העזר (או withConsentBody כשפעיל); כבוי = זהה
+  assert.match(LEGACY, /body: JSON\.stringify\(sendBody\)/);
+  assert.match(LEGACY, /baseCustomer\b/);
 });
 t('PUT: אותו גוף לאותו לקוח (כל הלקוחות, כולל פרטי בנק) - חוץ מ-cardVariant', () => {
   for (const c of CUSTOMERS) {

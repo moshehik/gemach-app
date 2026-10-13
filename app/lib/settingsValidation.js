@@ -1,3 +1,4 @@
+import { STAGES, SHIFT_VALUES } from '../../lib/schedule/stages.js';
 // Shared client+server validation for numeric SystemSetting values — used by both
 // app/admin/settings/SettingsClient.js (inline UI validation) and
 // app/api/settings/route.js (server-side guard, since the API can be called directly).
@@ -22,6 +23,8 @@ export const NUMBER_FIELD_LIMITS = {
   // חלונית "הזמנות שלא הוחזרו" בלבד (749aaf87): 0 חוקי (= כבר ביום ההחזרה הצפוי, בשילוב שעה); ריק = כמו late_return_threshold_days
   overdue_popup_threshold_days: { min: 0, max: 90, allowEmpty: true, emptyHint: 'ריק = כמו ימי האיחור הרגילים' },
   overdue_popup_after_hour: { min: 0, max: 23, allowEmpty: true, emptyHint: 'ריק = בלי הגבלת שעה' },
+  // ריבוי סניפים (docs/branches-plan.md): טווח התראת ההעברה בימים; ריק = 14
+  branch_transfer_horizon_days: { min: 1, max: 60, allowEmpty: true, emptyHint: 'ריק = 14 ימים' },
 };
 
 // allowEmpty: ערך ריק (או שורה חסרה) חוקי ומשמעותו "ברירת המחדל הישנה" - חל על הגדרות
@@ -31,12 +34,17 @@ export const POLICY_NUMBER_LIMITS = {
   swap_pairing_window_minutes: { min: 0, max: 1440, allowEmpty: true, emptyHint: 'ריק = בלי הגבלה' },
   instant_undo_minutes: { min: 0, max: 10080, allowEmpty: true, emptyHint: 'ריק = כמו זיכוי דמי ביטול' },
   size_edit_until_days_before_event: { min: 0, max: 365, allowEmpty: true, emptyHint: 'ריק = כבוי' },
+  // משלוח משותף: ריק = לא הוגדר מחיר מוזל (אין הנחה); 0 = משלוח מצורף ללא עלות (הוגדר במפורש)
+  shared_delivery_price: { min: 0, max: 1000, allowDecimal: true, allowEmpty: true, emptyHint: 'ריק = ללא הנחה, 0 = ללא עלות' },
+  // משלוח משותף: מספר ההזמנה הראשון שחל עליו (נקבע בהדלקה ע"י scripts/seed_shared_delivery_neve.js); ריק = אין הזמנות קפואות
+  shared_delivery_first_order_id: { min: 1, max: 2000000000, allowEmpty: true, emptyHint: 'ריק = כל ההזמנות משתתפות' },
 };
 Object.assign(NUMBER_FIELD_LIMITS, POLICY_NUMBER_LIMITS);
 
 // הגדרות בחירה עם רשימה סגורה של ערכים תקינים (ריק חוקי = ברירת המחדל).
 export const SELECT_FIELD_ALLOWED_VALUES = {
   gap_size_price_rule: ['none', 'cheaper'],
+  shared_delivery_price_mode: ['global', 'by_city'],
 };
 
 // Returns null when the value is valid, otherwise a Hebrew error message.
@@ -62,4 +70,10 @@ export function validateNumericSetting(key, value) {
   if (num < limit.min) return `הערך קטן מדי — המינימום המותר הוא ${limit.min}.`;
   if (num > limit.max) return `הערך גדול מדי — המקסימום המותר הוא ${limit.max}.`;
   return null;
+}
+
+// תהליכי הלו"ז (schedule_stage_<שלב>_days / _shift): ימי עסקים 0-60, משמרת מרשימה סגורה (ריק = ברירת המחדל). ר' lib/schedule/stageSettings.js
+for (const stage of STAGES) {
+  SELECT_FIELD_ALLOWED_VALUES[`schedule_stage_${stage.key}_shift`] = SHIFT_VALUES;
+  if (stage.offsetConfigurable) NUMBER_FIELD_LIMITS[`schedule_stage_${stage.key}_days`] = { min: 0, max: 60, allowEmpty: true, emptyHint: 'ריק = ברירת המחדל' };
 }

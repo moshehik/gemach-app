@@ -13,8 +13,10 @@
 // הגדרות ← MGD:199-216 (deliverySettingsOf) ; חישוב החובה ← lib/deliveryValidation (deliveryFieldState). השמירה עצמה - ה-PUT של הבקר.
 // נקודות הרחבה ל-W2b (R49; ממומש ב-parts/OcDeliveryJoinPicker.js): SLOTS.DeliveryJoinPicker (בורר הצטרפות למשלוח, אחרי כרטיס "יעד"). ר' W2a-NOTES.
 import { useEffect, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../OcIcon';
 import { SLOTS } from '../slots';
+import SharedDeliveryPanel from '@/components/orders/SharedDeliveryPanel';
 import {
   DEFAULT_DIRECTION, DELIVERY_DIRECTIONS, deliveryCityOptions, deliveryFieldState, deliverySettingsOf, filterSuggestions, resolveCityInput
 } from '../parts/ocDetailsLogic';
@@ -56,6 +58,7 @@ const hl = (o, q) => {
  * closed=true: רשימה סגורה - נקלט רק ערך מהרשימה (או ריק); עזיבה עם טקסט אחר מחזירה את הערך התקף (R21). closed=false: טקסט חופשי.
  */
 export function SuggestInput({ id, name, icon = 'pin', value, options, closed, onCommit, placeholder, describedBy, required, disabled }) {
+  const nf = useNoFill();
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
@@ -108,8 +111,8 @@ export function SuggestInput({ id, name, icon = 'pin', value, options, closed, o
     <div className="inpw">
       <OcIcon name={icon} size="sm" />
       <input
-        ref={inRef} className="inp" id={id} name={name} value={shown} placeholder={placeholder} disabled={disabled}
-        autoComplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"
+        ref={inRef} className="inp" id={id} {...nf(name || id)} value={shown} placeholder={placeholder} disabled={disabled}
+        data-lpignore="true" data-1p-ignore data-form-type="other"
         role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listId : undefined}
         aria-activedescendant={open && act >= 0 ? `${listId}-${act}` : undefined} aria-describedby={describedBy} aria-required={required || undefined}
         onFocus={() => { if (closed) { setText(value || ''); setFocused(true); } setOpen(true); }}
@@ -148,7 +151,7 @@ export function OcDeliveryCards({ oc, ui }) {
 
   return (
     <>
-      <div className={`dhero${on ? '' : ' off'}`}>
+      <div className={`dhero${on ? '' : ' off'}`} data-guide-id="oc.delivery-switch">
         <div className="ico"><OcIcon name="truck" size="lg" /></div>
         <div className="oc-del-hero">
           <div className="trow">
@@ -164,7 +167,7 @@ export function OcDeliveryCards({ oc, ui }) {
 
       <div className={`card dfields${on ? '' : ' off'}`} inert={on ? undefined : true}>
         <div className="card-h"><div className="ico teal"><OcIcon name="arrlr" size="lg" /></div><h2>כיוון</h2></div>
-        <div className="seg pill" id="dirSeg" role="radiogroup" aria-label="כיוון המשלוח" style={{ '--n': 3, '--i': di }}>
+        <div className="seg pill" id="dirSeg" data-guide-id="oc.delivery-direction" role="radiogroup" aria-label="כיוון המשלוח" style={{ '--n': 3, '--i': di }}>
           <span className="pth" aria-hidden="true" />
           {DELIVERY_DIRECTIONS.map(([v, icon]) => (
             <button key={v} type="button" role="radio" aria-checked={dir === v} className={dir === v ? 'on' : ''} data-dir={v}
@@ -178,7 +181,7 @@ export function OcDeliveryCards({ oc, ui }) {
       <div className={`card dfields${on ? '' : ' off'}`} inert={on ? undefined : true}>
         <div className="card-h"><div className="ico teal"><OcIcon name="pin" size="lg" /></div><h2>יעד</h2></div>
         <div className="grid2">
-          <div className="field">
+          <div className="field" data-guide-id="oc.delivery-city">
             <label className="lbl" htmlFor="delCityIn">עיר משלוח{fs.cityRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null}</label>
             <SuggestInput id="delCityIn" name="delcity-nofill" icon="pin" value={order.deliveryCity || ''} options={cityOptions} closed
               placeholder="עיר..." disabled={joined} required={fs.cityRequired} describedBy={fs.cityMsg ? 'oc-del-city-msg' : undefined}
@@ -186,7 +189,7 @@ export function OcDeliveryCards({ oc, ui }) {
             {fs.cityMsg ? <p className="amsg oc-fmsg" id="oc-del-city-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.cityMsg}</p> : null}
           </div>
           {fs.showAddress ? (
-            <div className="field">
+            <div className="field" data-guide-id="oc.delivery-address">
               <label className="lbl" htmlFor="delAddr">כתובת שונה ממגורים{fs.addressRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null} <Tip text="רק אם שונה מכתובת הלקוח" /></label>
               <SuggestInput id="delAddr" name="deladdr-nofill" icon="pin" value={order.deliveryAddress || ''} options={loc.streets}
                 placeholder="רחוב ומספר..." disabled={joined} required={fs.addressRequired} describedBy={fs.addressMsg ? 'oc-del-addr-msg' : undefined}
@@ -197,7 +200,7 @@ export function OcDeliveryCards({ oc, ui }) {
         </div>
         {ds.oneDayBeforeOption ? (
           <div className="row wrap oc-del-one">
-            <button type="button" className={`btn tgl${order.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" aria-pressed={!!order.deliveryOneDayBefore}
+            <button type="button" className={`btn tgl${order.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" data-guide-id="oc.delivery-one-day" aria-pressed={!!order.deliveryOneDayBefore}
               onClick={() => set({ deliveryOneDayBefore: !order.deliveryOneDayBefore })}>
               {order.deliveryOneDayBefore ? <OcIcon name="check" size="sm" className="evck" /> : null}<OcIcon name="truck" size="sm" />יוצא יום לפני האירוע
             </button>
@@ -206,6 +209,8 @@ export function OcDeliveryCards({ oc, ui }) {
         ) : null}
       </div>
       {JoinPicker ? <JoinPicker oc={oc} ui={ui} /> : null}
+      {/* משלוח משותף (shared_delivery_enabled): לא מרונדר כלום כשהפיצ'ר כבוי / אין קבוצה */}
+      {on && order.orderId ? <SharedDeliveryPanel orderId={order.orderId} order={order} /> : null}
     </>
   );
 }

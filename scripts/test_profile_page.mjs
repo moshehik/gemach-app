@@ -37,9 +37,9 @@ t('חוזה ה-API: GET/PUT /api/me/profile (גוף = אובייקט הפרופ�
   has(PAGE, /invalidate\(\['\/api\/me'\]\)/, 'invalidate([\'/api/me\']) אחרי שמירה');
 });
 
-t('שדות הטופס: אותם name כמו בדף הישן (כולל receiveEmailAlerts); בלי "שם מלא" (נגזר מפרטי+משפחה) ובלי תאריך כניסה (רק בניהול)', () => {
+t('שדות הטופס: אותם שדות (name או nf(שדה) = name אקראי עם data-field) כמו בדף הישן (כולל receiveEmailAlerts); בלי "שם מלא" (נגזר מפרטי+משפחה) ובלי תאריך כניסה (רק בניהול)', () => {
   for (const n of ['firstName', 'lastName', 'phone1', 'phone2', 'email', 'city', 'street', 'houseNum', 'receiveEmailAlerts']) {
-    has(PAGE, new RegExp(`name="${n}"`), `חסר שדה ${n}`);
+    has(PAGE, new RegExp(`name="${n}"|nf\\('${n}'\\)`), `חסר שדה ${n}`);
   }
   assert.ok(!/name="fullName"|profile-fullName/.test(PAGE), 'שדה שם מלא חזר');
   assert.ok(!/joinDate/.test(PAGE), 'תאריך כניסה חזר לדף האישי (החלטת הבעלים 4.10.2026: רק בכרטיס הניהול)');

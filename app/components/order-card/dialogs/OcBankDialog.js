@@ -66,7 +66,7 @@ export function BankFields({ value, onChange, iban = false, idp = 'oc-bk', onIba
   );
 }
 
-export default function OcBankDialog({ api, refund, auto = false, close }) {
+export default function OcBankDialog({ api, refund, auto = false, forced = false, close }) {
   const [bank, setBank] = useState(() => autoRefundBankPrefill(refund, api.oc.order?.customer));
   const [ibanErr, setIbanErr] = useState('');
   const [iban, setIban] = useState(''); // ה-IBAN המקורי (לשמירה בסיבת הזיכוי - הפירוק מוריד אפסים מובילים)
@@ -87,14 +87,14 @@ export default function OcBankDialog({ api, refund, auto = false, close }) {
     <>
       <h2 id="oc-bank-t">פרטי בנק</h2>
       <div className="sub">להחזר <bdi dir="ltr">{fmtMoney(amountOf(refund.amount))}</bdi></div>
-      {auto ? <div className="faint oc-dlg-note">ללקוח נוצרה יתרת זכות עבור הזמנה זו. יש להזין (או לאשר) את פרטי הבנק להעברת הזיכוי.</div> : null}
+      {auto ? <div className="faint oc-dlg-note">ללקוח נוצרה יתרת זכות עבור הזמנה זו. יש להזין (או לאשר) את פרטי הבנק להעברת הזיכוי.{forced ? ' חובה למלא את פרטי הבנק לפני המשך.' : ''}</div> : null}
       <BankFields value={bank} onChange={(v) => { setBank(v); setErr(''); }} iban onIbanError={setIbanErr} onIban={setIban} onEnter={save} />
       <div className="amsg" aria-live="polite">{err || ibanErr ? <><OcIcon name="alert" size="sm" />{err || ibanErr}</> : null}</div>
       <DlgButtons>
         <button type="button" className="btn green lg block" data-act="bank-ok" disabled={busy || !bank.bankName?.trim() || !bank.bankBranch?.trim()} onClick={save}>
           {busy ? <><span className="spinner" aria-hidden="true" />שומר...</> : <><OcIcon name="check" />שמירת פרטי בנק</>}
         </button>
-        <DlgBtn kind="ghost" icon="back" disabled={busy} onClick={() => close(auto ? 'later' : null)}>{auto ? 'סגור, אמלא מאוחר יותר' : 'חזרה'}</DlgBtn>
+        {forced ? null : <DlgBtn kind="ghost" icon="back" disabled={busy} onClick={() => close(auto ? 'later' : null)}>{auto ? 'סגור, אמלא מאוחר יותר' : 'חזרה'}</DlgBtn>}
       </DlgButtons>
     </>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, getSettingsViewerTier } from '@/lib/auth';
+import { settingsRowsForTier } from '@/lib/adminOnlySettings';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { buildSettingsGuide } from '@/lib/settingsMetadata';
 
@@ -18,7 +19,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized. Manager access required.' }, { status: 401 });
   }
   try {
-    const rows = await getAllCachedSettings();
+    // מנהל סניף (roleId 1) מקבל את הקטלוג בלי מפתחות "ניהול בלבד" (lib/adminOnlySettings.js); מתכנת - הכול
+    const rows = settingsRowsForTier(await getAllCachedSettings(), await getSettingsViewerTier());
     const settings = buildSettingsGuide(rows);
     return NextResponse.json({ settings });
   } catch (error) {

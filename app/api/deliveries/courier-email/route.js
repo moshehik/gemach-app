@@ -8,6 +8,7 @@ import { renderCourierDeliveryEmailHtml } from '@/lib/emailTemplates';
 import { sendSystemEmail } from '@/lib/mailer';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig, cfgPlain } from '@/lib/emailConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,10 +46,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'אין משלוחים בטווח/כיוון שנבחרו - לא נשלח מייל' }, { status: 400 });
     }
 
-    const gmachName = settingsMap.gmach_name || 'גמ"ח שמלות';
-    const html = renderCourierDeliveryEmailHtml({ groups, gmachName });
+    const cfg = await getEmailConfig('courierDeliveries');
+    const gmachName = cfg.fixed.gmachName || settingsMap.gmach_name || 'גמ"ח שמלות';
+    const html = renderCourierDeliveryEmailHtml({ groups, gmachName, cfg });
     const plainText = groups.map(g => `${g.title}\n${g.rows.map(r => `${r.customerName} | ${r.address || '-'} | ${r.customerPhone || '-'} | ${r.customerPhone2 || '-'}`).join('\n')}`).join('\n\n');
-    const subject = emailSubject('courierDeliveries', { groups });
+    // קבוצה אחת = הנושא הוא כותרת הקבוצה (אינו ניתן לעריכה); כמה קבוצות = הנושא הכללי, שאפשר לערוך ב-/admin/email-center
+    const subject = emailSubject('courierDeliveries', { groups }, groups.length === 1 ? undefined : { ...cfg, subject: cfg.subject && cfg.subject.replace(/\{\{groupCount\}\}/g, String(groups.length)) });
 
     const cookieStore = await cookies();
     const employeeId = getVerifiedAuthCookie(cookieStore)?.value || null;
@@ -56,7 +59,7 @@ export async function POST(request) {
     const result = await sendSystemEmail({
       to: courierEmail,
       subject,
-      body: plainText,
+      body: cfgPlain(cfg, plainText, html),
       html,
       employeeId,
     });

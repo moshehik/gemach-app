@@ -46,7 +46,7 @@ function MiniProgress({ ctl, activeN }) {
     return s.l;
   };
   return (
-    <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="mnMiniBars" aria-label="התקדמות יצירת הדגם" style={{ '--n': ctl.steps.length }}>
+    <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="mnMiniBars" data-guide-id="mn.progress" aria-label="התקדמות יצירת הדגם" style={{ '--n': ctl.steps.length }}>
       {ctl.steps.map((s, i) => {
         const n = i + 1;
         const open = n === 1 || ctl.step1Ok;
@@ -81,11 +81,11 @@ function CreateFooter({ ctl }) {
   return (
     <div className="row spread wrap no-sec-nav">
       <span className="mn-foot-l">
-        <button type="button" className="btn ghost" data-act="exit" disabled={busy} onClick={ctl.exit}><Ic n="x" c="sm" />ביטול</button>
+        <button type="button" className="btn ghost" data-guide-id="mn.cancel" data-act="exit" disabled={busy} onClick={ctl.exit}><Ic n="x" c="sm" />ביטול</button>
         {ctl.dirty ? <button type="button" className="btn ghost" data-act="discard" disabled={busy} onClick={ctl.discard}><Ic n="undo" c="sm" />בטל הכול</button> : null}
       </span>
       <span className="tipw" data-tip={tip}>
-        <button type="button" className="btn primary" data-act="create" disabled={!ctl.canCreate} aria-busy={busy || undefined} onClick={ctl.create}><Ic n="check" />יצירת הדגם</button>
+        <button type="button" className="btn primary" data-guide-id="mn.create" data-act="create" disabled={!ctl.canCreate} aria-busy={busy || undefined} onClick={ctl.create}><Ic n="check" />יצירת הדגם</button>
       </span>
     </div>
   );

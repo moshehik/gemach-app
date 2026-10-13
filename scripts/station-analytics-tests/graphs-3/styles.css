@@ -1,0 +1,210 @@
+/* ===== טוקנים (משפחת המערכת: navy / sky / gold / rose, גופן Rubik) ===== */
+:root{
+  --navy-900:#0a2242;--navy:#0f2c52;--navy-700:#173c6b;--navy-500:#2b5a94;
+  --sky-50:#eef0f2;--sky-100:#d3d7dc;--sky-300:#bcc2c8;--sky-400:#7fb8e6;
+  --gold-300:#e0c56e;--gold:#c9a227;--gold-b:#b8912f;--gold-d:#9a7a1f;
+  --rose-100:#ffece5;--rose-300:#fbbfa9;--rose-500:#e8785a;--rose-700:#a8442a;
+  --font:'Rubik','Heebo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+  /* תפקידים - בהיר */
+  --bg:#eef0f2;--surface:#ffffff;--surface-2:#f6f8fb;--line:#d3d7dc;--line-2:#e6e9ee;
+  --ink:#0a2242;--ink-2:#2f4a6b;--ink-3:#4d6787;
+  --s1:#2b5a94;--s2:#b8912f;                 /* סדרות (אומתו, בהיר) */
+  --s1-hi:#5f93cf;--s1-lo:#1d4272;--s2-hi:#e0c56e;--s2-lo:#9a7a1f;  /* קצוות גרדיאנט בלבד (לא נושאים משמעות) */
+  --up:#2b5a94;--up-t:#e3edf8;--down:#a8442a;--down-t:#ffece5;
+  --shadow:0 12px 32px -14px rgba(15,44,82,.28),0 2px 6px -2px rgba(15,44,82,.08);
+  --tt-bg:#0a2242;--tt-ink:#ffffff;
+  --gloss:rgba(255,255,255,.7);
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0b1220;--surface:#151f2e;--surface-2:#1a2638;--line:#2b3b52;--line-2:#223046;
+  --ink:#e8eef6;--ink-2:#b9c6d6;--ink-3:#93a4b8;
+  --s1:#5190cf;--s2:#b38c2a;
+  --s1-hi:#8fbcec;--s1-lo:#2f6aa8;--s2-hi:#e0c56e;--s2-lo:#8a6b17;
+  --up:#8fbcec;--up-t:#1c2f48;--down:#fbbfa9;--down-t:#3a2420;
+  --shadow:0 14px 34px -14px rgba(0,0,0,.65),0 2px 6px -2px rgba(0,0,0,.4);
+  --tt-bg:#02060d;--tt-ink:#ffffff;
+  --gloss:rgba(255,255,255,.06);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+svg{display:block}
+.num{font-variant-numeric:tabular-nums}
+
+/* ===== מעטפת הדף ===== */
+.top{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 20px;background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-2)}
+.top h1{margin:0;font-size:18px;font-weight:600;flex:1 1 220px}
+.pill{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.pill button{border:0;background:transparent;padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--ink-2);font-size:14px}
+.pill button[aria-pressed="true"],.pill button[aria-current="true"]{background:var(--navy);color:#fff;font-weight:600}
+[data-theme="dark"] .pill button[aria-pressed="true"],[data-theme="dark"] .pill button[aria-current="true"]{background:var(--gold-300);color:#0a2242}
+.pill button:focus-visible,.pick:focus-within,.cbtn:focus-visible,.tbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 80px}
+.intro{color:var(--ink-2);max-width:780px;margin:8px 0 18px}
+.picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
+@media (max-width:760px){.picks{grid-template-columns:1fr}}
+.pick{position:relative;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.pick:hover{border-color:var(--gold)}
+.pick input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.pick .badge{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:linear-gradient(145deg,var(--gold-300),var(--gold-b));color:#0a2242;flex:none}
+.pick b{display:block;font-size:16px}
+.pick small{color:var(--ink-3);font-size:13px;line-height:1.4}
+.pick:has(input:checked){border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 28%,transparent)}
+.chosen{display:none;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--gold);margin-bottom:12px}
+.chosen.on{display:flex}
+.cbtn{border:0;border-radius:999px;padding:8px 18px;background:linear-gradient(135deg,#d9b84a,#b8912f);color:#0a2242;font-weight:600;cursor:pointer}
+.legend-note{font-size:14px;color:var(--ink-3);margin:0 0 8px}
+
+@media (max-width:700px){.top{position:static}}
+/* ===== כיוון (סקציה) ===== */
+.dir{margin:36px 0 56px;scroll-margin-top:80px}
+.dir-h{display:flex;gap:14px;align-items:center;margin-bottom:6px}
+.dir-h .badge{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:20px;background:linear-gradient(145deg,var(--gold-300),var(--gold-b));color:#0a2242;flex:none}
+.dir-h h2{margin:0;font-size:24px}
+.dir-sub{margin:0 0 6px;color:var(--ink-2);max-width:820px}
+.dir-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 18px;padding:0;list-style:none}
+.dir-tags li{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.grid{display:grid;gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;min-width:0}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:12px}
+.card-h b{font-size:17px;font-weight:600;flex:1 1 200px}
+.card-h small{color:var(--ink-3);font-size:13px}
+.tbtn{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;color:var(--ink-2);cursor:pointer}
+.tbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.alt{display:none}
+.show-table .alt{display:block}
+.show-table .viz{display:none}
+.alt table{width:100%;border-collapse:collapse;font-size:14px}
+.alt th,.alt td{padding:8px 10px;border-bottom:1px solid var(--line-2);text-align:start}
+.alt th{color:var(--ink-3);font-weight:500}
+.chart{position:relative;min-width:0}
+.chart svg{overflow:visible}
+.chart svg text{font-family:var(--font);fill:var(--ink-3);font-size:12px}
+.hit{fill:transparent;cursor:pointer;outline:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 8px;padding:0;list-style:none;font-size:13.5px;color:var(--ink-2)}
+.legend li{display:inline-flex;align-items:center;gap:8px}
+.key{width:14px;height:14px;border-radius:5px;display:inline-block}
+.k1{background:linear-gradient(180deg,var(--s1-hi),var(--s1))}.k2{background:linear-gradient(180deg,var(--s2-hi),var(--s2))}
+
+/* טולטיפ גלובלי */
+#tt{position:fixed;z-index:100;pointer-events:none;min-width:150px;max-width:260px;padding:10px 12px;border-radius:12px;background:var(--tt-bg);color:var(--tt-ink);font-size:13px;line-height:1.45;box-shadow:0 14px 30px -10px rgba(0,0,0,.55);opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
+#tt.on{opacity:1;transform:none}
+#tt .d{font-weight:600;color:var(--gold-300);margin-bottom:4px;white-space:nowrap}
+#tt .r{display:flex;align-items:center;gap:8px}
+#tt .r b{font-size:16px;font-variant-numeric:tabular-nums}
+#tt i{width:10px;height:4px;border-radius:2px;display:inline-block}
+#tt.c{border-radius:6px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 24px -8px rgba(10,34,66,.25)}
+#tt.c .d{color:var(--ink-3);font-weight:500}
+#tt.b{background:linear-gradient(160deg,#173c6b,#0a2242);border:1px solid rgba(224,197,110,.45)}
+
+/* ============================================================
+   כיוון A - "ענן": גרדיאנטים רכים, צל עדין, טבעת התקדמות, ספרקליין
+   ============================================================ */
+.dir-a .card{border:0;border-radius:26px;background:linear-gradient(165deg,var(--surface) 0%,var(--surface-2) 100%);box-shadow:var(--shadow)}
+.dir-a .tile{overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.dir-a .t-top{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-weight:500;font-size:15px}
+.dir-a .t-ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,var(--gold-300),var(--gold-b));color:#0a2242;box-shadow:0 6px 14px -6px rgba(184,145,47,.7)}
+.dir-a .t-ic svg{width:19px;height:19px}
+.dir-a .t-num{font-size:46px;font-weight:600;letter-spacing:-.02em;line-height:1.05;color:var(--ink)}
+.dir-a .t-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13.5px;color:var(--ink-3)}
+.chip{white-space:nowrap;display:inline-flex;align-items:center;gap:4px;padding:2px 10px 2px 8px;border-radius:999px;font-size:13px;font-weight:600}
+.chip svg{width:11px;height:11px}
+.chip.up{background:var(--up-t);color:var(--up)}.chip.down{background:var(--down-t);color:var(--down)}.chip.same{background:var(--line-2);color:var(--ink-2)}
+.dir-a .spark{margin:6px -20px -20px}
+.dir-a .ring-wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 16px}
+.dir-a .ring text{fill:var(--ink)}
+.dir-a .ring-leg{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--ink-2)}
+.dir-a .ring-leg span{display:flex;align-items:center;gap:8px}
+.dir-a .ring-leg b{color:var(--ink);font-size:16px}
+.a-funnel{display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none}
+.a-fr{display:grid;grid-template-columns:1fr;gap:6px;padding:4px 0}
+.a-fh{display:flex;align-items:baseline;gap:10px}
+.a-fh b{flex:1;font-weight:500;font-size:15.5px}
+.a-fh .v{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.a-track{height:30px;border-radius:999px;background:var(--line-2);overflow:hidden;display:flex}
+.a-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--s1-lo),var(--s1) 55%,var(--s1-hi));box-shadow:0 6px 14px -6px color-mix(in srgb,var(--s1) 70%,transparent);width:0;transition:width .9s var(--ease)}
+.a-bar.g{background:linear-gradient(90deg,var(--s2-lo),var(--s2) 55%,var(--s2-hi));box-shadow:0 6px 14px -6px color-mix(in srgb,var(--s2) 70%,transparent)}
+.a-conv{display:flex;align-items:center;gap:10px;margin:2px 0;color:var(--ink-3);font-size:13px}
+.a-conv:before,.a-conv:after{content:"";flex:1;border-top:1.5px dashed var(--line)}
+.a-conv .chip{background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.dir-a .hit:hover,.dir-a .hit:focus-visible{fill:color-mix(in srgb,var(--s1) 9%,transparent)}
+.dir-a .col{filter:drop-shadow(0 5px 5px color-mix(in srgb,var(--s1) 32%,transparent))}
+.dir-a .col.g{filter:drop-shadow(0 5px 5px color-mix(in srgb,var(--s2) 36%,transparent))}
+
+/* ============================================================
+   כיוון B - "זרימה": לוחות נייבי, סרטי משפך, זוהר זהב
+   ============================================================ */
+.dir-b .card{border:1px solid rgba(224,197,110,.28);border-radius:22px;background:radial-gradient(120% 90% at 100% 0%,rgba(127,184,230,.16),transparent 55%),linear-gradient(160deg,#173c6b 0%,#0f2c52 55%,#0a2242 100%);color:#fff;box-shadow:0 18px 40px -18px rgba(10,34,66,.8)}
+[data-theme="dark"] .dir-b .card{background:radial-gradient(120% 90% at 100% 0%,rgba(127,184,230,.1),transparent 55%),linear-gradient(160deg,#10243f 0%,#0b1b32 60%,#07121f 100%)}
+.dir-b .card-h small,.dir-b .legend,.dir-b .chart svg text{color:#b9c9de;fill:#b9c9de}
+.dir-b .legend{color:#d5e1f0}
+.dir-b .tbtn{border-color:rgba(255,255,255,.3);color:#e8eef6}
+.dir-b .tbtn[aria-pressed="true"]{background:var(--gold-300);color:#0a2242}
+.dir-b .alt th{color:#9fb3cc}.dir-b .alt td{color:#fff;border-color:rgba(255,255,255,.12)}.dir-b .alt th{border-color:rgba(255,255,255,.12)}
+.dir-b .tile{display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.dir-b .t-top{display:flex;align-items:center;gap:8px;color:#c8d6e8;font-size:14.5px}
+.dir-b .t-top svg{width:17px;height:17px;color:var(--gold-300)}
+.dir-b .t-num{font-size:52px;font-weight:600;letter-spacing:-.025em;line-height:1;background:linear-gradient(180deg,#fff 30%,var(--gold-300));-webkit-background-clip:text;background-clip:text;color:transparent}
+.dir-b .cmp{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:13px;color:#c8d6e8}
+.dir-b .cmp .tr{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.dir-b .cmp .tr i{display:block;height:100%;border-radius:3px;width:0;transition:width .9s var(--ease)}
+.dir-b .cmp b{color:#fff;font-variant-numeric:tabular-nums}
+.dir-b .chip.up{background:rgba(143,188,236,.18);color:#bfdcf6}.dir-b .chip.down{background:rgba(251,191,169,.18);color:#fbbfa9}.dir-b .chip.same{background:rgba(255,255,255,.12);color:#d5e1f0}
+.dir-b .gauge text{fill:#fff}
+.dir-b .hit:hover,.dir-b .hit:focus-visible{fill:rgba(255,255,255,.07)}
+.dir-b .glow{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--gold-300) 70%,transparent))}
+.dir-b .glow-s1{filter:drop-shadow(0 0 6px color-mix(in srgb,#7fb8e6 65%,transparent))}
+
+/* ============================================================
+   כיוון C - "מינימליזם" (Stripe / Linear): שטוח, קווי שיער, מספרים גדולים
+   ============================================================ */
+.dir-c .card{border-radius:12px;border:1px solid var(--line);box-shadow:none;background:var(--surface);padding:22px}
+.dir-c .tile{display:flex;flex-direction:column;gap:10px}
+.dir-c .t-top{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:13.5px;font-weight:500}
+.dir-c .t-top svg{width:15px;height:15px}
+.dir-c .t-num{font-size:44px;font-weight:300;letter-spacing:-.035em;line-height:1;color:var(--ink)}
+.dir-c .t-row{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--ink-3)}
+.dir-c .t-row .dl{font-weight:500;color:var(--ink-2)}
+.dir-c .cmpbar{position:relative;height:4px;border-radius:2px;background:var(--line-2);margin:4px 0 2px}
+.dir-c .cmpbar i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:2px;background:var(--s1);width:0;transition:width .8s var(--ease)}
+.dir-c .cmpbar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink-3);border-radius:1px;text-decoration:none}
+.dir-c .cmplab{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3)}
+.dir-c .spark{margin-top:2px}
+.c-funnel{margin:0;padding:0;list-style:none}
+.c-fr{display:grid;grid-template-columns:minmax(120px,170px) 1fr auto;gap:4px 14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-2)}
+.c-fr:last-child{border-bottom:0}
+.c-fr .n{font-size:14.5px;color:var(--ink-2)}
+.c-fr .tr{height:6px;border-radius:3px;background:var(--line-2);overflow:hidden}
+.c-fr .tr i{display:block;height:100%;border-radius:3px;background:var(--s1);width:0;transition:width .9s var(--ease)}
+.c-fr .tr i.g{background:var(--s2)}
+.c-fr .v{font-size:20px;font-weight:400;min-width:84px;text-align:end;font-variant-numeric:tabular-nums}
+.c-fr .p{grid-column:2/4;font-size:12.5px;color:var(--ink-3)}
+.c-fr .p b{color:var(--ink-2);font-weight:500}
+.dl{direction:ltr;unicode-bidi:isolate;display:inline-block}
+@media (max-width:640px){.c-fr{grid-template-columns:1fr auto}.c-fr .tr{grid-column:1/-1;grid-row:2}.c-fr .v{grid-column:2;grid-row:1}.c-fr .p{grid-row:3;grid-column:1/-1}}
+.dir-c .hit:hover,.dir-c .hit:focus-visible{fill:color-mix(in srgb,var(--ink) 5%,transparent)}
+.dir-c .legend{font-size:12.5px}
+
+/* ===== תנועה ===== */
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{r:6;opacity:.55}100%{r:15;opacity:0}}
+.anim .gcol{transform-box:fill-box;transform-origin:50% 100%;animation:grow .75s var(--ease) both;animation-delay:calc(var(--i,0)*28ms)}
+.draw{stroke-dasharray:1;stroke-dashoffset:0}
+.anim .draw{animation:draw 1.1s var(--ease) .1s both}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.anim .fade{animation:fadeIn .9s ease .5s both}
+.anim .rise{animation:rise .6s var(--ease) both;animation-delay:calc(var(--i,0)*60ms)}
+.pulse{animation:pulse 2s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .anim .gcol,.anim .draw,.anim .fade,.anim .rise,.pulse{animation:none!important}
+  .a-bar,.dir-b .cmp .tr i,.dir-c .cmpbar i,.c-fr .tr i{transition:none!important}
+}
+.vh{position:absolute;width:0;height:0;overflow:hidden}
+.dir-c .k1{background:var(--s1)}.dir-c .k2{background:var(--s2)}.dir-c .key{border-radius:3px;width:12px;height:4px}

@@ -67,7 +67,7 @@ export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
     <div className={'lz-dwrap' + (open ? ' open' : '')} id="dWrap" ref={wrapRef}>
       <button
         type="button"
-        className="ibtn lz-dicon" id="dIcon"
+        className="ibtn lz-dicon" id="dIcon" data-guide-id="sched.day-picker"
         aria-label="בחירת תאריך"
         aria-expanded={open || popOpen}
         data-tip="בחירת תאריך"
@@ -77,17 +77,17 @@ export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
       </button>
       <div className="lz-dpanel">
         <div className="lz-dnav">
-          <button type="button" className="ibtn" id="dPrev" aria-label="היום הקודם" data-tip="היום הקודם" onClick={() => pick(addDays(date, -1))}>
+          <button type="button" className="ibtn" id="dPrev" data-guide-id="sched.day-prev" aria-label="היום הקודם" data-tip="היום הקודם" onClick={() => pick(addDays(date, -1))}>
             <ScheduleIcon name="arrr" />
           </button>
           <div className="lz-pickw">
-            <button type="button" className="btn lz-date" id="dPick" aria-haspopup="dialog" aria-expanded={popOpen} onClick={togglePop}>
+            <button type="button" className="btn lz-date" id="dPick" data-guide-id="sched.day-date" aria-haspopup="dialog" aria-expanded={popOpen} onClick={togglePop}>
               <ScheduleIcon name="cal" />
               <span>{hebrewLong(date)}</span>
               <ScheduleIcon name="chev" className="hf-chv" />
             </button>
             {popOpen ? (
-              <div className="lz-pop" id="hcPop" role="dialog" aria-label="בחירת יום בלוח עברי">
+              <div className="lz-pop" id="hcPop" data-guide-id="sched.day-calendar" role="dialog" aria-label="בחירת יום בלוח עברי">
                 <div className="hc">
                   <div className="hc-h">
                     <button type="button" className="hc-n" aria-label="החודש הקודם" onClick={() => setMonth(prevMonthStart(month))}>
@@ -106,13 +106,13 @@ export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
               </div>
             ) : null}
           </div>
-          <button type="button" className="ibtn" id="dNext" aria-label="היום הבא" data-tip="היום הבא" onClick={() => pick(addDays(date, 1))}>
+          <button type="button" className="ibtn" id="dNext" data-guide-id="sched.day-next" aria-label="היום הבא" data-tip="היום הבא" onClick={() => pick(addDays(date, 1))}>
             <ScheduleIcon name="arrl" />
           </button>
         </div>
         <div className="lz-quick">
-          <button type="button" id="qToday" className={'btn tgl' + (date === today ? ' on' : '')} aria-pressed={date === today} onClick={() => pick(today)}>היום</button>
-          <button type="button" id="qTom" className={'btn tgl' + (date === tomorrow ? ' on' : '')} aria-pressed={date === tomorrow} onClick={() => pick(tomorrow)}>מחר</button>
+          <button type="button" id="qToday" data-guide-id="sched.today" className={'btn tgl' + (date === today ? ' on' : '')} aria-pressed={date === today} onClick={() => pick(today)}>היום</button>
+          <button type="button" id="qTom" data-guide-id="sched.tomorrow" className={'btn tgl' + (date === tomorrow ? ' on' : '')} aria-pressed={date === tomorrow} onClick={() => pick(tomorrow)}>מחר</button>
         </div>
       </div>
     </div>

@@ -139,15 +139,15 @@ export default function RecalculationsPage() {
         </div>
         <div className="card-pad">
           <div className="toolbar" style={{ marginBottom: 0 }}>
-            <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
+            <div className="field" data-guide-id="recalc.from" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
               <label>תאריך התחלה (אירוע)</label>
               <HebrewDatePicker value={startDate} onChange={setStartDate} />
             </div>
-            <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
+            <div className="field" data-guide-id="recalc.to" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
               <label>תאריך סיום (אירוע)</label>
               <HebrewDatePicker value={endDate} onChange={setEndDate} />
             </div>
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-end' }} onClick={handleSearch} disabled={loading}>
+            <button className="btn btn-primary" data-guide-id="recalc.search" style={{ alignSelf: 'flex-end' }} onClick={handleSearch} disabled={loading}>
               <svg className="icon"><use href="#i-search" /></svg>
               {loading ? 'סורק...' : 'חפש פערים'}
             </button>

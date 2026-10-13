@@ -62,11 +62,11 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
   const truncText = advTruncText(data);
   const sumText = [summary.text, countsText, truncText].filter(Boolean).join(' · ');
   return (
-    <div className="card res-one advp">
+    <div className="card res-one advp" data-guide-id="srch.adv-results">
       <div className="card-h">
         <button type="button" className="ibtn" aria-label="סגירת התוצאות" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>
         <button type="button" className="ibtn" data-act="adv-edit" aria-label="חזרה לעריכת החיפוש" data-tip="חזרה" onClick={onEdit}><Ic id="back" size="sm" /></button>
-        <button type="button" className="ibtn" data-act="adv-update" aria-label="עדכן חיפוש" onClick={onEdit}><Ic id="sliders" size="sm" /><span>עדכן חיפוש</span></button>
+        <button type="button" className="ibtn" data-act="adv-update" data-guide-id="srch.adv-update" aria-label="עדכן חיפוש" onClick={onEdit}><Ic id="sliders" size="sm" /><span>עדכן חיפוש</span></button>
         <button type="button" className="ibtn" data-act="adv-reopen-clear" aria-label="נקה" data-tip="נקה" onClick={onReopenClear}><Ic id="eraser" size="sm" /><span>נקה</span></button>
       </div>
       <div className="advsum">
@@ -97,7 +97,7 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
               linkCol={0}
               rowLimit={more ? 0 : LIMIT}
               renderCell={(c, j, rec) => {
-                if (j === 0) return <>{c || <span className="faint">ללא שם</span>}{rec.alert && <span className="adot" data-tip="יש התראה" />}</>;
+                if (j === 0) return <>{c || <span className="faint">—</span>}{rec.alert && <span className="adot" data-tip="יש התראה" />}</>;
                 if (j === 1) return rec.details.length ? <Joined cells={rec.details} /> : <Dash />;
                 return rec.chip ? <AvCell c={rec.chip} /> : <Dash />;
               }}
@@ -113,7 +113,7 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
                   <>
                     {tag && <div className="ic-b"><Ic id={icon} /><span className="rlbl">{tag}</span></div>}
                     <div className="t">
-                      <b>{nameOf(r) || <span className="faint">ללא שם</span>}{al && <span className="adot" data-tip="יש התראה" />}</b>
+                      <b>{nameOf(r) || <span className="faint">—</span>}{al && <span className="adot" data-tip="יש התראה" />}</b>
                       <span className="ln"><Joined cells={r.slice(1)} /></span>
                     </div>
                     <Ic id="chev" size="sm" className="go" />

@@ -3,6 +3,7 @@
 // בלי React / fetch / DOM - נבדק ב-scripts/new-order-tests/capacity.test.mjs מול הקוד הישן (מחולץ בזמן הבדיקה).
 import { addMonthsToDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
 import { monthStart, nextMonthStart } from '../schedule/hebrewCalendar';
+import { modelNameWithParenCode } from '../../../lib/modelCodeLabel';
 
 export const CAPACITY_HISTORY_KEY = 'capacity_search_history';
 export const CAPACITY_HISTORY_MAX = 50;
@@ -59,7 +60,7 @@ export function filterModels(models, query) {
   if (!q) return models;
   return models.filter(m => String(m.name || '').includes(q) || String(m.barcodePrefix || '').includes(q));
 }
-export const modelLabel = (m) => `${m.name} (${m.barcodePrefix})`;
+export const modelLabel = (m) => modelNameWithParenCode(m.name, m.barcodePrefix); // שם=מספר (נווה): "522" פעם אחת, לא "522 (522)"
 
 // ---------- תצוגת התוצאות ----------
 export const sortOccupied = (orders) => [...(orders || [])].sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));

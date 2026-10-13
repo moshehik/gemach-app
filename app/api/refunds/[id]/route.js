@@ -7,6 +7,7 @@ import approvalTokens from '@/lib/approvalTokens';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderRefundExecutedEmailHtml } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
+import { getEmailConfig, cfgPlain } from '@/lib/emailConfig';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
@@ -162,21 +163,24 @@ async function putRefund(request, { params }, claims) {
       // בכלל מייל בעת ביצוע זיכוי, לאף אחד מהגמחים. לא חוסם את התגובה אם השליחה נכשלת -
       // הזיכוי כבר בוצע בפועל, כשלון מייל לא אמור לגרום לשגיאה למשתמש.
       const recipientEmail = existingRefund.email || existingRefund.customer?.email;
-      if (recipientEmail) {
+      // מרכז המיילים (/admin/email-center): אפשר לכבות את המייל הזה / לערוך נושא ושורות. בלי עריכה - כמו תמיד.
+      const refundCfg = recipientEmail ? await getEmailConfig('refundExecuted') : null;
+      if (recipientEmail && refundCfg.enabled) {
         try {
           const settings = (await getAllCachedSettings()).filter(s => ['gmach_name'].includes(s.key));
-          const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
+          const gmachName = refundCfg.fixed.gmachName || settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
           const customerName = [existingRefund.customer?.firstName, existingRefund.customer?.lastName].filter(Boolean).join(' ');
           const orderLine = existingRefund.orderId ? `\nמספר הזמנה: ${existingRefund.orderId}` : '';
           const bodyText = `שלום ${customerName},\n\nבוצע עבורך זיכוי על סך ₪${existingRefund.amount.toLocaleString('he-IL')}.${orderLine}\n\nהזיכוי יועבר לחשבון הבנק שנמסר לנו (בנק ${existingRefund.bankName || ''} סניף ${existingRefund.bankBranch || ''}).`;
+          const refundHtml = renderRefundExecutedEmailHtml({
+            customerName, amount: existingRefund.amount, orderId: existingRefund.orderId,
+            bankName: existingRefund.bankName || '', bankBranch: existingRefund.bankBranch || '', gmachName, cfg: refundCfg,
+          });
           await sendSystemEmail({
             to: recipientEmail,
-            subject: emailSubject('refundExecuted'),
-            body: bodyText,
-            html: renderRefundExecutedEmailHtml({
-              customerName, amount: existingRefund.amount, orderId: existingRefund.orderId,
-              bankName: existingRefund.bankName || '', bankBranch: existingRefund.bankBranch || '', gmachName,
-            }),
+            subject: emailSubject('refundExecuted', {}, refundCfg),
+            body: cfgPlain(refundCfg, bodyText, refundHtml),
+            html: refundHtml,
           });
         } catch (emailErr) {
           console.error('Failed to send refund confirmation email:', emailErr);

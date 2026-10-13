@@ -4,10 +4,12 @@
 // בגוף השמירה / יצירת הלקוח - בזכותה השרת אוכף את customer_required_fields רק לכרטיס החדש.
 
 import { normalizeEmail } from '../../../lib/emailUtils.js';
+import { scrubPlaceholderInText } from '../../../lib/modelDisplay.js';
 import {
   validateCustomerFieldFormats, validateCustomerBankFields, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup,
 } from '../../../lib/customerValidation.js';
 import { missingRequiredFields, requiredFieldLabel, customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS } from '../../../lib/customerRequiredFields.js';
+import { answersFromCustomer } from '../../../lib/consentForm.js';
 
 export const CARD_VARIANT = 'a5';
 
@@ -33,6 +35,11 @@ export const CARD_FIELDS = [
   { key: 'marketingConsent', label: 'מאשר/ת קבלת דיוורים', icon: 'mail', cat: 'cust', bool: true },
   // חתימה על התקנון (CC-O6): נערכת כמו כל שדה (טיוטה -> "שמור"); regulationsSignedAt לא כאן - מחושב בשרת בלבד.
   { key: 'hasSignedRegulations', label: 'חתימה על התקנון', icon: 'sig', cat: 'cust', bool: true, boolLabels: ['לא חתום', 'חתום'] },
+  // הסכמות מפורשות (explicit_consent_enabled; docs/customer-consents.md): שדות עזר בטיוטה בלבד, tri = ערך משולש null (טרם נענה) / true / false.
+  // נשלחים לשרת כ-acceptedTerms / marketingConsent / acceptedPrivacy רק כשהשתנו (withConsentBody ב-useCustomerCard), ולא כחלק מגוף ה-PUT הרגיל.
+  { key: 'consentTerms', label: 'חתימה על התקנון', icon: 'sig', cat: 'cust', tri: true },
+  { key: 'consentMarketing', label: 'אישור קבלת דיוורים', icon: 'mail', cat: 'cust', tri: true },
+  { key: 'consentPrivacy', label: 'אישור מדיניות הפרטיות', icon: 'file', cat: 'cust', tri: true },
   { key: 'notes', label: 'הערות', icon: 'note', cat: 'cust' },
   { key: 'bankName', label: 'שם בנק', icon: 'bank', cat: 'pay' },
   { key: 'bankBranch', label: 'סניף', icon: 'bank', cat: 'pay' },
@@ -56,6 +63,7 @@ export function displayName(c) {
 // השוואה "של משתמש": null / '' / undefined שווים; מספר מול מחרוזת של אותו מספר שווים (houseNum מגיע כמספר ונערך כמחרוזת).
 export function sameValue(key, a, b) {
   const meta = FIELD.get(key);
+  if (meta && meta.tri) return (a === undefined ? null : a) === (b === undefined ? null : b);
   if (meta && meta.bool) return !!a === !!b;
   if (isBlank(a) && isBlank(b)) return true;
   return String(a ?? '').trim() === String(b ?? '').trim() && String(a ?? '') === String(b ?? '');
@@ -64,6 +72,7 @@ export function sameValue(key, a, b) {
 const short = (v, max = 26) => { const s = clean(v); return s.length > max ? `${s.slice(0, max)}…` : s; };
 export function showValue(key, v) {
   const meta = FIELD.get(key);
+  if (meta && meta.tri) return v === true ? 'כן' : v === false ? 'לא' : 'טרם נענה';
   if (meta && meta.bool) return (meta.boolLabels || ['לא מאושר', 'מאושר'])[v ? 1 : 0];
   return isBlank(v) ? 'ריק' : short(v);
 }
@@ -101,7 +110,8 @@ export function legacySavePayload(customer) {
  * כך כרטיס ישן/פתוח לא יכול לבטל בטעות חתימה שנרשמה בינתיים (המטען נושא את הערך כפי שנטען). saved חסר (יצירת לקוחה) = בלי עריכת חתימה.
  */
 export function buildSavePayload(customer, saved) {
-  const { hasSignedRegulations, regulationsSignedAt, ...rest } = legacySavePayload(customer);
+  // שדות העזר של ההסכמות (consent*) ויומן ההסכמות המוצג (consents) לא נשלחים בגוף ה-PUT הרגיל
+  const { hasSignedRegulations, regulationsSignedAt, consentTerms, consentMarketing, consentPrivacy, consents, ...rest } = legacySavePayload(customer);
   const body = { ...rest, cardVariant: CARD_VARIANT };
   if (saved && !sameValue('hasSignedRegulations', saved.hasSignedRegulations, hasSignedRegulations)) {
     body.hasSignedRegulations = !!hasSignedRegulations;
@@ -299,7 +309,7 @@ export const orderEventIso = (o) => eventSortDate(o) || null;
 export const orderItemModels = (o) => (o.items || []).filter((i) => !i.isDeleted).map((i) => {
   const prefix = i.barcodePrefix ?? i.dressItem?.barcodePrefix;
   if (prefix !== null && prefix !== undefined && prefix !== '') return `דגם ${prefix}${i.size ? ` מידה ${i.size}` : ''}`;
-  return i.description || i.dressItem?.dressName || '';
+  return scrubPlaceholderInText(i.description || i.dressItem?.dressName || '', i.barcodePrefix ?? i.dressItem?.barcodePrefix);
 }).filter(Boolean);
 export function deliveryText(o) {
   if (!o.isDelivery) return '';
@@ -332,6 +342,25 @@ export function signatureState(customer, { columnsReady = SIGNATURE_COLUMNS_READ
 
 /** "בהזמנה #N" לטקסט החתימה, ריק כשאין הזמנה מקושרת (חתימה ברמת לקוח אחרי הפעלת העמודות: orderId הוא null) - כך לא מוצג "#null". */
 export const signatureOrderText = (sig) => (sig && sig.orderId !== null && sig.orderId !== undefined ? ` בהזמנה #${sig.orderId}` : '');
+
+// ---------- הסכמות מפורשות בכרטיס (explicit_consent_enabled) ----------
+/** שדות העזר המשולשים של הטיוטה מהלקוחה הטעונה: חתימה (כולל נגזרת מהזמנה) / דיוור / פרטיות. true = כן, false = סירבה במפורש, null = טרם נענה. */
+export function consentAnswerFields(customer) {
+  const a = answersFromCustomer(customer, customer && customer.consents);
+  const sig = signatureState(customer);
+  return { consentTerms: sig.signed ? true : a.acceptedTerms, consentMarketing: a.marketingConsent, consentPrivacy: a.acceptedPrivacy ? true : null };
+}
+/** אילו תשובות השתנו בטיוטה מול השמור: מפתחות ה-body של השרת (acceptedTerms / marketingConsent / acceptedPrivacy). */
+export function consentChangedKeys(saved, cur) {
+  if (!saved || !cur) return [];
+  const out = [];
+  if (!sameValue('consentTerms', saved.consentTerms, cur.consentTerms) && (cur.consentTerms === true || cur.consentTerms === false)) out.push('acceptedTerms');
+  if (!sameValue('consentMarketing', saved.consentMarketing, cur.consentMarketing) && (cur.consentMarketing === true || cur.consentMarketing === false)) out.push('marketingConsent');
+  if (!sameValue('consentPrivacy', saved.consentPrivacy, cur.consentPrivacy) && cur.consentPrivacy === true) out.push('acceptedPrivacy');
+  return out;
+}
+/** תשובות הטיוטה בצורת ConsentFields / withConsentBody. */
+export const consentAnswersOfDraft = (cur) => ({ acceptedTerms: cur ? cur.consentTerms ?? null : null, marketingConsent: cur ? cur.consentMarketing ?? null : null, acceptedPrivacy: !!cur && cur.consentPrivacy === true });
 
 // ---------- סמני לשוניות (C-A5, J6) ----------
 export function tabMarkers({ customer, requiredKeys = [], balance = 0 }) {

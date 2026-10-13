@@ -79,7 +79,7 @@ export default function OcStepper({ oc, data }) {
 
   return (
     <>
-      <div className="stepper" id="stepper">
+      <div className="stepper" id="stepper" data-guide-id="oc.stepper">
         <div className="tlx" style={{ '--n': model.nodes.length }} role="list" aria-label="ציר ההזמנה">
           {model.nodes.map((n) => {
             const status = n.done ? 'הושלם' : n.cur ? 'השלב הנוכחי' : 'טרם';

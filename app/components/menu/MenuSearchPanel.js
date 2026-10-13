@@ -6,7 +6,7 @@
 // "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד: ברקוד בן 7 ספרות + Enter מחזיר את הפריט המושכר (כמו תיבת "החזרה מהירה"
 // של העיצוב הישן, TopbarSearch.js); אם אין פריט מושכר בברקוד - נשארים בחיפוש ומוצגות התוצאות עם הסיבה (דיווח df035847).
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree, menuRowMatchesTerm } from '@/lib/menu/buildMenuTree';
 import { MINE_URL } from '@/lib/myRecentActivityView';
@@ -18,8 +18,11 @@ import { actionTarget, keywordInsert, menuAllowedPaths, saveCandidate } from '@/
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { classifyQuery } from '@/lib/searchNormalize';
 import { postReturnScan } from '@/components/orders/returnScanClient';
+import { runQuickBarcode } from '@/components/orders/barcodeFlowClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
+import { useSearchPanelModel } from '../search/SearchPanel';
+import { leadKeys, isCovered } from '@/lib/searchPanelRows';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
 const MIN_CHARS = 2;
@@ -229,10 +232,45 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const barcodeDigits = termCls.kind === 'barcode' && termCls.barcode && termCls.barcode.complete ? termCls.barcode.digits : '';
   const isBarcode = !!barcodeDigits;
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
+  const [pick, setPick] = useState(null); // הזמנות שמחכות לפריט הפנוי (השכרה מהירה בברקוד, כשיש כמה) - בחירה
+  // פאנל התפוסה / הפריט (ר' search/SearchPanel.js): תצוגה מקדימה תוך כדי הקלדה, מתחת לשורת החיפוש. Enter נשאר אצל החזרה המהירה / חיפוש מלא.
+  const panelTerm = useDebounce(prefixOn ? '' : term, 350);
+  // כותרת + ריבועים מעל הרשימה; שורות הפאנל (איפה אני? / בחוץ / הוחזרו / ממתינות) נכנסות לרשימת התוצאות עצמה (sn-link), בלי כפילות מול תוצאות החיפוש
+  const panel = useSearchPanelModel(panelTerm, { compact: true, enabled: !!panelTerm, onOpen: (url) => onGo(() => nav.navigate(url), true) });
+  const panelKeys = useMemo(() => leadKeys(panel.lead), [panel.lead]);
+  const apiResults = useMemo(
+    () => search.results.filter((it) => !isCovered(panelKeys, { kind: it.fromBarcode ? 'item' : it.orderId ? 'order' : '', orderId: it.orderId, barcode: it.barcode })),
+    [search.results, panelKeys],
+  );
 
-  // החזרה מהירה בברקוד - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
+  // ברקוד בן 7 ספרות + Enter (זרימת הברקוד ברצף, components/orders/barcodeFlowClient.js): פריט מושכר -> חלון "השכרה והחזרה" של
+  // ההזמנה והברקוד מוחזר בתוכו (הסריקות הבאות נשארות בחלון ועוברות בין הזמנות); פריט פנוי + ההגדרה quick_search_barcode_opens_rental
+  // דלוקה -> חלון ההשכרה של ההזמנה שמחכה לו; אחרת נשארים בחיפוש עם ההסבר. בלי הרשאת "השכרות והחזרות" -> quickReturnLegacy (כמו קודם).
   const quickReturn = async () => {
     if (qr.busy) return;
+    setPick(null);
+    setQr({ busy: true, text: '', err: false });
+    try {
+      const flow = await runQuickBarcode(barcodeDigits, { openRentalModal: popup?.openRentalModal });
+      if (flow.legacy) { await quickReturnLegacy(); return; }
+      if (flow.pick) {
+        setPick(flow.pick);
+        setQr({ busy: false, text: flow.message, err: false });
+        return;
+      }
+      if (flow.handled) {
+        setQr({ busy: false, text: '', err: false });
+        onGo(() => {}, true); // סוגרים את הפאנל ומנקים את השדה; החלון כבר נפתח
+        return;
+      }
+      setQr({ busy: false, text: `${flow.message || 'הברקוד לא נמצא'} - מוצגות תוצאות חיפוש`, err: false });
+    } catch (e) {
+      setQr({ busy: false, text: 'שגיאת תקשורת', err: true });
+    }
+  };
+
+  // החזרה מהירה בברקוד כמו שהייתה לפני זרימת הברקוד ברצף - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
+  const quickReturnLegacy = async () => {
     setQr({ busy: true, text: '', err: false });
     try {
       const { res, data } = await postReturnScan({ barcode: barcodeDigits });
@@ -273,10 +311,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   } else if (!term) {
     list = (
       <>
-        <div className="sn-st" style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="sn-st" data-guide-id="srch.menu-recent" style={{ display: 'flex', alignItems: 'center' }}>
           נצפו לאחרונה
           {nav.view.length > 1 && (
-            <a className="lnk" href="#" style={{ marginInlineStart: 'auto' }} onClick={(e) => { e.preventDefault(); onClearRecents(); }}>נקה</a>
+            <a className="lnk" data-guide-id="srch.menu-recent-clear" href="#" style={{ marginInlineStart: 'auto' }} onClick={(e) => { e.preventDefault(); onClearRecents(); }}>נקה</a>
           )}
         </div>
         {nav.view.length === 0 && <div className="sn-empty">אין היסטוריה זמינה</div>}
@@ -300,6 +338,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     const apiOn = term.length >= MIN_CHARS;
     list = (
       <>
+        {panel.head}
         {pages.length > 0 && <div className="sn-st">עמודים</div>}
         {pages.map((p) => (
           <a
@@ -314,9 +353,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             {p.group ? <span className="sn-k">{p.group}</span> : null}
           </a>
         ))}
+        {(panel.lead.length > 0 || (apiOn && !search.searching && !search.pending && apiResults.length > 0)) && <div className="sn-st">הזמנות ולקוחות</div>}
+        {panel.lead.map((x) => <Fragment key={x.key}>{x.node}</Fragment>)}
         {apiOn && (search.searching || search.pending) && <div className="sn-empty">מחפש…</div>}
-        {apiOn && !search.searching && !search.pending && search.results.length > 0 && <div className="sn-st">הזמנות ולקוחות</div>}
-        {apiOn && !search.searching && !search.pending && search.results.map((item, idx) => {
+        {apiOn && !search.searching && !search.pending && apiResults.map((item, idx) => {
           const isOrder = !!item.orderId;
           const name = `${item.firstName || ''} ${item.lastName || ''}`.trim();
           return (
@@ -333,7 +373,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             </a>
           );
         })}
-        {apiOn && !search.searching && !search.pending && search.results.length === 0 && pages.length === 0 && (
+        {apiOn && !search.searching && !search.pending && apiResults.length === 0 && pages.length === 0 && panel.lead.length === 0 && (
           <div className="sn-empty">לא נמצאו תוצאות</div>
         )}
         {!apiOn && pages.length === 0 && <div className="sn-empty">לא נמצאו עמודים תואמים</div>}
@@ -362,9 +402,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
         <input
           ref={inputRef}
           id={`${idPrefix}-q`}
+          data-guide-id="srch.menu-input"
           type="search"
           value={q}
-          placeholder="חיפוש עמוד, הזמנה או לקוח…"
+          placeholder="הקלד ברקוד או חפש..."
           name={`${idPrefix}-search`}
           autoComplete="off"
           autoCorrect="off"
@@ -374,7 +415,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           data-1p-ignore
           data-form-type="other"
           aria-label="חיפוש עמוד, הזמנה או לקוח"
-          onChange={(e) => { if (qr.text) setQr({ busy: false, text: '', err: false }); search.setQ(e.target.value); }}
+          onChange={(e) => { if (qr.text) setQr({ busy: false, text: '', err: false }); if (pick) setPick(null); search.setQ(e.target.value); }}
           {...qp.inputProps}
           onFocus={qp.onFocus}
           onBlur={qp.onBlur}
@@ -394,9 +435,26 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
         <SaveIconButton text={q} saved={saved} />
       </div>
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
-        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${barcodeDigits}` : ''))}
+        {qr.busy ? 'בודק…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${barcodeDigits}` : ''))}
       </div>
-      {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
+      {pick && (
+        <div className="sn-res" role={menu ? 'menu' : undefined} aria-label="הזמנות שמחכות לפריט">
+          {pick.map((c) => (
+            <a
+              key={c.orderId}
+              className="sn-link"
+              role={menu ? 'menuitem' : undefined}
+              href={`/orders/${c.orderId}`}
+              onClick={(ev) => { ev.preventDefault(); onGo(() => { if (popup?.openRentalModal) popup.openRentalModal(c.orderId, { barcode: barcodeDigits }); else nav.navigate(`/orders/${c.orderId}`); }, true); }}
+            >
+              <SnLi n="file" />
+              {`הזמנה #${c.orderId}${c.customerName ? ` · ${c.customerName}` : ''}`}
+              {c.eventDateHebrew ? <span className="sn-k">{c.eventDateHebrew}</span> : null}
+            </a>
+          ))}
+        </div>
+      )}
+      {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" data-guide-id="srch.menu-results" role={menu ? 'menu' : undefined}>{list}</div>}
       {saved.confirm && <DeleteDialog key={saved.confirm.id} confirm={saved.confirm} onConfirm={saved.confirmDelete} onCancel={saved.cancelDelete} skin="menu" />}
     </>
   );

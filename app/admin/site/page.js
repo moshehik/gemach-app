@@ -30,6 +30,7 @@ const categories = [
       { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/refund-planner', icon: 'i-coin', label: 'מתכנן זיכויים', subLabel: 'ציר זמן חזותי וסימולציה' },
       { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
+      { href: '/admin/branches', icon: 'i-pin', label: 'סניפים', subLabel: 'ראשי ויכולות: מדידה, איסוף, החזרה' },
       { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
       { href: '/admin/audit-system', icon: 'i-check-circle', label: 'מערכת ביקורת (11 סוכנים)', subLabel: 'תיעוד סוכני הבדיקה האוטומטיים' },
     ]
@@ -52,6 +53,8 @@ const categories = [
       { href: '/admin/site-settings/api-keys', icon: 'i-shield', label: 'מפתחות API', subLabel: 'כניסה בלי סיסמה לסוכנים וסקריפטים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/admin/site-settings/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו (מתכנת בלבד)' },
+      { href: '/admin/email-center', icon: 'i-mail', label: 'מרכז המיילים', subLabel: 'עריכת כל המיילים, נתונים קבועים, תזמון ודיוורים' },
+      { href: '/admin/mailbox', icon: 'i-mail', label: 'תיבת מייל', subLabel: 'מיילים נכנסים ויוצאים, קריאה וכתיבה' },
       { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
       // דף סטטי (public/design-system/index.html, ראו design-system/README.md) - לא מסלול של האפליקציה, לכן <a> רגיל

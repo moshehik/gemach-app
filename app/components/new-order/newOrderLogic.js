@@ -4,7 +4,9 @@
 // אם משנים כאן בנייה של גוף בקשה - הבדיקה תיכשל עד שגם הישן משתנה (או שהשינוי מתועד כסטייה מכוונת).
 // בלי '@/' imports - חייב להיטען ב-node רגיל (הבדיקות). ייבוא יחסי מ-lib הטהור (businessDays / lateReturn - בלי prisma) מותר.
 import { parseNonWorkingDaysSetting, addBusinessDays } from '../../../lib/businessDays';
+import { modelDisplayName, modelCodeSuffix as sharedModelCodeSuffix } from '../../../lib/modelDisplay';
 import { getExpectedReturnKey } from '../../../lib/lateReturn';
+import { branchConfigFromSettings, branchesWith, isMultiBranchEnabled, mainBranch } from '../../../lib/branches';
 
 // ---------- לקוח ----------
 export const getCustomerFullName = (c) => {
@@ -24,6 +26,8 @@ export const EMPTY_ORDER = Object.freeze({
   isDelivery: false, deliveryDirection: 'הלוך-חזור', deliveryAddress: '', deliveryCity: '', deliveryOneDayBefore: false,
   isPhoneOrder: false, branch: '', pickupBranch: '',
   hokBankName: '', hokBankBranch: '', hokBankAccount: '', hokConsent: false,
+  // חתימת הלקוח על התקנון - חובה בכל הזמנה חדשה (נשמר על Order.hasSignedRegulations ומופיע במייל ללקוח)
+  hasSignedRegulations: false,
 });
 
 export const EMPTY_NEW_ITEM = Object.freeze({ dressModelId: '', selectedSizes: [], quantity: 1, repairs: '', dressName: '' });
@@ -262,16 +266,12 @@ export const describeAlterations = (item) => [
 export const alterationsChosen = (it) => !!(it.neckAlteration || it.sleeveAlteration || it.lengthAlteration);
 
 // R23: דגם שנשמר בשם הזמני "ללא שם" מוצג לפי הקוד (כמו OrderModelSelector.displayModelName)
-export function displayModelName(model) {
-  const name = String((model && model.name) || '').trim();
-  if (name.startsWith('ללא שם') && model && model.barcodePrefix) return String(model.barcodePrefix);
-  return name;
+export function displayModelName(model, opts) {
+  return modelDisplayName(model, { ...opts, fallback: '' }); // lib/modelDisplay.js: שם אמיתי, אחרת מספר הדגם
 }
 // R23 (הערת הבעלים): בנווה יעקב הקוד והשם זהים - מציגים את הקוד בנפרד רק כשהוא שונה מהשם המוצג
-export function modelCodeSuffix(model) {
-  const code = model && model.barcodePrefix ? String(model.barcodePrefix).trim() : '';
-  if (!code) return '';
-  return code === displayModelName(model) ? '' : code;
+export function modelCodeSuffix(model, opts) {
+  return sharedModelCodeSuffix(model, opts);
 }
 
 export const buildPricingUrl = (dressModelId, sizeText, eventDate) =>
@@ -336,7 +336,12 @@ export function buildCalculateBody(order) {
     deliveryCity: order.deliveryCity,
     // נפילה-לאחור של עיר המשלוח לעיר הלקוח גם בחישוב השרת - ר' resolveEffectiveDeliveryCity (lib/pricingCalc.js). כמו בישן (06467870 / 3a4d36df)
     customerCity: (order.selectedCustomer && order.selectedCustomer.city) || '',
-    deliveryDirection: order.deliveryDirection
+    deliveryDirection: order.deliveryDirection,
+    // משלוח משותף (shared_delivery_enabled): הכתובת והיום קובעים אם יש משלוח ראשי אחר באותה כתובת (מחיר מוזל). השרת מתעלם כשהפיצ'ר כבוי.
+    customerId: order.customerId || (order.selectedCustomer && order.selectedCustomer.id) || null,
+    deliveryAddress: order.deliveryAddress || '',
+    deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+    fromDate: order.fromDate || null
   };
 }
 
@@ -451,6 +456,7 @@ export function buildSavePayload({ order, totalAmount, itemsToSave, hokDetailsPa
     branch: order.branch || null,
     pickupBranch: order.pickupBranch || null,
     deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+    hasSignedRegulations: !!order.hasSignedRegulations,
     ...(hokDetailsPayload !== undefined ? { hokDetails: hokDetailsPayload } : {}),
     paymentsList: finalPaymentsList,
     reservedOrderId,
@@ -534,17 +540,23 @@ export const branchListOf = (settings) => String((settings || {}).branch_list ||
 // ברירת המחדל של "סניף ביצוע" (ההגדרה default_order_branch): רק אם שמה מופיע ברשימת הסניפים; אחרת '' (בלי ברירת מחדל)
 export const defaultOrderBranchOf = (settings) => {
   const d = String((settings || {}).default_order_branch || '').trim();
-  return d && branchListOf(settings).includes(d) ? d : '';
+  if (d && branchListOf(settings).includes(d)) return d;
+  // ריבוי סניפים (multi_branch_enabled): בכל הזמנה נשמר סניף ביצוע - אם לא הוגדרה ברירת מחדל, הסניף הראשי (docs/branches-plan.md). כבוי = '' כמו קודם.
+  if (isMultiBranchEnabled(settings)) { const m = mainBranch(branchConfigFromSettings(settings)); return m ? m.name : ''; }
+  return '';
 };
+// ריבוי סניפים: סניף ביצוע נרשם תמיד; סניף איסוף - רק סניפים עם יכולת איסוף (כבוי = כל רשימת הסניפים כמו קודם)
+export const trackBranchOn = (s) => (s || {}).track_branch_on_order === 'true' || isMultiBranchEnabled(s);
+export const pickupBranchesOf = (s) => (isMultiBranchEnabled(s) ? branchesWith(branchConfigFromSettings(s), 'pickup').map((b) => b.name) : branchListOf(s));
 // כמו בישן (LegacyNewOrderPage ~2030): כל הכרטיס "משלוח / סניף / טלפוני" מוצג כשאחד מדגלי הטלפוני/סניף דלוק או
 // delivery_show_in_order !== 'false'; "הזמנת משלוח" בתוכו דורשת גם enable_deliveries === 'true'. אופן ההזמנה - לפי הדגלים עצמם.
 export function deliveryStepVisibility(s) {
   const st = s || {};
-  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true';
+  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true' || st.multi_branch_enabled === 'true';
   const cardVisible = showMode || st.delivery_show_in_order !== 'false';
   return { showMode, showDelivery: cardVisible && st.enable_deliveries === 'true' };
 }
-export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.delivery_show_in_order !== 'false';
+export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.multi_branch_enabled === 'true' || s.delivery_show_in_order !== 'false';
 export const DELIVERY_DIRECTIONS = [
   { v: 'הלוך', icon: 'arrr' }, { v: 'חזור', icon: 'arrl' }, { v: 'הלוך-חזור', icon: 'arrlr' }
 ];

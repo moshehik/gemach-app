@@ -8,7 +8,9 @@ import path from 'node:path';
 const PROJ = process.env.PROJ;
 const OC = path.join(PROJ, 'app/components/order-card');
 const W3_FILES = ['tabs/OcItemsTab.js', 'parts/OcItemRow.js', 'parts/OcAddItemPanel.js', 'parts/OcItemEditDialog.js', 'parts/OcItemDetailsDialog.js', 'parts/OcCapacityDialog.js', 'parts/OcBarcodeRow.js', 'parts/OcScanBar.js', 'hooks/useItemActions.js'];
-const read = (rel) => fs.readFileSync(path.join(OC, rel), 'utf8');
+// data-guide-id are the AI site-guide markers (lib/aiGuide), not part of the look/behaviour this test pins - removed before matching the source text
+const stripGuide = (s) => s.replace(/ data-guide-id=(?:"[^"]*"|\{[^}]*\})/g, '');
+const read = (rel) => stripGuide(fs.readFileSync(path.join(OC, rel), 'utf8'));
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 const CODE = Object.fromEntries(W3_FILES.map((f) => [f, strip(read(f))]));
 const ALL = Object.values(CODE).join('\n');

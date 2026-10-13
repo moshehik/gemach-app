@@ -122,8 +122,8 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
   return (
     <div className="card" style={{ marginBottom: '20px' }}>
       <div className="card-pad" style={{ borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>שורות הרשאה</h2>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onNew}>
+        <h2 className="section-title" style={{ margin: 0 }} data-guide-id="perm.table">שורות הרשאה</h2>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onNew} data-guide-id="perm.new-row">
           <svg className="icon"><use href="#i-plus" /></svg>שורת הרשאה חדשה
         </button>
       </div>
@@ -196,7 +196,7 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
                       </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => onEdit(group)} title="ערוך שורה" aria-label="ערוך שורה">
+                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => onEdit(group)} title="ערוך שורה" aria-label="ערוך שורה" data-guide-id={groups[0] === group ? 'perm.row-edit' : undefined}>
                         <svg className="icon"><use href="#i-edit" /></svg>
                       </button>
                     </td>
@@ -217,7 +217,7 @@ function PersonalOverridesCard({ catalog, overrides }) {
   return (
     <div className="card" style={{ marginBottom: '20px' }}>
       <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>חריגות אישיות מכרטיס העובד</h2>
+        <h2 className="section-title" style={{ margin: 0 }} data-guide-id="perm.overrides">חריגות אישיות מכרטיס העובד</h2>
         <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
           הרשאות שנקבעו לעובד ספציפי ישירות בכרטיס שלו ולא דרך שורה. הן קודמות לשורת המחלקה (מותר או חסום), ואת השינוי בהן עושים בכרטיס העובד.
         </p>
@@ -297,7 +297,7 @@ function NumericValuesCard({ catalog, departments, onSaved }) {
   return (
     <div className="card" style={{ marginBottom: '20px' }}>
       <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>ערכים מספריים לפי מחלקה</h2>
+        <h2 className="section-title" style={{ margin: 0 }} data-guide-id="perm.numeric">ערכים מספריים לפי מחלקה</h2>
         <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
           פריטים שהם מספר ולא כן/לא, ולכן לא נכנסים לשורות הרשאה. לעובד ספציפי קובעים ערך בכרטיס שלו.
         </p>

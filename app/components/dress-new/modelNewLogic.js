@@ -92,7 +92,8 @@ export function buildModelPayload(d, { useModelNames = true } = {}) {
   const code = String(d.code || '').trim();
   const name = String(d.name || '').trim();
   return {
-    name: !useModelNames && !name ? `דגם ${code || 'ללא קוד'}` : name,
+    // גמ"ח בלי שמות דגמים: השם הוא מספר הדגם עצמו (lib/modelDisplay.js autoModelName; השרת אוכף את אותו כלל)
+    name: !useModelNames && !name ? code : name,
     barcodePrefix: code,
     priceCategory: d.cat || '',
     notes: d.notes || '',

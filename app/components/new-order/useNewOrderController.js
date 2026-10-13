@@ -12,6 +12,9 @@ import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupError
 import { isInlineCustomerEditOn } from '@/lib/customerInlineEdit';
 import { resolveOrderRedirectHref, ORDER_REDIRECT_SCREENS } from '@/lib/orderRedirectScreens';
 import { resolveNewOrderLayout } from '@/lib/newOrderLayout';
+import { NEW_ORDER_PICKER_PARAM, NEW_ORDER_PICKER_VALUE } from '@/lib/newOrderCustomerFilter';
+import { explicitConsentOn, missingConsentLabels, withConsentBody } from '@/lib/consentForm';
+import { useConsentInfo } from '@/app/components/shared/ConsentFields';
 import * as NL from './newOrderLogic';
 import { scrollToSection } from './layoutLogic';
 
@@ -60,6 +63,9 @@ export default function useNewOrderController({ router }) {
   const [paymentsList, setPaymentsList] = useState([]);
   const [payment, setPayment] = useState({ amount: '', method: 'אשראי', notes: '' });
   const [settings, setSettings] = useState({});
+  // הסכמות מפורשות בלקוח חדש (תקנון כן/לא, דיוור כן/לא, אישור פרטיות; docs/customer-consents.md): כבוי = הטופס והגוף בדיוק כמו קודם
+  const explicitConsent = explicitConsentOn(settings);
+  const consentInfo = useConsentInfo(explicitConsent);
   // צורת הטופס (new_order_layout; חסר / לא מוכר = אשף, בדיוק ההתנהגות הקיימת). בטופס הרציף כל השלבים בעמוד אחד: go() / goStep() גוללים לגוש השלב
   // במקום להחליף שלב, ו-step הוא "השלב האחרון שנוּוט אליו". confirmedCustomerId: הלקוח שעבר את "המשך" (חסימה / חריגה) - ר' NL.stepGate
   const layout = resolveNewOrderLayout(settings.new_order_layout);
@@ -137,9 +143,9 @@ export default function useNewOrderController({ router }) {
   // רק אם הוגדרה, ושמה מופיע ברשימת הסניפים (branch_list); ריק = בלי ברירת מחדל. הבחירה הידנית בהזמנה נשארת.
   const defaultOrderBranch = NL.defaultOrderBranchOf(settings);
   useEffect(() => {
-    if (settings.track_branch_on_order !== 'true' || !defaultOrderBranch) return;
+    if (!NL.trackBranchOn(settings) || !defaultOrderBranch) return;
     setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: defaultOrderBranch });
-  }, [settings.track_branch_on_order, defaultOrderBranch]);
+  }, [settings, defaultOrderBranch]);
 
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
@@ -158,7 +164,7 @@ export default function useNewOrderController({ router }) {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) { say('info', 'נא להזין מספר טלפון תקין'); return; }
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20&${NEW_ORDER_PICKER_PARAM}=${NEW_ORDER_PICKER_VALUE}`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         setFoundCustomersFromPhone(data.data);
@@ -185,7 +191,7 @@ export default function useNewOrderController({ router }) {
     const t = setTimeout(async () => {
       setListLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(listQuery)}&limit=50`, { signal: ctl.signal });
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(listQuery)}&limit=50&${NEW_ORDER_PICKER_PARAM}=${NEW_ORDER_PICKER_VALUE}`, { signal: ctl.signal });
         const data = await res.json();
         if (!ctl.signal.aborted) setListResults(data.data || []);
       } catch (err) {
@@ -281,18 +287,30 @@ export default function useNewOrderController({ router }) {
   };
 
   // כפל לחיצה / Enter על "שמור לקוח והמשך" לא יוצר שני לקוחות: בקשה אחת בכל רגע (גם בזמן חלון אישור מנהל)
-  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
+  // signedNow: Enter על מתג החתימה מסמן אותה ושומר באותה לחיצה - ה-state עוד לא התעדכן בסגירה הזו
+  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false, signedNow = false) => {
     if (savingCustomerRef.current) return;
     savingCustomerRef.current = true;
     setSavingCustomer(true);
-    try { await saveNewCustomerInner(skipDuplicateCheck); } finally { savingCustomerRef.current = false; setSavingCustomer(false); }
+    try { await saveNewCustomerInner(skipDuplicateCheck, signedNow); } finally { savingCustomerRef.current = false; setSavingCustomer(false); }
   };
-  const saveNewCustomerInner = async (skipDuplicateCheck = false) => {
+  const saveNewCustomerInner = async (skipDuplicateCheck = false, signedNow = false) => {
     setNewCustomerError(null);
     const missingFields = missingOf(newCustomer);
     if (missingFields.length > 0) { say('info', `יש למלא: ${missingFields.map(k => NL.CUSTOMER_FIELD_LABELS[k]).join(', ')}`); return; }
+    // הסכמות מפורשות דולקות: התשובה כן/לא על התקנון נאספת בטופס עצמו (ConsentFields) ונבדקת למטה; "לא" נשמר כראיה, וההזמנה עצמה עדיין נחסמת בלי חתימה (שלב התשלום)
+    if (!explicitConsent && !signedNow && !order.hasSignedRegulations) {
+      say('info', 'יש לסמן שהלקוח חתם על התקנון');
+      const el = typeof document !== 'undefined' ? document.getElementById('noNcSign') : null;
+      if (el) el.focus();
+      return;
+    }
     // Q7: ת"ז חובה רק בגמ"ח שבו require_customer_id_number דולק (נווה יעקב)
     if (settings.require_customer_id_number === 'true' && !String(newCustomer.zeout || '').trim()) { say('info', 'יש למלא: תעודת זהות'); return; }
+    if (explicitConsent) {
+      const missingConsents = missingConsentLabels({ acceptedTerms: newCustomer.acceptedTerms, marketingConsent: newCustomer.marketingAnswer, acceptedPrivacy: newCustomer.acceptedPrivacy }, settings, { isNew: true });
+      if (missingConsents.length > 0) { setNewCustomerError({ field: 'consent', text: `יש למלא: ${missingConsents.join(', ')}` }); say('info', `יש למלא: ${missingConsents.join(', ')}`); return; }
+    }
     const newCustomerGroupErrors = unsatisfiedFieldGroupErrors(newCustomer, fieldGroups);
     if (newCustomerGroupErrors.length > 0) {
       const auth = await verifyPin(`${newCustomerGroupErrors.join('. ')} - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.`, 'feature:missing_contact_approval');
@@ -309,9 +327,15 @@ export default function useNewOrderController({ router }) {
       } catch { /* ממשיכים כמו בישן */ }
     }
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newCustomer) });
+      // שדות העזר של טופס ההסכמות (marketingAnswer / acceptedTerms / acceptedPrivacy) לא נשלחים כמו שהם: כבוי = הגוף כמו קודם, דלוק = withConsentBody
+      const { marketingAnswer, acceptedTerms, acceptedPrivacy, ...customerFields } = newCustomer;
+      const postBody = explicitConsent
+        ? withConsentBody({ ...customerFields, marketingConsent: marketingAnswer === true }, { acceptedTerms, marketingConsent: marketingAnswer, acceptedPrivacy }, consentInfo, 'new-order')
+        : customerFields;
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(postBody) });
       const data = await res.json();
       if (res.ok) {
+        if (data.consentWarning) say('info', 'ההסכמות לא נרשמו ביומן', data.consentWarning);
         closeDupCustomer();
         setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
         setConfirmedCustomerId(data.id);
@@ -549,7 +573,7 @@ export default function useNewOrderController({ router }) {
       .then(data => {
         if (off) return;
         if (!NL.isValidCalculation(data)) throw new Error('calculate: bad response');
-        setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 });
+        setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0, sharedDelivery: data.sharedDelivery || null });
         setCalculating(false);
       })
       .catch(() => {
@@ -561,7 +585,7 @@ export default function useNewOrderController({ router }) {
       });
     return () => { off = true; };
      
-  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, calcTick]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, order.deliveryAddress, order.deliveryOneDayBefore, order.customerId, calcTick]);
   const retryCalc = () => setCalcTick(t => t + 1);
   const calcBlock = NL.calcBlockMessage({ calculating, calcError });
   const totalAmount = calculatedData.totalAmount;
@@ -642,6 +666,7 @@ export default function useNewOrderController({ router }) {
   // אישור PAYMENT_APPROVAL_LEVEL כמו הרישום הסופי. ההכרעה: NL.paymentAddDecision.
   const handleAddPaymentClick = async () => {
     if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
+    if (!order.hasSignedRegulations) { say('info', 'יש לסמן שהלקוח חתם על התקנון', 'המתג נמצא בראש שלב התשלום.'); return; }
     const decision = NL.paymentAddDecision(settings, payment.method, payment.amount);
     if (decision.action === 'reject') {
       if (decision.reason === 'manager-exit') say('info', '"יציאה באישור מנהל" אינה תשלום', 'כדי לסיים בלי תשלום מלא בחר בה וסיים בלחיצה על "סיום ויצירת ההזמנה" (תתבקש לאשר). לרישום תשלום בחר אמצעי אחר.');
@@ -755,6 +780,7 @@ export default function useNewOrderController({ router }) {
   const saveOrderInner = async () => {
     setSaveError(null);
     if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
+    if (!order.hasSignedRegulations) { say('info', 'יש לסמן שהלקוח חתם על התקנון', 'המתג נמצא בראש שלב התשלום.'); return; }
     if (!order.customerId) { say('info', 'יש לבחור לקוח'); return; }
     if (!String((order.selectedCustomer && order.selectedCustomer.phone1) || '').trim() && !String((order.selectedCustomer && order.selectedCustomer.phone2) || '').trim()) {
       say('info', 'לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון.', 'יש להשלים מספר טלפון בכרטיס הלקוח.'); return;
@@ -963,7 +989,7 @@ export default function useNewOrderController({ router }) {
     step, stepKey, setStep, go, goStep, openInfo, settings, todayKey, allowAbroad, layout, gate,
     searchMode, setSearchMode, phoneSearchInput, setPhoneSearchInput, isCheckingPhone, foundCustomersFromPhone, setFoundCustomersFromPhone, pickedFound, setPickedFound,
     listQuery, setListQuery, listResults, listLoading, pickFromList,
-    order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,
+    order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf, explicitConsent, consentInfo,
     newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, calcError, retryCalc, savingCustomer, totalAmount, activeItems, datesFilled, rangePending, setRangePending,

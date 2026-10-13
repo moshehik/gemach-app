@@ -266,7 +266,9 @@ t('נטרול דליפה בלו״ז: design-overrides.css כופה גופן Assi
 
 /* ---------- 6ג. דף הלו״ז - נאמנות לעיצוב (ביקורת הבעלים 2.10.2026, docs/ui-fidelity-schedule.md) ---------- */
 const SCHED_DIR = new URL('../app/components/schedule/', import.meta.url);
-const schedSrc = (f) => readFileSync(new URL(f, SCHED_DIR), 'utf8');
+// data-guide-id הם סימוני מדריך האתר של עוזר ה-AI (lib/aiGuide) ולא חלק מהמראה/ההתנהגות שהבדיקה נועלת - מוסרים לפני ההשוואה לטקסט המקור
+const stripGuide = (s) => s.replace(/ data-guide-id=(?:"[^"]*"|\{[^}]*\})/g, '');
+const schedSrc = (f) => stripGuide(readFileSync(new URL(f, SCHED_DIR), 'utf8'));
 const SCHED_FILES = ['ScheduleDay.js', 'StageRow.js', 'StageSection.js', 'StageRail.js', 'HebrewDayPicker.js', 'ScheduleToolbarSlots.js', 'ScheduleIcon.js', 'ScheduleSkeleton.js', 'scheduleMeta.js', 'MarkControls.js', 'MarkDialogs.js', 'useStageMarks.js'];
 t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה = CSS של דף הבית, דורס שורות/מתג/טבלה של הלוז)', () => {
   assert.match(schedSrc('ScheduleDay.js'), /className="gm-ds gm-lz home-bg dlg-dark"/);
@@ -1065,7 +1067,7 @@ const PVT_CSS = read('../app/components/variant/pageVariantToggle.css');
 const pvtRules = parseCss(PVT_CSS);
 t('pageVariantToggle.css: כל כלל בהיקף .gm-pvt, בלי הפלטה (.gm-ds), בלי data-ui-*, בלי */ בתוך הערה', () => {
   const bad = [];
-  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s) && s !== '.gm-pvt-spacer') bad.push(s); // + המרווח בסוף דף ישן
+  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s) && s !== '.gm-pvt-spacer' && s !== '.topbar:has(.gm-pvt-return-topbar)') bad.push(s); // + המרווח בסוף דף ישן; + הכותרת הישנה במובייל שעוטפת שורה כשבתוכה לחצן "חזרה לממשק החדש" (feature/neve-new-ui-default)
   assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
   const code = PVT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/\.gm-ds|gm-home|data-ui-|!important(?![^{}]*display:none)/.test(code.replace(/@media print\{[^}]*\}\}?/, '')), 'תלות בפלטה / data-ui / !important');
@@ -1287,11 +1289,11 @@ t('שורת תוצאה: .li הוא flex עם align-items:center והעמודה .
   const t2 = homeRules.find((r) => r.sel === '.gm-ds.gm-home .res-one .li .t');
   assert.ok(t2 && /flex:\s*1/.test(t2.body) && /min-width:\s*0/.test(t2.body));
 });
-t('המחלקות שרכיבי התוצאות החדשים משתמשים בהן קיימות: בפלטה (chip / btnlike / amber / rose / gold / stx / li / lrow) או ב-home.css (dchips / invs / invd / invz / nolink / rt)', () => {
-  const RES = read('../app/components/home/HomeResults.js');
+t('המחלקות שרכיבי התוצאות החדשים משתמשים בהן קיימות: בפלטה (chip / btnlike / amber / rose / gold / stx / li / lrow) או ב-home.css (dchips / nolink / rt)', () => {
+  const RES = read('../app/components/home/HomeResults.js') + read('../app/components/home/ResultRow.js'); // שורת התוצאה (nolink / ic-b / rlbl) יושבת ב-ResultRow.js, משותפת עם פאנל התפוסה
   for (const c of ['chip', 'stx', 'li', 'lrow', 'rlink', 'ic-b', 'rlbl']) assert.ok(new RegExp(CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .' + c + ' בפלטה');
   for (const c of ['amber', 'rose', 'gold', 'btnlike']) assert.ok(new RegExp(CLS_PRE + 'chip' + CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .chip.' + c);
-  for (const c of ['dchips', 'dchips-h', 'dchips-r', 'invs', 'invd', 'invz', 'nolink', 'rt', 'dchip-al']) {
+  for (const c of ['dchips', 'dchips-h', 'dchips-r', 'nolink', 'rt', 'dchip-al']) {
     assert.ok(new RegExp(CLS_PRE + c + '(?![\\w-])').test(HOME_CSS), 'אין כלל ב-home.css ל-.' + c);
     assert.ok(RES.includes(c), c + ' לא בשימוש ב-HomeResults');
   }

@@ -166,7 +166,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
   }, [chat.length]);
 
   return (
-    <div className="card res-one advp aiw" ref={cardRef}>
+    <div className="card res-one advp aiw" data-guide-id="srch.ai-card" ref={cardRef}>
       <div className="card-h" ref={headRef}>
         <button type="button" className="ibtn" aria-label="סגירת השיחה" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>
         <h2 id="ai-h">חיפוש חכם</h2>
@@ -181,6 +181,9 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
             {m.link && m.linkRoute && (
               <div className="bub-acts"><button type="button" className="lrow" data-open="עמוד" onClick={() => onOpenRoute(m.linkRoute)}><Ic id="ext" size="sm" />פתיחת {m.link}</button></div>
             )}
+            {Array.isArray(m.guide) && m.guide.length > 0 && (
+              <div className="bub-acts"><button type="button" className="lrow" data-guide-chip="" onClick={() => { if (typeof window !== 'undefined' && window.gmGuide) window.gmGuide.show(m.guide.map((g) => g.id)); }}><Ic id="search" size="sm" />{m.guide.length > 1 ? `הצג לי (${m.guide.length} שלבים)` : `הצג לי: ${m.guide[0].label}`}</button></div>
+            )}
             {m.setting && (
               <div className="bub-acts"><button type="button" className="lrow" onClick={() => onOpenSetting(m.setting)}><Ic id="gear" size="sm" />פתיחת ההגדרה</button></div>
             )}
@@ -192,6 +195,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
       </div>
       <form
         className="fu fu-in"
+        data-guide-id="srch.ai-followup"
         aria-label="שאלת המשך"
         onSubmit={(e) => {
           e.preventDefault();

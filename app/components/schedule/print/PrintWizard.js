@@ -255,7 +255,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
 
   return (
     <div className="scrim on lz-wscrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={'dlg lz-wiz' + (isQuick ? ' lz-quick' : ' lz-full')} id="dlg" role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
+      <div className={'dlg lz-wiz' + (isQuick ? ' lz-quick' : ' lz-full')} id="dlg" data-guide-id="sched.print-wizard" role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
         {isQuick ? (
           <>
             <div className="dbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>
@@ -335,7 +335,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
         ) : null}
 
         <div className="dbtns mact lz-wf">
-          <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
+          <button type="button" className="btn primary lg" data-guide-id="sched.print-run" disabled={!n || busy} onClick={() => run(selected)}>
             <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
           </button>
           {isQuick ? null : <button type="button" className="btn" disabled={!allDay.length || busy} onClick={() => run(allDay)}>{allLabel}</button>}

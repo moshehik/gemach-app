@@ -46,7 +46,7 @@ function RowsCard({ category, tools }) {
         <div className="hgrp">
           {tools.map((t) => (
             <article className="hrow irow" key={t.id}>
-              <Link className="li rlink lrow" href={t.href} data-element-name={`כפתור_admin_${t.id}`}>
+              <Link className="li rlink lrow" href={t.href} data-element-name={`כפתור_admin_${t.id}`} data-guide-id={`hub.${t.id}`}>
                 <div className="ic-b"><Ic id={t.icon} /><span className="rlbl">{category.tag}</span></div>
                 <div className="t"><b>{t.title}</b><span className="ln">{t.desc}</span></div>
                 <span className="go" aria-hidden="true"><Ic id="arrl" size="sm" /></span>
@@ -67,7 +67,7 @@ function ToolsTable({ tools }) {
         <tbody>
           {tools.map((t) => (
             <tr key={t.id}>
-              <td><Link className="trl adm-trl" href={t.href} data-element-name={`כפתור_admin_${t.id}`}><Ic id={t.icon} size="sm" />{t.title}</Link></td>
+              <td><Link className="trl adm-trl" href={t.href} data-element-name={`כפתור_admin_${t.id}`} data-guide-id={`hub.${t.id}`}><Ic id={t.icon} size="sm" />{t.title}</Link></td>
               <td>{t.desc}</td>
               <td className="tc"><Ic id="arrl" size="sm go" /></td>
             </tr>
@@ -82,7 +82,7 @@ function Tiles({ tools }) {
   return (
     <div className="adm-tiles">
       {tools.map((t) => (
-        <Link className="creditile adm-tile" href={t.href} key={t.id} data-element-name={`כפתור_admin_${t.id}`}>
+        <Link className="creditile adm-tile" href={t.href} key={t.id} data-element-name={`כפתור_admin_${t.id}`} data-guide-id={`hub.${t.id}`}>
           <span className="ico rose"><Ic id={t.icon} /></span>
           <div className="adm-tt"><b>{t.title}</b><small>{t.desc}</small></div>
         </Link>
@@ -124,7 +124,7 @@ export default function AdminHubPage({ tools, categories, userKey }) {
         </div>
 
         <div className="hf-bar adm-bar">
-          <div className="hf-s">
+          <div className="hf-s" data-guide-id="hub.search">
             <Ic id="search" />
             <input
               ref={inputRef}
@@ -144,7 +144,7 @@ export default function AdminHubPage({ tools, categories, userKey }) {
               <Ic id="x" plain />
             </button>
           </div>
-          <div className={`vsw v3${view === 'table' ? ' t' : ''}${view === 'tiles' ? ' c' : ''}`} role="group" aria-label="מצב תצוגה">
+          <div className={`vsw v3${view === 'table' ? ' t' : ''}${view === 'tiles' ? ' c' : ''}`} role="group" aria-label="מצב תצוגה" data-guide-id="hub.views">
             <span className="vknob" aria-hidden="true" />
             {VIEWS.map((v) => (
               <button
@@ -156,6 +156,7 @@ export default function AdminHubPage({ tools, categories, userKey }) {
                 data-tip={VIEW_LABELS[v]}
                 data-ico={VIEW_ICONS[v]}
                 data-view={v}
+                data-guide-id={`hub.view-${v}`}
                 onClick={() => pickView(v)}
               >
                 <Ic id={VIEW_ICONS[v]} plain />
@@ -166,7 +167,7 @@ export default function AdminHubPage({ tools, categories, userKey }) {
 
         <div id="admSecs" className={`v-${view}`}>
           {groups.map(({ category, tools }) => (
-            <section className="adm-sec" aria-label={category.title} key={category.id} data-cat={category.id}>
+            <section className="adm-sec" aria-label={category.title} key={category.id} data-cat={category.id} data-guide-id={`hub.cat-${category.id}`}>
               <h2 className="adm-h"><span className="adm-hi"><Ic id={category.icon} /></span>{category.title}</h2>
               {view === 'rows' ? <RowsCard category={category} tools={tools} /> : null}
               {view === 'table' ? <ToolsTable tools={tools} /> : null}

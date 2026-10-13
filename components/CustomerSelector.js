@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useDebounce from '@/hooks/useDebounce';
 
-export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
+// pickerFor="new-order": הבורר של "לקוח קיים" בהזמנה חדשה - השרת מסנן אותו לפי ההגדרה new_order_customer_list_filter (lib/newOrderCustomerFilter.js).
+// בלי הפרמטר (החלפת לקוח בכרטיס הזמנה וכד') אין שום סינון.
+export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false, pickerFor }) {
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState([]);
   // הודעת חיפוש מהשרת (api/customers -> notices): מקלדת אנגלית / שמות דומים
@@ -73,7 +75,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQueryEffective)}&limit=50`, {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQueryEffective)}&limit=50${pickerFor ? `&pickerFor=${encodeURIComponent(pickerFor)}` : ''}`, {
           signal: controller.signal
         });
         const data = await res.json();
@@ -167,6 +169,10 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
                 {c.isBlocked && (
                   <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>לקוח חסום</span>
                 )}
+                {/* נרשמה בעמדת הלקוח (lib/kioskRegistration.js) ועדיין לא אומתה: העובדת מאמתת מול הלקוחה את הפרטים לפני שממשיכים בהזמנה */}
+                {(c.kioskReg === 'pending' || c.kioskReg === 'repeat') && (
+                  <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>{c.kioskReg === 'repeat' ? 'נרשמה שוב בעמדה - לאמת פרטים' : 'נרשמה בעמדה - לאמת פרטים'}</span>
+                )}
               </div>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                 {c.phone1} {c.city ? ` | ${c.city}` : ''}
@@ -183,7 +189,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
       {isOpen && !loading && debouncedQueryEffective && customers.length === 0 && (
         <div ref={dropdownRef} style={{ ...dropdownBaseStyle, padding: '1rem', textAlign: 'center', color: 'var(--text-main)' }}>
           <div>לא נמצאו לקוחות.</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה או עיר</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה, ת"ז או עיר</div>
         </div>
       )}
     </>

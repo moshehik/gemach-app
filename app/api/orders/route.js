@@ -16,6 +16,8 @@ import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOr
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import { getSharedGroupKeyForOrder, reconcileSharedDelivery, getSharedDeliveryInfo, syncStoredPaymentStatus } from '@/lib/sharedDelivery';
+import { loadDeliverySection } from '@/lib/orderDeliveryServer';
 import {
   planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
@@ -861,6 +863,7 @@ async function POST(request) {
       ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
       ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
       ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
+      ...(data.hasSignedRegulations !== undefined ? { hasSignedRegulations: !!data.hasSignedRegulations } : {}),
       ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
       items: {
         create: reconciledItems?.map(item => ({
@@ -1035,6 +1038,24 @@ async function POST(request) {
     // org2 3a4d36df (2026-09-14) - "הוספתי משלוח להזמנה חדשה והוא לא עדכן את זה".
     await applyDeliveryCharge(order.orderId);
 
+    // משלוח משותף (shared_delivery_enabled, כבוי כברירת מחדל): הזמנה חדשה בכתובת + יום של הזמנות קיימות. אם היא נרשמה ראשונה היא "ראשית";
+    // אחרת היא מוזלת (applyDeliveryCharge למעלה כבר חישב לפי הקבוצה). כאן מיישרים את שאר הקבוצה (למשל הזמנה ישנה שחויבה במחיר הרגיל
+    // והיא עדיין הראשית - לא משתנה; קבוצה שבה ההזמנה החדשה "הקדימה" ברישום - משתנה) ומחזירים התראות. כשל לא מפיל את השמירה.
+    let sharedDelivery = null;
+    try {
+      const sharedKey = await getSharedGroupKeyForOrder(order.orderId);
+      if (sharedKey) {
+        const rec = await reconcileSharedDelivery({ groupKeys: [sharedKey], excludeOrderIds: [order.orderId], reason: `הזמנה חדשה #${order.orderId}` });
+        if (rec.enabled) {
+          const st = await syncStoredPaymentStatus(order.orderId);
+          sharedDelivery = { notices: rec.notices, self: await getSharedDeliveryInfo(order.orderId), ...(st.changed ? { selfStatus: { from: st.from, to: st.to } } : {}) };
+        }
+      }
+    } catch (sharedErr) {
+      console.error(`Order ${order.orderId}: shared delivery reconcile failed:`, sharedErr);
+      sharedDelivery = { notices: [], self: null, error: 'עדכון המשלוח המשותף של שאר ההזמנות בכתובת נכשל - יש לבדוק את ההזמנות האחרות באותה כתובת' };
+    }
+
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
       include: {
@@ -1088,52 +1109,17 @@ async function POST(request) {
         ? String(updatedOrder.customer.email)
         : null;
       if (autoEmailSetting?.value === 'true' && email) {
-          const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(israelLocalDate(updatedOrder.eventDate) ?? updatedOrder.eventDate) : '');
-          const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
-          const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
-          const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
-          const pickupHours = (await getCachedSetting('standard_pickup_hours'))?.value || '20:00-21:30';
-          const returnHour = (await getCachedSetting('standard_return_hour'))?.value || '13:00';
-
-          // מועד לקיחה/החזרה - אותו חישוב בדיוק כמו app/api/orders/[id]/email/route.js
-          // ו-app/print/order/page.js: לקיחה = יומיים-עסקים לפני האירוע (מדלג שישי/שבת/חג),
-          // החזרה = toDate/returnDate או יום העבודה הראשון אחרי האירוע. הלקיחה והחזרה לפי הכלל האחיד
-          // "יום לא עובד" (שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
-          const nonWorkingDays = await getNonWorkingDaysConfig();
-          const pickupDate = updatedOrder.eventDate ? subtractBusinessDays(updatedOrder.eventDate, 2, nonWorkingDays) : null;
-          const returnByDate = getExpectedReturnDate(updatedOrder, nonWorkingDays);
-          const pickupLine = pickupDate ? `ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${pickupHours}` : '';
-          const returnLine = returnByDate ? `${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${returnHour}` : '';
-
-          // דגם ומידה אמיתיים לכל פריט (לא רק description/sizeText הגולמיים שנשמרו
-          // בזמן ההזמנה) - שאילתה נפרדת עם dressItem->dress, לא נוגעת ב-updatedOrder.items
-          // שכבר שימש למעלה את יומן הביקורת בצורתו הפשוטה.
-          const itemsWithDress = await prisma.orderItem.findMany({
-            where: { orderId: updatedOrder.orderId, isDeleted: false },
-            include: { dressItem: { include: { dress: true } } }
-          });
-          const itemsList = itemsWithDress.map(i => {
-            const modelName = i.dressItem?.dress?.name || i.description || 'פריט';
-            const sizeText = i.sizeText || i.dressItem?.sizeText;
-            return sizeText ? `${modelName} (מידה: ${sizeText})` : modelName;
-          }).join(', ') || 'ללא פירוט';
-
-          const totalObligations = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
-          const totalPayments = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
-          const balance = Math.max(0, totalObligations - totalPayments);
-
-          // fire-and-forget - לא חוסם את תשובת ה-API
-          const { sendSystemEmail } = await import('@/lib/mailer');
-          const { renderOrderConfirmationEmailHtml } = await import('@/lib/emailTemplates');
-          const { emailSubject } = await import('@/lib/emailCatalog');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
-          const html = renderOrderConfirmationEmailHtml({
-            customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
-            orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
-            items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
-            totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone,
-          });
-          sendSystemEmail({ to: email, subject: emailSubject('orderCreatedAuto', { orderId: updatedOrder.orderId, gmachName }), body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
+          // הלוגיקה עברה ל-lib/orderConfirmationMail.js (משותפת לשליחה מיידית ולשליחה מתוזמנת ב-cron/daily). מרכז המיילים
+          // (/admin/email-center): "אחרי X ימים מיצירת ההזמנה" דוחה את השליחה ל-cron היומי; בלי עריכה - נשלח מיד כמו תמיד.
+          const { getEmailConfig } = await import('@/lib/emailConfig');
+          const emailCfg = await getEmailConfig('orderCreatedAuto');
+          if (!emailCfg.orderAfterDays) {
+            const { sendOrderConfirmationEmail } = await import('@/lib/orderConfirmationMail');
+            // בלוק המשלוח (lib/orderDelivery.js): כתובת/מועדים/עלות, שורות פריט (delivery_as_item_row), "שימו לב", וכללי הביקור בגמ"ח (החלטה 27) - תצוגה בלבד;
+            // applyDeliveryCharge כבר רץ למעלה והחיוב נספר בסכומים כמו קודם. null להזמנה שאינה משלוח.
+            const delivery = await loadDeliverySection(updatedOrder);
+            await sendOrderConfirmationEmail(updatedOrder, { emailCfg, delivery }); // fire-and-forget - לא חוסם את תשובת ה-API
+          }
       }
     } catch (e) { console.error('auto email check failed', e); }
 
@@ -1160,7 +1146,7 @@ async function POST(request) {
 
     const warning = [reservationWarning, pricingWarning].filter(Boolean).join('\n\n');
 
-    return NextResponse.json(warning ? { ...updatedOrder, warning } : updatedOrder);
+    return NextResponse.json({ ...updatedOrder, ...(warning ? { warning } : {}), ...(sharedDelivery ? { sharedDelivery } : {}) });
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json(

@@ -117,7 +117,7 @@ export function RefundNav({ current }) {
     { id: 'policy', href: '/admin/refund-policy', label: 'תיעוד המדיניות', sub: 'הסבר כתוב', icon: 'i-receipt' },
   ];
   return (
-    <nav className="rp-nav" aria-label="דפי זיכויים">
+    <nav className="rp-nav" aria-label="דפי זיכויים" data-guide-id="refpl.nav">
       {tabs.map((t) => (
         <Link key={t.id} href={t.href} className={`rp-nav-tab${t.id === current ? ' on' : ''}`} aria-current={t.id === current ? 'page' : undefined}>
           <Icon id={t.icon} /><span><b>{t.label}</b><small>{t.sub}</small></span>
@@ -207,7 +207,8 @@ const differs = (k, a, b) => {
   return Math.abs(Number(a) - Number(b)) > 1e-9;
 };
 
-export function ApplyPanel({ policy, pol, baseline, names, loadState, onApplied, onReset }) {
+// מדריך האתר: guide = refpl.apply (מתכנן) / refsim.apply (סימולטור) - lib/aiGuide/areas/ops.targets.js
+export function ApplyPanel({ policy, pol, baseline, names, loadState, onApplied, onReset, guide }) {
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -236,7 +237,7 @@ export function ApplyPanel({ policy, pol, baseline, names, loadState, onApplied,
   };
 
   return (
-    <div className="card card-pad rp-actions">
+    <div className="card card-pad rp-actions" data-guide-id={guide}>
       <div className={`rp-dirty${changes.length ? ' on' : ''}`}>
         <span className="dot" />
         {loadState !== 'ok' ? 'ההגדרות החיות לא נטענו - אי אפשר לשמור.'

@@ -99,6 +99,7 @@ export default function PageVariantToggle({ screen, placement = 'header', system
       <button
         type="button"
         className="gm-pvt-btn"
+        data-guide-id="disp.variant-toggle"
         aria-label={label}
         {...(systemTip ? { 'data-tip': label } : {})}
         aria-busy={busy ? 'true' : undefined}

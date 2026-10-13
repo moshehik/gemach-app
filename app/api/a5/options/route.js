@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
 import { sizeKey, sizeSpellings } from '@/lib/searchNormalize';
+import { isWholeSizeKey, pickSizeMenu } from '@/lib/sizeSort';
 
 // הצעות לשדות הטקסט של החיפוש המתקדם ב-/a5. קריאה בלבד.
 // GET /api/a5/options?key=<first|last|name|phone|city|oid|item|model|emp|size|q>&focus=<...>&typed=<טקסט>
@@ -91,8 +94,9 @@ async function orderIds(typed) {
 
 async function models(typed) {
   const where = { isDeleted: false, name: typed ? { contains: typed } : { not: null } };
-  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true } });
-  const all = clean(rows.map((r) => r.name));
+  const rows = await prisma.dressModel.findMany({ where, orderBy: typed ? { name: 'asc' } : { updatedAt: 'desc' }, take: typed ? POOL : LIMIT, select: { name: true, barcodePrefix: true } });
+  const mOpts = await getModelDisplayOpts(); // שם אמיתי, אחרת המספר (lib/modelDisplay.js)
+  const all = clean(rows.map((r) => modelDisplayName(r, { ...mOpts, fallback: '' })));
   if (!typed) return finish(all);
   const starts = all.filter((n) => n.startsWith(typed));
   return finish(starts.length >= LIMIT ? starts : all);
@@ -129,7 +133,10 @@ async function employees(typed) {
 async function sizes(typed) {
   // "2" מציע גם "02" (כתיבים שקולים מתאחדים לאחד, בכתיב הנפוץ ביותר ב-DB) - lib/searchNormalize.js sizeKey / sizeSpellings
   const where = { isDeleted: false };
-  if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed)])].map((s) => ({ sizeText: { startsWith: s } }));
+  // הקלדה חלקית של עשרוני ("6." / "6.1"): גם הכתיבים עם אפס מוביל ("06.1" ב-DressItem, "6.1" ב-OrderItem) — איחוד כתיב בלבד, 12.10.2026
+  const partial = /^(\d{1,3})[.,](\d*)$/.exec(typed);
+  const partialSpellings = partial ? [partial[1], partial[1].padStart(2, '0'), partial[1].padStart(3, '0')].map((w) => `${w}.${partial[2]}`) : [];
+  if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed), ...partialSpellings])].map((s) => ({ sizeText: { startsWith: s } }));
   else where.sizeText = { not: null };
   // מידות עשרוניות (38.1, 38.2, 06.1) הן מידות נפרדות ולא "האפשרויות" של 38 - לא מוצעות כשמקלידים "38"; מופיעות רק כשמקלידים נקודה ("38."). דיווח 27b0f8a5
   if (!typed.includes('.')) where.AND = [{ NOT: { sizeText: { contains: '.' } } }];
@@ -143,7 +150,10 @@ async function sizes(typed) {
     const g = groups.get(key);
     if (!g || n > g.count) groups.set(key, { display: raw, count: n });
   }
-  return finish([...groups.values()].map((g) => g.display));
+  // רק מידות שלמות ("36א" / "38-40" / "XL" לא מוצעות כשמקלידים "36") אלא אם הוקלד במפורש תו שאינו ספרה — נושא 12, 12.10.2026,
+  // אותו כלל כמו בבדיקת מלאי (lib/sizeSort.js pickSizeMenu). "38.0" מוצג כ-"38".
+  const wanted = pickSizeMenu([...groups.entries()].map(([key, g]) => ({ key, v: g.display, whole: isWholeSizeKey(key) })), typed);
+  return finish(wanted.map((g) => (isWholeSizeKey(g.key) && !/^\d{1,3}$/.test(g.v) ? g.key : g.v)));
 }
 
 async function settingNames(typed) {

@@ -4,12 +4,14 @@
 // (ברקוד מלא, או הסיומת מידה+סידורי) - מעבירה ללשונית "פריטים", מנקה סינון, פותחת את פירוט השורה ומדגישה אותה. אין השכרה/החזרה כאן (זה כרטיס מלאי).
 // שוויון עם הישן: ModernDressItemsTab highlightBarcode - איתור, הדגשה וגלילה; "לא נמצא" כשהברקוד לא בדגם.
 import { useEffect, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import OcIcon from '../order-card/OcIcon';
 import { bcFor, scanMatch } from '@/lib/dressCardLogic';
 
 const MSG_MS = 2600;
 
 export default function DcScanBar({ dc }) {
+  const nf = useNoFill();
   const [val, setVal] = useState('');
   const [msg, setMsg] = useState(null); // {text, cls}
   const inRef = useRef(null);
@@ -30,21 +32,20 @@ export default function DcScanBar({ dc }) {
     if (inRef.current) inRef.current.focus();
   };
   return (
-    <div className="sbar" id="sbar">
+    <div className="sbar" id="sbar" data-guide-id="dc.scan">
       <div className="inpw">
         <OcIcon name="scan" />
         <input
           ref={inRef}
           className="inp"
           id="scanIn"
-          name="barcode-nofill"
+          {...nf('barcode')}
           inputMode="numeric"
           placeholder="ברקוד: סרקו או הקלידו..."
           aria-label="סריקת ברקוד של פריט בדגם"
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }}
-          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

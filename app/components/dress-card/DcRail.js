@@ -77,15 +77,15 @@ export default function DcRail({ dc, ui }) {
     const r = await ui.openDialog(DcInactiveDialog, { active: true, reason: m.reason, exit: m.exit, entry: m.entry });
     if (r) dc.setActive(false, { reason: r.reason, exit: r.date });
   };
-  const chip = (cls, icn, txt, onClick, label) => (
-    <button type="button" className={`gl ${cls}`} aria-label={label} onClick={onClick}><OcIcon name={icn} /><span className="gv">{txt}</span></button>
+  const chip = (cls, icn, txt, onClick, label, gid) => (
+    <button type="button" className={`gl ${cls}`} aria-label={label} data-guide-id={gid} onClick={onClick}><OcIcon name={icn} /><span className="gv">{txt}</span></button>
   );
 
   return (
     <div className="rcard cart" ref={rootRef}>
       <div className="sec-h"><OcIcon name="list" size="sm" /><span>סיכום</span></div>
-      <div className="glance">
-        {chip(`sig ${m.active ? 'yes' : 'no'}`, m.active ? 'check' : 'ban', m.active ? 'פעיל' : 'לא פעיל', toggleActive, m.active ? 'הדגם פעיל — לחיצה לסימון כלא פעיל' : 'הדגם לא פעיל — לחיצה להחזרה לפעילות')}
+      <div className="glance" data-guide-id="dc.rail-glance">
+        {chip(`sig ${m.active ? 'yes' : 'no'}`, m.active ? 'check' : 'ban', m.active ? 'פעיל' : 'לא פעיל', toggleActive, m.active ? 'הדגם פעיל — לחיצה לסימון כלא פעיל' : 'הדגם לא פעיל — לחיצה להחזרה לפעילות', 'dc.rail-status')}
         {chip('items-c', 'box', `${cn.n} פריטים`, () => dc.goFilter('all'), 'כל הפריטים')}
         {chip('avail', 'check', `${cn.avail} זמינים`, () => dc.goFilter('avail'), 'פריטים זמינים')}
         {chip('rep', 'scissors', `${cn.repair} בתיקון`, () => dc.goFilter('repair'), 'פריטים בתיקון')}
@@ -93,7 +93,7 @@ export default function DcRail({ dc, ui }) {
         {chip('res', 'flag', `${cn.reserve} ברזרבה`, () => dc.goFilter('reserve'), 'פריטים ברזרבה')}
       </div>
       <div className="cart-h">
-        <button type="button" className="cart-t" data-act="cart-toggle" data-oc-focus-fallback="1" aria-expanded={sheet ? open : true} onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="cart-t" data-guide-id="dc.rail-changes" data-act="cart-toggle" data-oc-focus-fallback="1" aria-expanded={sheet ? open : true} onClick={() => setOpen((v) => !v)}>
           <OcIcon name="cart" size="sm" /><b>שינויים בכרטיס</b><span className="badge">{count}</span><span className="cart-sum" /><OcIcon name="chev" size="sm" />
         </button>
         {dc.redoCount ? (
@@ -115,8 +115,8 @@ export default function DcRail({ dc, ui }) {
       </div>
       {dirty ? (
         <div className="cart-actions enter">
-          <button type="button" className="btn primary lg block" data-act="save" disabled={saving} onClick={() => dc.save()}><OcIcon name="check" />שמור</button>
-          <button type="button" className="btn ghost block sec" data-act="discard" disabled={saving} onClick={() => dc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button>
+          <button type="button" className="btn primary lg block" data-guide-id="dc.rail-save" data-act="save" disabled={saving} onClick={() => dc.save()}><OcIcon name="check" />שמור</button>
+          <button type="button" className="btn ghost block sec" data-guide-id="dc.rail-discard" data-act="discard" disabled={saving} onClick={() => dc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button>
         </div>
       ) : null}
     </div>

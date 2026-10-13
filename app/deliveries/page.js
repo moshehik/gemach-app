@@ -258,7 +258,7 @@ export default function DeliveriesPage() {
           <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : filteredRows.length}</div>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => openPrintModal('courier-print')}>
+          <button type="button" className="btn btn-secondary" data-guide-id="del.print" onClick={() => openPrintModal('courier-print')}>
             <svg className="icon"><use href="#i-printer" /></svg>
             הדפסת משלוחים
           </button>
@@ -283,7 +283,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* ניווט תאריך: קודם/היום/הבא + בורר תאריך עברי מלא */}
-      <div className="toolbar">
+      <div className="toolbar" data-guide-id="del.date-nav">
         <button type="button" className="btn btn-secondary btn-icon-only" onClick={goPrevDay} title="יום קודם">
           <svg className="icon"><use href="#i-chevron-end" /></svg>
         </button>
@@ -298,7 +298,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* סרגל חיפוש חופשי (הזמנה/לקוח/טלפון) */}
-      <div className="toolbar">
+      <div className="toolbar" data-guide-id="del.search">
         <div className="search-toolbar">
           <svg className="icon"><use href="#i-search" /></svg>
           <input
@@ -318,7 +318,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* סינון כיוון משלוח + 18 טווח */}
-      <div className="pill-tabs" style={{ marginBottom: '12px' }}>
+      <div className="pill-tabs" data-guide-id="del.direction-filter" style={{ marginBottom: '12px' }}>
         <button type="button" onClick={() => setDirectionFilter('all')} className={directionFilter === 'all' ? 'pill-tab active' : 'pill-tab'}>
           <svg className="icon"><use href="#i-list" /></svg> הכל
         </button>
@@ -330,7 +330,7 @@ export default function DeliveriesPage() {
         </button>
       </div>
       {rangeEnabled && (
-        <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+        <div className="pill-tabs" data-guide-id="del.range" style={{ marginBottom: '20px' }}>
           {[{ v: 'day', l: 'יום אחד' }, { v: 'week', l: 'שבוע' }, { v: '2weeks', l: 'שבועיים' }, { v: 'month', l: 'חודש' }].map(o => (
             <button key={o.v} type="button" onClick={() => setRangeMode(o.v)} className={rangeMode === o.v ? 'pill-tab active' : 'pill-tab'}>{o.l}</button>
           ))}
@@ -382,7 +382,7 @@ export default function DeliveriesPage() {
         </div>
       )}
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-guide-id="del.table">
         <div className="table-scroll">
           <table className="data">
             <thead>
@@ -436,9 +436,9 @@ export default function DeliveriesPage() {
             </div>
             <div className="modal-body">
               <div className="pill-tabs" style={{ marginBottom: '16px' }}>
-                <button type="button" className={`pill-tab${printAction === 'courier-print' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-print'); setEmailResult(null); }}>הדפסה למשלוחן</button>
-                <button type="button" className={`pill-tab${printAction === 'courier-email' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-email'); setEmailResult(null); }}>שליחה במייל</button>
-                <button type="button" className={`pill-tab${printAction === 'bag-label' ? ' active' : ''}`} onClick={() => { setPrintAction('bag-label'); setEmailResult(null); }}>הדפסת נתונים לשקית</button>
+                <button type="button" data-guide-id="del.print-courier" className={`pill-tab${printAction === 'courier-print' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-print'); setEmailResult(null); }}>הדפסה למשלוחן</button>
+                <button type="button" data-guide-id="del.print-email" className={`pill-tab${printAction === 'courier-email' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-email'); setEmailResult(null); }}>שליחה במייל</button>
+                <button type="button" data-guide-id="del.print-bag" className={`pill-tab${printAction === 'bag-label' ? ' active' : ''}`} onClick={() => { setPrintAction('bag-label'); setEmailResult(null); }}>הדפסת נתונים לשקית</button>
               </div>
 
               {printAction === 'bag-label' ? (
@@ -471,7 +471,7 @@ export default function DeliveriesPage() {
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => setShowPrintModal(false)} disabled={emailSending}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={submitPrintModal} disabled={emailSending}>
+              <button type="button" className="btn btn-primary" data-guide-id="del.print-submit" onClick={submitPrintModal} disabled={emailSending}>
                 {emailSending ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
                 {printAction === 'courier-email' ? (emailSending ? 'שולח...' : 'שליחה') : 'הדפסה'}
               </button>

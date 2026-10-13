@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { modelDisplayName } from '@/lib/modelDisplay';
+import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
@@ -6,6 +8,8 @@ import { verifySecret } from '@/lib/passwordAuth';
 import { hasPermission } from '@/lib/permissions';
 import { notifyManagers } from '@/lib/notifyManagers';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
+import { filterItemsForBarcode, matchesDifferInAlterations } from '@/lib/rentalItemMatch';
+import { barcodeFeatureFor, openElsewhereError } from '@/lib/schedule/barcodeFeature';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -46,7 +50,18 @@ export async function POST(request) {
         const allS = await getAllCachedSettings();
         const invalidOn = allS.find(s => s.key === 'barcode_invalid_list')?.value === 'true';
         const manualOn = allS.find(s => s.key === 'manual_barcode_double_entry')?.value === 'true';
-        if (invalidOn && itemIdToForce) {
+        // itemIdToForce חייב להיות פריט פעיל של ההזמנה הזו שעוד אין לו ברקוד (או שהברקוד שלו הוא זה שנשלח) - אחרת אפשר היה לדרוס ברקוד של
+        // כל פריט במערכת (docs/schedule-barcode-plan.md, H4). לקוח תקין תמיד שולח פריט כזה, ולכן אין שינוי התנהגות עבורו.
+        // ההקשחה פעילה **רק כשברקוד בלו"ז דלוק להזמנה הזו** (barcodeFeatureFor); כבוי (ברירת המחדל בשני הגמ"חים) = בדיוק ההתנהגות של origin/main
+        // (סקירת אבטחה 12.10.2026, ממצא 27: אסור לשנות התנהגות בגמ"ח הראשי כשכל הדגלים כבויים).
+        const hardenForce = itemIdToForce ? !!(await barcodeFeatureFor(parseInt(orderId))) : false;
+        const forceOk = !itemIdToForce
+          ? false
+          : (!hardenForce || !!(await prisma.orderItem.findFirst({
+              where: { id: String(itemIdToForce), orderId: parseInt(orderId), isDeleted: false, OR: [{ barcode: null }, { barcode: barcode }, { barcodeInvalid: true }] },
+              select: { id: true }
+            })));
+        if (invalidOn && itemIdToForce && forceOk) {
           try {
             await prisma.orderItem.update(auditAs(
               'BARCODE_INVALID',
@@ -60,7 +75,7 @@ export async function POST(request) {
         }
         // 31 - אם manualEntry + confirm + חתימה וההגדרה מופעלת - מאפשרים הקלדה ידנית (האימות הכפול נעשה ב-UI)
         if (manualOn && manualEntry === true && manualConfirm === true && manualSignature) {
-          if (itemIdToForce) {
+          if (itemIdToForce && forceOk) {
             try {
               // enforce_rental_barcode_match (ברירת מחדל כבוי): גם בהקלדה ידנית של ברקוד שלא קיים
               // במאגר אפשר לפענח דגם/מידה מהספרות ולבדוק מול הפריט שהוזמן; עקיפה - באישור מנהל.
@@ -87,7 +102,7 @@ export async function POST(request) {
                   ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
                   : null;
                 const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
-                const dressLabel = manualItem.dressItem?.dress?.name || (manualItem.dressItem?.dress?.barcodePrefix ? `דגם ${manualItem.dressItem.dress.barcodePrefix}` : null);
+                const dressLabel = modelDisplayName(manualItem.dressItem?.dress, { ...(await getModelDisplayOpts()), fallback: '' }) || null; // שם אמיתי, אחרת מספר הדגם
                 await notifyManagers({
                   title: 'הוקלד ברקוד ידנית בהשכרה',
                   content: `${actingName} הקליד/ה ידנית את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} בהזמנה #${order.orderId} (הסריקה הרגילה לא זיהתה את הברקוד).`
@@ -170,7 +185,7 @@ export async function POST(request) {
               ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
               : null;
             const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
-            const dressLabel = dressItem.dress?.name || (dressItem.dress?.barcodePrefix ? `דגם ${dressItem.dress.barcodePrefix}` : null);
+            const dressLabel = modelDisplayName(dressItem.dress, { ...(await getModelDisplayOpts()), fallback: '' }) || null; // שם אמיתי, אחרת מספר הדגם
             await notifyManagers({
               title: 'הושכר פריט רזרבה (אישור אחראית משמרת)',
               content: `${actingName} השכיר/ה מהרזרבה את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} (מיקום "${dressItem.location}") בהזמנה #${order.orderId}.`
@@ -182,12 +197,7 @@ export async function POST(request) {
       }
     }
 
-    // Extract size and prefix from barcode as per Access logic
-    const prefixStr = barcode.substring(0, barcode.length - 4);
-    const sizeStr = barcode.substring(barcode.length - 4, barcode.length - 2);
-    
-    const barcodePrefix = parseInt(prefixStr);
-    
+    // הפענוח (קידומת + מידה) והתאמת הפריטים בהזמנה: lib/rentalItemMatch.js - אותו כלל גם בחלונית הברקוד של הלו״ז.
     // 3+4+5. Three more independent read-only lookups (same-order check, unreturned-rental
     // check, and the candidate items of this order) — fetched in parallel; the checks below
     // still run in the original order so the returned error stays the same one as before.
@@ -238,6 +248,14 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
+    // ברקוד בלו״ז (פעיל רק כשההגדרה לסוג ההזמנה דולקת): אותו ברקוד לא רשום בהכנה בהזמנה אחרת (docs/schedule-barcode-plan.md H11)
+    if (await barcodeFeatureFor(parseInt(orderId))) {
+      const elsewhere = await openElsewhereError(barcode, { orderId: parseInt(orderId) });
+      if (elsewhere && elsewhere.code === 'prepped_elsewhere') {
+        return NextResponse.json({ error: elsewhere.message, preppedElsewhere: true, otherOrderId: elsewhere.extra && elsewhere.extra.otherOrderId }, { status: 409 });
+      }
+    }
+
     // 5. Find matching OrderItem(s) in this order
     // In Access: orderId, barcodePrefix=prefix, size=size, barcode IS NULL, מחוק=0
     // Wait, size in OrderItem is currently sizeText. But we need to match by size numeric or sizeText.
@@ -246,13 +264,7 @@ export async function POST(request) {
     // Let's find order items in this order that match prefix and size.
     // sizeText in DressItem might be "38", "40", etc. which matches sizeStr.
     
-    const sizeVal = parseInt(sizeStr);
-
-    const matchingItems = potentialItems.filter(item => {
-      const pfx = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
-      const sz = item.dressItem?.sizeText || item.sizeText || '';
-      return pfx === barcodePrefix && parseInt(sz) === sizeVal;
-    });
+    const matchingItems = filterItemsForBarcode(potentialItems, barcode);
 
     // 6. No matching items
     if (matchingItems.length === 0) {
@@ -262,11 +274,7 @@ export async function POST(request) {
     // 7. Handle multiple matches
     if (matchingItems.length > 1 && !itemIdToForce) {
       // Check if they have different alterations
-      const isDuplicate = matchingItems.some(item => 
-        item.neckAlteration !== matchingItems[0].neckAlteration ||
-        item.lengthAlteration !== matchingItems[0].lengthAlteration ||
-        item.sleeveAlteration !== matchingItems[0].sleeveAlteration
-      );
+      const isDuplicate = matchesDifferInAlterations(matchingItems);
 
       if (isDuplicate) {
         return NextResponse.json({
@@ -283,18 +291,30 @@ export async function POST(request) {
       if (forcedItem) itemToUpdate = forcedItem;
     }
 
-    const updatedItem = await prisma.orderItem.update({
-      where: { id: itemToUpdate.id },
-      data: {
-        barcode: barcode,
-        isTaken: false // Will be set to true on confirm
-      },
-      include: {
-        dressItem: {
-          include: { dress: true }
+    // תנאי barcode:null בכתיבה עצמה: שתי עובדות שסורקות בו-זמנית לאותו פריט - השנייה לא דורסת בשקט את הראשונה (H3 בתכנון הברקוד).
+    // P2025 = הפריט כבר קיבל ברקוד / נמחק בין הקריאה לכתיבה. אותו ברקוד = הצלחה אידמפוטנטית; אחרת 409 ורענון.
+    let updatedItem;
+    try {
+      updatedItem = await prisma.orderItem.update({
+        where: { id: itemToUpdate.id, barcode: null, isDeleted: false },
+        data: {
+          barcode: barcode,
+          isTaken: false // Will be set to true on confirm
+        },
+        include: {
+          dressItem: {
+            include: { dress: true }
+          }
         }
+      });
+    } catch (writeErr) {
+      if (writeErr && writeErr.code === 'P2025') {
+        const current = await prisma.orderItem.findUnique({ where: { id: itemToUpdate.id }, include: { dressItem: { include: { dress: true } } } });
+        if (current && !current.isDeleted && current.barcode === barcode) return NextResponse.json(current);
+        return NextResponse.json({ error: 'הפריט כבר נסרק על ידי עובדת אחרת - רעננו את ההזמנה', raced: true }, { status: 409 });
       }
-    });
+      throw writeErr;
+    }
 
     return NextResponse.json(updatedItem);
   } catch (error) {

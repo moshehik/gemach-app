@@ -64,6 +64,27 @@ eq('sanitizeStoredState: bad res dropped, bad view -> rows', ui.sanitizeStoredSt
 eq('flexAxis on: 12 -> 8,10 | 12 | 14,16', ui.flexAxis('12', true).map((p) => p.label + ':' + p.state), ['8:out', '10:cand', '12:mid', '14:cand', '16:out']);
 eq('flexAxis off: neighbours stay out', ui.flexAxis('12', false).map((p) => p.state), ['out', 'out', 'mid', 'out', 'out']);
 eq('flexAxis size 2 keeps 0, drops negatives', ui.flexAxis('02', true).map((p) => p.label + ':' + p.state), [':none', '0:cand', '02:mid', '4:cand', '6:out']);
+/* ---------- נושא 12 (12.10.2026): תפריט המידות — מידות שלמות בלבד (lib/sizeSort.js) ---------- */
+const ss = await import(pathToFileURL(path.join(PROJ, 'lib/sizeSort.js')).href);
+eq('isNumericSize (ui): "38.0" / "038" whole, "38.5" / "06.1" not', ['38.0', '038', ' 7 ', '38.5', '06.1', '', 'XL'].map(ui.isNumericSize), [true, true, true, false, false, false, false]);
+eq('sizeOptionsQuery: digits only -> full whole-size list (empty query)', ['', '3', '36', '12 3', '12,'].map(ui.sizeOptionsQuery), ['', '', '', '', '']);
+eq('sizeOptionsQuery: a non-digit char is sent so the server may add exceptional sizes', ['06.', '36א', 'XL', '12 36א', 'כ'].map(ui.sizeOptionsQuery), ['06.', '36א', 'XL', '36א', 'כ']);
+eq('isWholeSize', ['38', '038', ' 38 ', '38.0', '38,00', '0', '00', '999', '1000', '38.5', '06.1', '36א', '38-40', 'XL', '', null].map(ss.isWholeSize),
+  [true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false]);
+eq('typedWantsOtherSizes', ['', '3', '36', '36 ', '06.', '36א', 'XL', 'כ', '38-'].map(ss.typedWantsOtherSizes), [false, false, false, false, true, true, true, true, true]);
+{
+  // תמונת נווה יעקב: מעורב, עם עשרוניות, אות עברית, טווח, מידה ריקה
+  const rows = [['06', 120], ['6', 12], ['08', 203], ['8', 37], [' 32', 7], ['32', 90], ['36', 100], ['36.0', 2], ['06.1', 4], ['00.5', 1], ['01.8', 2], ['36א', 1], ['38-40', 1], ['XL', 1], ['', 1], [null, 1], ['40', 5], ['40.5', 1]].map(([sizeText, count]) => ({ sizeText, count }));
+  const groups = ss.groupSizeRows(rows);
+  eq('groupSizeRows: equivalent spellings merge; most common spelling shown; "36.0" shows as the whole', groups.filter((g) => g.whole).map((g) => [g.key, g.v, g.count]),
+    [['6', '06', 132], ['8', '08', 240], ['32', '32', 97], ['36', '36', 102], ['40', '40', 5]]);
+  eq('pickSizeMenu: default = whole sizes only (the owner complaint)', ss.pickSizeMenu(groups, '').map((g) => g.v), ['06', '08', '32', '36', '40']);
+  eq('pickSizeMenu: digits typed -> still whole only', ss.pickSizeMenu(groups, '3').map((g) => g.v), ['06', '08', '32', '36', '40']);
+  eq('pickSizeMenu: typed "06." -> other sizes become eligible (match fn narrows)', ss.pickSizeMenu(groups, '06.', (g, t) => g.v.includes(t)).map((g) => g.v), ['06.1']);
+  eq('pickSizeMenu: typed "XL" -> XL', ss.pickSizeMenu(groups, 'XL', (g, t) => g.v.includes(t)).map((g) => g.v), ['XL']);
+  eq('pickSizeMenu: typed "40." -> true decimal 40.5 only (40 is a whole size, not matched by "40.")', ss.pickSizeMenu(groups, '40.', (g, t) => g.v.includes(t)).map((g) => g.v), ['40.5']);
+  eq('blank sizeText is the general size, never in the whole menu', groups.filter((g) => g.key === 'כללי').map((g) => [g.v, g.whole, g.count]), [['כללי', false, 2]]);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

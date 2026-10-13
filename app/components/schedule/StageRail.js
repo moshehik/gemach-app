@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import ScheduleIcon from './ScheduleIcon';
 import { STAGE_META, STAGE_ORDER, UPDATED_META, stageLabel } from './scheduleMeta';
 
@@ -12,6 +13,7 @@ import { STAGE_META, STAGE_ORDER, UPDATED_META, stageLabel } from './scheduleMet
 //
 // חוזה לסוכן הברקוד/הסימון: onScan(code) נקרא ב-Enter בשדה הברקוד. בלי handler השדה מרונדר כבוי (disabled) באותו מראה.
 export default function StageRail({ data, loading, filter, onFilter, onScan, updatedCount = null }) {
+  const nf = useNoFill();
   const [code, setCode] = useState('');
   const byKey = {};
   if (data) data.stages.forEach((s) => { byKey[s.key] = s; });
@@ -27,20 +29,19 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
     if (onScan) onScan(v);
   }
   return (
-    <aside className="rail lz-rail" aria-label="שלבי התהליך">
+    <aside className="rail lz-rail" data-guide-id="sched.rail" aria-label="שלבי התהליך">
       <div className={'st-sidenav lz-snav' + (loading ? ' lz-loading' : '')}>
         <div className="lz-rh">שלבי היום</div>
-        <div className="sbar" id="sbar">
+        <div className="sbar" id="sbar" data-guide-id="sched.scan">
           <div className="inpw">
             <ScheduleIcon name="scan" />
             <input
               className="inp"
               id="scanIn"
-              name="barcode-nofill"
+              {...nf('barcode')}
               placeholder=""
               aria-label="הקלדת ברקוד: סרקו או הקלידו קוד לסימון בוצע"
               data-tip="ברקוד"
-              autoComplete="off"
               data-lpignore="true"
               data-1p-ignore=""
               data-form-type="other"
@@ -55,9 +56,10 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
           <button
             type="button"
             className={'st-stab lz-stab' + (!filter ? ' on' : '')}
+            data-guide-id="sched.rail-all"
             aria-pressed={!filter}
             onClick={() => onFilter(null)}
-            data-tip="הצגת כל השלבים"
+            data-tip={data ? 'הצגת כל השלבים · ' + allTotal + ' פריטים' : 'הצגת כל השלבים'}
           >
             <span className="st-sic"><ScheduleIcon name="rows" /></span>
             <span className="st-slb">
@@ -78,9 +80,10 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
             // מוצג מעומעם (fut) בלי כיתוב: החלטת הבעלים 4.10.2026 (SCH-EMPTY-TXT = ב') הסירה את "אין פעולות" שמתחת לשם.
             let line = '';
             if (s) {
+              // הבעלים (12.10.2026): בריחוף על שורה יצוף מספר הפריטים בה - לכן הטולטיפ פותח במספר הפריטים הכולל, ואחריו לביצוע / בוצע
               if (!total) line = 'אין פעולות';
               else if (isInfo) line = total + ' ' + s.plural;
-              else line = 'לביצוע ' + total + ' · בוצע ' + done;
+              else line = total + ' פריטים · לביצוע ' + (total - done) + ' · בוצע ' + done;
             }
             const label = s ? stageLabel(s) : meta.label;
             const tip = s ? label + ': ' + line + (alerts ? ' · ' + alerts + ' התראות' : '') + (s.shiftLabel ? ' · משמרת ' + s.shiftLabel : '') + ' · לחיצה לסינון' : label;
@@ -91,6 +94,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
                 type="button"
                 className={'st-stab lz-stab' + (s && !total ? ' fut' : '') + (filter === k ? ' on' : '')}
                 style={{ '--pc': 'var(' + meta.color + ')' }}
+                data-guide-id={`sched.rail-${k}`}
                 aria-pressed={filter === k}
                 onClick={() => onFilter(k)}
                 data-tip={tip}
@@ -118,9 +122,10 @@ export default function StageRail({ data, loading, filter, onFilter, onScan, upd
               type="button"
               className={'st-stab lz-stab' + (updatedCount === 0 ? ' fut' : '') + (filter === 'updated' ? ' on' : '')}
               style={{ '--pc': 'var(' + UPDATED_META.color + ')' }}
+              data-guide-id="sched.rail-updated"
               aria-pressed={filter === 'updated'}
               onClick={() => onFilter('updated')}
-              data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount) + ' · לחיצה לסינון'}
+              data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount + ' הזמנות') + ' · לחיצה לסינון'}
             >
               <span className="st-sic">
                 <ScheduleIcon name={UPDATED_META.icon} />

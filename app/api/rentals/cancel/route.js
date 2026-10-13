@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
-import prisma, { auditAs } from '../../../lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { lazyAutoUnmarkHandover } from '@/lib/schedule/barcodeFeature';
 
 export async function PUT(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -39,6 +40,9 @@ export async function PUT(request) {
         barcode: { from: item.barcode, to: null }
       }
     ));
+
+    // ברקוד בלו״ז: אחרי ביטול לקיחה, סימון המסירה של ההזמנה (אם יש) מתבטל כי היא כבר לא נמסרה במלואה (no-op כשההגדרה כבויה; לא זורק)
+    if (item.orderId) await lazyAutoUnmarkHandover(item.orderId, { userId: await getActingEmployeeId() });
 
     return NextResponse.json({ success: true });
   } catch (error) {

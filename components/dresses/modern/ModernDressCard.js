@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { modelHasRealName } from '../../../lib/modelDisplay';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const TABS = [
@@ -58,7 +59,7 @@ export default function ModernDressCard({
     <>
       <div className="page-head">
         <div>
-          <h1>{modelTitle}{dress.name ? ` — ${dress.name}` : ''}</h1>
+          <h1>{modelTitle}{modelHasRealName(dress) ? ` — ${dress.name}` : ''}</h1>
           <div className="page-desc">{descParts.join(' · ')}</div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
             {dress.isDeleted ? (

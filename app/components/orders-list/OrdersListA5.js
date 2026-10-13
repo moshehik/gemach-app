@@ -150,12 +150,13 @@ function OrdersList() {
   return (
     <>
       <A5ListPage
-        title="הזמנות" backId="ordBack" onBack={() => router.push('/admin')}
+        title="הזמנות" backId="ordBack" guide="ol" onBack={() => router.push('/admin')}
         slotId={SLOT_ID} cardIcon="file" cardTitle="רשימת הזמנות"
-        cardAction={<button type="button" className="btn navy" id="btnNew" onClick={() => router.push('/orders/new')}><Ic id="plus" />הזמנה חדשה</button>}
+        cardAction={<button type="button" className="btn navy" id="btnNew" data-guide-id="ol.new" onClick={() => router.push('/orders/new')}><Ic id="plus" />הזמנה חדשה</button>}
       >
         <A5List
           ref={listRef}
+          guide="ol"
           items={rows}
           getId={(r) => r.orderId}
           texts={{ placeholder: 'חיפוש הזמנה (מספר הזמנה, שם לקוח, טלפון, ברקוד, דגם, תאריך עברי)…', aiPlaceholder: 'בקשו מה-AI למצוא הזמנות (למשל: הזמנות עם חוב מהחודש שעבר)…', countLabel: 'הזמנות', emptyText: 'לא נמצאו הזמנות התואמות את החיפוש' }}

@@ -4,8 +4,10 @@
 // renderInfo / lifeCard / histCfg ב-model-card.js. הנתונים: AuditLog אמיתי (/api/audit לדגם ולפריטים - כמו הלשונית "מידע" הישנה), מנורמל לשורות
 // בעיצוב המאושר ב-lib/dressCardLogic.buildDressHistoryRows (לפני/אחרי מחושבים מהרישומים הקודמים - ר' תיעוד הפונקציה).
 import { useMemo } from 'react';
+// מדריך האתר (lib/aiGuide/areas/people.targets.js): guide="dch" ל-A5List מוסיף data-guide-id dch.search, dch.filter, dch.export-excel (נבנים בתוך a5-list).
 import { A5List } from '../../a5-list';
 import OcIcon from '../../order-card/OcIcon';
+import { modelDisplayName } from '@/lib/modelDisplay';
 import { runListExport } from '../../a5-list';
 import { sayOf } from '../dcPrint';
 import useDcListAi from '../useDcListAi';
@@ -60,7 +62,7 @@ export default function DcHistoryTab({ dc, ui }) {
         <div className="card cust">
           <div className="card-h"><div className="ico gold"><OcIcon name="info" size="lg" /></div><h2>נתוני מערכת</h2></div>
           <div className="kv">
-            {nameShown ? <Vf icon="tag" label="שם דגם" value={m.name} /> : null}
+            {nameShown ? <Vf icon="tag" label="שם דגם" value={modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' })} /> : null}
             <Vf icon="box" label="קידומת ברקוד" value={m.code} bdi />
             <Vf icon="cal" label="נכנס למאגר" value={m.entry ? hFull(m.entry) + (createRow ? ` · ${createRow.ts.slice(11)}` : '') : ''} />
             <Vf icon="clock" label="עודכן לאחרונה" value={lastUpdate && lastUpdate.day ? `${hFull(lastUpdate.day)} · ${lastUpdate.time}` : ''} />
@@ -80,6 +82,7 @@ export default function DcHistoryTab({ dc, ui }) {
       <div className="card hist">
         <div className="card-h"><div className="ico gold"><OcIcon name="clock" size="lg" /></div><h2>פעולות ושינויים</h2></div>
         <A5List
+          guide="dch"
           items={aiS.narrow(rows, (l, f) => !!l.bc && f.bcs.has(l.bc))}
           getId={(l) => l.id}
           loading={logs.status === 'loading' || logs.status === 'idle'}
@@ -128,7 +131,7 @@ export default function DcHistoryTab({ dc, ui }) {
           onOpen={null}
           exportSpec={{
             what: 'יומן השינויים',
-            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `יומן שינויים · דגם ${cur.model.code}`, subtitle: cur.model.name, head, rows: rowsOf(vis), base: `יומן-דגם-${cur.model.code}` }),
+            onExport: (kind, vis) => runListExport({ kind, say: sayOf(ui), title: `יומן שינויים · דגם ${cur.model.code}`, subtitle: modelDisplayName({ name: cur.model.name, barcodePrefix: cur.model.code }, { fallback: '' }), head, rows: rowsOf(vis), base: `יומן-דגם-${cur.model.code}` }),
           }}
         />
         {aiS.modal}

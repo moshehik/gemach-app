@@ -5,7 +5,7 @@
 // "חיוב אשראי" רק כש-nedarim_plus_enabled לא 'false', חיוב שבוצע לא ניתן להסרה. R27/R31/R28 - ב-controller.
 // פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
-import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
+import { Blk, Ic, OneCard, SubH, Switch, Tip, money } from './NoUi';
 import { CalcErrorNote } from './NoDeliveryBits';
 import { MANAGER_EXIT_METHOD, isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
 
@@ -42,7 +42,13 @@ export default function StepPayment({ ctl }) {
     <OneCard>
       <div className={`pay-split${hasPays ? ' has-side' : ''}`}>
         <div className="pay-main">
-          <Blk>
+          {/* חתימה על התקנון חובה בכל הזמנה; לקוח חדש סימן אותה בכרטיס הלקוח, ללקוח קיים זו הנקודה לסמן. מוצג רק כשעוד לא נחתם. */}
+          {!ctl.order.hasSignedRegulations ? (
+            <Blk>
+              <div className="trow"><Switch id="noPaySign" checked={false} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} label="חתימה על התקנון" /><span>הלקוח חתם על התקנון *</span></div>
+            </Blk>
+          ) : null}
+          <Blk data-guide-id="no.pay-status">
             <SubH icon="wallet" tone="green" title="מצב תשלום" />
             <div className="bal">
               <div><div className="faint sm">{bal > 0 ? 'יתרה' : 'שולם במלואו'}</div><div className="n" style={{ color: bal > 0 ? 'var(--gm-red)' : 'var(--gm-green)' }}>{money(bal)}</div></div>
@@ -56,14 +62,14 @@ export default function StepPayment({ ctl }) {
           <Blk>
             <SubH icon="card" tone="blue" title="רישום תשלום" />
             <label className="lbl" htmlFor="noPayAmt">סכום לתשלום כעת (₪)</label>
-            <div className="amtin">
+            <div className="amtin" data-guide-id="no.pay-amount">
               <button type="button" className="numb dn" aria-label="הפחתה" tabIndex={-1} disabled={curAmt <= 0} onClick={() => stepAmount(-1)}><Ic n="minus" c="sm" /></button>
               <input id="noPayAmt" type="number" inputMode="decimal" step="any" min="0" max={maxPay} value={p.amount} onKeyDown={enter} onChange={(e) => typeAmount(e.target.value)} />
               <button type="button" className="numb up" aria-label="הוספה" tabIndex={-1} disabled={curAmt >= maxPay} onClick={() => stepAmount(1)}><Ic n="plus" c="sm" /></button>
             </div>
             <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום{balTip ? <> <Tip t={balTip} /></> : null}</div>
             {/* אמצעי התשלום באריחי .opt זה לצד זה, כמו כפתורי התיקונים (צוואר / שרוול / אורך) */}
-            <div className="altopts" id="methods" role="radiogroup" aria-label="אופן תשלום">
+            <div className="altopts" id="methods" data-guide-id="no.pay-methods" role="radiogroup" aria-label="אופן תשלום">
               {ctl.paymentMethodOptions.map(m => (
                 <button key={m} type="button" role="radio" aria-label={m} aria-checked={p.method === m} className={`opt${p.method === m ? ' on' : ''}`} onClick={() => pickMethod(m)}>
                   {p.method === m ? <Ic n="check" c="sm evck" /> : null}<Ic n={methodIcon(m)} c="lg" /><div><b>{methodWord(m)}</b></div>
@@ -73,7 +79,7 @@ export default function StepPayment({ ctl }) {
             {/* 51f2cc56 (נווה יעקב): hide_order_payment_note='true' מסתיר את "הערה לתשלום" (כמו בישן). ברירת מחדל - מוצג */}
             {s.hide_order_payment_note !== 'true' ? (
               <details className="coll" style={{ marginTop: 14 }} open={p.notes ? true : undefined}>
-                <summary><Ic n="note" />הערה לתשלום<Ic n="chev" c="chev" /></summary>
+                <summary data-guide-id="no.pay-note"><Ic n="note" />הערה לתשלום<Ic n="chev" c="chev" /></summary>
                 <div className="in">
                   <div className="inpw ico-in"><Ic n="note" c="sm" /><input className="inp" id="noPayNote" placeholder="מספר אישור, פרטי הבנק, שם המשלם..." autoComplete="off" value={p.notes} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, notes: e.target.value }))} /></div>
                 </div>
@@ -83,7 +89,7 @@ export default function StepPayment({ ctl }) {
         </div>
         {hasPays ? (
           <div className="pay-side">
-            <Blk>
+            <Blk data-guide-id="no.pay-list">
             <SubH icon="list" tone="gold" title="תשלומים שנרשמו" />
             <div className="list">
               {ctl.paymentsList.map((x, i) => (
@@ -92,7 +98,7 @@ export default function StepPayment({ ctl }) {
                   <div className="t"><b>{x.method}</b><small>{x.notes || ''}</small><div className="a">{money(x.amount)}</div></div>
                   {isChargedPayment(x)
                     ? <button type="button" className="ibtn" disabled data-tip="חיוב אשראי שכבר בוצע — לא ניתן להסרה" aria-label="הסר תשלום"><Ic n="lock" c="sm" /></button>
-                    : <button type="button" className="ibtn" data-tip="הסר תשלום" aria-label="הסר תשלום" disabled={busy} onClick={() => ctl.removePayment(i)}><Ic n="trash" c="sm" /></button>}
+                    : <button type="button" className="ibtn" data-guide-id="no.pay-remove" data-tip="הסר תשלום" aria-label="הסר תשלום" disabled={busy} onClick={() => ctl.removePayment(i)}><Ic n="trash" c="sm" /></button>}
                 </div>
               ))}
             </div>

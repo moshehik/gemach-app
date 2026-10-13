@@ -40,7 +40,7 @@ function MiniProgress({ ctl, progress }) {
     return state === 'done' && sums[key] ? sums[key] : STEP_META[key].l;
   };
   return (
-    <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="noMiniBars" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
+    <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="noMiniBars" data-guide-id="no.progress" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
       {progress.map(({ key, state }) => {
         const meta = STEP_META[key];
         const sk = stepKeyOfSection(key); // 'mode' נעול / נפתח כמו 'delivery'
@@ -71,8 +71,8 @@ function SectionFooter({ ctl, k, skipDelivery }) {
     // גוש התשלום: סיום ההזמנה (אותו לחצן כמו בשלב האחרון של האשף)
     return (
       <div className="row spread wrap no-sec-nav">
-        <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול</button>
-        <button type="button" className="btn primary" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>
+        <button type="button" className="btn ghost" data-guide-id="no.cancel" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול</button>
+        <button type="button" className="btn primary" data-guide-id="no.finish" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>
       </div>
     );
   }

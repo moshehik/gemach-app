@@ -8,6 +8,7 @@
 // הדגם בלחצן "שמור". בעיצוב המאושר כל השינויים (גם הפריטים) מופיעים כשורות ב"שינויים בכרטיס" ונשמרים יחד - לכן הם נשמרים כאן יחד,
 // אותם endpoints ואותם payloads, ברצף; צעד שנכשל נשאר בעגלה עם הודעה, השאר נשמרים.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { modelDisplayName, modelHasRealName } from '@/lib/modelDisplay';
 import { useRouter } from 'next/navigation';
 import { cacheNamespace, fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -107,6 +108,15 @@ export default function useDressCard(dressId, ui) {
     return model;
   }, [dressId]);
 
+  // רענון מהשרת אחרי שינוי שנעשה מחוץ לעגלה (העברה מהירה של ברקודים) - רק כשאין שינויים לא שמורים בעגלה
+  const refreshFromServer = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/dresses/${dressId}?includeDeleted=true`, { cache: 'no-store' });
+      const d = r.ok ? await r.json() : null;
+      if (d && d.id && stateRef.current && !diffChanges(stateRef.current.saved, stateRef.current.cur).length) applyServer(d);
+    } catch { /* best-effort */ }
+  }, [dressId, applyServer]);
+
   useEffect(() => {
     let off = false;
     // fetchJson מאחד בקשות GET זהות שעדיין באוויר (strict-mode ב-dev מריץ את האפקט פעמיים) - בקשת רשת אחת
@@ -118,7 +128,7 @@ export default function useDressCard(dressId, ui) {
         if (stateRef.current && (diffChanges(stateRef.current.saved, stateRef.current.cur).length > 0)) { setStatus('ready'); return; }
         applyServer(data);
         setStatus('ready');
-        addHistory({ type: 'dress', id: data.id, name: `דגם ${data.barcodePrefix || ''}`.trim(), subtext: data.name || '' });
+        addHistory({ type: 'dress', id: data.id, name: `דגם ${data.barcodePrefix || ''}`.trim(), subtext: modelHasRealName({ name: data.name, barcodePrefix: data.barcodePrefix }) ? data.name : '' });
       })
       .catch((e) => { if (!off) { console.error(e); if (!dressCache.has(dressId)) setStatus('notfound'); } });
     return () => { off = true; };
@@ -277,7 +287,7 @@ export default function useDressCard(dressId, ui) {
     const n = res.okLines;
     const m = stateRef.current.saved.model;
     ui.toast('info', 'כרטיס הדגם נשמר', n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`);
-    const next = await ui.openDialog(DcSuccessDialog, { sub: `דגם · ${m.name || m.code} · ${n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`}` });
+    const next = await ui.openDialog(DcSuccessDialog, { sub: `דגם · ${modelDisplayName({ name: m.name, barcodePrefix: m.code }, { fallback: '' }) || m.code} · ${n === 1 ? 'שינוי אחד נשמר' : `${n} שינויים נשמרו`}` });
     if (next === 'print') window.open(`/dashboard/dresses/${dressId}/print`, '_blank');
     else if (next === 'list') router.push(LIST_HREF);
     return 'saved';
@@ -426,6 +436,6 @@ export default function useDressCard(dressId, ui) {
     changes, dirty, saving, uploading, redoCount, hit, setHit, listIntent, goFilter, locateItem,
     counts: cn, markers, rentals, rentalsStore, ensureRentals, logs, ensureLogs, historyRows, life, lastUpdate,
     patchModel, setActive, patchItem, addItemLocal, deleteItem, undoChange, redo, discardAll,
-    save, exit, deleteModel, restoreModel, uploadImage,
+    save, exit, deleteModel, restoreModel, uploadImage, refreshFromServer,
   };
 }

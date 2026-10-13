@@ -33,6 +33,7 @@ function StageSection({ stage, view, marks, canMarkAll = true, dayLabel, onExpor
   const known = !stage.infoOnly && !!(stage.doneSource || marking);
   const doneStateOf = (row) => (marking ? marks.doneState(stage, row) : null);
   const onMarkDone = marking ? marks.onMarkDone : null;
+  const onBarcodes = marking ? marks.openBarcodes || null : null; // חלונית הברקוד (ScheduleDay) - רק כשיש הגדרת ברקוד פעילה בשורה
   const rows = useMemo(() => stage.items.map((row, i) => ({ row, i, r: rankRow(stage, row, known) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.row), [stage, known]);
   const done = known ? rows.filter((row) => row.done === true).length : 0;
   const pct = known && total ? Math.round((100 * done) / total) : 0;
@@ -42,7 +43,7 @@ function StageSection({ stage, view, marks, canMarkAll = true, dayLabel, onExpor
   // במקטע - נספר מהשורות המוצגות, כך שהוא מתעדכן יחד איתן אחרי סימון "בוצע". "N אירועים" לא חוזר (SCH-CHIP-EVENTS = ב').
   const alertRows = rows.filter((row) => row.alerts && row.alerts.length).length;
   return (
-    <section className="lz-sec" id={'st-' + stage.key} data-k={stage.key} style={{ '--pc': 'var(' + meta.color + ')' }}>
+    <section className="lz-sec" id={'st-' + stage.key} data-k={stage.key} data-guide-id={`sched.sec-${stage.key}`} style={{ '--pc': 'var(' + meta.color + ')' }}>
       <div className="lz-hrow">
         <h2 className="adm-h">
           <span className="adm-hi"><ScheduleIcon name={meta.icon} /></span>
@@ -75,14 +76,14 @@ function StageSection({ stage, view, marks, canMarkAll = true, dayLabel, onExpor
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => <StageTableRow key={row.orderId + ':' + stage.key} stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneStateOf(row)} dayLabel={dayLabel} />)}
+                {rows.map((row) => <StageTableRow key={row.orderId + ':' + stage.key} stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneStateOf(row)} dayLabel={dayLabel} />)}
               </tbody>
             </table>
           </div>
         ) : (
           <div className="hres">
             <div className="hgrp">
-              {rows.map((row) => <StageRow key={row.orderId + ':' + stage.key} stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneStateOf(row)} dayLabel={dayLabel} />)}
+              {rows.map((row) => <StageRow key={row.orderId + ':' + stage.key} stage={stage} row={row} onMarkDone={onMarkDone} onBarcodes={onBarcodes} doneState={doneStateOf(row)} dayLabel={dayLabel} />)}
             </div>
           </div>
         )}

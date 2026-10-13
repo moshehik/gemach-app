@@ -48,9 +48,9 @@ function PrintIcon() {
  * שלושת הלחצנים (toolBtns בעיצוב): XL (הנהלה בלבד - JDG-04), הורדה (PDF), הדפסה. tips = [xl, dl, print].
  * onPick(mode) עם 'xl' | 'dl' | 'print'.
  */
-export function ToolButtons({ canXl, disabled, tips, onPick }) {
+export function ToolButtons({ canXl, disabled, tips, onPick, guide = false }) {
   const b = (mode, cls, label, tip, icon) => (
-    <button type="button" className={'xlbtn ' + cls} data-wiz={mode} aria-label={label} data-tip={tip} disabled={disabled} onClick={(e) => { e.stopPropagation(); onPick(mode); }}>{icon}</button>
+    <button type="button" className={'xlbtn ' + cls} data-wiz={mode} data-guide-id={guide ? `att.tool-${mode}` : undefined} aria-label={label} data-tip={tip} disabled={disabled} onClick={(e) => { e.stopPropagation(); onPick(mode); }}>{icon}</button>
   );
   return (
     <>
@@ -62,7 +62,7 @@ export function ToolButtons({ canXl, disabled, tips, onPick }) {
 }
 
 /** תיבת הבחירה של המערכת (.cb, cbxHTML בעיצוב): רשימה צפה, וי על הנבחר, חיצים / Enter / Escape במקלדת */
-export function Combo({ id, label, value, options, onChange, className = '', disabled = false, placeholder = '' }) {
+export function Combo({ id, label, value, options, onChange, className = '', disabled = false, placeholder = '', 'data-guide-id': gid }) {
   const [open, setOpen] = useState(false);
   const [act, setAct] = useState(-1);
   const rootRef = useRef(null);
@@ -92,7 +92,7 @@ export function Combo({ id, label, value, options, onChange, className = '', dis
     if (e.key === 'Enter' && open && act >= 0) { e.preventDefault(); pick(options[act][0]); }
   };
   return (
-    <div className={'cb ' + className + (open ? ' open' : '')} data-cb={id} ref={rootRef} onKeyDown={onKey}>
+    <div className={'cb ' + className + (open ? ' open' : '')} data-cb={id} ref={rootRef} onKeyDown={onKey} {...(gid ? { 'data-guide-id': gid } : null)}>
       <button type="button" className="cb-t" id={'cbt-' + id} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)}>
         <span className={'cb-v' + (cur ? '' : ' cb-ph')}>{cur ? cur[1] : placeholder}</span><Ic id="chev" size="sm" />
       </button>

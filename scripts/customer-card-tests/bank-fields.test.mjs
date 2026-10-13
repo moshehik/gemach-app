@@ -27,6 +27,7 @@ const customer = {
   async update(args) { S().updated.push(args); return { id: args.where.id, ...args.data }; },
 };
 export default { customer };
+export async function getActingEmployeeId() { return null; }
 export function auditAs(action, args, changes) { return { ...args, __audit: { action, changes } }; }
 `;
 const authShim = 'export async function checkAuth() { return true; }';
@@ -279,7 +280,9 @@ await t('כרטיס לקוח: לשונית הפרטים והתשלומים מס�
 });
 await t('שרת: POST/PUT קוראים את ההגדרה ולא כותבים בנק כשכבוי', () => {
   const post = code(read('app/api/customers/route.js'));
-  assert.match(post, /bankOn = customerBankFieldsEnabled\(sMap\)/);
+  // הקריאה להגדרה הוצאה ל-lib/customerCreateValidation.js (collectNewCustomerErrors; משותף עם הרישום בעמדה) והנתיב לוקח ממנה את bankOn
+  assert.match(code(read('lib/customerCreateValidation.js')), /bankOn = customerBankFieldsEnabled\(sMap\)/);
+  assert.match(post, /bankOn = collected\.bankOn/);
   assert.match(post, /\.\.\.\(bankOn !== false \? /);
   const put2 = code(read('app/api/customers/[id]/route.js'));
   assert.match(put2, /if \(bankOn === false && body\.cardVariant === 'a5'\) for \(const k of CUSTOMER_BANK_FIELD_KEYS\) delete data\[k\]/);

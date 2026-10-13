@@ -81,21 +81,16 @@ test('past-day lock helper: pure expansion of old/new, today itself is not past'
   assert.deepEqual(B.pastClosedDayChanges('', '', TODAY), []);
 });
 
-test('public GET strips notes of the non-working-days value unless checkAuth passes; days/ranges/recurring survive', async () => {
+test('GET /api/settings: the non-working-days value (with its notes) is returned only when checkAuth passes - an anonymous reader gets nothing of it', async () => {
   const full = doc({ days: [{ date: FUT, note: 'סודי א' }], ranges: [{ from: FUT2, to: addKey(FUT2, 2), note: 'סודי ב' }], recurringHebrew: [{ month: 'Shvat', day: 26, note: 'סודי ג' }] });
   setup(full);
   globalThis.__SETTINGS.push({ key: 'other_note_key', value: '{"note":"keep me"}', name: 'o' });
   const get = async () => (await (await route.GET()).json()).reduce((m, s) => ({ ...m, [s.key]: s.value }), {});
   globalThis.__AUTH = false;
   const anon = await get();
-  assert.ok(!/סודי/.test(anon[KEY]) && !/"note"/.test(anon[KEY]), 'notes stripped for an unauthenticated reader');
-  assert.equal(anon.other_note_key, '{"note":"keep me"}', 'other settings are untouched');
-  const a = B.parseNonWorkingDaysSetting(anon[KEY]);
-  const f = B.parseNonWorkingDaysSetting(full);
-  assert.deepEqual([...a.closed].sort(), [...f.closed].sort(), 'same closed days');
-  assert.equal(a.recurringSig === '[]', false, 'recurring date survives');
-  assert.equal(a.invalid, 0);
-  for (const k of f.closed) assert.equal(B.isNonWorkingDay(k, a), true);
+  assert.equal(KEY in anon, false, 'no non-working-days row for an unauthenticated reader (it is not on the public allow-list)');
+  assert.equal('other_note_key' in anon, false, 'nor any other setting outside the allow-list');
+  assert.ok(!/סודי/.test(JSON.stringify(anon)), 'the notes appear nowhere in the anonymous body');
   globalThis.__AUTH = true;
   const authed = await get();
   assert.equal(authed[KEY], full, 'a logged-in reader still gets the full value');

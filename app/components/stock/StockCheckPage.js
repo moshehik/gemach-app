@@ -13,6 +13,7 @@ import '@/design-system/components.css';
 import '../home/home.css'; // נטרול הכללים הגלובליים הישנים בתוך .gm-ds.gm-home (כרטיס שקוף במסגרת, גבול זהב לשדות, כותרת טבלה כחולה) - אותו קובץ כמו דף הבית
 import './stock-check.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNoFill } from '@/lib/autofillGuard';
 import Link from 'next/link';
 import { Ic, HomeSprite, ViewSwitch, ResultsTable, Dash } from '../home/HomeParts';
 import { DateField } from '../home/HomeAdvanced';
@@ -22,7 +23,7 @@ import { useA5Shell } from '../menu/A5ShellContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import {
   STOCK_CHECK_STORE_KEY, FLEX_TIP, isNumericSize, addSizes, toggleFlex, validateForm, buildStockCheckUrl, buildOptionsUrl,
-  freeChipClass, freeLabel, flexNote, flexAxis, flexCandidatesText, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
+  freeChipClass, freeLabel, flexNote, flexAxis, flexCandidatesText, summaryParts, filterSizeOptions, lastSizeToken, sizeOptionsQuery, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
 } from '@/lib/stockCheckUi';
 
 const OPT_TTL = 60 * 1000;
@@ -49,8 +50,9 @@ function Highlight({ text, q }) {
 
 // שדה טקסט עם רשימת הצעות גוללת (advlist / advo — אותה רשימה כמו בחיפוש המתקדם בדף הבית; Q03).
 // kind='model': ההצעות נטענות לפי מה שהוקלד (שם מכיל / קידומת); בחירה ממלאת את השדה.
-// kind='size':  כל המידות נטענות פעם אחת, מסוננות בלקוח לפי הקטע האחרון שהוקלד ובלי מידות שכבר נבחרו; בחירה מוסיפה מידה.
+// kind='size':  כל המידות השלמות נטענות פעם אחת (עשרוניות/אותיות רק כשהוקלד תו שאינו ספרה), מסוננות בלקוח לפי הקטע האחרון שהוקלד ובלי מידות שכבר נבחרו; בחירה מוסיפה מידה.
 function SuggestField({ id, kind, label, icon, placeholder, value, onChange, chosen, onPickSize, onEnter, onKeyDown, invalid, inputRef, trailing, inputMode }) {
+  const nf = useNoFill();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(null); // null = טוען
   const [failed, setFailed] = useState(false);
@@ -62,7 +64,7 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
   const load = (delay, text) => {
     clearTimeout(timer.current);
     const my = ++seq.current;
-    const t = kind === 'size' ? '' : text.trim();
+    const t = kind === 'size' ? sizeOptionsQuery(text) : text.trim();
     const go = () => {
       fetchOptions(kind, t).then((list) => {
         if (my !== seq.current) return;
@@ -85,7 +87,7 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
   const move = (d) => { if (!shown || !shown.length) return; setAct((a) => (a + d + shown.length) % shown.length); };
 
   return (
-    <div className="field">
+    <div className="field" data-guide-id={`stock.field-${kind}`}>
       <label className="lbl" htmlFor={id}>{label}</label>
       <div className="inpw">
         <Ic id={icon} size="sm" />
@@ -93,10 +95,9 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
           ref={inputRef}
           className="inp"
           id={id}
-          name={id + '-nofill'}
+          {...nf(id)}
           value={value}
           placeholder={placeholder}
-          autoComplete="nope"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
@@ -353,7 +354,7 @@ export default function StockCheckPage() {
   };
 
   const dateText = hebText(date);
-  const summary = useMemo(() => summaryParts({ dateText: res ? hebText(res.date) : dateText, model, sizes }).join(' · '), [res, dateText, model, sizes]);
+  const summary = summaryParts({ dateText: res ? hebText(res.date) : dateText, model, sizes }).join(' · ');
   const hasFlex = sizes.some((z) => z.flex && isNumericSize(z.v));
   const branches = !!(res && res.branchesEnabled);
   const results = res ? res.results : [];
@@ -365,14 +366,14 @@ export default function StockCheckPage() {
   })), [results, res, branches]);
 
   const addBtn = (
-    <button type="button" className="inpx" id="stock-add" aria-label="הוספת מידה" data-tip="הוספת המידה לרשימה" onClick={addFromInput}><Ic id="plus" size="sm" /></button>
+    <button type="button" className="inpx" id="stock-add" data-guide-id="stock.size-add" aria-label="הוספת מידה" data-tip="הוספת המידה לרשימה" onClick={addFromInput}><Ic id="plus" size="sm" /></button>
   );
 
   return (
     <div className="gm-ds gm-home stock-page home-bg" ref={rootRef} dir="rtl">
       <HomeSprite />
       <div className="hero-in jshell advonly">
-        <div className="card res-one advp" id="stock-form">
+        <div className="card res-one advp" id="stock-form" data-guide-id="stock.form">
           <div className="card-h">
             <span className="advs-i" aria-hidden="true"><Ic id="box" /></span>
             <h2 id="stock-h">בדיקת מלאי</h2>
@@ -394,7 +395,7 @@ export default function StockCheckPage() {
           <section className="advs" aria-label="מה לבדוק">
             <div className="advs-h"><span className="advs-i"><Ic id="dress" /></span><h3>מה לבדוק</h3></div>
             <div className="advgrid">
-              <div className="stock-datew">
+              <div className="stock-datew" data-guide-id="stock.date">
                 {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
                 {restored && isPastDate(date, getIsraelTodayKey()) && <div className="pg-sub stock-past" id="stock-past-note" role="note">{PAST_DATE_NOTE}</div>}
               </div>
@@ -431,7 +432,7 @@ export default function StockCheckPage() {
               />
             </div>
             {sizes.length > 0 && (
-              <div className="advflags" role="group" aria-label="מידות שנבחרו">
+              <div className="advflags" role="group" data-guide-id="stock.sizes-chosen" aria-label="מידות שנבחרו">
                 {sizes.map((z) => (
                   <button key={z.v} type="button" className="advfl on" data-rm={z.v} aria-label={`הסרת מידה ${z.v}`} onClick={() => removeSize(z.v)}>
                     <span className="advfl-i" aria-hidden="true"><Ic id="x" size="sm" /></span>{z.v}
@@ -440,7 +441,7 @@ export default function StockCheckPage() {
               </div>
             )}
           </section>
-          <section className="advs" aria-label="בדיקה גמישה">
+          <section className="advs" data-guide-id="stock.flex" aria-label="בדיקה גמישה">
             <div className="advs-h">
               <span className="advs-i"><Ic id="sliders" /></span>
               <h3>בדיקה גמישה</h3>
@@ -483,15 +484,15 @@ export default function StockCheckPage() {
           </section>
           <div className="advact">
             {/* בזמן טעינה הלחצן נשאר כמו בעיצוב (לא מנוטרל, בלי מסתובב); לחיצה חוזרת פשוט מחליפה את הבקשה (seq) */}
-            <button type="button" className="btn primary lg" id="stock-go" aria-busy={phase === 'loading' || undefined} onClick={() => run()}>
+            <button type="button" className="btn primary lg" id="stock-go" data-guide-id="stock.go" aria-busy={phase === 'loading' || undefined} onClick={() => run()}>
               <Ic id="search" />בדיקת מלאי
             </button>
-            <button type="button" className="lrow" onClick={clearAll}><Ic id="eraser" size="sm" />נקה</button>
+            <button type="button" className="lrow" data-guide-id="stock.clear" onClick={clearAll}><Ic id="eraser" size="sm" />נקה</button>
           </div>
         </div>
       </div>
 
-      <div className="hero-in jshell advonly" id="stock-res" ref={resRef}>
+      <div className="hero-in jshell advonly" id="stock-res" data-guide-id="stock.results" ref={resRef}>
         <div className="card res-one advp" aria-live="polite">
           {phase === 'idle' && (
             <>
@@ -544,7 +545,7 @@ export default function StockCheckPage() {
                   records={records}
                   linkCol={1}
                   renderCell={(c, j, rec) => {
-                    if (j === 1) return <>{rec.r.modelName || <span className="faint">ללא שם</span>} <span className="faint"><bdi>#{rec.r.modelCode ?? '—'}</bdi></span></>;
+                    if (j === 1) return <>{rec.r.modelName || <span className="faint">—</span>} <span className="faint"><bdi>#{rec.r.modelCode ?? '—'}</bdi></span></>;
                     if (j === 2) return <SizesText sizes={rec.r.sizes} />;
                     if (j === 3) return <FreeChip n={rec.r.free} />;
                     if (j === 4) return <BranchesText branches={rec.r.branches} />;
@@ -558,7 +559,7 @@ export default function StockCheckPage() {
                       <>
                         <div className="ic-b"><Ic id="dress" /><span className="rlbl">דגם</span></div>
                         <div className="t">
-                          <b>{r.modelName || <span className="faint">ללא שם</span>}</b>
+                          <b>{r.modelName || <span className="faint">—</span>}</b>
                           <span className="ln"><FreeChip n={r.free} /> · דגם <bdi>#{r.modelCode ?? '—'}</bdi></span>
                           <span className="ln">מידות ופנוי בכל אחת: <SizesText sizes={r.sizes} /></span>
                           {branches && <span className="ln">סניפים: <BranchesText branches={r.branches} /></span>}

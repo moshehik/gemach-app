@@ -54,13 +54,13 @@ function CustomerCard({ oc, ui }) {
   const addr = customerAddress(c);
   const signed = !!order.hasSignedRegulations;
   return (
-    <div className="card cust">
+    <div className="card cust" data-guide-id="oc.customer-card">
       <div className="card-h">
         <div className="ico rose"><OcIcon name="user" size="lg" /></div>
         <h2>לקוח</h2>
-        <button type="button" className="ibtn" data-act="swap-customer" aria-label="החלפת לקוח" data-tip="החלפת לקוח" onClick={swap}><OcIcon name="swap" /></button>
+        <button type="button" className="ibtn" data-act="swap-customer" data-guide-id="oc.swap-customer" aria-label="החלפת לקוח" data-tip="החלפת לקוח" onClick={swap}><OcIcon name="swap" /></button>
         {c && c.id ? (
-          <button type="button" className="ibtn" data-act="open-customer" aria-label="פתיחת כרטיס לקוח" data-tip="פתיחת כרטיס לקוח" onClick={() => window.open(`/customers/${c.id}`, '_blank', 'noopener')}><OcIcon name="ext" /></button>
+          <button type="button" className="ibtn" data-act="open-customer" data-guide-id="oc.open-customer" aria-label="פתיחת כרטיס לקוח" data-tip="פתיחת כרטיס לקוח" onClick={() => window.open(`/customers/${c.id}`, '_blank', 'noopener')}><OcIcon name="ext" /></button>
         ) : null}
       </div>
       <div className="row wrap oc-cust-name"><span className="big">{c ? (customerName(c) || '—') : 'לא נבחר לקוח'}</span></div>
@@ -77,7 +77,7 @@ function CustomerCard({ oc, ui }) {
             <OcIcon name="note" />
             <div>
               <small>חתימה על התקנון</small>
-              <button type="button" className={`btn tgl${signed ? ' on' : ''}`} id="termsBtn" aria-pressed={signed} onClick={() => oc.toggleSignature()}>
+              <button type="button" className={`btn tgl${signed ? ' on' : ''}`} id="termsBtn" data-guide-id="oc.signature" aria-pressed={signed} onClick={() => oc.toggleSignature()}>
                 {signed ? <OcIcon name="check" size="sm" className="evck" /> : null}<OcIcon name="sig" size="sm" />חתם על התקנון
               </button>
             </div>
@@ -100,11 +100,11 @@ function EventCard({ oc }) {
     ? (fromKey ? `${hebDateLabel(fromKey)} – ${toKey ? hebDateLabel(toKey) : '?'}` : 'טרם נבחרו תאריכים')
     : (evKey ? dayTitle(evKey) : 'טרם נבחר תאריך');
   return (
-    <div className="card oc-evt">
+    <div className="card oc-evt" data-guide-id="oc.event-card">
       <div className="card-h">
         <div className="ico gold"><OcIcon name="cal" size="lg" /></div>
         <h2 id="oc-evt-t">אירוע</h2>
-        <button type="button" className="ibtn" data-act="editdate" aria-pressed={editing} aria-label={editing ? 'סיום עריכה' : 'עריכת תאריך'} data-tip={editing ? 'סיום עריכה' : 'עריכת תאריך'} onClick={() => setEditing(e => !e)}>
+        <button type="button" className="ibtn" data-act="editdate" data-guide-id="oc.edit-date" aria-pressed={editing} aria-label={editing ? 'סיום עריכה' : 'עריכת תאריך'} data-tip={editing ? 'סיום עריכה' : 'עריכת תאריך'} onClick={() => setEditing(e => !e)}>
           <OcIcon name={editing ? 'check' : 'pencil'} />
         </button>
       </div>
@@ -123,8 +123,14 @@ function EventCard({ oc }) {
           </div>
         </div>
       ) : null}
+      {oc.settings.multiBranch ? (
+        <div className="kv oc-branch-kv" data-testid="oc-branch">
+          <KvRow icon="pin" label="סניף ביצוע ההזמנה" value={order.branch || (order.isPhoneOrder ? 'הזמנה טלפונית' : '')} />
+          {order.pickupBranch && order.pickupBranch !== order.branch ? <KvRow icon="pin" label="סניף איסוף" value={order.pickupBranch} /> : null}
+        </div>
+      ) : null}
       <div className="row wrap oc-evt-row">
-        <button type="button" className={`btn${range ? ' on' : ''}`} id="evType" aria-pressed={range} disabled={!editing}
+        <button type="button" className={`btn${range ? ' on' : ''}`} id="evType" data-guide-id="oc.event-abroad" aria-pressed={range} disabled={!editing}
           onClick={() => set(prev => eventTypeUpdates(prev, !isRangeEvent(prev)))}>
           {range ? <OcIcon name="check" size="sm" className="evck" /> : null}<OcIcon name="flag" size="sm" />חו״ל
         </button>
@@ -141,10 +147,10 @@ function NotesCard({ oc }) {
     <div className="card oc-notes">
       <div className="card-h"><div className="ico plum"><OcIcon name="note" size="lg" /></div><h2>הערות להזמנה <Tip text="מוצג ברשימה ומודפס פעם אחת" /></h2></div>
       <label className="lbl" htmlFor="notes"><OcIcon name="note" size="sm" />הערות להזמנה (מוצג ללקוח ומודפס)</label>
-      <textarea className="inp" id="notes" placeholder="כתבו כאן הערה…" value={order.notes || ''} onChange={(e) => set({ notes: e.target.value })} />
+      <textarea className="inp" id="notes" data-guide-id="oc.notes" placeholder="כתבו כאן הערה…" value={order.notes || ''} onChange={(e) => set({ notes: e.target.value })} />
       <div className="oc-inotes">
         <label className="lbl" htmlFor="ocInternalNotes"><OcIcon name="note" size="sm" />הערות פנימיות (לא מוצג ללקוח)</label>
-        <textarea className="inp" id="ocInternalNotes" placeholder="כתבו כאן הערה לצוות בלבד…" value={order.internalNotes || ''} onChange={(e) => set({ internalNotes: e.target.value })} />
+        <textarea className="inp" id="ocInternalNotes" data-guide-id="oc.internal-notes" placeholder="כתבו כאן הערה לצוות בלבד…" value={order.internalNotes || ''} onChange={(e) => set({ internalNotes: e.target.value })} />
       </div>
     </div>
   );
@@ -185,17 +191,17 @@ function AdvancedCard({ oc }) {
   const setXday = (v) => oc.edit.setOrder(prev => { if (!prev) return prev; const u = extraDayUpdates(prev, v); return u ? { ...prev, ...u } : prev; });
   return (
     <details className="coll" id="adv" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary><OcIcon name="sliders" />פרטים מתקדמים<span className="chip gray oc-adv-chip">מנהל</span><OcIcon name="chev" className="chev" /></summary>
+      <summary data-guide-id="oc.advanced"><OcIcon name="sliders" />פרטים מתקדמים<span className="chip gray oc-adv-chip">מנהל</span><OcIcon name="chev" className="chev" /></summary>
       <div className="in">
         {!hide ? (
-          <div>
+          <div data-guide-id="oc.spacing">
             <label className="lbl"><OcIcon name="cal" size="sm" />ציפוף ימים מיוחד <Tip text="להזמנה זו בלבד · דורש מנהל" /></label>
             <div className="faint oc-r18">רגיל לפי המערכת: {def} ימים · הקטנה דורשת אישור מנהל</div>
             <Pill id="spacing" label="ציפוף ימים מיוחד" options={spacingOptions} value={selected} onPick={applySpacing} />
           </div>
         ) : null}
         {showXday ? (
-          <div>
+          <div data-guide-id="oc.extra-day">
             <label className="lbl"><OcIcon name="plus" size="sm" />יום השכרה נוסף <Tip text="תוספת 50% מסך ההזמנה" /></label>
             <Pill id="xday" label="יום השכרה נוסף" options={EXTRA_DAY_OPTIONS} value={order.extraDay || null} onPick={setXday} isDisabled={(v) => !!v && !extraDayReady(order)} />
           </div>

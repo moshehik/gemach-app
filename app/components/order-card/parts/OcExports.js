@@ -56,10 +56,10 @@ export default function OcExports({ oc, ui }) {
 
   return (
     <>
-      <button type="button" className="xlbtn xlg" data-act="export-xlsx" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההזמנה לקובץ Excel" aria-busy={busy === 'xlsx' || undefined} disabled={busy === 'xlsx'} onClick={() => run('xlsx')}>
+      <button type="button" className="xlbtn xlg" data-act="export-xlsx" data-guide-id="oc.export-xlsx" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההזמנה לקובץ Excel" aria-busy={busy === 'xlsx' || undefined} disabled={busy === 'xlsx'} onClick={() => run('xlsx')}>
         <XlGlyph kind="excel" />
       </button>
-      <button type="button" className="xlbtn xld" data-act="export-pdf" aria-label="הורדה" data-tip="הורדת סיכום ההזמנה כקובץ" aria-busy={busy === 'pdf' || undefined} disabled={busy === 'pdf'} onClick={() => run('pdf')}>
+      <button type="button" className="xlbtn xld" data-act="export-pdf" data-guide-id="oc.export-pdf" aria-label="הורדה" data-tip="הורדת סיכום ההזמנה כקובץ" aria-busy={busy === 'pdf' || undefined} disabled={busy === 'pdf'} onClick={() => run('pdf')}>
         <XlGlyph kind="download" />
       </button>
     </>

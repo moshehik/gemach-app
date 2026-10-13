@@ -18,6 +18,7 @@ import {
   nextRoleId, validateCreate, validateRename,
 } from './departmentsLogic';
 
+// מדריך האתר: guide="dpt" מצמיד data-guide-id (dpt.back / dpt.search / dpt.filter / dpt.sort / dpt.view / dpt.export-* ...) - lib/aiGuide/areas/admin.targets.js
 const SLOT_ID = 'a5l-search-dpt';
 
 function Pair({ p, hl }) {
@@ -189,12 +190,13 @@ function Departments() {
   return (
     <>
       <A5ListPage
-        title="מחלקות" backId="dptBack" onBack={() => router.push('/admin')}
+        guide="dpt" title="מחלקות" backId="dptBack" onBack={() => router.push('/admin')}
         tools={<PageVariantToggle screen="departments" placement="header" systemTip />}
         slotId={SLOT_ID} cardIcon="building" cardTitle="ניהול מחלקות"
-        cardAction={<button type="button" className="btn navy" id="btnNew" disabled={depts === null || !!(error && !rows.length)} data-tip="מספר המחלקה נשמר בכרטיס העובד" onClick={() => setForm({ mode: 'create' })}><Ic id="plus" />מחלקה חדשה</button>}
+        cardAction={<button type="button" className="btn navy" id="btnNew" data-guide-id="dpt.new" disabled={depts === null || !!(error && !rows.length)} data-tip="מספר המחלקה נשמר בכרטיס העובד" onClick={() => setForm({ mode: 'create' })}><Ic id="plus" />מחלקה חדשה</button>}
       >
         <A5List
+          guide="dpt"
           items={rows}
           getId={(r) => r.roleId}
           texts={{ placeholder: 'חיפוש מחלקה (שם או מספר)…', countLabel: 'מחלקות', emptyText: depts && !depts.length ? 'אין מחלקות במערכת' : 'לא נמצאו מחלקות התואמות את החיפוש' }}
