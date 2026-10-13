@@ -193,7 +193,8 @@ export default function BellBody({ nf, rows, onNavigate, onAction, activeItemId 
         </div>
       )}
       {tot > 0 && (
-        <div className="nf-list" data-guide-id="bell.list" role="group" aria-label="רשימת התראות">
+        // ה-CSS (.nf-list:not(.all) .nf-row:nth-child(n+6){display:none}) מסתיר שורות 6+ — בלי ה-class "all" "הצג עוד" רק מחליף את התווית.
+        <div className={`nf-list${showAll ? ' all' : ''}`} data-guide-id="bell.list" role="group" aria-label="רשימת התראות">
           {shown.map((n) => <NfRow key={n.id} n={n} onRead={nf.markOne} onArchive={nf.archiveOne} />)}
         </div>
       )}
