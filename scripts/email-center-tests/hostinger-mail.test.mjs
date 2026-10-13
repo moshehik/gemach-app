@@ -21,7 +21,7 @@ delete process.env.HOSTINGER_MAIL_TOKEN;
 delete process.env.HOSTINGER_MAILBOX_ID;
 
 const { postToMailer, buildGasPayload } = await import('@/lib/mailer');
-const { isHostingerMailEnabled, canSendViaHostinger, buildHostingerSendBody } = await import('@/lib/hostingerMail');
+const { isHostingerMailEnabled, canSendViaHostinger, buildHostingerSendBody, _setPdfRenderer } = await import('@/lib/hostingerMail');
 
 let passed = 0;
 async function t(name, fn) { try { await fn(); passed++; console.log(`  ok  ${name}`); } catch (e) { console.error(`  FAIL ${name}\n`, e); process.exitCode = 1; } }
@@ -83,25 +83,83 @@ await t('קובץ אמיתי מצורף בשמות של ה-API (filename/content
   assert.deepEqual(sent.attachments, [{ filename: 'a.pdf', content: 'QUJD', contentType: 'application/pdf' }]);
 });
 
-await t('פעולות של Apps Script (PDF מ-HTML) ושליחה לדרייב נשארות ב-Apps Script', async () => {
+await t('פעולות אחרות של Apps Script ושליחה לדרייב נשארות ב-Apps Script', async () => {
   enable();
-  assert.equal(canSendViaHostinger({ action: 'sendGemachOrderEmail', to: 'a@example.test' }), false);
+  assert.equal(canSendViaHostinger({ action: 'somethingElse', to: 'a@example.test' }), false);
   assert.equal(canSendViaHostinger(buildGasPayload({ to: 'a@example.test', sendMode: 'drive', attachments: [{ fileName: 'a', fileContent: 'QQ==', dest: 'drive' }] })), false);
+  assert.equal(canSendViaHostinger({ action: 'sendGemachOrderEmail', to: 'a@example.test', sendMode: 'both' }), false);
   mockFetch(() => res(200, { status: 'success' }));
-  await postToMailer({ action: 'sendGemachOrderEmail', to: 'a@example.test', subject: 's', htmlBody: '<p/>' });
+  await postToMailer({ action: 'somethingElse', to: 'a@example.test', subject: 's', htmlBody: '<p/>' });
   assert.match(calls[0].url, /script\.google\.com/);
 });
 
-await t('401/403/429 נופלים ל-Apps Script (המייל לא יצא)', async () => {
-  enable();
-  mockFetch((url) => (url.includes('hostinger') ? res(401, { error: 'Unauthenticated', code: 'ERR_UNAUTHENTICATED' }) : res(200, { status: 'success' })));
-  const r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));
-  assert.equal(r.isSuccess, true);
-  assert.equal(calls.length, 2);
-  assert.match(calls[1].url, /script\.google\.com/);
+const orderCard = (extra = {}) => ({
+  action: 'sendGemachOrderEmail', to: 'a@example.test', cc: '', subject: 'כרטיס הזמנה', htmlBody: '<html>REPORT</html>', bodyText: '<p>מצורף</p>',
+  fileName: 'הזמנה 5.pdf', body: 'מצורף כרטיס הזמנה/השכרה.', fileContent: '', attachments: [], sendMode: 'email', ...extra,
 });
 
-await t('422 ושגיאת שרת/רשת = כשל ולא כפילות: אין נפילה ל-Apps Script', async () => {
+await t('כרטיס הזמנה: PDF מהדפדפן מצורף למייל רגיל ב-Hostinger, בלי Apps Script', async () => {
+  enable();
+  let rendered = 0; _setPdfRenderer(async () => { rendered++; return Buffer.from('x'); });
+  mockFetch(() => res(204, null));
+  const r = await postToMailer(orderCard({ fileContent: 'UERG', attachments: [{ fileName: 'הזמנה 5.pdf', fileContent: 'UERG', mimeType: 'application/pdf', dest: 'email' }] }));
+  assert.equal(r.isSuccess, true);
+  assert.equal(r.result.via, 'hostinger');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /api\.mail\.hostinger\.com/);
+  const sent = JSON.parse(calls[0].init.body);
+  assert.equal(sent.html, '<p>מצורף</p>');
+  assert.deepEqual(sent.attachments, [{ filename: 'הזמנה 5.pdf', content: 'UERG', contentType: 'application/pdf' }]);
+  assert.equal(rendered, 0, 'יש כבר PDF מהדפדפן - לא מרנדרים שוב');
+});
+
+await t('כרטיס הזמנה בלי PDF מהדפדפן: ה-PDF נוצר בשרת מדוח ההזמנה', async () => {
+  enable();
+  let seen = null; _setPdfRenderer(async ({ html, format }) => { seen = { html, format }; return Buffer.from('PDFBYTES'); });
+  mockFetch(() => res(204, null));
+  const r = await postToMailer(orderCard());
+  assert.equal(r.isSuccess, true);
+  assert.deepEqual(seen, { html: '<html>REPORT</html>', format: 'A4' });
+  const sent = JSON.parse(calls[0].init.body);
+  assert.equal(sent.attachments.length, 1);
+  assert.equal(sent.attachments[0].filename, 'הזמנה 5.pdf');
+  assert.equal(sent.attachments[0].content, Buffer.from('PDFBYTES').toString('base64'));
+  assert.equal(sent.attachments[0].contentType, 'application/pdf');
+});
+
+await t('כרטיס הזמנה: צרופות נוספות נשמרות ובדוח ה-HTML לא נשלח כגוף המייל', async () => {
+  enable();
+  _setPdfRenderer(async () => Buffer.from('P'));
+  mockFetch(() => res(204, null));
+  await postToMailer(orderCard({ body: '<html>REPORT</html>', attachments: [{ fileName: 'תקנון.pdf', fileContent: 'VEs=', mimeType: 'application/pdf', dest: 'email' }] }));
+  const sent = JSON.parse(calls[0].init.body);
+  assert.deepEqual(sent.attachments.map((a) => a.filename), ['הזמנה 5.pdf', 'תקנון.pdf']);
+  assert.equal(sent.text, 'מצורף כרטיס הזמנה/השכרה.');
+});
+
+await t('כרטיס הזמנה: יצירת ה-PDF נכשלה = שגיאה לטיפול, בלי נפילה ל-Gmail', async () => {
+  enable();
+  _setPdfRenderer(async () => { throw new Error('chromium missing'); });
+  mockFetch(() => res(200, { status: 'success' }));
+  const r = await postToMailer(orderCard());
+  assert.equal(r.isSuccess, false);
+  assert.match(r.message, /PDF.*chromium missing/);
+  assert.equal(calls.length, 0, 'לא נשלח כלום - לא ל-Hostinger ולא ל-Apps Script');
+});
+
+await t('401/403/429 = שגיאה לטיפול, בלי נפילה ל-Gmail', async () => {
+  enable();
+  for (const status of [401, 403, 429]) {
+    mockFetch((url) => (url.includes('hostinger') ? res(status, { error: 'nope', code: 'ERR' }) : res(200, { status: 'success' })));
+    const r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));
+    assert.equal(r.isSuccess, false);
+    assert.match(r.message, new RegExp('HTTP ' + status));
+    assert.equal(calls.length, 1, 'רק ניסיון אחד ל-Hostinger');
+    assert.ok(calls.every((c) => !/script\.google\.com/.test(c.url)));
+  }
+});
+
+await t('422 ושגיאת שרת/רשת = כשל, בלי ניסיון שני', async () => {
   enable();
   mockFetch(() => res(422, { error: 'The given data was invalid.', code: 'ERR_VALIDATION_FAILED', params: { to: ['bad'] } }));
   let r = await postToMailer(buildGasPayload({ to: 'a@example.test', subject: 's', body: 'b' }));
