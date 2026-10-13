@@ -61,6 +61,9 @@ eq('isPastDate (GQ-06d note only, never blocks)', [ui.isPastDate('2026-10-01', '
 eq('PAST_DATE_NOTE plain Hebrew', /הוחזרו/.test(ui.PAST_DATE_NOTE) && /פנויות/.test(ui.PAST_DATE_NOTE), true);
 eq('sanitizeStoredState: bad res dropped, bad view -> rows', ui.sanitizeStoredState({ model: 'a', res: { foo: 1 }, view: 'cards' }), { date: '', model: 'a', sizes: [], view: 'rows', res: null });
 
+eq('flexAxis on: 12 -> 8,10 | 12 | 14,16', ui.flexAxis('12', true).map((p) => p.label + ':' + p.state), ['8:out', '10:cand', '12:mid', '14:cand', '16:out']);
+eq('flexAxis off: neighbours stay out', ui.flexAxis('12', false).map((p) => p.state), ['out', 'out', 'mid', 'out', 'out']);
+eq('flexAxis size 2 keeps 0, drops negatives', ui.flexAxis('02', true).map((p) => p.label + ':' + p.state), [':none', '0:cand', '02:mid', '4:cand', '6:out']);
 /* ---------- נושא 12 (12.10.2026): תפריט המידות — מידות שלמות בלבד (lib/sizeSort.js) ---------- */
 const ss = await import(pathToFileURL(path.join(PROJ, 'lib/sizeSort.js')).href);
 eq('isNumericSize (ui): "38.0" / "038" whole, "38.5" / "06.1" not', ['38.0', '038', ' 7 ', '38.5', '06.1', '', 'XL'].map(ui.isNumericSize), [true, true, true, false, false, false, false]);

@@ -366,9 +366,7 @@ t('בשורת החיפוש של דף הבית אין כפתור "אחרונים"
 
 /* ---------- 8. דף בדיקת מלאי (app/components/stock/stock-check.css): אותו משטר כמו home.css ---------- */
 const stockRules = parseCss(STOCK_CSS);
-const STOCK_IMPORTANT_BG_OK = new Set([
-  '.gm-ds.gm-home.stock-page .hero-in.jshell .card', // זכוכית (לבן 30% + טשטוש) כמו בעיצוב המאושר של הדף (בדיקת-מלאי.html), ערכי הפלטה
-]);
+const STOCK_IMPORTANT_BG_OK = new Set([]);
 t('בדיקת מלאי: שורש הדף נושא home-bg (תמונת הרקע של המערכת, כמו בדף הבית)', () => {
   assert.match(read('../app/components/stock/StockCheckPage.js'), /className="gm-ds gm-home stock-page home-bg"/);
 });
