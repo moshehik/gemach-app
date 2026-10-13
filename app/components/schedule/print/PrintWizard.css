@@ -12,6 +12,12 @@
   --lz-focus:#f1dc8f;color-scheme:dark;scrollbar-color:rgba(188,194,200,.4) transparent}
 .gm-ds.gm-lz .lz-wscrim{z-index:140}
 .gm-ds.gm-lz .lz-wiz *{min-width:0}
+.gm-ds.gm-lz #dlg.lz-wiz{position:relative}
+/* לחצן X בפינה השמאלית העליונה (פיזית, גם ב-RTL) */
+.gm-ds.gm-lz .lz-wiz .lz-wx{position:absolute;top:10px;left:10px;z-index:3;width:34px;height:34px;display:grid;place-items:center;padding:0;margin:0;border:1px solid var(--k-bd);border-radius:50%;background:transparent;color:var(--k-ghost);cursor:pointer}
+.gm-ds.gm-lz .lz-wiz .lz-wx:hover{background:rgba(255,255,255,.1);border-color:var(--gm-gold);color:#fff}
+.gm-ds.gm-lz .lz-wiz .lz-wx:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+.gm-ds.gm-lz .lz-wiz .lz-wx .ic{width:16px;height:16px}
 
 /* ===== האשף המלא ===== */
 .gm-ds.gm-lz #dlg.lz-wiz.lz-full{width:min(1320px,96vw);max-width:none;height:min(880px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);
@@ -21,24 +27,23 @@
   box-shadow:0 0 0 2px var(--k-gap),0 0 0 4px var(--gm-gold)}
 .gm-ds.gm-lz .lz-wbadge .ic{width:22px;height:22px}
 .gm-ds.gm-lz #dlg.lz-full .lz-wh h2{margin:0;font-size:19px;font-weight:700;line-height:1.3;color:var(--k-ink);text-align:start}
-.gm-ds.gm-lz #dlg.lz-full .lz-wsub{margin:2px 0 0;font-size:14px;color:var(--k-sub)}
 .gm-ds.gm-lz .lz-full .lz-wb{flex:1;min-height:0;display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:16px}
 .gm-ds.gm-lz .lz-wl{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
 .gm-ds.gm-lz .lz-wall{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}
 .gm-ds.gm-lz .lz-wallb{background:transparent;border:1px solid var(--k-bd);color:var(--k-ghost);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
 .gm-ds.gm-lz .lz-wallb:hover{background:rgba(255,255,255,.08);border-color:var(--gm-gold)}
-.gm-ds.gm-lz .lz-wsel{margin-inline-start:auto;font-size:13px;color:var(--k-faint)}
 
 /* ===== העץ: קטגוריה (שלב) -> דפים ===== */
 .gm-ds.gm-lz .lz-wiz :is(.lz-tree,.lz-pgs){list-style:none;margin:0;padding:0}
-.gm-ds.gm-lz .lz-tree{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;padding-inline-end:4px}
+.gm-ds.gm-lz .lz-tree{direction:ltr;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;padding-inline-end:4px}
+/* פס הגלילה בצד ימין: המיכל LTR והתוכן חוזר ל-RTL */
+.gm-ds.gm-lz .lz-tree>*,.gm-ds.gm-lz .lz-quick .lz-pgs.lz-flat>*{direction:rtl}
 .gm-ds.gm-lz .lz-cat{flex:none;background:var(--k-row);border:1px solid var(--k-rowb);border-radius:14px}
 .gm-ds.gm-lz .lz-cath{display:flex;align-items:center;gap:10px;padding:6px 12px}
 .gm-ds.gm-lz .lz-catb{flex:1;display:flex;align-items:center;gap:8px;background:none;border:0;border-radius:8px;padding:6px 0;color:var(--k-ink);font:inherit;font-size:15px;font-weight:700;text-align:start;cursor:pointer}
 .gm-ds.gm-lz .lz-catic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:rgba(224,197,110,.16);color:#f1dc8f;box-shadow:inset 0 0 0 1px rgba(224,197,110,.35)}
 .gm-ds.gm-lz .lz-catic .ic{width:17px;height:17px}
 .gm-ds.gm-lz .lz-catn{flex:1}
-.gm-ds.gm-lz .lz-cats{font-size:12px;font-weight:400;color:var(--k-faint)}
 .gm-ds.gm-lz .lz-chv{width:16px;height:16px;flex:none;color:var(--k-faint);transition:transform .15s}
 .gm-ds.gm-lz .lz-cat.open .lz-chv{transform:rotate(180deg)}
 .gm-ds.gm-lz .lz-cat .lz-pgs{padding:0 10px 10px;display:flex;flex-direction:column;gap:6px}
@@ -57,6 +62,14 @@
 .gm-ds.gm-lz .lz-pgb small{display:block;font-size:12.5px;line-height:1.4;color:var(--k-faint)}
 .gm-ds.gm-lz .lz-wver{margin-top:8px;width:min(360px,100%);font-size:13px}
 .gm-ds.gm-lz .lz-wver button{padding:6px 8px;font-size:13px}
+/* מתג דו-מצבי בגווני המערכת: מסלול שקוף עם מסגרת, מחוון בהיר שמחליק בין המצבים */
+.gm-ds.gm-lz .lz-wver.seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:3px;gap:0;--i:0;--n:2}
+.gm-ds.gm-lz .lz-wver.seg.pill .pth{position:absolute;top:3px;bottom:3px;height:auto;margin:0;width:calc((100% - 6px)/var(--n));inset-inline-start:calc(3px + (100% - 6px)/var(--n)*var(--i));background:var(--gm-sky-50);border-radius:999px;pointer-events:none;transition:inset-inline-start .28s cubic-bezier(.4,.1,.2,1)}
+.gm-ds.gm-lz .lz-wver.seg.pill button{position:relative;z-index:1;flex:1;min-width:0;border:0;background:transparent;box-shadow:none;border-radius:999px;font-weight:500;color:var(--k-sub);white-space:nowrap;transition:color .25s}
+.gm-ds.gm-lz .lz-wver.seg.pill button:hover{background:transparent;color:#fff}
+.gm-ds.gm-lz .lz-wver.seg.pill button.on,.gm-ds.gm-lz .lz-wver.seg.pill button.on:hover{background:transparent;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-lz .lz-wver.seg.pill button:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .lz-wver.seg.pill .pth,.gm-ds.gm-lz .lz-wver.seg.pill button{transition:none}}
 
 /* ===== תיבת סימון (כהה; זהב כשמסומן; קו במצב ביניים) ===== */
 .gm-ds.gm-lz .lz-cb{-webkit-appearance:none;appearance:none;flex:none;width:20px;height:20px;margin:2px 0 0;padding:0;border-radius:6px;border:1.5px solid var(--k-faint);background:rgba(255,255,255,.06);display:inline-grid;place-content:center;cursor:pointer}
@@ -71,7 +84,6 @@
 
 /* ===== תצוגה מקדימה (כמו Chrome: המסמך בלבד, מוקטן לרוחב החלונית) ===== */
 .gm-ds.gm-lz .lz-wp{min-height:0;display:flex;flex-direction:column;gap:8px}
-.gm-ds.gm-lz .lz-wph{flex:none;font-size:14px;font-weight:600;color:var(--k-sub)}
 .gm-ds.gm-lz .lz-wps{position:relative;flex:1;min-height:0;overflow:hidden;border-radius:12px;background:#2b3138;border:1px solid var(--k-rowb)}
 .gm-ds.gm-lz .lz-wpf{position:absolute;left:0;top:0;display:block;border:0;background:#3c4249;transform-origin:0 0}
 .gm-ds.gm-lz .lz-wpe{position:absolute;inset:0;margin:0;padding:20px;display:grid;place-items:center;text-align:center;font-size:14px;color:var(--k-faint)}
@@ -84,20 +96,18 @@
 .gm-ds.gm-lz .lz-wpin{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;text-align:start}
 .gm-ds.gm-lz .lz-wpin label{font-size:14px;font-weight:600;color:var(--k-sub)}
 .gm-ds.gm-lz .lz-wpin input{width:160px}
-.gm-ds.gm-lz .lz-wiz .dbtns.lz-wf{flex:none;display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:10px;margin:0}
+.gm-ds.gm-lz .lz-wiz .dbtns.lz-wf{flex:none;display:flex!important;flex-direction:row!important;flex-wrap:wrap;justify-content:flex-start;gap:10px;margin:0}
 /* במסך צר עיצוב הפלטה הופך חלון לגיליון תחתון עם שורת פעולות דביקה בשוליים שלילים (.dbtns:last-child); בחלון הזה הפריסה היא עמודה גוללת + שורת פעולות קבועה בתחתית, בלי שוליים שליליים */
 .gm-ds.gm-lz #dlg.lz-wiz .dbtns.lz-wf{position:static;margin:0;padding:0;background:none}
-.gm-ds.gm-lz .lz-wiz .dbtns.lz-wf .btn{flex:1 1 180px;width:auto;margin:0}
-.gm-ds.gm-lz .lz-full .dbtns.lz-wf .btn.primary{flex:2 1 260px}
+.gm-ds.gm-lz .lz-wiz .dbtns.lz-wf .btn{flex:0 0 auto;width:auto;margin:0}
 
 /* ===== החלונית המהירה (שלב אחד): רשימה שטוחה ללא תצוגה מקדימה ===== */
 .gm-ds.gm-lz .lz-wiz.lz-quick{width:min(520px,96vw)}
 .gm-ds.gm-lz .lz-quick .lz-wb{display:block}
 .gm-ds.gm-lz .lz-quick .lz-wl{max-height:50vh;overflow:hidden}
-.gm-ds.gm-lz .lz-quick .lz-pgs.lz-flat{overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-inline-end:6px}
+.gm-ds.gm-lz .lz-quick .lz-pgs.lz-flat{direction:ltr;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-inline-end:6px}
 .gm-ds.gm-lz .lz-quick .lz-wall{margin:4px 0 8px}
 .gm-ds.gm-lz .lz-quick .lz-wf{margin-top:10px}
-.gm-ds.gm-lz .lz-quick .lz-wf .btn.ghost{flex:1 1 100%}
 
 /* ===== רספונסיבי ===== */
 @media (max-width:1100px){
