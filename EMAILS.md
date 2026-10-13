@@ -177,3 +177,13 @@
 ## מרכז המיילים - `/admin/email-center` (2026-10-12)
 
 עריכת כל המיילים מהממשק: נושא ושורות בצורת "דברי דואר" (שדות מוחלפים כצ'יפים), הפעלה/כיבוי, תזמון (מיד / אחרי X ימים מההזמנה / X ימים לפני האירוע / X ימים אחרי ההחזרה), נתונים קבועים (שם גמ"ח, כתובת, טלפון, לוגו, חתימה) ודיוורים (רק למאשרי דיוור, עם קישור הסרה). מיפוי מלא, אחסון, תזמון, מגבלות ובטיחות: [docs/email-catalog.md](docs/email-catalog.md). הקוד: `lib/emailRegistry.js` (מה ניתן לערוך), `lib/emailConfig.js` (אחסון), `lib/emailCampaign.js` (דיוורים), `app/components/email-center/`. כל מייל חדש חייב רשומה גם ב-`emailRegistry.js` (בדיקה: `node scripts/email-center-tests/run.mjs`). בסביבת פיתוח `EMAIL_DRY_RUN=1` מונע שליחה אמיתית.
+
+## שליחה דרך Hostinger Mail API (נווה יעקב, 2026-10-13)
+
+כשבפרויקט Vercel מוגדרים `HOSTINGER_MAIL_TOKEN` (טוקן Bearer מ-hPanel) ו-`HOSTINGER_MAILBOX_ID` (mailboxResourceId של התיבה, מ-`GET https://api.mail.hostinger.com/api/v1/me`),
+`postToMailer` ב-[lib/mailer.js](lib/mailer.js) שולח מייל רגיל דרך [lib/hostingerMail.js](lib/hostingerMail.js) (`POST /api/v1/mailboxes/{id}/send`) מהתיבה בדומיין, ולא דרך Gmail.
+- משתני סביבה הם לפי פרויקט: מגדירים **רק** בפרויקט `gmach-neve-yaakov`. בגמח הראשי הם לא קיימים והשליחה נשארת Apps Script.
+- נשארים ב-Apps Script: כרטיס הזמנה (המרת HTML ל-PDF, `action`), וקבצים שיעדם דרייב.
+- 401/403/429 = המייל לא יצא, נופלים ל-Apps Script. 422/5xx/timeout/ניתוק = כשל (בלי ניסיון חוזר, מניעת כפילות).
+- בדיקות: `node scripts/email-center-tests/hostinger-mail.test.mjs` (נכלל ב-`run.mjs`).
+- ה-API תומך גם ב-webhook `message.received` למיילים נכנסים (עדיין לא ממומש באתר).
