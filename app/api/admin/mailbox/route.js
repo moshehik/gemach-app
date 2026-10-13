@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
-import { getCachedSetting } from '@/lib/settingsCache';
+import { resolveSenderName } from '@/lib/mailer';
 import {
   MailboxError, MAX_SEND_ATTACHMENT_BYTES, isMailboxEnabled, validFolder, validUid,
   listFolders, getQuota, getAddress, listMessages, getMessage, downloadAttachment, updateFlags, moveMessage, deleteMessage, sendMail,
@@ -195,7 +195,8 @@ export async function POST(request) {
       let inReplyTo; let forwardOf;
       if (body.replyTo) inReplyTo = { uid: pickUid(body.replyTo.uid), folder: pickFolder(body.replyTo.folder) };
       else if (body.forwardOf) forwardOf = { uid: pickUid(body.forwardOf.uid), folder: pickFolder(body.forwardOf.folder) };
-      const displayName = ((await getCachedSetting('gmach_name').catch(() => '')) || '').toString().trim();
+      // אותו שם שולח כמו שאר מיילי האתר (getCachedSetting מחזיר שורת הגדרה ולא מחרוזת - זה הפיק "[object Object]")
+      const displayName = String((await resolveSenderName().catch(() => '')) || '').trim();
       const html = `<div dir="rtl" style="font-family:Arial,Tahoma,sans-serif;font-size:15px;line-height:1.6;white-space:pre-wrap">${escHtml(text)}</div>`;
       try {
         await sendMail({ to, cc, bcc, subject, text, html, attachments, displayName, inReplyTo, forwardOf });

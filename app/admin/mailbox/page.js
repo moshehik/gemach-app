@@ -328,6 +328,7 @@ function ComposeModal({ state, nf, onClose, onSent }) {
   }
 
   async function send() {
+    if (!f.text.trim() && !window.confirm('המייל בלי תוכן (רק נושא). לשלוח בכל זאת?')) return;
     setBusy(true); setErr('');
     try {
       await post({

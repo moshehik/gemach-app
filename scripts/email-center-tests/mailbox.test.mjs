@@ -6,6 +6,7 @@ import './alias-register.mjs';
 
 register('data:text/javascript,' + encodeURIComponent(String.raw`
 export async function resolve(spec, ctx, next) {
+  if (spec === '@/lib/mailer') return { url: 'stub:mailer', shortCircuit: true, format: 'module' };
   if (spec === '@/app/lib/prisma') return { url: 'stub:prisma', shortCircuit: true, format: 'module' };
   if (spec === '@/lib/settingsCache') return { url: 'stub:settings', shortCircuit: true, format: 'module' };
   if (spec === '@/lib/auth') return { url: 'stub:auth', shortCircuit: true, format: 'module' };
@@ -16,6 +17,7 @@ export async function load(url, ctx, next) {
   if (url === 'stub:prisma') return { format: 'module', shortCircuit: true, source: 'export default { emailLog: { create: async (a) => { (globalThis.__logs ||= []).push(a.data); return {}; } }, customer: { findMany: async (a) => { globalThis.__custQuery = a; return globalThis.__custRows || []; } } };' };
   if (url === 'stub:settings') return { format: 'module', shortCircuit: true, source: 'export const getCachedSetting = async () => "גמח נווה יעקב";' };
   if (url === 'stub:auth') return { format: 'module', shortCircuit: true, source: 'export const checkAuth = async (role, opts) => { globalThis.__authCalls = (globalThis.__authCalls || []).concat([[role, opts]]); return globalThis.__authOk !== false; };' };
+  if (url === 'stub:mailer') return { format: 'module', shortCircuit: true, source: 'export const resolveSenderName = async () => "גמח נווה יעקב";' };
   if (url === 'stub:next-server') return { format: 'module', shortCircuit: true, source: 'export class NextResponse extends Response { static json(b, i) { return Response.json(b, i); } }' };
   return next(url, ctx);
 }`), import.meta.url);
@@ -149,6 +151,7 @@ await t('שליחה: נמענים, תשובה (inReplyTo), שם שולח, תיע
   assert.deepEqual(sent.cc, ['c@example.test']);
   assert.deepEqual(sent.inReplyTo, { uid: 7, folder: 'INBOX' });
   assert.equal(sent.displayName, 'גמח נווה יעקב');
+  assert.equal(typeof sent.displayName, 'string', 'שם השולח הוא טקסט (לא "[object Object]")');
   assert.match(sent.html, /dir="rtl"/);
   assert.ok(sent.html.includes('&lt;b&gt;') && !sent.html.includes('<b>'), 'HTML בגוף מנוקה');
   assert.equal(globalThis.__logs.length, 1);
