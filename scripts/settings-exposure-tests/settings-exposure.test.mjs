@@ -333,7 +333,6 @@ test('(e) the public-surface list matches the layout: only the kiosk, the punch 
 const CLOSED_ROUTES = [
   { file: 'app/api/export-migration-report/route.js', role: 'מתכנת' },
   { file: 'app/api/db-check/route.js', role: 'מתכנת' },
-  { file: 'app/api/admin/database/status/route.js', role: 'מתכנת' },
   { file: 'app/api/pricelists/categories/route.js', role: null },
   { file: 'app/api/queries-by-path/route.js', role: null },
 ];
@@ -370,11 +369,11 @@ test('(f) static: every closed route calls checkAuth before doing anything else 
 });
 
 test('(f) no public page / print view / popup fetches a closed route without a session (consumer scan)', () => {
-  const closedPaths = ['/api/export-migration-report', '/api/db-check', '/api/admin/database/status', '/api/pricelists/categories', '/api/queries-by-path'];
+  const closedPaths = ['/api/export-migration-report', '/api/db-check', '/api/pricelists/categories', '/api/queries-by-path'];
   const allowed = new Set([
     // staff screens (session) and dev-only tooling
     'app/components/dress-card/useDressCard.js', 'app/components/dress-new/LegacyNewDressPage.js', 'app/components/dress-new/useModelNewController.js',
-    'app/dashboard/dresses/[id]/LegacyDressCardPage.js', 'app/dashboard/pricelist/page.js', 'app/admin/database/page.js', 'components/ClipboardDebugger.js',
+    'app/dashboard/dresses/[id]/LegacyDressCardPage.js', 'app/dashboard/pricelist/page.js', 'components/ClipboardDebugger.js',
     // the legacy kiosk: every data call it makes already needs an employee cookie
     'app/customer-interface/LegacyKioskPage.js',
     // the A5 kiosk skin used by the shop's logged-in computer (integrated 2026-10-12); the customer-facing public route /station uses other components of the same folder

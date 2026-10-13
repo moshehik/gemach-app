@@ -6,8 +6,8 @@ import { checkAuth } from '@/lib/auth';
 // app/lib/prisma.js). This exists because IS_OFFLINE_MODE is a process env var that
 // only takes effect on server restart - so the automatic sync-on-startup in
 // app/lib/prisma.js covers "staff restarted the app with internet back", but not
-// "internet came back while the server process kept running". This lets staff (or the
-// admin `/admin/database` page) trigger the same reconciliation on demand instead of
+// "internet came back while the server process kept running". This lets staff (or any
+// future admin screen) trigger the same reconciliation on demand instead of
 // having to restart the server.
 export async function POST() {
   if (!(await checkAuth('מנהל'))) {

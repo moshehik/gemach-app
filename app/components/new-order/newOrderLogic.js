@@ -550,10 +550,14 @@ export const trackBranchOn = (s) => (s || {}).track_branch_on_order === 'true' |
 export const pickupBranchesOf = (s) => (isMultiBranchEnabled(s) ? branchesWith(branchConfigFromSettings(s), 'pickup').map((b) => b.name) : branchListOf(s));
 // כמו בישן (LegacyNewOrderPage ~2030): כל הכרטיס "משלוח / סניף / טלפוני" מוצג כשאחד מדגלי הטלפוני/סניף דלוק או
 // delivery_show_in_order !== 'false'; "הזמנת משלוח" בתוכו דורשת גם enable_deliveries === 'true'. אופן ההזמנה - לפי הדגלים עצמם.
+// דיווח 8ff97ace (נווה יעקב, 12.10.2026): שלב "איך מזמינים?" מבוטל, והזמנה טלפונית (+ סניף ביצוע כשנרשם) עוברים לשלב הלקוח, מתחת ל"חתם על התקנון".
+// מאחורי new_order_phone_flag_in_customer_step (כבוי = השלב "אופן ההזמנה" כמו קודם).
+export const phoneFlagInCustomerStep = (s) => (s || {}).new_order_phone_flag_in_customer_step === 'true';
 export function deliveryStepVisibility(s) {
   const st = s || {};
-  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true' || st.multi_branch_enabled === 'true';
-  const cardVisible = showMode || st.delivery_show_in_order !== 'false';
+  const modeFlags = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true' || st.multi_branch_enabled === 'true';
+  const showMode = !phoneFlagInCustomerStep(st) && modeFlags;
+  const cardVisible = modeFlags || st.delivery_show_in_order !== 'false';
   return { showMode, showDelivery: cardVisible && st.enable_deliveries === 'true' };
 }
 export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.multi_branch_enabled === 'true' || s.delivery_show_in_order !== 'false';

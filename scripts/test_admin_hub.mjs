@@ -30,7 +30,7 @@ const YES = {
   '/admin/ai': 'head', '/admin/statistics': 'head', '/admin/ai-history': 'head', '/dashboard': 'head',
   '/admin/inventory-alerts': 'head', '/admin/recalculations': 'head', '/admin/departments': 'head', '/admin/refund-policy': 'head',
   '/admin/labels': 'dev', '/design-system': 'dev', '/admin/trusted-devices': 'head', '/admin/data-explorer': 'dev', '/admin/data-explorer/full-view': 'dev',
-  '/admin/access-import': 'dev', '/admin/setup-new-machine': 'head', '/admin/data-history': 'head', '/admin/database': 'dev',
+  '/admin/access-import': 'dev', '/admin/setup-new-machine': 'head', '/admin/data-history': 'head',
   '/admin/backups': 'head', '/admin/site-settings': 'dev', '/admin/site-settings/api-keys': 'dev', '/admin/site-settings/email-logs': 'dev',
   '/admin/email-test': 'head', '/management/history': 'head', '/admin/ai-restrictions': 'dev', '/admin/barcode-invalid': 'head',
   '/admin/bulk-email': 'head', '/admin/nedarim-hok-list': 'head', '/admin/nedarim-hok-search': 'head', '/admin/nedarim-hok-edit': 'head',

@@ -23,7 +23,7 @@ import { useA5Shell } from '../menu/A5ShellContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import {
   STOCK_CHECK_STORE_KEY, FLEX_TIP, isNumericSize, addSizes, toggleFlex, validateForm, buildStockCheckUrl, buildOptionsUrl,
-  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sizeOptionsQuery, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
+  freeChipClass, freeLabel, flexNote, flexAxis, flexCandidatesText, summaryParts, filterSizeOptions, lastSizeToken, sizeOptionsQuery, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
 } from '@/lib/stockCheckUi';
 
 const OPT_TTL = 60 * 1000;
@@ -217,6 +217,24 @@ const BranchesText = ({ branches }) => (branches && branches.length
   : <Dash />);
 const FreeChip = ({ n }) => <span className={`chip ${freeChipClass(n)}`}>{freeLabel(n)}</span>;
 
+// ציר מידות ויזואלי לבדיקה הגמישה: המידה במרכז, שתי מידות מעלה ומטה מסומנות כשהגמישות פעילה (הציר ב-LTR כמו כל מספרי מידה).
+function FlexAxis({ value, on, example }) {
+  const pts = flexAxis(value, on);
+  return (
+    <div className={`fx-row${example ? ' ex' : ''}`}>
+      <div className="fx-h">
+        <b>{example ? 'דוגמה: מידה ' : 'מידה '}<bdi dir="ltr">{value}</bdi></b>
+        <span className="fx-cap">{on ? `נבדקת גם ${flexCandidatesText(value)}` : 'נבדקת בדיוק'}</span>
+      </div>
+      <div className={`fx-ax${on ? ' on' : ''}`} dir="ltr" aria-hidden="true">
+        {pts.map((p) => (
+          <span key={p.d} className={`fx-t ${p.state}`}><i /><b>{p.label}</b></span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function StockCheckPage() {
   const shell = useA5Shell();
   const rootRef = useRef(null);
@@ -297,6 +315,26 @@ export default function StockCheckPage() {
     try { sessionStorage.removeItem(STOCK_CHECK_STORE_KEY); } catch { /* ignore */ }
     focusField('model');
   };
+  const goEdit = () => {
+    const f = document.getElementById('stock-form');
+    if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    focusField('model');
+  };
+  // כותרת הכרטיס של התוצאות - כמו תוצאות החיפוש המתקדם בבית: אייקון + "עדכן" / "נקה" בשורה אחת, ומתחתיה כותרת הסיכום (advsum)
+  const resHead = (count) => (
+    <>
+      <div className="card-h">
+        <span className="advs-i" aria-hidden="true"><Ic id="box" /></span>
+        <button type="button" className="ibtn" data-act="adv-update" aria-label="עדכן בדיקה" onClick={goEdit}><Ic id="sliders" size="sm" /><span>עדכן בדיקה</span></button>
+        <button type="button" className="ibtn" data-act="adv-reopen-clear" aria-label="נקה" onClick={clearAll}><Ic id="eraser" size="sm" /><span>נקה</span></button>
+      </div>
+      <div className="advsum">
+        <b id="stock-rc">תוצאות בדיקת מלאי <bdi>({count})</bdi></b>
+        <span>{summary}{res && res.truncated ? ' · מוצגות 200 הראשונות' : ''}</span>
+      </div>
+      {res && res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
+    </>
+  );
   const addFromInput = () => {
     if (sizeIn.trim()) { setSizes((cur) => addSizes(cur, sizeIn)); setSizeIn(''); setInvalid(null); }
     focusField('size');
@@ -316,7 +354,7 @@ export default function StockCheckPage() {
   };
 
   const dateText = hebText(date);
-  const summary = useMemo(() => summaryParts({ dateText: res ? hebText(res.date) : dateText, model, sizes }).join(' · '), [res, dateText, model, sizes]);
+  const summary = summaryParts({ dateText: res ? hebText(res.date) : dateText, model, sizes }).join(' · ');
   const hasFlex = sizes.some((z) => z.flex && isNumericSize(z.v));
   const branches = !!(res && res.branchesEnabled);
   const results = res ? res.results : [];
@@ -337,6 +375,7 @@ export default function StockCheckPage() {
       <div className="hero-in jshell advonly">
         <div className="card res-one advp" id="stock-form" data-guide-id="stock.form">
           <div className="card-h">
+            <span className="advs-i" aria-hidden="true"><Ic id="box" /></span>
             <h2 id="stock-h">בדיקת מלאי</h2>
             <button type="button" className="ibtn" data-act="adv-apply" aria-label="בדיקה" onClick={() => run()}><Ic id="search" size="sm" /><span>בדיקה</span></button>
             <button type="button" className="ibtn" data-act="adv-clear" aria-label="נקה" onClick={clearAll}><Ic id="eraser" size="sm" /><span>נקה</span></button>
@@ -354,7 +393,7 @@ export default function StockCheckPage() {
             </div>
           )}
           <section className="advs" aria-label="מה לבדוק">
-            <div className="advs-h"><span className="advs-i"><Ic id="box" /></span><h3>מה לבדוק</h3></div>
+            <div className="advs-h"><span className="advs-i"><Ic id="dress" /></span><h3>מה לבדוק</h3></div>
             <div className="advgrid">
               <div className="stock-datew" data-guide-id="stock.date">
                 {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
@@ -401,7 +440,6 @@ export default function StockCheckPage() {
                 ))}
               </div>
             )}
-            <div className="pg-sub">חובה דגם או מידה, או שניהם. עם כמה מידות מוצגים רק דגמים שכולן פנויות בהם באותו תאריך.</div>
           </section>
           <section className="advs" data-guide-id="stock.flex" aria-label="בדיקה גמישה">
             <div className="advs-h">
@@ -432,10 +470,16 @@ export default function StockCheckPage() {
                     );
                   })}
                 </div>
-                <div className="pg-sub" id="stock-flex-note">{flexNote(sizes)}</div>
+                <div className="fx-list">
+                  {sizes.filter((z) => isNumericSize(z.v)).map((z) => <FlexAxis key={z.v} value={z.v} on={!!z.flex} />)}
+                </div>
+                {!sizes.some((z) => isNumericSize(z.v)) && <div className="pg-sub" id="stock-flex-note">{flexNote(sizes)}</div>}
               </>
             ) : (
-              <div className="pg-sub">{flexNote([])}</div>
+              <>
+                <div className="pg-sub">{flexNote([])}</div>
+                <div className="fx-list"><FlexAxis value="12" on example /></div>
+              </>
             )}
           </section>
           <div className="advact">
@@ -448,8 +492,8 @@ export default function StockCheckPage() {
         </div>
       </div>
 
-      <div className="hero-in jshell" id="stock-res" data-guide-id="stock.results" ref={resRef}>
-        <div className="card res-one" aria-live="polite">
+      <div className="hero-in jshell advonly" id="stock-res" data-guide-id="stock.results" ref={resRef}>
+        <div className="card res-one advp" aria-live="polite">
           {phase === 'idle' && (
             <>
               <div className="card-h"><h2>תוצאות</h2></div>
@@ -481,9 +525,7 @@ export default function StockCheckPage() {
           )}
           {phase === 'none' && (
             <>
-              <div className="card-h"><h2>תוצאות <span className="faint">(0)</span></h2></div>
-              <div className="pg-sub stock-sum">{summary}</div>
-              {res && res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
+              {resHead(0)}
               <div className="empty" role="status">
                 <Ic id="search" size="lg" />
                 <div>אין תוצאות לחיפוש הזה</div>
@@ -493,12 +535,10 @@ export default function StockCheckPage() {
           )}
           {phase === 'results' && res && (
             <>
-              <div className="card-h">
-                <h2>תוצאות <span className="faint">({results.length})</span></h2>
+              {resHead(results.length)}
+              <div className="xlrow xlrow2">
                 <ViewSwitch table={view === 'table'} onChange={(t) => { const v = t ? 'table' : 'rows'; setView(v); persist({ date, model, sizes, view: v, res }); }} />
               </div>
-              <div className="pg-sub stock-sum">{summary}{res.truncated ? ' · מוצגות 200 הראשונות' : ''}</div>
-              {res.warnings && res.warnings.length > 0 && <div className="pg-sub stock-warn">{res.warnings.join(' · ')}</div>}
               {view === 'table' ? (
                 <ResultsTable
                   columns={columns}
