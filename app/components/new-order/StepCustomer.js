@@ -4,11 +4,11 @@
 // S01 + S02 (לא להכניס): אין בדיקות חוסרים בבחירה מהרשימה ואין כרטיס "לקוח שנבחר" עם 5 שדות - שורת הלקוח + "חסר ללקוח" כמו באתר.
 // R03: הודעת "חובה למלא לפחות אחד מבין" בגוון הסלמון של ההתראה ובגודל רגיל (no-grp). R05: הודעת השרת מתחת לשדה.
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
-import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
+import { Blk, ClearX, Field, Ic, Note, NoCombo, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
 import { useNoFill } from '@/lib/autofillGuard';
 import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
-import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
+import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker, branchListOf, pickupBranchesOf, phoneFlagInCustomerStep, trackBranchOn } from './newOrderLogic';
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 import useEnterNavigation from '@/app/components/shared/useEnterNavigation';
 import ConsentFields from '@/app/components/shared/ConsentFields';
@@ -140,6 +140,37 @@ function ListTab({ ctl }) {
   );
 }
 
+// דיווח 8ff97ace (נווה יעקב): במקום השלב "איך מזמינים?" - מתג "הזמנה טלפונית" (לא חובה; בלי סימון ממשיכים כרגיל) מתחת ל"חתם על התקנון".
+// סניף ביצוע / איסוף (רק כשהם נרשמים בהזמנה) נשארים כאן כשדות רשות, כדי שהנתון לא יאבד. מאחורי new_order_phone_flag_in_customer_step.
+function PhoneFlagRow({ ctl }) {
+  const s = ctl.settings;
+  const o = ctl.order;
+  const set = (patch) => ctl.setOrder(prev => ({ ...prev, ...patch }));
+  const phoneOn = s.phone_order_marker_enabled === 'true';
+  const branchOn = trackBranchOn(s);
+  const pickupOn = s.branches_enabled === 'true' || s.multi_branch_enabled === 'true';
+  if (!phoneOn && !branchOn && !pickupOn) return null;
+  return (
+    <div data-enter-skip="1">
+      {phoneOn ? <div className="trow"><Switch id="noNcPhone" checked={!!o.isPhoneOrder} onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} label="הזמנה טלפונית" /><span>הזמנה טלפונית</span></div> : null}
+      {branchOn || pickupOn ? (
+        <div className="grid2" style={{ marginTop: 12 }}>
+          {branchOn ? (
+            <Field label="סניף ביצוע" icon="pin" htmlFor="noBranchSel">
+              <NoCombo id="noBranchSel" label="סניף ביצוע" placeholder={o.isPhoneOrder ? 'לא רלוונטי בהזמנה טלפונית' : 'בחר סניף...'} disabled={!!o.isPhoneOrder} value={o.branch || ''} options={[['', ''], ...branchListOf(s).map(b => [b, b])]} onChange={(val) => set({ branch: val, isPhoneOrder: val ? false : o.isPhoneOrder })} />
+            </Field>
+          ) : null}
+          {pickupOn ? (
+            <Field label="סניף איסוף" icon="bag" htmlFor="noPickupSel">
+              <NoCombo id="noPickupSel" label="סניף איסוף" placeholder="בחר סניף..." value={o.pickupBranch || ''} options={[['', ''], ...pickupBranchesOf(s).map(b => [b, b])]} onChange={(val) => set({ pickupBranch: val })} />
+            </Field>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function NewTab({ ctl }) {
   const nf = useNoFill();
   const s = ctl.settings;
@@ -153,7 +184,7 @@ function NewTab({ ctl }) {
     e.preventDefault();
     ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: true }));
     const box = e.target.closest('.blk');
-    const all = box ? Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null) : [];
+    const all = box ? Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null && !el.closest('[data-enter-skip]')) : [];
     const next = all.find(el => (el.compareDocumentPosition(e.target) & Node.DOCUMENT_POSITION_PRECEDING) !== 0);
     if (next) { next.focus(); if (typeof next.select === 'function') next.select(); } else ctl.handleSaveNewCustomerAndProceed(false, true);
   };
@@ -222,6 +253,7 @@ function NewTab({ ctl }) {
           <div className="trow"><Switch checked={n.marketingConsent} onChange={set('marketingConsent')} label="אישור דיוור" /><span>מאשר/ת קבלת דיוורים{star(s.require_marketing_consent === 'true')}</span></div>
         ) : null}
         {!ctl.explicitConsent ? <div className="trow"><Switch id="noNcSign" checked={ctl.order.hasSignedRegulations} onChange={(v) => ctl.setOrder(prev => ({ ...prev, hasSignedRegulations: v }))} onKeyDown={onSignEnter} label="חתימה על התקנון" /><span>חתם/ה על התקנון *</span></div> : null}
+        {phoneFlagInCustomerStep(s) ? <PhoneFlagRow ctl={ctl} /> : null}
       </div>
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
       {err && (!err.field || err.field === 'consent') ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
@@ -242,6 +274,7 @@ export default function StepCustomer({ ctl }) {
         <div style={{ marginTop: 18 }}>
           {ctl.searchMode === 'phone' ? <PhoneTab ctl={ctl} /> : ctl.searchMode === 'name' ? <ListTab ctl={ctl} /> : <NewTab ctl={ctl} />}
         </div>
+        {ctl.searchMode !== 'new' && ctl.order.customerId && phoneFlagInCustomerStep(ctl.settings) ? <div style={{ marginTop: 18 }}><PhoneFlagRow ctl={ctl} /></div> : null}
       </Blk>
     </OneCard>
   );
