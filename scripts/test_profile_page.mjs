@@ -122,9 +122,9 @@ t('תיבת הסיסמא: Enter מאשר רק משדה טקסט (לא מ"ביט�
 });
 
 // ---- hide_profile_email_alerts_option (דיווח 13888b96, הגמח הראשי; 6.10.2026) ----
-const LEGACY = read('../app/profile/LegacyProfilePage.js');
+// LegacyProfilePage.js is a frozen copy (page-variant-switch pins its blob): the setting is applied to the new ProfilePage only.
 t('"קבלת התראות למייל": שני הדפים (החדש והישן) מסתירים אותה רק כש-hide_profile_email_alerts_option = "true"; ברירת מחדל מוצגת', () => {
-  for (const [name, src] of [['ProfilePage', PAGE], ['LegacyProfilePage', LEGACY]]) {
+  for (const [name, src] of [['ProfilePage', PAGE]]) {
     has(src, /const \[hideEmailAlertsOption, setHideEmailAlertsOption\] = useState\(false\);/, name + ': ברירת מחדל false (מוצגת)');
     has(src, /x\.key === 'hide_profile_email_alerts_option'/, name + ': קורא את ההגדרה מ-/api/settings');
     has(src, /if \(h\) setHideEmailAlertsOption\(h\.value === 'true'\);/, name + ': רק "true" מסתיר');
@@ -132,7 +132,7 @@ t('"קבלת התראות למייל": שני הדפים (החדש והישן) �
   }
 });
 t('ההסתרה לא משנה את הערך השמור: התיבה היא רק שדה בטופס, והטופס ממשיך לשלוח את profile כמו שהוא (receiveEmailAlerts לא נמחק/נדרס)', () => {
-  for (const [name, src] of [['ProfilePage', PAGE], ['LegacyProfilePage', LEGACY]]) {
+  for (const [name, src] of [['ProfilePage', PAGE]]) {
     assert.ok(!/delete\s+\w*\.?receiveEmailAlerts|receiveEmailAlerts:\s*(false|undefined)/.test(src), name + ': אין איפוס של receiveEmailAlerts בדף');
   }
 });
