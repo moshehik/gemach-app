@@ -28,7 +28,7 @@ console.log('resolution order');
 t('בלי כלום: כל המסכים legacy', () => {
   // 4.10.2026: נוספו profile / admin_hub / attendance / error_report (lib/uiVariantScreens.js) + board (5.10.2026) + employee_card (newExists:false) + new_order (newExists:false עד 5.10.2026; מ-6.10.2026 newExists:true - למתכנת a5, ר' בדיקת ברירת המחדל לפי תפקיד) + settings (5.10.2026) - בלי roleId כולם legacy.
   // + 9.10.2026 (עובדים ודגמים): employees_list / models_list / model_card / model_new - בלי roleId כולם legacy.
-  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy', email_logs: 'legacy', departments: 'legacy', management_history: 'legacy', data_history: 'legacy', messages: 'legacy', permissions: 'legacy' });
+  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy', email_logs: 'legacy', departments: 'legacy', management_history: 'legacy', data_history: 'legacy', messages: 'a5', permissions: 'legacy' });
   assert.deepEqual(resolveUiVariants(), resolveUiVariants({}));
 });
 t('הגדרת ארגון (מערך שורות) מדליקה רק את המסך שלה', () => {
@@ -45,7 +45,7 @@ t('עקיפה אישית גוברת על הארגון (בשני הכיוונים
 });
 t('עקיפה אישית של מסך אחד לא משפיעה על מסך אחר', () => {
   const r = resolveUiVariants({ settings: rows({ ui_variant_home: 'a5' }), userVariants: { customer_card: 'a5' } });
-  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy', email_logs: 'legacy', departments: 'legacy', management_history: 'legacy', data_history: 'legacy', messages: 'legacy', permissions: 'legacy' });
+  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy', employees_list: 'legacy', models_list: 'legacy', model_card: 'legacy', model_new: 'legacy', email_logs: 'legacy', departments: 'legacy', management_history: 'legacy', data_history: 'legacy', messages: 'a5', permissions: 'legacy' });
 });
 t('מפתחות ההגדרה בדיוק כפי שסוכם', () => {
   assert.deepEqual(UI_VARIANT_SETTING_KEYS, {
@@ -75,14 +75,14 @@ t('הגדרות: הגדרת ארגון וגם עקיפה אישית גוברות
 t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיסי הזמנה ולקוח החדשים קיימים (newExists); כרטיס עובד נשאר ישן (הזמנה חדשה - חדש למתכנת מ-6.10.2026); כרטיס הלקוח החדש קיים (newExists) ולכן a5 למתכנת בלבד', () => {
   for (const s of ['employee_card']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
   for (const s of ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
-  for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), 'legacy', 'הנהלה ראשית: ' + s);
+  for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), s === 'messages' ? 'a5' : 'legacy', 'הנהלה ראשית: ' + s); // messages: defaultNewForAll (15.10.2026)
 });
 
 console.log('everyone may choose the new design (owner decision 11.10.2026): defaults and order unchanged');
 t('כל תפקיד: בלי בחירה אישית נשאר ישן (חוץ ממתכנת); עקיפה אישית a5 מדליקה לכל תפקיד בכל מסך; בלי כתיבת הגדרת ארגון', () => {
   for (const r of [0, 1, 3, 7, null, undefined]) {
     for (const s of UI_SCREENS) {
-      assert.equal(resolveUiVariant(s, { roleId: r }), 'legacy', `ברירת מחדל ${s}/${String(r)}`);
+      assert.equal(resolveUiVariant(s, { roleId: r }), s === 'messages' ? 'a5' : 'legacy', `ברירת מחדל ${s}/${String(r)}`); // messages: defaultNewForAll (15.10.2026)
       assert.equal(resolveUiVariant(s, { roleId: r, userVariants: { [s]: 'a5' } }), 'a5', `${s}/${String(r)}`);
       assert.equal(resolveUiVariant(s, { roleId: r, userVariants: { [s]: 'a5' }, settings: rows({ [`ui_variant_${s}`]: 'legacy' }) }), 'a5', 'אישי גובר על הארגון');
     }

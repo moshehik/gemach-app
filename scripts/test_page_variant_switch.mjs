@@ -188,11 +188,13 @@ await t('ברירת מחדל לפי תפקיד: מתכנת (2) -> חדש בכל 
     const expectProg = getScreenEntry(id).newExists ? 'a5' : 'legacy';
     assert.equal(roleDefaultVariant(id, 2), expectProg, id);
     assert.equal(resolveUiVariant(id, { roleId: 2 }), expectProg, id);
-    for (const r of [0, 1, 3, 5, null, undefined, '2', NaN]) assert.equal(resolveUiVariant(id, { roleId: r }), 'legacy', `${id} role ${String(r)}`);
+    // defaultNewForAll (messages, 15.10.2026): החדש הוא ברירת המחדל לכולם, לא רק למתכנת
+    const expectOthers = getScreenEntry(id).defaultNewForAll === true ? 'a5' : 'legacy';
+    for (const r of [0, 1, 3, 5, null, undefined, '2', NaN]) assert.equal(resolveUiVariant(id, { roleId: r }), expectOthers, `${id} role ${String(r)}`);
   }
   assert.equal(resolveUiVariant('order_card', { roleId: 2 }), 'a5', 'כרטיס ההזמנה החדש קיים (newExists): המתכנת מקבל אותו כברירת מחדל');
   for (const r of [0, 1, 3, null, undefined]) assert.equal(resolveUiVariant('order_card', { roleId: r }), 'legacy', `order_card role ${String(r)}: ברירת מחדל ישן לכולם חוץ מהמתכנת`);
-  assert.deepEqual(resolveUiVariants({}), Object.fromEntries(UI_SCREEN_IDS.map((s) => [s, 'legacy'])));
+  assert.deepEqual(resolveUiVariants({}), Object.fromEntries(UI_SCREEN_IDS.map((s) => [s, getScreenEntry(s).defaultNewForAll === true ? 'a5' : 'legacy'])));
 });
 await t('הגדרת ארגון גוברת על ברירת המחדל לפי תפקיד (בשני הכיוונים)', () => {
   for (const id of BOTH) {
