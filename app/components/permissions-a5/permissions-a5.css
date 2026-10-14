@@ -1,0 +1,148 @@
+/* הרשאות (/admin/permissions): תוספות לעמוד בלבד, בהיקף .gm-ds.gm-st.gm-pm ובטוקני הפלטה (--gm-*), מעל settings-sim.css (מעטפת, עמודת הלשוניות, שורות .st-row, חיפוש) -
+   אותה מערכת כמו מרכז המיילים (email-center.css). המבנה והרכיבים (.chip, .tip, .sw, .seg.pill, .rtbl, .dlg.mailwin, .mh, .mfld, .btn) מהפלטה; כאן רק מה שהם לא מכסים:
+   שבבי פריט / עובד, כרטיס ההסבר, מטריצת "מה מותר למי", ושלבי חלון העריכה (סטפר, רשימות בחירה, מחלקות, סיכום). החלונות כהים (.dlg-dark): צבעים מטוקני החלון (--k-*). */
+
+/* ===== שבבים ותוויות ===== */
+.gm-ds.gm-pm .pm-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.gm-ds.gm-pm .pm-chips:first-child{margin-top:0}
+.gm-ds.gm-pm .pm-chip,.gm-ds.gm-pm .pm-emp{max-width:100%}
+.gm-ds.gm-pm .pm-chip bdi,.gm-ds.gm-pm .pm-emp bdi{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-ds.gm-pm .pm-chip-x{display:inline-grid;place-items:center;width:20px;height:20px;margin-inline-end:-6px;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;opacity:.7}
+.gm-ds.gm-pm .pm-chip-x:hover,.gm-ds.gm-pm .pm-chip-x:focus-visible{opacity:1;background:rgba(10,34,66,.12);outline:0}
+.gm-ds.gm-pm .pm-chip-x .ic{width:12px;height:12px}
+.gm-ds.gm-pm .pm-chip .ic{width:13px;height:13px}
+.gm-ds.gm-pm .pm-emp{background:var(--gm-sky-100);color:var(--gm-navy);border-color:var(--gm-sky-200);padding-inline-start:3px}
+.gm-ds.gm-pm .pm-ini{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;background:var(--gm-navy);color:var(--gm-gold-300);font-size:12px;font-weight:700}
+.gm-ds.gm-pm .pm-lbl{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.gm-ds.gm-pm .pm-lbl a{color:inherit;text-decoration:none}
+.gm-ds.gm-pm .pm-lbl a:hover,.gm-ds.gm-pm .pm-lbl a:focus-visible{text-decoration:underline;outline:0}
+.gm-ds.gm-pm .pm-info{margin-inline-start:2px}
+.gm-ds.gm-pm .pm-hint{display:block;margin-top:6px;color:var(--gm-ink3);font-size:13.5px;line-height:1.6}
+.gm-ds.gm-pm .pm-intro{margin-bottom:4px}
+
+/* כרטיס ההסבר של פריט (portal לשורש הדף) */
+.gm-ds.gm-pm .pm-pop{position:fixed;z-index:2400;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px;border-radius:16px;
+  background:linear-gradient(180deg,#fffdf6 0,#fff 70px);color:var(--gm-navy);border:1px solid var(--gm-sky-300);border-top:3px solid var(--gm-gold);box-shadow:0 14px 34px -12px rgba(10,34,66,.45);text-align:start}
+.gm-ds.gm-pm .pm-pop-t{font-size:16px;font-weight:700;color:var(--gm-navy-900)}
+.gm-ds.gm-pm .pm-pop p{margin:0;font-size:14px;line-height:1.65;color:var(--gm-ink2)}
+.gm-ds.gm-pm .pm-pop .pm-pop-n{color:var(--gm-ink3);font-size:13.5px}
+.gm-ds.gm-pm .pm-pop-a{display:inline-flex;align-items:center;gap:6px;color:var(--gm-navy);font-weight:600;font-size:14px}
+.gm-ds.gm-pm .pm-pop-a .ic{width:14px;height:14px}
+
+/* ===== שורת הרשאה ברשימה ===== */
+.gm-ds.gm-pm .pm-row .t{min-width:0}
+.gm-ds.gm-pm .pm-row .st-lb{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.gm-ds.gm-pm .pm-row .st-lb .st-chg{margin-inline-start:0;vertical-align:baseline}
+.gm-ds.gm-pm .pm-who{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.gm-ds.gm-pm .pm-who>small{margin:0;color:var(--gm-ink3);font-weight:600}
+.gm-ds.gm-pm .pm-empty{margin:12px;padding:20px 12px}
+
+/* ===== מטריצת "מה מותר למי" ===== */
+.gm-ds.gm-pm .pm-mtools{display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;margin:0 0 14px}
+.gm-ds.gm-pm .pm-mseg{min-width:280px}
+.gm-ds.gm-pm .pm-only{display:inline-flex;align-items:center;gap:10px;font-size:15px;color:var(--gm-navy-900);cursor:pointer}
+.gm-ds.gm-pm .pm-legend{display:inline-flex;align-items:center;gap:8px;margin-inline-start:auto;color:var(--gm-ink3);font-size:14px}
+.gm-ds.gm-pm .pm-mcard{overflow:hidden}
+.gm-ds.gm-pm .pm-tblw{overflow-x:auto;border-radius:14px}
+.gm-ds.gm-pm .pm-mtbl{min-width:640px}
+.gm-ds.gm-pm .rtbl .tc{text-align:center}
+.gm-ds.gm-pm .pm-mi{min-width:230px}
+.gm-ds.gm-pm .pm-mi b{display:block;font-weight:600;color:var(--gm-navy-900)}
+.gm-ds.gm-pm .pm-mi-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.gm-ds.gm-pm .pm-cell{vertical-align:middle}
+.gm-ds.gm-pm .pm-dot,.gm-ds.gm-pm .pm-ok,.gm-ds.gm-pm .pm-no{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1.5px solid transparent;vertical-align:middle}
+.gm-ds.gm-pm .pm-legend .pm-ok,.gm-ds.gm-pm .pm-legend .pm-no{width:24px;height:24px}
+.gm-ds.gm-pm .pm-dot .ic,.gm-ds.gm-pm .pm-ok .ic,.gm-ds.gm-pm .pm-no .ic{width:16px;height:16px;stroke-width:2.6}
+.gm-ds.gm-pm .pm-cell.ok .pm-dot,.gm-ds.gm-pm .pm-ok{background:var(--gm-navy);color:var(--gm-gold-300);border-color:var(--gm-navy)}
+.gm-ds.gm-pm .pm-cell.no .pm-dot,.gm-ds.gm-pm .pm-no{background:var(--gm-red-t);color:var(--gm-red);border-color:var(--gm-red)}
+.gm-ds.gm-pm .pm-cell.ok .pm-dot .ic,.gm-ds.gm-pm .pm-ok .ic{stroke:var(--gm-gold-300)}
+.gm-ds.gm-pm .pm-cell.no .pm-dot .ic,.gm-ds.gm-pm .pm-no .ic{stroke:var(--gm-red)}
+/* ערך שנגזר מברירת המחדל (בלי שורה ובלי הגדרה מפורשת): קו מקווקו ועמעום קל, כדי להבדיל מערך שנקבע בפועל */
+.gm-ds.gm-pm .pm-cell.src-default .pm-dot{border-style:dashed;opacity:.78}
+.gm-ds.gm-pm .pm-mr{min-width:150px}
+.gm-ds.gm-pm .pm-mr>*{margin-inline-end:6px;margin-bottom:4px}
+.gm-ds.gm-pm .pm-rowlink{cursor:pointer;border:0;font:inherit}
+.gm-ds.gm-pm .pm-rowlink:hover,.gm-ds.gm-pm .pm-rowlink:focus-visible{filter:brightness(.95);outline:2px solid var(--gm-gold);outline-offset:1px}
+
+/* ===== ערכים מספריים ===== */
+.gm-ds.gm-pm .pm-num{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-pm .pm-num .inp{width:110px;text-align:center}
+
+/* ===== חלון העריכה (.dlg.mailwin.pm-dlg) ===== */
+.gm-ds.gm-pm .dlg.mailwin.pm-dlg{max-width:760px;width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:0;overflow:hidden}
+.gm-ds.gm-pm .pm-wiz{display:flex;flex-direction:column;gap:14px;padding:24px;max-height:calc(100vh - 32px);min-height:0}
+.gm-ds.gm-pm .mh h2{min-width:0;overflow-wrap:anywhere}
+.gm-ds.gm-pm .mh h2 .msub{display:block;margin-top:2px;font-size:14px;font-weight:400;color:var(--gm-ink3)}
+.gm-ds.gm-pm .pm-steps{list-style:none;display:flex;align-items:center;gap:6px;margin:0;padding:4px 2px;overflow-x:auto;scrollbar-width:none}
+.gm-ds.gm-pm .pm-steps::-webkit-scrollbar{display:none}
+.gm-ds.gm-pm .pm-st{display:flex;align-items:center;flex:1 1 auto;min-width:0}
+.gm-ds.gm-pm .pm-st:not(:last-child)::after{content:"";flex:1;min-width:10px;height:2px;margin-inline:8px;border-radius:2px;background:rgba(255,255,255,.2)}
+.gm-ds.gm-pm .pm-st:last-child{flex:0 0 auto}
+.gm-ds.gm-pm .pm-st.done:not(:last-child)::after{background:var(--gm-gold)}
+.gm-ds.gm-pm .pm-st button{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;white-space:nowrap}
+.gm-ds.gm-pm .pm-st button:disabled{cursor:default;opacity:.55}
+.gm-ds.gm-pm .pm-st-n{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;flex:none;font-weight:700;font-size:14px;background:rgba(255,255,255,.12);color:var(--k-sub,#cfe0f1);border:1.5px solid rgba(255,255,255,.25);transition:background .2s,color .2s,border-color .2s}
+.gm-ds.gm-pm .pm-st-n .ic{width:15px;height:15px;stroke-width:2.8}
+.gm-ds.gm-pm .pm-st.on .pm-st-n{background:var(--gm-gbtn);color:#000;border-color:var(--gm-gold-d)}
+.gm-ds.gm-pm .pm-st.done .pm-st-n{background:var(--gm-gold);color:#000;border-color:var(--gm-gold-d)}
+.gm-ds.gm-pm .pm-st-l{font-size:14px;color:var(--k-sub,#cfe0f1)}
+.gm-ds.gm-pm .pm-st.on .pm-st-l{color:var(--k-charge,var(--gm-gold-300));font-weight:700}
+.gm-ds.gm-pm .pm-st button:focus-visible{outline:2px solid var(--gm-gold);outline-offset:3px;border-radius:999px}
+.gm-ds.gm-pm .pm-body{display:flex;flex-direction:column;gap:14px;min-height:260px;overflow-y:auto;padding:2px 4px 2px 2px}
+.gm-ds.gm-pm .pm-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:4px}
+.gm-ds.gm-pm .pm-foot-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-inline-start:auto}
+.gm-ds.gm-pm .pm-del{color:var(--gm-rose-700)}
+
+/* סימון / בחירה ברשימות (פריטים, עובדים) */
+.gm-ds.gm-pm #dlg .methods.pm-seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:8px;margin:0}
+.gm-ds.gm-pm #dlg .methods.pm-seg button:not(.zz){padding:9px 8px;border-radius:12px;font-size:15px;background:var(--k-row);border:1.5px solid var(--k-rowb);color:var(--k-ink)}
+.gm-ds.gm-pm #dlg .methods.pm-seg button.on{background:var(--k-chargebg);border-color:var(--k-ic);color:var(--k-charge)}
+.gm-ds.gm-pm .pm-picks{display:flex;flex-direction:column;gap:8px;max-height:min(40vh,380px);overflow-y:auto;padding:2px}
+.gm-ds.gm-pm .pm-pick{position:relative;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border-radius:14px;cursor:pointer;
+  background:var(--k-row,rgba(255,255,255,.08));border:1.5px solid var(--k-rowb,rgba(255,255,255,.16));color:var(--k-ink,#fff);transition:border-color .15s,background .15s,transform .15s}
+.gm-ds.gm-pm .pm-pick:hover{border-color:var(--k-ic,var(--gm-gold-300));transform:translateX(-2px)}
+.gm-ds.gm-pm .pm-pick:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+.gm-ds.gm-pm .pm-pick.on{background:var(--k-chargebg,rgba(224,191,90,.16));border-color:var(--k-ic,var(--gm-gold-300))}
+.gm-ds.gm-pm .pm-pick-ic{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.1);color:var(--k-ic,var(--gm-gold-300))}
+.gm-ds.gm-pm .pm-pick-ic .ic{width:19px;height:19px}
+.gm-ds.gm-pm .pm-pick-x{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gm-ds.gm-pm .pm-pick-x b{font-weight:600;color:var(--k-ink,#fff)}
+.gm-ds.gm-pm .pm-pick-x small{color:var(--k-faint,#b9cde2);font-size:13px;line-height:1.5}
+.gm-ds.gm-pm .pm-pick .chip{flex:none}
+.gm-ds.gm-pm .pm-pick-k,.gm-ds.gm-pm .pm-pick-add{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--k-bd,rgba(255,255,255,.3));color:transparent}
+.gm-ds.gm-pm .pm-pick-k .ic,.gm-ds.gm-pm .pm-pick-add .ic{width:14px;height:14px;stroke-width:2.8}
+.gm-ds.gm-pm .pm-pick-add{color:var(--k-ic,var(--gm-gold-300))}
+.gm-ds.gm-pm .pm-pick.on .pm-pick-k{background:var(--gm-gold);border-color:var(--gm-gold-d);color:#000}
+.gm-ds.gm-pm .pm-none{padding:10px 4px}
+.gm-ds.gm-pm #dlg .pm-pick-x b .pm-lbl a,.gm-ds.gm-pm #dlg .pm-pick-x b .pm-lbl{color:var(--k-ink,#fff)}
+.gm-ds.gm-pm #dlg .pm-info{color:var(--k-ic,var(--gm-gold-300))}
+
+/* מחלקות */
+.gm-ds.gm-pm .pm-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.gm-ds.gm-pm .pm-depts{display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-pm .pm-dept{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 14px;border-radius:14px;background:var(--k-row,rgba(255,255,255,.08));border:1.5px solid var(--k-rowb,rgba(255,255,255,.16));color:var(--k-ink,#fff)}
+.gm-ds.gm-pm .pm-dept b{flex:1;font-weight:600}
+.gm-ds.gm-pm .pm-dept.on{border-color:var(--k-ic,var(--gm-gold-300));background:var(--k-chargebg,rgba(224,191,90,.16))}
+
+/* סיכום והערות */
+.gm-ds.gm-pm .pm-sum{display:flex;flex-direction:column;gap:14px}
+.gm-ds.gm-pm .pm-sum-r{display:flex;flex-direction:column;gap:6px}
+.gm-ds.gm-pm .pm-sum-r>small{color:var(--k-faint,#b9cde2);font-weight:600}
+.gm-ds.gm-pm .pm-sum-r>b{font-size:18px;color:var(--k-ink,#fff)}
+.gm-ds.gm-pm .pm-warn,.gm-ds.gm-pm .pm-note{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:14px;font-size:14.5px;line-height:1.6;
+  background:var(--k-row,rgba(255,255,255,.08));border:1px solid var(--k-rowb,rgba(255,255,255,.16));color:var(--k-sub,#cfe0f1)}
+.gm-ds.gm-pm .pm-warn .ic,.gm-ds.gm-pm .pm-note .ic{flex:none;width:18px;height:18px;margin-top:3px;color:var(--k-ic,var(--gm-gold-300))}
+.gm-ds.gm-pm .pm-warn.bad{background:rgba(251,191,169,.12);border-color:rgba(251,191,169,.35);color:var(--k-err,#fbbfa9)}
+.gm-ds.gm-pm .pm-warn.bad .ic{color:var(--k-err,#fbbfa9)}
+.gm-ds.gm-pm #dlg .pm-hint{color:var(--k-faint,#b9cde2)}
+
+@media (max-width:640px){
+  .gm-ds.gm-pm .pm-wiz{padding:16px}
+  .gm-ds.gm-pm .pm-st-l{display:none}
+  .gm-ds.gm-pm .pm-st.on .pm-st-l{display:inline}
+  .gm-ds.gm-pm .pm-pick{flex-wrap:wrap}
+  .gm-ds.gm-pm .pm-foot-r{width:100%}
+  .gm-ds.gm-pm .pm-foot-r .btn{flex:1}
+  .gm-ds.gm-pm .pm-legend{margin-inline-start:0}
+  .gm-ds.gm-pm .pm-mseg{min-width:0;width:100%}
+}
