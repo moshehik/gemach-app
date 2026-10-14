@@ -210,7 +210,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         const selectedAvail = hasCustom ? customAvail : normalAvail;
         const disabled = selectedAvail !== undefined && selectedAvail <= 0;
         const info = normalAvail !== undefined
-          ? `פנוי ${selectedAvail ?? normalAvail} מתוך ${row.totalInStock}`
+          ? `פנוי ${selectedAvail ?? normalAvail}` // רק הכמות הפנויה בפועל להזמנה הזו - בלי כמות המלאי הכוללת (דיווח ef631d43)
           : `במלאי: ${row.totalQuantity || row.totalInStock}`;
         return { sizeVal, disabled, info };
       });

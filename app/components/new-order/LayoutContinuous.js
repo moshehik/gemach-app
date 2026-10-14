@@ -99,9 +99,39 @@ function Section({ ctl, k, n, skipDelivery }) {
   );
 }
 
+// הגוש שעל המסך (scrollspy): האחרון שראשו הגיע לקו שמתחת לפס הנדבק; בתחתית העמוד - הגוש האחרון. מסנכרן את הפס עם השלב שרואים
+function useActiveSection(keys) {
+  const [active, setActive] = useState(null);
+  const sig = keys.join(',');
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const list = sig ? sig.split(',') : [];
+    let raf = 0;
+    const calc = () => {
+      raf = 0;
+      const bar = document.getElementById('noMiniBars');
+      const anchor = (bar ? bar.getBoundingClientRect().bottom : 0) + 48;
+      let cur = list[0] || null;
+      for (const k of list) {
+        const el = document.getElementById(sectionDomId(k));
+        if (el && el.getBoundingClientRect().top <= anchor) cur = k;
+      }
+      if (list.length && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = list[list.length - 1];
+      setActive(cur);
+    };
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(calc); };
+    calc();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); if (raf) window.cancelAnimationFrame(raf); };
+  }, [sig]);
+  return active;
+}
+
 export default function LayoutContinuous({ ctl }) {
   const keys = visibleSectionKeys(ctl.settings);
-  const progress = sectionProgress(keys, sectionDoneFlags(ctl, ctl.gate), !!ctl.saved);
+  const active = useActiveSection(keys);
+  const progress = sectionProgress(keys, sectionDoneFlags(ctl, ctl.gate), !!ctl.saved, active);
   const skipDelivery = !keys.includes('delivery');
   return (
     <>

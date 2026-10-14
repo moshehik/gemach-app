@@ -139,6 +139,16 @@ test('שלבים מוצגים בטופס הרציף: "אופן ההזמנה" (mo
   assert.equal(N.STEP_META.mode.l, 'אופן');
 });
 
+test('sectionProgress עם active: הגוש שעל המסך הוא cur, השאר done / fut לפי הנתונים; בלי active - כמו קודם', () => {
+  const keys = ['customer', 'dates', 'mode', 'items', 'payment'];
+  const st = (done, active, saved = false) => LL.sectionProgress(keys, done, saved, active).map(x => x.state).join(',');
+  assert.equal(st({ customer: true, dates: true, mode: true }, 'mode'), 'done,done,cur,fut,fut');
+  assert.equal(st({ customer: true, dates: true, mode: true, items: true }, 'customer'), 'cur,done,done,done,fut');
+  assert.equal(st({ customer: true }, 'payment'), 'done,fut,fut,fut,cur');
+  assert.equal(st({ customer: true, dates: true, mode: true }, 'nope'), 'done,done,done,cur,fut', 'active לא מוכר = לפי הנתונים');
+  assert.equal(st({}, 'items', true), 'done,done,done,done,done', 'אחרי שמירה הכול done');
+});
+
 test('sectionProgress: done / cur (הראשון שלא הושלם) / fut; אחרי שמירה הכול done', () => {
   const keys = ['customer', 'dates', 'items', 'summary', 'payment'];
   const st = (done, saved = false) => LL.sectionProgress(keys, done, saved).map(x => x.state).join(',');

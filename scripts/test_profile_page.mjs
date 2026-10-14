@@ -121,5 +121,35 @@ t('תיבת הסיסמא: Enter מאשר רק משדה טקסט (לא מ"ביט�
   assert.ok(PAGE.includes('{profile.profileImage && ('), 'הסר-תמונה תלוי ב-hasPhoto');
 });
 
+// ---- hide_profile_email_alerts_option (דיווח 13888b96, הגמח הראשי; 6.10.2026) ----
+// LegacyProfilePage.js is a frozen copy (page-variant-switch pins its blob): the setting is applied to the new ProfilePage only.
+t('"קבלת התראות למייל": שני הדפים (החדש והישן) מסתירים אותה רק כש-hide_profile_email_alerts_option = "true"; ברירת מחדל מוצגת', () => {
+  for (const [name, src] of [['ProfilePage', PAGE]]) {
+    has(src, /const \[hideEmailAlertsOption, setHideEmailAlertsOption\] = useState\(false\);/, name + ': ברירת מחדל false (מוצגת)');
+    has(src, /x\.key === 'hide_profile_email_alerts_option'/, name + ': קורא את ההגדרה מ-/api/settings');
+    has(src, /if \(h\) setHideEmailAlertsOption\(h\.value === 'true'\);/, name + ': רק "true" מסתיר');
+    has(src, /\{!hideEmailAlertsOption && \(\s*<div className="(field|trow)"[\s\S]*?id="receiveEmailAlerts"[\s\S]*?קבלת התראות למייל[\s\S]*?\)\}/, name + ': התיבה עטופה בתנאי');
+  }
+});
+t('ההסתרה לא משנה את הערך השמור: התיבה היא רק שדה בטופס, והטופס ממשיך לשלוח את profile כמו שהוא (receiveEmailAlerts לא נמחק/נדרס)', () => {
+  for (const [name, src] of [['ProfilePage', PAGE]]) {
+    assert.ok(!/delete\s+\w*\.?receiveEmailAlerts|receiveEmailAlerts:\s*(false|undefined)/.test(src), name + ': אין איפוס של receiveEmailAlerts בדף');
+  }
+});
+t('סקריפטי ה-seed: ההגדרה (org 1 = true) בנוהל הרגיל; כיבוי ההתראות לכל העובדים - org 1 בלבד, dry-run כברירת מחדל, בדיקת host, בלי כתיבה לפני הבדיקה', () => {
+  const s1 = read('../scripts/seed_hide_profile_email_alerts_option_setting.js');
+  has(s1, /key: 'hide_profile_email_alerts_option'/, 'מפתח');
+  has(s1, /trueForOrg: 1/, 'org 1 = true, org 2 נשאר בהתנהגות הקיימת');
+  has(s1, /seedBoolSetting\(/, 'דרך העזר הרגיל (dry-run כברירת מחדל + בדיקת host)');
+  const s2 = read('../scripts/seed_clear_employee_email_alerts.js');
+  has(s2, /if \(org !== 1\) throw new Error\('SAFETY ABORT/, 'org 1 בלבד');
+  has(s2, /host\.startsWith\(ORG1_HOST_PREFIX\)/, 'זהות ה-DB');
+  has(s2, /const write = rest\.includes\('--write'\);/, 'כתיבה רק עם --write');
+  const idx = s2.indexOf("if (!write) {");
+  assert.ok(idx > 0, 'יש יציאה של dry-run');
+  assert.equal((s2.slice(0, idx).match(/\.(update|updateMany|delete|create|upsert)\(/g) || []).length, 0, 'אין כתיבה לפני בדיקת --write');
+  assert.ok(!/auditLog/i.test(s2.replace(/\/\/.*$/gm, '')), 'אין כתיבה ידנית ל-AuditLog');
+});
+
 console.log(`\n${passed} passed`);
 if (process.exitCode) process.exit(1);

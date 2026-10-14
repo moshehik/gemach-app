@@ -15,6 +15,7 @@ import { orderItemModelName } from '../../../lib/modelDisplay';
 import { sortByModelThenSize } from '../../../lib/sizeSort';
 import { buildDeliverySection, deliverySettingsFrom } from '../../../lib/orderDelivery';
 import { pickupAddressFromList, pickupMapsUrlFromList } from '../../../lib/gmachContact';
+import { combinedOrderNotes } from '../../../lib/orderNotes';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -343,6 +344,8 @@ export default function PrintOrderPage() {
     const showPickupBox = !visits || visits.pickup;
     const showReturnBox = !visits || visits.ret;
     const showAddress = !visits || visits.address;
+    // הערות ההזמנה: Order.notes + Order.orderNotes (הערות_להזמנה מהייבוא מאקסס) - ר' lib/orderNotes.js
+    const orderNotes = combinedOrderNotes(ord);
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -409,8 +412,8 @@ export default function PrintOrderPage() {
                   <strong>{clean ? '' : 'לכבוד: '}{ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
                   {clean ? '' : 'טלפון: '}<span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
                   {!clean && (<>כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br /></>)}
-                  {ord.notes && !clean && (
-                    <>הערות להזמנה: {ord.notes}<br /></>
+                  {orderNotes && !clean && (
+                    <>הערות להזמנה: {orderNotes}<br /></>
                   )}
                 </div>
                 {/* Left side: Order Details */}
@@ -439,8 +442,8 @@ export default function PrintOrderPage() {
                   ) : (
                     <>סוג אירוע: אירוע חו&quot;ל</>
                   )}
-                  {ord.notes && !clean && (
-                    <><br />הערות: {ord.notes}</>
+                  {orderNotes && !clean && (
+                    <><br />הערות: {orderNotes}</>
                   )}
                 </div>
               </div>
@@ -449,9 +452,9 @@ export default function PrintOrderPage() {
                   בטקסט רגיל בתוך שורת פרטים צפופה - קל לפספס. תיבה נפרדת ובולטת עם תווית
                   מודגשת, כדי שהצוות שמסתמך על ההערות בפועל (למשל בקבלת הפריטים בהחזרה)
                   לא יצטרך לחפש אותן בין שאר הפרטים. תוספת ויזואלית בלבד - לא הוסר דבר. */}
-              {ord.notes && (
+              {orderNotes && (
                 <div className="order-notes-box">
-                  <strong>הערות להזמנה: </strong>{ord.notes}
+                  <strong>הערות להזמנה: </strong>{orderNotes}
                 </div>
               )}
 
@@ -630,9 +633,9 @@ export default function PrintOrderPage() {
                   השלישית כאן מיותרת שם וגוזלת בדיוק את השורות שדוחפות הזמנה עם הערות
                   + משלוח לעמוד שני (337e5938/075858d6, 2026-09-14). בהדפסת הזמנה בודדת
                   שאינה חלק מ"פירוט הזמנות להכנה" (!isBatch) לא נגעתי - נשאר כמו קודם. */}
-              {ord.notes && !isBatch && !clean && (
+              {orderNotes && !isBatch && !clean && (
                 <div className="order-notes-box">
-                  <strong>הערות להזמנה: </strong>{ord.notes}
+                  <strong>הערות להזמנה: </strong>{orderNotes}
                 </div>
               )}
 

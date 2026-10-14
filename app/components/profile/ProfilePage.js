@@ -104,6 +104,9 @@ export default function ProfilePage() {
   // show_employee_profile_image (הגדרות > תצוגה) - לפי בקשת ההנהלה (דיווח c764bef4)
   // הוסרה תמונת הפרופיל לגמרי; ברירת מחדל true כשהשורה עוד לא נוצרה ב-DB.
   const [showProfileImage, setShowProfileImage] = useState(true);
+  // hide_profile_email_alerts_option (דיווח 13888b96, הגמח הראשי): כשדלוק, מתג "קבלת התראות למייל" לא מוצג. ברירת מחדל false (מוצג) -
+  // שומר על ההתנהגות בגמח השני. הערך השמור של העובדת לא משתנה (הטופס ממשיך לשלוח אותו כמו שהוא).
+  const [hideEmailAlertsOption, setHideEmailAlertsOption] = useState(false);
 
   const pwBtnRef = useRef(null);
   // הטולטיפ של המעטפת האחידה (A5) מאזין רק לאזור הכותרת ולא לתוכן הדף - הדף מטפל בטולטיפים שלו תמיד
@@ -122,6 +125,8 @@ export default function ProfilePage() {
       .then(data => {
         const s = Array.isArray(data) ? data.find(x => x.key === 'show_employee_profile_image') : null;
         if (s) setShowProfileImage(s.value !== 'false');
+        const h = Array.isArray(data) ? data.find(x => x.key === 'hide_profile_email_alerts_option') : null;
+        if (h) setHideEmailAlertsOption(h.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -359,10 +364,12 @@ export default function ProfilePage() {
               <section className="card dfields" data-guide-id="prof.prefs" aria-labelledby="h-prefs">
                 <CardHead icon="sliders" id="h-prefs">העדפות</CardHead>
                 <div className="pf-prefs">
-                  <div className="trow">
-                    <label className="sw"><input data-element-name="שדה_profile_16" type="checkbox" id="receiveEmailAlerts" name="receiveEmailAlerts" checked={!!profile.receiveEmailAlerts} onChange={handleChange} /><i /></label>
-                    <label htmlFor="receiveEmailAlerts" className="pf-pl">קבלת התראות למייל</label>
-                  </div>
+                  {!hideEmailAlertsOption && (
+                    <div className="trow">
+                      <label className="sw"><input data-element-name="שדה_profile_16" type="checkbox" id="receiveEmailAlerts" name="receiveEmailAlerts" checked={!!profile.receiveEmailAlerts} onChange={handleChange} /><i /></label>
+                      <label htmlFor="receiveEmailAlerts" className="pf-pl">קבלת התראות למייל</label>
+                    </div>
+                  )}
                   {/* דף הכניסה החדש (Q05): אותה הגדרה כמו המתג במסך הכניסה ובתפריט המשתמש */}
                   <AutoClockSwitch />
                 </div>

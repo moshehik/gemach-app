@@ -492,6 +492,7 @@ try { git('cat-file', '-e', 'c944cb95^{commit}'); } catch { gitOk = false; }
 //    כל מי שאינו מתכנת ל-/admin, כך שבמסך הישן הכרטיס היה קישור מת להנהלה ראשית. app/admin/page.js מחשב אותו עם אותו שער.
 //  - LegacyProfilePage.js: השדה "שם מלא" מוצג לקריאה בלבד ומחושב משם פרטי + שם משפחה - PUT /api/me/profile מתעלם ממנו (fullName נגזר
 //    מהשניים מאז 8321f436), והשדה הערוך הציג "נשמר" בלי לשמור.
+//    בנוסף (6.10.2026): תיבת "קבלת התראות למייל" מוסתרת לפי hide_profile_email_alerts_option (דיווח 13888b96) - ראו שלושת התחליפים למטה.
 const RESTORED_EXCEPTIONS = {
   'app/admin/LegacyAdminPage.js': [
     ['export default function AdminHubPage() {', `// showSite: "ניהול אתר" (/admin/site) מיועד למתכנת בלבד (app/admin/site/layout.js מחזיר כל אחר ל-/admin) - הכרטיס מוצג רק כש-app/admin/page.js מאשר את אותו שער.
@@ -507,6 +508,10 @@ export default function AdminHubPage({ showSite = false }) {
   ],
   'app/profile/LegacyProfilePage.js': [
     ['id="profile-fullName" name="fullName" value={profile.fullName || \'\'} onChange={handleChange} autoComplete="new-password" />', 'id="profile-fullName" value={`${profile.firstName || \'\'} ${profile.lastName || \'\'}`.trim()} disabled readOnly />'],
+    // hide_profile_email_alerts_option (דיווח 13888b96, 6.10.2026): "קבלת התראות למייל" מוסתרת בפרופיל כשההגדרה דלוקה (ברירת מחדל: מוצגת)
+    ['  const [showProfileImage, setShowProfileImage] = useState(true);\n', '  const [showProfileImage, setShowProfileImage] = useState(true);\n  // hide_profile_email_alerts_option (דיווח 13888b96, הגמח הראשי): כשדלוק, תיבת "קבלת התראות למייל" לא מוצגת בפרופיל. ברירת מחדל false (מוצגת) -\n  // שומר על ההתנהגות בגמח השני. הערך השמור של העובדת לא משתנה (הטופס ממשיך לשלוח אותו כמו שהוא).\n  const [hideEmailAlertsOption, setHideEmailAlertsOption] = useState(false);\n'],
+    ['        if (s) setShowProfileImage(s.value !== \'false\');\n', '        if (s) setShowProfileImage(s.value !== \'false\');\n        const h = Array.isArray(data) ? data.find(x => x.key === \'hide_profile_email_alerts_option\') : null;\n        if (h) setHideEmailAlertsOption(h.value === \'true\');\n'],
+    ['          <div className="field" style={{ gridColumn: \'1 / -1\' }}>\n            <div className="checkbox-row">\n              <input data-element-name="שדה_profile_16" type="checkbox" id="receiveEmailAlerts" name="receiveEmailAlerts" checked={!!profile.receiveEmailAlerts} onChange={handleChange} />\n              <label htmlFor="receiveEmailAlerts">קבלת התראות למייל</label>\n            </div>\n          </div>\n', '          {!hideEmailAlertsOption && (\n            <div className="field" style={{ gridColumn: \'1 / -1\' }}>\n              <div className="checkbox-row">\n                <input data-element-name="שדה_profile_16" type="checkbox" id="receiveEmailAlerts" name="receiveEmailAlerts" checked={!!profile.receiveEmailAlerts} onChange={handleChange} />\n                <label htmlFor="receiveEmailAlerts">קבלת התראות למייל</label>\n              </div>\n            </div>\n          )}\n'],
   ],
 };
 // קבצים ישנים שנערכו בכוונה אחרי השחזור (דיווחי נווה יעקב 5.10.2026 - הגמח עדיין על העיצוב הישן, ותיקונים חייבים לשבת גם בעותק הזה):

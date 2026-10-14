@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getEventDayRange } from '@/lib/hebrewDate';
+import { isEventEveningRollover } from '@/lib/eventDay';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -24,7 +25,8 @@ export async function POST(request) {
       // window must be computed against the Israel/Jerusalem calendar day rather than
       // via setHours() (which uses the SERVER's local timezone and can silently shift
       // the window by a day - see the getIsraelDayRange comment in lib/hebrewDate.js).
-      const { start: startOfDay, end: endOfDay } = getIsraelDayRange(date);
+      // אותו חלון כמו GET /api/alterations (גם יום האירוע לפי התאריך העברי השמור כשההגדרה דלוקה)
+      const { start: startOfDay, end: endOfDay } = getEventDayRange(date, await isEventEveningRollover());
 
       const where = {
         isDeleted: false,

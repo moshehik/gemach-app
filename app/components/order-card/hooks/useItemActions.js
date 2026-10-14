@@ -258,12 +258,8 @@ export function sizeInfo(row, order) {
   const disabled = selectedAvail !== undefined && selectedAvail !== null && selectedAvail <= 0;
   let info;
   if (normalAvail !== undefined) {
-    if (row.withCustomSpacing) {
-      const gain = row.withCustomSpacing.gain || 0;
-      info = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${row.totalInStock}`;
-    } else {
-      info = `פנוי ${normalAvail} מתוך ${row.totalInStock}`;
-    }
+    // כמות אחת בלבד: הפנויה בפועל להזמנה הזו, בלי כמות המלאי הכוללת (דיווח ef631d43; כמו ModernItemsManager)
+    info = `פנוי ${selectedAvail ?? normalAvail}`;
   } else {
     info = `במלאי: ${row.totalQuantity || row.totalInStock}`;
   }

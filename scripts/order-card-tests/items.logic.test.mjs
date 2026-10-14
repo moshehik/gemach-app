@@ -90,10 +90,12 @@ test('A27: פריט היפותטי ל-preview-pricing נושא את מה שהמ�
 });
 
 test('sizeInfo = טקסט הזמינות של OrderSizeSelector + מידה לא זמינה מנוטרלת', () => {
-  assert.ok(SIZE_SRC.includes('פנוי ${normalAvail} מתוך ${s.totalInStock}'));
-  assert.deepEqual(A.sizeInfo({ sizeText: '38', withNormalBuffer: { availableQuantity: 2 }, totalInStock: 3 }, {}), { size: '38', info: 'פנוי 2 מתוך 3', disabled: false });
+  assert.ok(SIZE_SRC.includes('פנוי ${selectedAvail ?? normalAvail}') && !SIZE_SRC.includes('מתוך ${s.totalInStock}'));
+  assert.deepEqual(A.sizeInfo({ sizeText: '38', withNormalBuffer: { availableQuantity: 2 }, totalInStock: 3 }, {}), { size: '38', info: 'פנוי 2', disabled: false });
   assert.equal(A.sizeInfo({ sizeText: '40', withNormalBuffer: { availableQuantity: 0 }, totalInStock: 3 }, {}).disabled, true);
-  assert.deepEqual(A.sizeInfo({ sizeText: '42', withNormalBuffer: { availableQuantity: 1 }, withCustomSpacing: { availableQuantity: 2, gain: 1 }, totalInStock: 4 }, { customSpacing: 1 }), { size: '42', info: 'רגיל: 1 | ציפוף: 2 (+1) מתוך 4', disabled: false });
+  assert.deepEqual(A.sizeInfo({ sizeText: '42', withNormalBuffer: { availableQuantity: 1 }, withCustomSpacing: { availableQuantity: 2, gain: 1 }, totalInStock: 4 }, { customSpacing: 1 }), { size: '42', info: 'פנוי 2', disabled: false });
+  // בלי ציפוף בהזמנה - הכמות הרגילה בלבד, גם כשבשורה יש חישוב ציפוף
+  assert.equal(A.sizeInfo({ sizeText: '42', withNormalBuffer: { availableQuantity: 1 }, withCustomSpacing: { availableQuantity: 2, gain: 1 }, totalInStock: 4 }, {}).info, 'פנוי 1');
   assert.deepEqual(A.sizeInfo({ sizeText: '44', totalQuantity: 5 }, {}), { size: '44', info: 'במלאי: 5', disabled: false });
   assert.equal(A.displayModelName({ name: 'ללא שם 3', barcodePrefix: 77 }), '77');
 });

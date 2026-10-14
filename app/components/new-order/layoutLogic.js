@@ -59,7 +59,12 @@ export const stepKeyOfSection = (k) => (k === 'mode' ? 'delivery' : k);
 
 // מצב ההתקדמות של הפס הדק בטופס הרציף - לפי הנתונים בלבד (לא לפי מיקום הגלילה): done / cur (הראשון שעוד לא הושלם) / fut
 // done: { key: boolean } - מה הושלם לפי נתוני ההזמנה; saved: ההזמנה נשמרה (הכול הושלם)
-export function sectionProgress(keys, done, saved) {
+// active (אופציונלי): הגוש שנמצא כרגע על המסך (גלילה, ר' LayoutContinuous) - הוא ה-cur, וכל השאר done / fut לפי הנתונים - כך הפס מסונכרן
+// עם השלב שרואים. בלי active (לא ידוע) - הפס לפי הנתונים בלבד: cur = הראשון שלא הושלם.
+export function sectionProgress(keys, done, saved, active) {
+  if (active && keys.includes(active)) {
+    return keys.map((key) => ({ key, state: saved ? 'done' : key === active ? 'cur' : done[key] ? 'done' : 'fut' }));
+  }
   let curSeen = false;
   return keys.map((key) => {
     if (saved || done[key]) return { key, state: 'done' };

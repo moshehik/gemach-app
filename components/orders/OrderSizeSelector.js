@@ -108,14 +108,8 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
 
         let availableInfo = '';
         if (normalAvail !== undefined) {
-          if (s.withCustomSpacing) {
-            // הזמנה עם ציפוף — הצג שתי כמויות בבירור
-            const gain = s.withCustomSpacing.gain || 0;
-            availableInfo = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${s.totalInStock}`;
-          } else {
-            // הזמנה רגילה — הצג כמות אחת בלבד
-            availableInfo = `פנוי ${normalAvail} מתוך ${s.totalInStock}`;
-          }
+          // כמות אחת בלבד: הפנויה בפועל להזמנה הזו (עם ציפוף מיוחד או בלעדיו), בלי כמות המלאי הכוללת (דיווח ef631d43)
+          availableInfo = `פנוי ${selectedAvail ?? normalAvail}`;
         } else {
           availableInfo = `במלאי: ${s.totalQuantity || s.totalInStock}`;
         }

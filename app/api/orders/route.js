@@ -6,6 +6,8 @@ import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/p
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
+import { getEventDayRange } from '../../../lib/hebrewDate';
+import { isEventEveningRollover } from '@/lib/eventDay';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelDayRange, getIsraelTodayKey, addDaysToDateKey, getIsraelDaysUntil } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, reconcileDressItemIds } from '../../../lib/inventory';
 import { subtractBusinessDays, israelLocalDate } from '../../../lib/businessDays';
@@ -320,10 +322,16 @@ async function queryOrdersList(searchParams, opts) {
     }
     if (advCustomerCity) conditions.push({ customer: { city: { contains: advCustomerCity } } });
     if (advEventDateFrom || advEventDateTo) {
+      // תאריך "YYYY-MM-DD" מבורר התאריכים = כל היום הישראלי (עד סוף היום). קודם: new Date(...) = חצות UTC בלבד, ולכן
+      // טווח של יום בודד (מ-כו תשרי עד כו תשרי) החזיר רק הזמנות ששמורות בדיוק בחצות UTC. כשההגדרה event_date_evening_rollover
+      // דלוקה (הגמח הראשי) - יום האירוע לפי התאריך העברי השמור, ר' lib/eventDay.js. ערך שאינו תאריך פשוט (ISO מלא
+      // מעמדת הלקוח) נשאר כמו שהיה.
+      const eveningRoll = await isEventEveningRollover();
+      const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
       conditions.push({
         eventDate: {
-          ...(advEventDateFrom ? { gte: new Date(advEventDateFrom) } : {}),
-          ...(advEventDateTo ? { lte: new Date(advEventDateTo) } : {})
+          ...(advEventDateFrom ? { gte: DATE_ONLY.test(advEventDateFrom) ? getEventDayRange(advEventDateFrom, eveningRoll).start : new Date(advEventDateFrom) } : {}),
+          ...(advEventDateTo ? { lte: DATE_ONLY.test(advEventDateTo) ? getEventDayRange(advEventDateTo, eveningRoll).end : new Date(advEventDateTo) } : {})
         }
       });
     }
