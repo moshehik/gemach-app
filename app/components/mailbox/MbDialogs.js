@@ -26,7 +26,7 @@ const WhoList = ({ list }) => addrList(list).map((a, i) => <span key={i}>{i > 0 
 
 /* ---------------------------------- קריאה ---------------------------------- */
 
-export function MbRead({ folder, folderObj, uid, onClose, onChanged, onCompose, isTrash }) {
+export function MbRead({ folder, folderObj, uid, onClose, onChanged, onOpened, onCompose, isTrash }) {
   const a5 = useA5();
   const [msg, setMsg] = useState(null);
   const [error, setError] = useState('');
@@ -37,7 +37,7 @@ export function MbRead({ folder, folderObj, uid, onClose, onChanged, onCompose, 
     let live = true;
     setMsg(null); setError(''); setShowImages(false);
     api(`${API}?action=message&folder=${encodeURIComponent(folder)}&uid=${uid}`)
-      .then((d) => { if (live) { setMsg(d.message); onChanged(); } })
+      .then((d) => { if (live) { setMsg(d.message); onOpened(uid); } })
       .catch((e) => { if (live) setError(e.message); });
     return () => { live = false; };
   }, [folder, uid]);

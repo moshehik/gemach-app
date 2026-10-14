@@ -15,7 +15,7 @@ import { MbCompose, MbRead } from './MbDialogs';
 import { PER_PAGE, composeDraft, fmtBytes, folderIcon, folderLabel, isOutgoingFolder, isTrashFolder, mailRow, normAddr } from './mailboxLogic';
 
 const SLOT_ID = 'a5l-search-mbx';
-const REFRESH_MS = 60000;
+const REFRESH_MS = 180000; // רענון אוטומטי כל 3 דקות, רק כשהלשונית פתוחה ונראית (לא בכל דקה)
 
 function Pair({ icon, tip, children }) {
   return <span className="lni" data-tip={tip}><Ic id={icon} />{children}</span>;
@@ -41,6 +41,10 @@ function Mailbox() {
     try { setStatus(await api(`${API}?action=status`)); setStatusError(''); } catch (e) { setStatusError(e.message); }
   }, []);
   useEffect(() => { loadStatus(); }, [loadStatus]);
+  // רענון התיקיות והספירות בלבד (בקשה אחת) - לא כתובת התיבה והנפח, שלא משתנים בין ביקורים
+  const refreshFolders = useCallback(async () => {
+    try { const d = await api(`${API}?action=folders`); setStatus((s) => (s ? { ...s, folders: d.folders } : s)); } catch { /* הספירה תתעדכן ברענון הבא */ }
+  }, []);
 
   const enabled = !!(status && status.enabled);
   const loadList = useCallback(async (silent) => {
@@ -58,9 +62,9 @@ function Mailbox() {
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') { loadList(true); loadStatus(); } }, REFRESH_MS);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') { loadList(true); refreshFolders(); } }, REFRESH_MS);
     return () => clearInterval(t);
-  }, [enabled, loadList, loadStatus]);
+  }, [enabled, loadList, refreshFolders]);
   useEffect(() => () => clearTimeout(searchTimer.current), []);
 
   const folders = (status && status.folders) || [];
@@ -70,7 +74,13 @@ function Mailbox() {
   const rows = list ? list.data.map((m) => mailRow(m, outgoing)) : [];
   const total = list && list.pagination && list.pagination.total != null ? list.pagination.total : rows.length;
 
-  const changed = () => { loadList(true); loadStatus(); };
+  // שינוי שמשפיע על הרשימה (מחיקה, סימון, שליחה): עמוד אחד + התיקיות
+  const changed = () => { loadList(true); refreshFolders(); };
+  // פתיחת הודעה: ההודעה נקראה - מסמנים בשורה מיד (בלי לטעון את הרשימה שוב) ומרעננים רק את ספירת התיקיות
+  const opened = (uid) => {
+    setList((l) => (l ? { ...l, data: l.data.map((m) => (m.uid === uid ? { ...m, unseen: false, flags: [...new Set([...(m.flags || []), '\\Seen'])] } : m)) } : l));
+    refreshFolders();
+  };
   const pickFolder = (path) => { setFolder(path); setPage(1); setQuery(''); setList(null); setError(''); };
   const onQuery = (q) => {
     clearTimeout(searchTimer.current);
@@ -185,7 +195,7 @@ function Mailbox() {
             loading={list === null || (busy && !rows.length)}
             error={error}
             onRetry={() => loadList(false)}
-            barExtra={<button type="button" className="ibtn" aria-label="רענון" data-tip="רענון התיבה" onClick={() => { loadList(false); loadStatus(); }}><Ic id="refresh" size="sm" /></button>}
+            barExtra={<button type="button" className="ibtn" aria-label="רענון" data-tip="רענון התיבה" onClick={() => { loadList(false); refreshFolders(); }}><Ic id="refresh" size="sm" /></button>}
           />
           <div className="mbx-foot">
             <span><Ic id="mail" size="sm" /><bdi dir="ltr">{me || 'תיבת הדואר'}</bdi></span>
@@ -197,7 +207,7 @@ function Mailbox() {
       {reading ? (
         <MbRead
           folder={reading.folder} uid={reading.uid} folderObj={cur} isTrash={isTrashFolder(cur)}
-          onClose={() => setReading(null)} onChanged={changed} onCompose={fromRead}
+          onClose={() => setReading(null)} onChanged={changed} onOpened={opened} onCompose={fromRead}
         />
       ) : null}
       {compose ? (
