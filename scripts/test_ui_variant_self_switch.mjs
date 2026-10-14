@@ -11,7 +11,7 @@ const STAFF = ['employees_list', 'models_list', 'model_card', 'model_new'];
 const STAFF_BUILT = STAFF.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const STAFF_NOT_YET = STAFF.filter((id) => !STAFF_BUILT.includes(id));
 // יומן מיילים / מחלקות / היסטוריות (11.10.2026): נרשמו יחד, newExists הופך ל-true כשהמסך החדש מחובר.
-const LOGS = ['email_logs', 'departments', 'management_history', 'data_history'];
+const LOGS = ['email_logs', 'departments', 'management_history', 'data_history', 'messages'];
 const LOGS_BUILT = LOGS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const LOGS_NOT_YET = LOGS.filter((id) => !LOGS_BUILT.includes(id));
 

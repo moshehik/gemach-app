@@ -11,7 +11,7 @@
  *     node scripts/set-ui-variant.js --screen shell --value a5 --scope user --employee <id|legacyId> --confirm-host <...> [--apply]
  *     node scripts/set-ui-variant.js --screen shell --clear   --scope user --employee <id|legacyId> --confirm-host <...> --apply  (הסרת העקיפה)
  *
- *   --screen  shell | home | order_card | customer_card | employee_card | new_order | profile | admin_hub | attendance | error_report | board | settings | employees_list | models_list | model_card | model_new | email_logs | departments | management_history | data_history
+ *   --screen  shell | home | order_card | customer_card | employee_card | new_order | profile | admin_hub | attendance | error_report | board | settings | employees_list | models_list | model_card | model_new | email_logs | departments | management_history | data_history | messages
  *             (new_order = "הזמנה חדשה", /orders/new: מ-6.10.2026 חדש כברירת מחדל למתכנת בלבד; --value a5 --scope org מדליק לכל הארגון, --value legacy מכריח ישן גם למתכנת)
  *             (= המסכים ברשומה lib/uiVariantScreens.js; scripts/test_page_variant_switch.mjs בודק שהרשימות זהות)
  *   בלי שורה בארגון ובלי עקיפה אישית: ברירת המחדל לפי תפקיד (מתכנת - חדש, כל השאר - ישן; החלטת הבעלים 4.10.2026).
@@ -52,7 +52,7 @@ const { pathToFileURL } = require('url');
 const ROOT = path.join(__dirname, '..');
 
 // אותה רשימה כמו UI_SCREEN_IDS ב-lib/uiVariantScreens.js (הסקריפט CommonJS סינכרוני; הבדיקה משווה בין השתיים).
-const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', 'employees_list', 'models_list', 'model_card', 'model_new', 'email_logs', 'departments', 'management_history', 'data_history'];
+const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings', 'employees_list', 'models_list', 'model_card', 'model_new', 'email_logs', 'departments', 'management_history', 'data_history', 'messages'];
 const VALUES = ['legacy', 'a5'];
 const SCOPES = ['org', 'user'];
 const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'apply', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
