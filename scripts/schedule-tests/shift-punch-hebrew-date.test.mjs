@@ -26,10 +26,4 @@ test('punchIn stores the Hebrew date of the Israel calendar day (24 Tishrei 5787
   }
 });
 
-test('the card falls back to a computed Hebrew date for old shifts that were saved without one (source check of the table cell)', async () => {
-  const { readFileSync } = await import('node:fs');
-  const src = readFileSync(process.env.PROJ + '/app/employees/[id]/LegacyEmployeeCardPage.js', 'utf8');
-  assert.ok(src.includes('<td>{shiftHebrewDate(shift) || \'-\'}</td>'), 'read-only row');
-  assert.ok(src.includes('value={shiftHebrewDate(shift)} disabled'), 'edit row (disabled input shows the same value)');
-  assert.ok(!src.includes('{shift.hebrewDate || \'-\'}'), 'no direct read of shift.hebrewDate left in the table');
-});
+// The legacy employee-card source check was dropped: LegacyEmployeeCardPage.js is a frozen copy; the new (A5) card already computes the Hebrew date.
