@@ -36,7 +36,7 @@ const STAFF_SCREENS = ['employees_list', 'models_list', 'model_card', 'model_new
 const STAFF_BUILT = STAFF_SCREENS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const STAFF_NOT_YET = STAFF_SCREENS.filter((id) => !STAFF_BUILT.includes(id));
 // יומן מיילים / מחלקות / היסטוריית הנהלה / היסטוריית נתונים (feature/a5-admin-logs-history-departments-2026-10-11): נרשמו יחד; newExists הופך ל-true כשהמסך החדש מחובר.
-const LOGS_SCREENS = ['email_logs', 'departments', 'management_history', 'data_history'];
+const LOGS_SCREENS = ['email_logs', 'departments', 'management_history', 'data_history', 'messages']; // messages (14.10.2026): מרכז הודעות
 const LOGS_BUILT = LOGS_SCREENS.filter((id) => getScreenEntry(id) && getScreenEntry(id).newExists);
 const LOGS_NOT_YET = LOGS_SCREENS.filter((id) => !LOGS_BUILT.includes(id));
 const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS, ...STAFF_BUILT, ...LOGS_BUILT]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
@@ -377,6 +377,7 @@ await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב 
     ['app/components/models-list/ModelsListSwitch.js', /<VariantFrame screen="models_list" variant="legacy"><LegacyDressesListPage \/><\/VariantFrame>/],
     ['app/components/history-lists/DataHistorySwitch.js', /<VariantFrame screen="data_history" variant="legacy"><LegacyDataHistoryPage \/><\/VariantFrame>/],
     ['app/components/history-lists/ManagementHistorySwitch.js', /<VariantFrame screen="management_history" variant="legacy"><LegacyManagementHistoryPage \/><\/VariantFrame>/],
+    ['app/components/messages/MessagesSwitch.js', /<VariantFrame screen="messages" variant="legacy"><LegacyMessagesPage \/><\/VariantFrame>/],
     ['app/components/home/HomeSwitch.js', /<VariantFrame screen="home" variant="legacy"><LegacyHome \/><\/VariantFrame>/],
     ['app/board/page.js', /<VariantFrame screen="board" variant=\{variant\}>[\s\S]*<LegacyBoardPage \/>/],
   ];
@@ -482,6 +483,7 @@ const RESTORED = [
   ['15dc7a0d', 'app/admin/site-settings/email-logs/page.js', 'app/admin/site-settings/email-logs/LegacyEmailLogsPage.js'], // יומן המיילים הישן (email_logs): page.js של main 15dc7a0d כפי שהוא
   ['15dc7a0d', 'app/admin/departments/page.js', 'app/admin/departments/LegacyDepartmentsPage.js'], // ניהול המחלקות הישן (departments): page.js של main 15dc7a0d כפי שהוא
   ['15dc7a0d', 'app/admin/data-history/page.js', 'app/admin/data-history/LegacyDataHistoryPage.js'], // היסטוריית הנתונים הישנה (data_history): page.js של main 15dc7a0d כפי שהוא
+  ['d0bc85d9', 'app/messages/page.js', 'app/messages/LegacyMessagesPage.js'], // מרכז ההודעות הישן (messages): page.js של main d0bc85d9 כפי שהוא
   ['15dc7a0d', 'app/management/history/page.js', 'app/management/history/LegacyManagementHistoryPage.js'], // היסטוריית השאילתות / ה-API הישנה (management_history): page.js של main 15dc7a0d כפי שהוא
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();

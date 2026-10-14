@@ -145,3 +145,11 @@ node scripts/set-ui-variant.js --screen attendance --value legacy --scope user -
   (`applyUiVariantAllRequest`, אותם כללי הרשאה כמו מעבר של מסך בודד) + טעינה מחדש. אייקון המעבר הישן של המעטפת בלבד הוחלף בלחצן הזה.
 * **"האתר הישן"** בתפריט החדש מחליף עכשיו את *כל* המסכים לישן (אותו API עם `value:'legacy'`), ולא רק את המעטפת.
 * בדיקות: `scripts/test_page_variant_switch.mjs`, `test_ui_variant_self_switch.mjs`, `test_neve_new_ui_seed.mjs`.
+
+## מרכז הודעות (14.10.2026, ענף feature/messages-a5)
+
+מסך `messages` (`/messages`) נרשם ברשומה, `newExists:true`, `selfSwitch:true`. הישן: `app/messages/LegacyMessagesPage.js` (= `page.js` של main d0bc85d9 בייט-בבייט, נבדק ב-`RESTORED`);
+`app/messages/page.js` הוא עטיפה דקה ל-`MessagesSwitch` (`app/components/messages/`). ברירת מחדל לפי תפקיד: מתכנת חדש, כל השאר ישן (עד עקיפה אישית / `ui_variant_messages='a5'`).
+החדש (`MessagesA5.js`, `messagesLogic.js`, `messages.css`) בנוי כמו תיבת המייל (`/admin/mailbox`) ודף הלו"ז: `A5ListPage` עם עמודה כחולה בצד ימין (נכנסות / יוצאות / בין משמרות / להנהלה / ארכיון + "הודעה חדשה" + "הגדרות"),
+`A5List` (שורות / טבלה, חיפוש, מיון, פירוט מהיר) וחלונות צפים (`.dlg.mailwin`) לקריאה, כתיבה (שלושה סוגים: לעובד / בין משמרות / להנהלה) והגדרות התראות. אותם API והרשאות כמו בדף הישן,
+תאריכים עבריים בלבד. תוספת קטנה: כפתור "השב" בהודעה אישית. בדיקות: `test_page_variant_switch.mjs`, `test_ui_variant.mjs`, `test_ui_variant_self_switch.mjs`.
